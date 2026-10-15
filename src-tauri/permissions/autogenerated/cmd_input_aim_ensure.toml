@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-ensure"
+description = "Ensure per-app composer aim memory (home/oral shared)"
+commands.allow = ["cmd_input_aim_ensure"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-ensure"
+description = "Deny ensure composer aim"
+commands.deny = ["cmd_input_aim_ensure"]

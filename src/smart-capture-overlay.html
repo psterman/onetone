@@ -23,7 +23,7 @@
     #chrome {
       position: fixed; left: 16px; top: 14px;
       display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 40;
-      max-width: calc(100% - 32px);
+      max-width: min(560px, calc(100% - 32px));
       padding: 8px 12px; border-radius: 14px; background: rgba(15, 22, 20, 0.92);
       font-size: 12px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.35);
       cursor: default;
@@ -383,6 +383,57 @@
         }) || null;
       }
 
+      /** Dock tip chrome to the active monitor — never virtual-desktop center. */
+      function placeChromeOnActiveMonitor(s) {
+        var chrome = document.getElementById('chrome');
+        var gridBar = document.getElementById('gridBar');
+        if (!chrome) return;
+        var mons = (s && s.monitors) || [];
+        var activeIdx = s && s.activeMonitor != null ? Number(s.activeMonitor) : 0;
+        var mon = null;
+        for (var i = 0; i < mons.length; i++) {
+          if (Number(mons[i].index) === activeIdx) {
+            mon = mons[i];
+            break;
+          }
+        }
+        if (!mon) mon = mons[0] || null;
+        var r = mon && mon.rectPx;
+        var vw = Math.max(window.innerWidth, 1);
+        var vh = Math.max(window.innerHeight, 1);
+        var pad = 14;
+        if (!r || !screen || !screen.w || !screen.h) {
+          chrome.style.left = pad + 'px';
+          chrome.style.top = pad + 'px';
+          chrome.style.transform = '';
+          if (gridBar) {
+            gridBar.style.left = pad + 'px';
+            gridBar.style.right = 'auto';
+            gridBar.style.bottom = '22px';
+            gridBar.style.top = 'auto';
+            gridBar.style.transform = '';
+          }
+          return;
+        }
+        // Client px of active monitor within the virtual-desktop overlay.
+        var ml = ((r.x - screen.x) / screen.w) * vw;
+        var mt = ((r.y - screen.y) / screen.h) * vh;
+        var mw = (r.w / screen.w) * vw;
+        var mh = (r.h / screen.h) * vh;
+        // Top-center of that monitor (not the gap between screens).
+        var cx = ml + mw / 2;
+        chrome.style.left = Math.round(cx) + 'px';
+        chrome.style.top = Math.round(mt + pad) + 'px';
+        chrome.style.transform = 'translateX(-50%)';
+        if (gridBar) {
+          gridBar.style.left = Math.round(cx) + 'px';
+          gridBar.style.right = 'auto';
+          gridBar.style.bottom = 'auto';
+          gridBar.style.top = Math.round(mt + mh - 56) + 'px';
+          gridBar.style.transform = 'translateX(-50%)';
+        }
+      }
+
       function applyState(s) {
         if (!s) return;
         state = s;
@@ -397,6 +448,7 @@
           }
           setFreeze('data:' + mime + ';base64,' + s.freezePngBase64);
         }
+        placeChromeOnActiveMonitor(s);
         if (s.phase === 'gridRefine') {
           showGrid(s.candidateRect || s.screenRect);
         } else if (mode === 'snap') {

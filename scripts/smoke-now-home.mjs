@@ -1111,7 +1111,7 @@ assertFocus(
   if (/data-hf-act="quick_handoff"[^>]*disabled/.test(filled)) {
     throw new Error('non-empty quiet draft must enable agent tiles');
   }
-  if (!filled.includes('hn-agent-tile') || filled.includes('复制并打开')) {
+  if (!filled.includes('hn-agent-tile') || /class="hn-cta[^"]*"[^>]*>复制并打开/.test(filled)) {
     throw new Error('quiet handoff must be agent tiles, not copy-open CTA');
   }
   const withMats = HFView.renderFocus(vm, {
@@ -1309,6 +1309,51 @@ assertFocus(
   if (!probeHtml.includes('悬浮栏') || !probeHtml.includes('粘贴')) {
     throw new Error('agent grid must explain tray paste into input');
   }
+  if (!probeHtml.includes('已检测到的 Agent')) {
+    throw new Error('agent grid hint must mention auto-detected agents');
+  }
+  // Source contract: homepage only floats installed/running tiles (no fixed dim roster).
+  {
+    const nowSrc = fs.readFileSync(path.join(root, 'src/js/features/now/now-home.js'), 'utf8');
+    if (
+      !nowSrc.includes('Float-in only') ||
+      !nowSrc.includes('if (!installed && !running) continue') ||
+      !nowSrc.includes('startInventoryPoll')
+    ) {
+      throw new Error('listProbeJumpTargets must filter to detected agents and poll inventory');
+    }
+    if (
+      !nowSrc.includes('onetone.homeAgentInventory.v1') ||
+      !nowSrc.includes('hydrateHomeSessionCaches') ||
+      !nowSrc.includes('writeInventorySessionCache')
+    ) {
+      throw new Error('home must session-cache inventory for instant revisit paint');
+    }
+  }
+  {
+    const pendingHtml = HFView.renderFocus(
+      HFAdapter.toViewModel({
+        work: { status: 'idle' },
+        project: { confirmed: true, name: 'voice-pilot' },
+        provider: { id: 'cursor' }
+      }),
+      { draftText: 'x', probeTargets: [], probePending: true }
+    );
+    if (!pendingHtml.includes('正在检测本机 Agent')) {
+      throw new Error('empty probe grid must show pending hint while inventory loads');
+    }
+    const emptyHtml = HFView.renderFocus(
+      HFAdapter.toViewModel({
+        work: { status: 'idle' },
+        project: { confirmed: true, name: 'voice-pilot' },
+        provider: { id: 'cursor' }
+      }),
+      { draftText: 'x', probeTargets: [], probePending: false }
+    );
+    if (emptyHtml.includes('正在检测本机 Agent')) {
+      throw new Error('empty probe grid must stay blank after inventory settles with none');
+    }
+  }
   for (const kind of [
     'cursor',
     'claude',
@@ -1329,6 +1374,9 @@ assertFocus(
   if (!probeHtml.includes('data-voice-phrases=')) {
     throw new Error('agent tiles must expose data-voice-phrases for voice command mode');
   }
+  if (!probeHtml.includes('data-hn-aim-mem') || !probeHtml.includes('data-hf-act="aim_change"')) {
+    throw new Error('agent grid must show single-point aim memory row');
+  }
   if (probeHtml.includes('跳转 ') || probeHtml.includes('复制并打开 Cursor')) {
     throw new Error('agent tiles replace text handoff / 跳转 labels');
   }
@@ -1343,21 +1391,43 @@ assertFocus(
   function centerArgs(payload) {
     return (payload && payload.args) || payload || {};
   }
+  let ensureCalled = false;
   ctx.OneToneIpc = {
     invoke(cmd, payload) {
       const args = centerArgs(payload);
+      if (cmd === 'cmd_input_aim_ensure') {
+        ensureCalled = true;
+        // Already has active memory — inherit, no overlay wait.
+        return Promise.resolve({
+          ok: true,
+          needCalibrate: false,
+          hasActive: true,
+          appTargetId: args.appTargetId || 'codex-chat',
+          x: 0.5,
+          y: 0.9
+        });
+      }
+      if (cmd === 'cmd_input_aim_calibrate_status') {
+        return Promise.resolve({
+          hasActive: true,
+          calibrated: true,
+          x: 0.5,
+          y: 0.9,
+          appTargetId: args.appTargetId || ''
+        });
+      }
       if (cmd === 'cmd_agent_center_action' && args.actionId === 'agent.focus') {
         if (!payload || !payload.args) {
           throw new Error('cmd_agent_center_action must nest { args: { actionId, agentId } }');
         }
-        // Non-Cursor probes: open-only (pasteClipboard false/absent). Cursor keeps true.
+        // Clipboard + composer aim only — never auto-paste.
         lastPasteClipboard = !!args.pasteClipboard;
         focused = true;
         focusedId = String(args.agentId || '');
         return Promise.resolve({
           ok: true,
           outcome: 'verified',
-          detail: lastPasteClipboard ? 'composer_pasted:cursor-chat' : 'window_focused'
+          detail: 'focused:composer_aim'
         });
       }
       if (cmd === 'cmd_tray_snapshot_publish' || cmd === 'cmd_tray_carry_dismiss') {
@@ -1384,14 +1454,15 @@ assertFocus(
     throw new Error('quick_handoff must return clipboard_ready');
   }
   if (!focused) throw new Error('quick_handoff must attempt agent.focus');
+  if (!ensureCalled) throw new Error('quick_handoff must call cmd_input_aim_ensure before focus');
   if (lastPasteClipboard) {
-    throw new Error('non-Cursor probe must be open-only (no pasteClipboard)');
+    throw new Error('homepage handoff must not request auto-paste (pasteClipboard)');
   }
-  if (!/下方「粘贴」|粘贴/.test(String(result.message || ''))) {
-    throw new Error('open-only handoff toast must mention paste assist');
+  if (!/Ctrl\+V|粘贴/.test(String(result.message || ''))) {
+    throw new Error('handoff toast must tell user to Ctrl+V or Soft Pad paste');
   }
-  if (!handoffToasts.some((t) => /已就绪|正在打开|已打开/.test(t) && /粘贴|下方/.test(t))) {
-    throw new Error('open-only handoff must toast paste hint before/after focus');
+  if (!handoffToasts.some((t) => /已复制|正在打开|已打开/.test(t))) {
+    throw new Error('handoff must toast clipboard + open status');
   }
   if (result.lifecycleCreated) {
     throw new Error('clipboard_ready must not claim lifecycleCreated');
@@ -1426,7 +1497,7 @@ assertFocus(
     throw new Error('preferKind minimax must focus kind:minimax');
   }
   if (lastPasteClipboard) {
-    throw new Error('MiniMax must be open-only');
+    throw new Error('MiniMax must not auto-paste');
   }
   if (!String(mmResult.message || '').includes('MiniMax')) {
     throw new Error('MiniMax handoff toast must name MiniMax');
@@ -1453,30 +1524,43 @@ assertFocus(
     throw new Error('preferKind workbuddy must focus kind:workbuddy (synthetic)');
   }
   if (lastPasteClipboard) {
-    throw new Error('WorkBuddy must be open-only');
+    throw new Error('WorkBuddy must not auto-paste');
   }
   if (!String(wbResult.message || '').includes('WorkBuddy')) {
     throw new Error('WorkBuddy handoff toast must name WorkBuddy');
   }
 
-  // Cursor keeps pasteClipboard; composer UIA miss still counts as opened.
+  // Cursor: composer UIA miss still counts as opened; still no auto-paste.
   focused = false;
   focusedId = '';
   lastPasteClipboard = null;
   ctx.OneToneIpc = {
     invoke(cmd, payload) {
       const args = centerArgs(payload);
+      if (cmd === 'cmd_input_aim_ensure' || cmd === 'cmd_input_aim_calibrate_status') {
+        return Promise.resolve({
+          ok: true,
+          needCalibrate: false,
+          hasActive: true,
+          x: 0.78,
+          y: 0.9,
+          appTargetId: args.appTargetId || 'cursor-chat'
+        });
+      }
       if (cmd === 'cmd_agent_center_action' && args.actionId === 'agent.focus') {
-        if (!payload || !payload.args || !args.pasteClipboard) {
-          throw new Error('Cursor handoff must nest args with pasteClipboard:true');
+        if (!payload || !payload.args) {
+          throw new Error('Cursor handoff must nest args');
         }
-        lastPasteClipboard = true;
+        if (args.pasteClipboard) {
+          throw new Error('Cursor handoff must not request pasteClipboard');
+        }
+        lastPasteClipboard = !!args.pasteClipboard;
         focusedId = String(args.agentId || '');
         focused = true;
         return Promise.resolve({
           ok: true,
           outcome: 'attemptedUnverified',
-          detail: 'composer_focus_failed:cursor-chat:handoff_input_not_found:paste=false'
+          detail: 'window_focused_composer_miss:cursor-chat'
         });
       }
       if (cmd === 'cmd_tray_snapshot_publish' || cmd === 'cmd_tray_carry_dismiss') {
@@ -1505,8 +1589,8 @@ assertFocus(
   if (focusedId !== 'kind:cursor') {
     throw new Error('composer miss path must still target kind:cursor');
   }
-  if (!lastPasteClipboard) {
-    throw new Error('Cursor regression must keep pasteClipboard');
+  if (lastPasteClipboard) {
+    throw new Error('Cursor must not auto-paste');
   }
 
   // force clipboard failure

@@ -926,6 +926,22 @@ pub fn foreground_terminal_cli_target_id() -> Option<String> {
     target
 }
 
+/// True when this process token is elevated (UAC admin). Used for UIPI handoff checks.
+#[cfg(windows)]
+pub fn current_process_is_elevated() -> bool {
+    // shell32 IsUserAnAdmin — no extra winapi features needed.
+    #[link(name = "shell32")]
+    extern "system" {
+        fn IsUserAnAdmin() -> i32;
+    }
+    unsafe { IsUserAnAdmin() != 0 }
+}
+
+#[cfg(not(windows))]
+pub fn current_process_is_elevated() -> bool {
+    false
+}
+
 /// True when the live foreground process is OneTone itself (settings / Soft Pad manager).
 pub fn foreground_is_self() -> bool {
     let Some(fg) = foreground_app_identity() else {

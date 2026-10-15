@@ -323,30 +323,89 @@ pub fn composer_anchor_for_app(
     app_target_id: &str,
     profile: &AppChatProfile,
 ) -> (f32, f32) {
-    let tid = app_target_id.trim();
-    if tid.is_empty() {
-        return profile.composer_anchor;
+    composer_anchor_candidates_for_app(app, app_target_id, profile)
+        .into_iter()
+        .next()
+        .unwrap_or(profile.composer_anchor)
+}
+
+fn composer_point_usable(app_target_id: &str, x: f32, y: f32) -> bool {
+    let _ = y;
+    if app_target_id == CURSOR_APP_TARGET_ID && x < CURSOR_AGENT_MIN_X_RATIO {
+        return false;
     }
-    if let Some(state) = app.try_state::<Arc<AppState>>() {
-        let cfg = state.cfg.lock();
-        if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
-            if let Some(p) = a.active_point() {
-                // Cursor Agent is on the RIGHT. A left/center mark is almost always the editor.
-                if tid == CURSOR_APP_TARGET_ID && p.x < CURSOR_AGENT_MIN_X_RATIO {
-                    crate::app_log::early_line(
-                        "input_aim",
-                        &format!(
-                            "ignore_left_cursor_anchor x={:.3} y={:.3} (use profile)",
-                            p.x, p.y
-                        ),
-                    );
-                    return profile.composer_anchor;
+    true
+}
+
+/// Statistically preferred composer zones for basic aim (chat vs IDE Agent).
+/// Slot 0 UI = 中间; slot 1 UI = 右下.
+pub const LAYOUT_CENTER: (f32, f32) = (0.50, 0.90);
+pub const LAYOUT_BOTTOM_RIGHT: (f32, f32) = (0.78, 0.90);
+
+/// Active calibrated slot → other slot → profile → layout presets (center / bottom-right).
+pub fn composer_anchor_candidates_for_app(
+    app: &AppHandle,
+    app_target_id: &str,
+    profile: &AppChatProfile,
+) -> Vec<(f32, f32)> {
+    let tid = app_target_id.trim();
+    let mut out: Vec<(f32, f32)> = Vec::new();
+    let mut push = |p: (f32, f32)| {
+        if !composer_point_usable(tid, p.0, p.1) {
+            return;
+        }
+        if out
+            .iter()
+            .any(|(x, y)| (x - p.0).abs() < 0.001 && (y - p.1).abs() < 0.001)
+        {
+            return;
+        }
+        out.push(p);
+    };
+
+    if !tid.is_empty() {
+        if let Some(state) = app.try_state::<Arc<AppState>>() {
+            let cfg = state.cfg.lock();
+            if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
+                if let Some(p) = a.active_point() {
+                    if tid == CURSOR_APP_TARGET_ID && p.x < CURSOR_AGENT_MIN_X_RATIO {
+                        crate::app_log::early_line(
+                            "input_aim",
+                            &format!(
+                                "ignore_left_cursor_anchor x={:.3} y={:.3} (use profile)",
+                                p.x, p.y
+                            ),
+                        );
+                    } else {
+                        push((p.x, p.y));
+                    }
                 }
-                return (p.x, p.y);
+                // Other calibrated slot (2-point scheme).
+                for (i, slot) in a.slots.iter().enumerate() {
+                    if i == a.active {
+                        continue;
+                    }
+                    if let Some(p) = slot {
+                        push((p.x, p.y));
+                    }
+                }
             }
         }
     }
-    profile.composer_anchor
+    push(profile.composer_anchor);
+    // Prefer the two common zones: IDE Agent → 右下 first; chat apps → 中间 first.
+    let ide_right = profile.composer_anchor.0 >= CURSOR_AGENT_MIN_X_RATIO;
+    if ide_right {
+        push(LAYOUT_BOTTOM_RIGHT);
+        push(LAYOUT_CENTER);
+    } else {
+        push(LAYOUT_CENTER);
+        push(LAYOUT_BOTTOM_RIGHT);
+    }
+    if out.is_empty() {
+        out.push(profile.composer_anchor);
+    }
+    out
 }
 
 /// Cursor Agent / chat composer sits on the right; below this is the code editor.
@@ -753,11 +812,30 @@ pub fn focus_composer_for_send(
     duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
     let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
-    let anchor = composer_anchor_for_app(app, app_target_id, profile);
+    let candidates = composer_anchor_candidates_for_app(app, app_target_id, profile);
+    let anchor = candidates
+        .first()
+        .copied()
+        .unwrap_or(profile.composer_anchor);
     // Resolve hwnd before hide — restore OneTone if window/focus fails.
     let (hwnd, freshly_launched) =
         ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
-    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
+    let _ = force_show_hwnd(hwnd);
+    // Elevated Cursor + non-elevated OneTone: UIPI blocks inject. Same elevation is OK.
+    if profile.id == CURSOR_APP_TARGET_ID && elevated_inject_blocked(hwnd) {
+        let title = crate::app_identity::identity_for_window(hwnd)
+            .map(|id| id.window_title)
+            .unwrap_or_default();
+        crate::app_log::cursor_send_oplog(
+            "abort_elevated_before_hide",
+            serde_json::json!({
+                "appTargetId": app_target_id,
+                "title": title,
+                "selfElevated": crate::app_identity::current_process_is_elevated(),
+            }),
+        );
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
     if freshly_launched {
         std::thread::sleep(Duration::from_millis(2200));
     }
@@ -766,6 +844,7 @@ pub fn focus_composer_for_send(
         serde_json::json!({
             "appTargetId": app_target_id,
             "anchor": [anchor.0, anchor.1],
+            "candidates": candidates.iter().map(|(x, y)| [*x, *y]).collect::<Vec<_>>(),
             "anchorSource": if (anchor.0 - profile.composer_anchor.0).abs() > 0.001
                 || (anchor.1 - profile.composer_anchor.1).abs() > 0.001
             {
@@ -779,17 +858,38 @@ pub fn focus_composer_for_send(
             "durationMs": duration_ms,
         }),
     );
-    if !crate::keyboard::focus_window(hwnd) {
+    // Raise Cursor WHILE OneTone still owns FG (Windows allows giving FG away).
+    // Hiding first often leaves desktop FG and Cursor never activates.
+    if !crate::keyboard::focus_window(hwnd) || !window_is_foreground_target(hwnd) {
         crate::app_log::cursor_send_oplog(
             "focus_window_failed",
-            serde_json::json!({ "reason": "FocusFailed" }),
+            serde_json::json!({
+                "reason": "FocusFailed",
+                "visible": window_is_user_visible(hwnd),
+                "fgMatch": window_is_foreground_target(hwnd),
+            }),
         );
         return Err(AppChatWorkflowError::FocusFailed);
     }
-    hide_guard.disarm_restore();
+    // Hide after Cursor is FG; restore on Drop unless composer verified.
+    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
     std::thread::sleep(Duration::from_millis(120));
+    // Re-assert FG after hide — desktop sometimes steals it.
+    if !crate::keyboard::focus_window(hwnd) || !window_is_foreground_target(hwnd) {
+        crate::app_log::cursor_send_oplog(
+            "focus_window_failed_after_hide",
+            serde_json::json!({
+                "reason": "FocusFailed",
+                "fgMatch": window_is_foreground_target(hwnd),
+            }),
+        );
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
 
-    let _ = duration_ms; // send path never uses open_key (Ctrl+I)
+    // open_key (Ctrl+I) only when Agent panel closed — after parking caret on the right.
+    // Never send it while the editor has focus (inline edit) or when composer already exists
+    // (Ctrl+I toggles the panel shut).
+    let mut open_key_sent = false;
     let min_score = uia_min_score_for_send(profile);
     // Cursor Agent box often has empty UIA name (score≈10). Old rule blocked blind
     // accept whenever open_key was set — logs show bestScore=-1 / focusedScore=10 /
@@ -797,14 +897,26 @@ pub fn focus_composer_for_send(
     let allow_blind_after_right_click = profile.accept_click_without_uia;
     // Click RIGHT panel composer first. Do NOT send Ctrl+I here: with editor focus,
     // Cursor treats Ctrl+I as inline edit (selects text) instead of Agent composer.
+    // Try dual calibrated slots before falling through to screen/UIA.
     let mut click_via = "post";
-    let post_ok = crate::keyboard::click_client_relative_via_message(hwnd, anchor.0, anchor.1);
+    let mut post_ok = false;
+    let mut post_anchor = anchor;
+    for (i, &(ax, ay)) in candidates.iter().enumerate() {
+        if crate::keyboard::click_client_relative_via_message(hwnd, ax, ay) {
+            post_ok = true;
+            post_anchor = (ax, ay);
+            if i > 0 {
+                click_via = "post_slot";
+            }
+            break;
+        }
+    }
     let mut any_click = post_ok;
     crate::app_log::cursor_send_oplog(
         "click_post",
         serde_json::json!({
             "ok": post_ok,
-            "anchor": [anchor.0, anchor.1],
+            "anchor": [post_anchor.0, post_anchor.1],
             "minScore": min_score,
         }),
     );
@@ -875,15 +987,23 @@ pub fn focus_composer_for_send(
         }
     }
     if !uia_ok {
-        // Soft Pad should already be click-through (caller guard); screen click as last resort.
-        let screen_ok = click_composer_anchor(hwnd, anchor);
+        // Soft Pad should already be click-through (caller guard); try both calibrated slots.
+        let mut screen_ok = false;
+        let mut screen_anchor = anchor;
+        for (i, &pt) in candidates.iter().enumerate() {
+            if click_composer_anchor(hwnd, pt) {
+                screen_ok = true;
+                screen_anchor = pt;
+                click_via = if i == 0 { "screen" } else { "screen_slot" };
+                break;
+            }
+        }
         any_click = any_click || screen_ok;
-        click_via = "screen";
         crate::app_log::cursor_send_oplog(
             "click_screen",
             serde_json::json!({
                 "ok": screen_ok,
-                "anchor": [anchor.0, anchor.1],
+                "anchor": [screen_anchor.0, screen_anchor.1],
             }),
         );
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
@@ -943,6 +1063,147 @@ pub fn focus_composer_for_send(
         }
     }
 
+    // Cursor: UIA clickable in the Agent band (same as chat handoff) — fixed anchors miss
+    // resized/side-by-side layouts even when the panel is already open.
+    if !uia_ok && profile.id == CURSOR_APP_TARGET_ID {
+        if uia_click_best_input_in_band(hwnd, 10, CURSOR_AGENT_MIN_X_RATIO, 0.98, 0.62) {
+            any_click = true;
+            std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+            let low = uia_focus_chat_input_probe(hwnd, 10);
+            crate::app_log::cursor_send_oplog(
+                "click_uia_band",
+                serde_json::json!({
+                    "focusedXRatio": low.focused_x_ratio,
+                    "focusedName": low.focused_name,
+                    "bestScore": low.best_score,
+                    "uiaOk": low.ok,
+                }),
+            );
+            if can_blind(&low) || cursor_focus_acceptable(profile.id, &low) {
+                probe = low;
+                uia_ok = true;
+                click_via = "uia_band";
+            }
+        }
+    }
+
+    // Cursor: Agent panel closed → no right-band Edit. Park caret on the right, then
+    // Ctrl+I once to open Agent (never while editor-focused; never if composer already ok).
+    if !uia_ok && profile.id == CURSOR_APP_TARGET_ID {
+        if let Some(open_key) = profile.open_key.filter(|k| !k.trim().is_empty()) {
+            let mut parked = false;
+            let mut park_pt = anchor;
+            for &(ax, ay) in &candidates {
+                if crate::keyboard::click_client_relative_via_message(hwnd, ax, ay) {
+                    parked = true;
+                    park_pt = (ax, ay);
+                    break;
+                }
+            }
+            any_click = any_click || parked;
+            std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+            let pre = uia_focus_chat_input_probe(hwnd, 10);
+            if can_blind(&pre) || cursor_focus_acceptable(profile.id, &pre) {
+                probe = pre;
+                uia_ok = true;
+                click_via = "park_already";
+            } else if cursor_right_band_composer_present(hwnd) {
+                // Panel open but focus missed — click UIA point; do NOT Ctrl+I (would toggle shut).
+                if uia_click_best_input_in_band(hwnd, 10, CURSOR_AGENT_MIN_X_RATIO, 0.98, 0.62) {
+                    any_click = true;
+                    std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+                    let low = uia_focus_chat_input_probe(hwnd, 10);
+                    if can_blind(&low) || cursor_focus_acceptable(profile.id, &low) {
+                        probe = low;
+                        uia_ok = true;
+                        click_via = "uia_band_retry";
+                    }
+                }
+            } else {
+                // Panel looks closed. Ctrl+I toggles Agent — only safe after caret is on the
+                // RIGHT. Editor-focused Ctrl+I = inline edit / can close an open panel.
+                let mut park_ok = parked;
+                if !park_ok {
+                    for &pt in &candidates {
+                        if click_composer_anchor(hwnd, pt) {
+                            park_ok = true;
+                            park_pt = pt;
+                            break;
+                        }
+                    }
+                    any_click = any_click || park_ok;
+                    crate::app_log::cursor_send_oplog(
+                        "park_screen_fallback",
+                        serde_json::json!({
+                            "ok": park_ok,
+                            "anchor": [park_pt.0, park_pt.1],
+                        }),
+                    );
+                    std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+                }
+                let after_park = uia_focus_chat_input_probe(hwnd, 10);
+                if can_blind(&after_park) || cursor_focus_acceptable(profile.id, &after_park) {
+                    probe = after_park;
+                    uia_ok = true;
+                    click_via = "park_ready";
+                } else {
+                    let parked_on_right = after_park
+                        .focused_x_ratio
+                        .is_some_and(|x| x >= CURSOR_AGENT_MIN_X_RATIO);
+                    if !(park_ok && parked_on_right) {
+                        crate::app_log::cursor_send_oplog(
+                            "skip_open_key_not_parked_right",
+                            serde_json::json!({
+                                "parkOk": park_ok,
+                                "postMessageParked": parked,
+                                "focusedXRatio": after_park.focused_x_ratio,
+                                "focusedName": after_park.focused_name,
+                                "note": "Ctrl+I skipped — would toggle Agent shut or inline-edit",
+                            }),
+                        );
+                    } else {
+                        crate::app_log::cursor_send_oplog(
+                            "open_key_chord",
+                            serde_json::json!({
+                                "chord": open_key,
+                                "via": "focus_composer_for_send_panel_closed",
+                                "note": "open_key only when Agent panel closed",
+                                "postMessageParked": parked,
+                                "parkOk": park_ok,
+                                "focusedXRatio": after_park.focused_x_ratio,
+                            }),
+                        );
+                        if crate::keyboard::send_chord(open_key, duration_ms.max(80)) {
+                            open_key_sent = true;
+                            std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_OPEN_MS));
+                            let _ = crate::keyboard::click_client_relative_via_message(
+                                hwnd,
+                                profile.composer_anchor.0,
+                                profile.composer_anchor.1,
+                            );
+                            let _ = click_composer_anchor(hwnd, profile.composer_anchor);
+                            std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+                            let _ = uia_click_best_input_in_band(
+                                hwnd,
+                                10,
+                                CURSOR_AGENT_MIN_X_RATIO,
+                                0.98,
+                                0.62,
+                            );
+                            std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+                            let low = uia_focus_chat_input_probe(hwnd, 10);
+                            if can_blind(&low) || cursor_focus_acceptable(profile.id, &low) {
+                                probe = low;
+                                uia_ok = true;
+                                click_via = "open_key";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MiniMax / WorkBuddy / Claude: Electron chat rarely exposes UIA Edit.
     // Mirror click_then_confirm — a landed click is enough to Ctrl+V.
     if !uia_ok
@@ -965,7 +1226,18 @@ pub fn focus_composer_for_send(
         "other"
     };
     // Soft Pad / settings can still report FG=self; trust composer keyboard focus.
-    let result = if !uia_ok { "FocusFailed" } else { "Ok" };
+    let elevated_hint = elevated_inject_blocked(hwnd)
+        || (!crate::app_identity::current_process_is_elevated()
+            && title_looks_elevated_cursor(&probe.focused_name));
+    let result = if !uia_ok {
+        if elevated_hint {
+            "FocusFailedElevated"
+        } else {
+            "FocusFailed"
+        }
+    } else {
+        "Ok"
+    };
     crate::app_log::cursor_send_oplog(
         "focus_result",
         serde_json::json!({
@@ -973,7 +1245,8 @@ pub fn focus_composer_for_send(
             "uiaOk": uia_ok,
             "clickVia": click_via,
             "fg": fg,
-            "openKeySent": false,
+            "openKeySent": open_key_sent,
+            "elevatedHint": elevated_hint,
             "bestName": probe.best_name,
             "bestScore": probe.best_score,
             "focusedName": probe.focused_name,
@@ -983,9 +1256,69 @@ pub fn focus_composer_for_send(
     );
 
     if !uia_ok {
+        // Keep restore_on_drop — OneTone must come back when Cursor never got composer.
         return Err(AppChatWorkflowError::FocusFailed);
     }
+    hide_guard.disarm_restore();
     Ok(())
+}
+
+/// True when hwnd is visible and owns (or shares process with) the foreground window.
+#[cfg(windows)]
+fn window_is_foreground_target(hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId, IsIconic, IsWindowVisible};
+    unsafe {
+        if hwnd.is_null() || IsWindowVisible(hwnd) == 0 || IsIconic(hwnd) != 0 {
+            return false;
+        }
+        let fg = GetForegroundWindow();
+        if fg.is_null() {
+            return false;
+        }
+        if fg == hwnd {
+            return true;
+        }
+        let mut fg_pid = 0u32;
+        let mut target_pid = 0u32;
+        GetWindowThreadProcessId(fg, &mut fg_pid);
+        GetWindowThreadProcessId(hwnd, &mut target_pid);
+        fg_pid != 0 && fg_pid == target_pid
+    }
+}
+
+/// Cursor window title appends `[Administrator]` / `[管理员]` when elevated — UIPI blocks inject.
+#[cfg(windows)]
+fn title_looks_elevated_cursor(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("[administrator]")
+        || name.contains("[管理员]")
+        || lower.contains("administrator]")
+}
+
+/// Cursor elevated while OneTone is not — inject will fail (UIPI).
+#[cfg(windows)]
+fn elevated_inject_blocked(hwnd: winapi::shared::windef::HWND) -> bool {
+    if crate::app_identity::current_process_is_elevated() {
+        return false;
+    }
+    crate::app_identity::identity_for_window(hwnd)
+        .is_some_and(|id| title_looks_elevated_cursor(&id.window_title))
+}
+
+/// True when Cursor looks elevated and OneTone is not (handoff toast / detail).
+#[cfg(windows)]
+pub fn cursor_window_looks_elevated() -> bool {
+    if crate::app_identity::current_process_is_elevated() {
+        return false;
+    }
+    find_app_window(&CURSOR_PROFILE)
+        .and_then(|hwnd| crate::app_identity::identity_for_window(hwnd))
+        .is_some_and(|id| title_looks_elevated_cursor(&id.window_title))
+}
+
+#[cfg(not(windows))]
+pub fn cursor_window_looks_elevated() -> bool {
+    false
 }
 
 #[cfg(windows)]
@@ -1128,17 +1461,25 @@ pub fn focus_chat_app_and_paste(
         }),
     );
 
-    let primary = composer_anchor_for_app(app, app_target_id, profile);
+    let candidates = composer_anchor_candidates_for_app(app, app_target_id, profile);
     let is_minimax = profile.id == MINIMAX_APP_TARGET_ID;
     let is_workbuddy = profile.id == WORKBUDDY_APP_TARGET_ID;
     let _ = duration_ms;
     // Short hold — long Ctrl+V hold autorepeats paste in Electron composers.
     const PASTE_HOLD_MS: u32 = 40;
 
+    crate::app_log::cursor_send_oplog(
+        "chat_handoff_anchors",
+        serde_json::json!({
+            "appTargetId": app_target_id,
+            "candidates": candidates.iter().map(|(x, y)| [*x, *y]).collect::<Vec<_>>(),
+        }),
+    );
+
     // MiniMax CEF exposes zero Edit controls — only a full-window Document.
     // UIA click/SetValue lands in the page chrome, not the chat box.
     if is_minimax {
-        return minimax_click_and_paste(profile, hwnd, freshly_launched, ready_via);
+        return minimax_click_and_paste(profile, hwnd, freshly_launched, ready_via, &candidates);
     }
 
     // Electron / VS Code forks: UIA SetValue often hits editor/search — click then inject.
@@ -1168,7 +1509,8 @@ pub fn focus_chat_app_and_paste(
         std::thread::sleep(Duration::from_millis(140));
         // Only click when OneTone still owns FG — otherwise keep WorkBuddy caret.
         if crate::app_identity::foreground_is_self() {
-            click_via = click_chat_composer(hwnd_now, primary, profile.composer_anchor, false);
+            click_via =
+                click_chat_composer(hwnd_now, &candidates, profile.composer_anchor, false);
             crate::app_log::cursor_send_oplog(
                 "chat_handoff_click_attempt",
                 serde_json::json!({
@@ -1193,7 +1535,7 @@ pub fn focus_chat_app_and_paste(
             std::thread::sleep(Duration::from_millis(if attempt == 0 { 200 } else { 320 }));
 
             click_via =
-                click_chat_composer(hwnd_now, primary, profile.composer_anchor, ide_right_chat);
+                click_chat_composer(hwnd_now, &candidates, profile.composer_anchor, ide_right_chat);
             crate::app_log::cursor_send_oplog(
                 "chat_handoff_click_attempt",
                 serde_json::json!({
@@ -1223,7 +1565,7 @@ pub fn focus_chat_app_and_paste(
             let _ = crate::keyboard::focus_window(hwnd_now);
             std::thread::sleep(Duration::from_millis(100));
             // Re-click once so Ctrl+V lands in composer, not OneTone / editor chrome.
-            let _ = click_chat_composer(hwnd_now, primary, profile.composer_anchor, ide_right_chat);
+            let _ = click_chat_composer(hwnd_now, &candidates, profile.composer_anchor, ide_right_chat);
             std::thread::sleep(Duration::from_millis(160));
         } else {
             std::thread::sleep(Duration::from_millis(120));
@@ -1235,6 +1577,9 @@ pub fn focus_chat_app_and_paste(
         let _ = crate::keyboard::focus_window(hwnd_now);
         std::thread::sleep(Duration::from_millis(120));
     }
+    // Long prompts: save md backup before inject so upload path survives a truncate.
+    let clip_for_backup = crate::agent::insert_text::read_clipboard_unicode().unwrap_or_default();
+    let md_path = write_handoff_md_backup(app_target_id, &clip_for_backup);
     // Prefer send_text / Ctrl+V over UIA SetValue for Electron / IDE chat panels.
     let (pasted, paste_via) = if replace_paste {
         electron_replace_paste(PASTE_HOLD_MS)
@@ -1251,12 +1596,22 @@ pub fn focus_chat_app_and_paste(
             "pasteHoldMs": PASTE_HOLD_MS,
             "freshlyLaunched": freshly_launched,
             "readyVia": ready_via,
+            "handoffMd": md_path.as_ref().map(|p| p.to_string_lossy().to_string()),
         }),
     );
+    let md_suffix = md_path
+        .as_ref()
+        .map(|p| format!(":handoff_md={}", p.to_string_lossy()))
+        .unwrap_or_default();
     if pasted {
         std::thread::sleep(Duration::from_millis(80));
         Ok(format!(
-            "chat_pasted:{app_target_id}:{click_via}:{paste_via}:ready={ready_via}"
+            "chat_pasted:{app_target_id}:{click_via}:{paste_via}:ready={ready_via}{md_suffix}"
+        ))
+    } else if !md_suffix.is_empty() {
+        // Paste missed but md on disk — report partial so UI can point at the file.
+        Ok(format!(
+            "chat_paste_miss:{app_target_id}:{click_via}:{paste_via}:paste=false{md_suffix}"
         ))
     } else {
         Err(AppChatWorkflowError::FocusFailed)
@@ -1408,7 +1763,7 @@ fn wait_chat_ui_ready(
 #[cfg(windows)]
 fn click_chat_composer(
     hwnd: winapi::shared::windef::HWND,
-    primary: (f32, f32),
+    candidates: &[(f32, f32)],
     profile_anchor: (f32, f32),
     ide_right_chat: bool,
 ) -> String {
@@ -1421,28 +1776,56 @@ fn click_chat_composer(
         }
     }
 
-    let anchors: Vec<(f32, f32)> = if ide_right_chat {
-        vec![
-            primary,
-            profile_anchor,
-            (0.72, 0.90),
-            (0.78, 0.88),
-            (0.68, 0.92),
-            (0.65, 0.85),
-            (primary.0, (primary.1 - 0.05).clamp(0.72, 0.95)),
-        ]
+    // Dual-slot calibrated points first, then hard-coded band fallbacks.
+    let mut anchors: Vec<(f32, f32)> = Vec::new();
+    let mut push = |p: (f32, f32)| {
+        if anchors
+            .iter()
+            .any(|(x, y)| (x - p.0).abs() < 0.001 && (y - p.1).abs() < 0.001)
+        {
+            return;
+        }
+        anchors.push(p);
+    };
+    for &c in candidates {
+        push(c);
+    }
+    push(profile_anchor);
+    if ide_right_chat {
+        for p in [(0.72, 0.90), (0.78, 0.88), (0.68, 0.92), (0.65, 0.85)] {
+            push(p);
+        }
+        if let Some(primary) = candidates.first() {
+            push((primary.0, (primary.1 - 0.05).clamp(0.72, 0.95)));
+        }
     } else {
         // ChatGPT / Trae Work: bottom-center composer (multi-Y so one miss doesn't kill paste).
-        vec![
-            primary,
-            profile_anchor,
+        for p in [
             (0.50, 0.92),
             (0.50, 0.88),
             (0.50, 0.85),
             (0.48, 0.90),
             (0.55, 0.90),
-        ]
-    };
+        ] {
+            push(p);
+        }
+    }
+
+    // Prefer calibrated client clicks before window-ratio heuristics.
+    for (i, anchor) in anchors.iter().enumerate() {
+        if crate::keyboard::click_client_relative(hwnd, anchor.0, anchor.1) {
+            std::thread::sleep(Duration::from_millis(240));
+            return if i < candidates.len() {
+                if i == 0 {
+                    "screen_primary".into()
+                } else {
+                    "screen_slot".into()
+                }
+            } else {
+                "screen_multi".into()
+            };
+        }
+    }
 
     if ide_right_chat {
         if click_window_ratio(hwnd, 0.75, 0.90) {
@@ -1455,17 +1838,6 @@ fn click_chat_composer(
                 std::thread::sleep(Duration::from_millis(240));
                 return "screen_window".into();
             }
-        }
-    }
-
-    for (i, anchor) in anchors.iter().enumerate() {
-        if crate::keyboard::click_client_relative(hwnd, anchor.0, anchor.1) {
-            std::thread::sleep(Duration::from_millis(240));
-            return if i == 0 {
-                "screen_primary".into()
-            } else {
-                "screen_multi".into()
-            };
         }
     }
     "none".into()
@@ -1504,6 +1876,7 @@ fn minimax_click_and_paste(
     hwnd0: winapi::shared::windef::HWND,
     freshly_launched: bool,
     ready_via: &str,
+    candidates: &[(f32, f32)],
 ) -> Result<String, AppChatWorkflowError> {
     let clip = crate::agent::insert_text::read_clipboard_unicode()
         .unwrap_or_default()
@@ -1543,12 +1916,24 @@ fn minimax_click_and_paste(
         let mut sy = 0i32;
         // Only click when OneTone stole FG after raise — otherwise keep MiniMax caret.
         if crate::app_identity::foreground_is_self() {
-            let (via, x, y) = minimax_composer_click_point(hwnd);
-            click_via = via;
-            sx = x;
-            sy = y;
-            let _ = crate::keyboard::click_screen_abs(sx, sy);
-            std::thread::sleep(Duration::from_millis(280));
+            let mut clicked = false;
+            // Dual-slot calibrated points before Document/window heuristics.
+            for (i, &(rx, ry)) in candidates.iter().enumerate() {
+                if crate::keyboard::click_client_relative(hwnd, rx, ry) {
+                    click_via = if i == 0 { "slot0" } else { "slot1" };
+                    clicked = true;
+                    std::thread::sleep(Duration::from_millis(280));
+                    break;
+                }
+            }
+            if !clicked {
+                let (via, x, y) = minimax_composer_click_point(hwnd);
+                click_via = via;
+                sx = x;
+                sy = y;
+                let _ = crate::keyboard::click_screen_abs(sx, sy);
+                std::thread::sleep(Duration::from_millis(280));
+            }
         }
 
         let _ = crate::keyboard::send_chord("Ctrl+V", 40);
@@ -1563,6 +1948,7 @@ fn minimax_click_and_paste(
                 "chars": clip.chars().count(),
                 "click": [sx, sy],
                 "client": client_size(hwnd),
+                "candidates": candidates.iter().map(|(x, y)| [*x, *y]).collect::<Vec<_>>(),
             }),
         );
         return Ok(format!(
@@ -1663,29 +2049,53 @@ fn minimax_document_bottom_point(
     }
 }
 
+/// Above this, char-by-char SendInput truncates / drops in CEF (WorkBuddy etc.).
+/// Clipboard already has the full markdown — Ctrl+V is the reliable long-paste path.
+#[cfg(windows)]
+const ELECTRON_SEND_TEXT_MAX_CHARS: usize = 160;
+
 /// Electron / IDE chat composers: inject text after a real caret click.
-/// Prefer unicode SendInput — Ctrl+A/V often lands in left chrome / is swallowed by CEF.
+/// Short: unicode SendInput (Ctrl+V sometimes lands in chrome). Long: Ctrl+V only.
+/// Never Ctrl+A — wrong focus selects sidebar/history then pastes there.
 #[cfg(windows)]
 fn electron_replace_paste(paste_hold_ms: u32) -> (bool, &'static str) {
-    let clip = crate::agent::insert_text::read_clipboard_unicode()
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    if clip.is_empty() {
+    let clip = crate::agent::insert_text::read_clipboard_unicode().unwrap_or_default();
+    if clip.trim().is_empty() {
         return (false, "empty");
     }
     let hold = paste_hold_ms.max(35);
+    let long = clip.chars().count() > ELECTRON_SEND_TEXT_MAX_CHARS;
     std::thread::sleep(Duration::from_millis(180));
+    if long {
+        if crate::keyboard::send_chord("Ctrl+V", hold) {
+            std::thread::sleep(Duration::from_millis(80));
+            return (true, "ctrl_v");
+        }
+        // Last resort — may still truncate, but better than empty.
+        if crate::keyboard::send_text(&clip) {
+            std::thread::sleep(Duration::from_millis(80));
+            return (true, "send_text_fallback");
+        }
+        return (false, "paste_failed");
+    }
     if crate::keyboard::send_text(&clip) {
         std::thread::sleep(Duration::from_millis(80));
         return (true, "send_text");
     }
-    // No Ctrl+A — wrong focus + Ctrl+A selects sidebar/history then pastes there.
     if crate::keyboard::send_chord("Ctrl+V", hold) {
         std::thread::sleep(Duration::from_millis(80));
         return (true, "ctrl_v");
     }
     (false, "paste_failed")
+}
+
+/// Persist assembled markdown so the user can @-upload when chat paste truncates.
+/// Overwrites `handoffs/<label>-latest.md` under the data root. Skips short prompts.
+pub fn write_handoff_md_backup(app_target_id: &str, body: &str) -> Option<std::path::PathBuf> {
+    if body.chars().count() < 400 {
+        return None;
+    }
+    crate::data_root::write_handoff_markdown(body, app_target_id).ok()
 }
 
 /// Prefer UIA SetValue when a real Edit exists; else Ctrl+V / unicode / Shift+Insert.
@@ -1827,6 +2237,36 @@ fn uia_set_best_input_value(
 #[cfg(windows)]
 fn uia_composer_present(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
     uia_scan_best_input(hwnd).0 >= min_score
+}
+
+/// Cursor Agent panel open? Right-band clickable Edit/Document with usable score.
+/// Read-only — does not click (unlike [`uia_click_best_input_in_band`]).
+#[cfg(windows)]
+fn cursor_right_band_composer_present(hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::GetWindowRect;
+
+    let (score, point) = uia_scan_best_input(hwnd);
+    if score < 10 {
+        return false;
+    }
+    let Some((sx, sy)) = point else {
+        return false;
+    };
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if unsafe { GetWindowRect(hwnd, &mut rect) } == 0 {
+        return false;
+    }
+    let w = (rect.right - rect.left).max(1) as f32;
+    let h = (rect.bottom - rect.top).max(1) as f32;
+    let xr = (sx - rect.left) as f32 / w;
+    let yr = (sy - rect.top) as f32 / h;
+    xr >= CURSOR_AGENT_MIN_X_RATIO && xr <= 0.98 && yr >= 0.62
 }
 
 /// Find best Edit/Document under hwnd and click its UIA clickable point (screen coords).
@@ -3793,9 +4233,15 @@ mod handoff_window_tests {
             "IDE UIA clicks must reject left-edge / mid-window false positives"
         );
         assert!(
-            src.contains("send_text")
-                && src.contains("No Ctrl+A"),
-            "replace-paste must prefer send_text and avoid Ctrl+A on wrong focus"
+            src.contains("ELECTRON_SEND_TEXT_MAX_CHARS")
+                && src.contains("ctrl_v")
+                && src.contains("send_text")
+                && src.contains("Never Ctrl+A"),
+            "replace-paste: long clip Ctrl+V first; short send_text; never Ctrl+A"
+        );
+        assert!(
+            src.contains("write_handoff_md_backup"),
+            "long handoff must offer md file backup for upload"
         );
         assert!(
             src.contains("APP_CHAT_MAIN_AREA"),

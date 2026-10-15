@@ -99,6 +99,21 @@ pub fn cmd_open_path(path: String) -> Result<(), String> {
     crate::data_root::open_path(&p)
 }
 
+/// Write long handoff markdown under data_root/handoffs for drag-upload.
+#[tauri::command]
+pub fn cmd_handoff_write_md(
+    text: String,
+    label: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let label = label.unwrap_or_else(|| "handoff".into());
+    let path = crate::data_root::write_handoff_markdown(&text, &label)?;
+    Ok(serde_json::json!({
+        "ok": true,
+        "path": path.to_string_lossy(),
+        "dir": path.parent().map(|p| p.to_string_lossy().to_string()),
+    }))
+}
+
 /// Temporarily drop always-on-top so Soft Pad / main don't bury WinForms pickers.
 fn suspend_topmost_for_native_dialog(app: &tauri::AppHandle) -> Vec<(String, bool)> {
     use tauri::Manager;

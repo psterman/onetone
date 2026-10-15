@@ -394,11 +394,18 @@
 
   /**
    * Agent icon grid — open app + Soft Pad carries assembled Markdown for paste.
-   * opts.probeTargets: { kind, label, icon, installed, channel, running }
+   * opts: { probeTargets, aimMemory, probePending }
    */
-  function quietAgentIconGridHtml(targets, disabled) {
+  function quietAgentIconGridHtml(targets, disabled, aimMemory, probePending) {
     targets = Array.isArray(targets) ? targets : [];
-    if (!targets.length) return '';
+    if (!targets.length) {
+      if (!probePending) return '';
+      return (
+        '<div class="hn-agent-grid is-pending" data-hn-agent-grid aria-busy="true" aria-label="打开 Agent">' +
+        '<p class="hn-agent-grid__hint">正在检测本机 Agent…</p>' +
+        '</div>'
+      );
+    }
     var bits = targets.map(function (t) {
       if (!t || !t.kind) return '';
       var label = t.label || t.kind;
@@ -432,9 +439,35 @@
         '</button>'
       );
     });
+    var aim = aimMemory || null;
+    var aimKind = (aim && aim.kind) || 'cursor';
+    var aimName = (aim && aim.label) || 'Agent';
+    var aimSet = !!(aim && aim.hasActive);
+    var aimRow =
+      '<div class="hn-aim-mem" data-hn-aim-mem data-hf-aim-kind="' +
+      esc(aimKind) +
+      '">' +
+      '<span class="hn-aim-mem__txt">' +
+      (aimSet
+        ? '已记住 ' + esc(aimName) + ' 输入位置'
+        : '首次打开会记下输入框位置（与语音/按键共用）') +
+      '</span>' +
+      '<span class="hn-aim-mem__acts">' +
+      '<button type="button" class="hn-text-btn" data-hf-act="aim_change" data-hf-aim-kind="' +
+      esc(aimKind) +
+      '">' +
+      (aimSet ? '更改' : '现在定位') +
+      '</button>' +
+      (aimSet
+        ? '<button type="button" class="hn-text-btn" data-hf-act="aim_clear" data-hf-aim-kind="' +
+          esc(aimKind) +
+          '">清除</button>'
+        : '') +
+      '</span></div>';
     return (
       '<div class="hn-agent-grid" data-hn-agent-grid aria-label="打开 Agent">' +
-      '<p class="hn-agent-grid__hint">点图标打开应用 · 悬浮栏列表可预览，再点「粘贴」进输入框</p>' +
+      '<p class="hn-agent-grid__hint">已检测到的 Agent 会自动出现 · 点图标复制并定位输入框 · Ctrl+V（或悬浮栏「粘贴」）</p>' +
+      aimRow +
       '<div class="hn-agent-grid__tiles">' +
       bits.join('') +
       '</div></div>'
@@ -517,7 +550,7 @@
       quietMaterialSummaryHtml(opts.materialSummary) +
       '</div>' +
       quietContextLine(vm) +
-      quietAgentIconGridHtml(opts.probeTargets, disabled) +
+      quietAgentIconGridHtml(opts.probeTargets, disabled, opts.aimMemory, opts.probePending) +
       '<div class="hn-actions hn-quiet-actions">' +
       resumeCta +
       startNew +

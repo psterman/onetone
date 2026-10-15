@@ -1,7 +1,8 @@
 /**
  * Home Focus action policy — single primary action with real IPC handlers.
  * Quiet quick_handoff returns honest clipboard_ready | failed (no fake sent).
- * Agent icon handoff: Cursor keeps pasteClipboard; others open-only + tray paste.
+ * Agent icon handoff: copy clipboard → open & aim composer → user Ctrl+V / Soft Pad「粘贴」.
+ * Auto-paste abandoned (incomplete paste caused more frustration than it saved).
  */
 (function (global) {
   'use strict';
@@ -16,7 +17,7 @@
     qoder: 'Qoder',
     chatgpt: 'ChatGPT'
   };
-  /** Homepage agent icon order. Cursor = pasteClipboard; others = Soft Pad carry. */
+  /** Homepage agent icon order. */
   var PROBE_KINDS = [
     'cursor',
     'claude',
@@ -40,9 +41,9 @@
     qoder: 'qoder-chat'
   };
 
-  /** Cursor keeps auto-paste; all other probes are open-only + Soft Pad「粘贴」. */
-  function wantsPasteClipboard(kind) {
-    return canonicalKind(kind) === 'cursor';
+  /** Homepage never requests Rust auto-paste — clipboard + composer aim only. */
+  function wantsPasteClipboard(_kind) {
+    return false;
   }
 
   function store() {
@@ -264,6 +265,91 @@
     return ipc.invoke('cmd_agent_center_action', { args: body });
   }
 
+  function invokeAim(cmd, args) {
+    var ipc = global.OneToneIpc;
+    if (!ipc || typeof ipc.invoke !== 'function') {
+      return Promise.reject(new Error('no_ipc'));
+    }
+    return ipc.invoke(cmd, args || {});
+  }
+
+  /** Status of the single active memory point for an app (shared with voice/keys). */
+  function fetchAimStatus(appTargetId) {
+    var tid = String(appTargetId || '').trim();
+    if (!tid) return Promise.resolve(null);
+    return invokeAim('cmd_input_aim_calibrate_status', { appTargetId: tid }).catch(function () {
+      return null;
+    });
+  }
+
+  function aimHasActive(st) {
+    if (!st) return false;
+    if (st.hasActive === true) return true;
+    return st.x != null && st.y != null && isFinite(Number(st.x)) && isFinite(Number(st.y));
+  }
+
+  /** Poll until active point exists (user finished calibrate overlay) or timeout. */
+  function waitForActiveAim(appTargetId, timeoutMs) {
+    var tid = String(appTargetId || '').trim();
+    var limit = Math.max(3000, Number(timeoutMs) || 60000);
+    var until = Date.now() + limit;
+    return new Promise(function (resolve) {
+      function tick() {
+        fetchAimStatus(tid).then(function (st) {
+          if (aimHasActive(st)) {
+            resolve(st);
+            return;
+          }
+          if (Date.now() >= until) {
+            resolve(null);
+            return;
+          }
+          setTimeout(tick, 700);
+        });
+      }
+      tick();
+    });
+  }
+
+  /**
+   * Ensure one active composer memory for app (inherit voice/keys if set).
+   * force=true re-opens calibrate for the active/default slot (homepage「更改」).
+   */
+  function ensureComposerAim(appTargetId, opts) {
+    opts = opts || {};
+    var tid = String(appTargetId || '').trim();
+    if (!tid) return Promise.resolve({ ok: false, needCalibrate: false, error: 'need_app_target' });
+    return invokeAim('cmd_input_aim_ensure', {
+      appTargetId: tid,
+      force: !!opts.force
+    }).then(function (res) {
+      if (!res || res.needCalibrate !== true) return res || { ok: true, needCalibrate: false };
+      if (opts.wait === false) return res;
+      if (typeof opts.onNeedCalibrate === 'function') {
+        try {
+          opts.onNeedCalibrate(res);
+        } catch (_) {}
+      }
+      return waitForActiveAim(tid, opts.timeoutMs || 60000).then(function (st) {
+        return Object.assign({}, res, {
+          waited: true,
+          hasActive: aimHasActive(st),
+          status: st
+        });
+      });
+    });
+  }
+
+  function clearHomeAim(appTargetId) {
+    var tid = String(appTargetId || '').trim();
+    if (!tid) return Promise.reject(new Error('need_app_target'));
+    // Clear active slot only — other voice slot (if any) can become active.
+    return fetchAimStatus(tid).then(function (st) {
+      var slot = st && st.active != null ? Number(st.active) | 0 : 0;
+      return invokeAim('cmd_input_aim_calibrate_clear', { appTargetId: tid, slot: slot });
+    });
+  }
+
   /**
    * @param {string} kind
    * @param {object} vm view model from adapter
@@ -427,9 +513,11 @@
         });
       }
 
-      var usePaste = wantsPasteClipboard(cap.provider);
       var focused = false;
       var focusDetail = '';
+      var aimAppId = appIdForKind(cap.provider);
+      var aimEnsured = null;
+      var aimFirstUse = false;
       return writeClipboard(text)
         .catch(function () {
           return Promise.reject(new Error('clipboard_failed'));
@@ -448,19 +536,36 @@
               });
             } catch (_) {}
           }
-          // Toast before focus — agent.window steals FG and hides main-window toasts.
-          if (typeof hooks.toast === 'function') {
+          // Shared ensure with voice/keys: inherit active point, or first-use calibrate.
+          if (!aimAppId) return null;
+          return ensureComposerAim(aimAppId, {
+            onNeedCalibrate: function () {
+              aimFirstUse = true;
+              if (typeof hooks.toast === 'function') {
+                hooks.toast(
+                  '首次使用 ' + targetName + '：请圈选输入框位置（会长久记住）',
+                  'scheme'
+                );
+              }
+            }
+          })
+            .then(function (ens) {
+              aimEnsured = ens;
+            })
+            .catch(function () {
+              aimEnsured = null;
+            });
+        })
+        .then(function () {
+          // Toast before focus — agent window steals FG and hides main-window toasts.
+          if (typeof hooks.toast === 'function' && !aimFirstUse) {
             hooks.toast(
-              usePaste
-                ? '内容已就绪 · 正在打开 ' + targetName + '…'
-                : '内容已就绪 · 正在打开 ' +
-                    targetName +
-                    ' · 下方可预览并粘贴',
+              '内容已复制 · 正在打开 ' + targetName + ' 并定位输入框…',
               'scheme'
             );
           }
-          var focusOpts = usePaste ? { pasteClipboard: true } : { pasteClipboard: false };
-          return invokeCenter('agent.focus', cap.agentId, focusOpts)
+          // Never auto-paste — focus/aim composer only; user Ctrl+V or Soft Pad「粘贴」.
+          return invokeCenter('agent.focus', cap.agentId, { pasteClipboard: false })
             .then(function (res) {
               focusDetail = String((res && (res.detail || res.error)) || '');
               focused = !!(
@@ -483,27 +588,33 @@
             });
         })
         .then(function () {
-          var pasted = usePaste && /composer_pasted:|chat_pasted:|paste=true/i.test(focusDetail);
           var composerMiss =
-            usePaste &&
-            /composer_focus_failed|composer_miss|paste=false|paste_failed/i.test(focusDetail);
+            /composer_focus_failed|composer_miss|window_focused_composer_miss|input_not_found/i.test(
+              focusDetail
+            );
+          var elevatedTarget = /elevated_target|\[administrator\]|管理员/i.test(focusDetail);
+          var aimOk = !!(aimEnsured && (aimEnsured.hasActive || aimEnsured.needCalibrate === false));
           var message;
           if (!focused) {
+            message = elevatedTarget
+              ? targetName +
+                ' 以管理员运行，OneTone 无法定位输入框。请用普通权限重开，或同权限启动 OneTone'
+              : '内容已复制，但未能打开 ' + targetName + '；可手动切换后 Ctrl+V，下方「粘贴」仍可用';
+          } else if (elevatedTarget) {
             message =
-              '内容已复制，但未能打开 ' +
               targetName +
-              (usePaste ? '，请手动切换后粘贴' : '；下方「粘贴」仍可用');
-          } else if (usePaste) {
-            message = pasted
-              ? '已粘贴到 ' + targetName + ' 输入框，请确认发送'
-              : composerMiss
-                ? '已打开 ' +
-                  targetName +
-                  '，请点输入框后按下方「粘贴」或 Ctrl+V'
-                : '已打开 ' + targetName + '，请 Ctrl+V 粘贴并确认发送';
+              ' 以管理员运行，而 OneTone 不是。请两边同权限后重试；也可点输入框后 Ctrl+V 或下方「粘贴」';
+          } else if (composerMiss || (aimFirstUse && !aimOk)) {
+            message =
+              '已打开 ' +
+              targetName +
+              ' · 请点输入框后 Ctrl+V；可点下方「更改位置」重记';
+          } else if (aimFirstUse && aimOk) {
+            message =
+              '已记住 ' + targetName + ' 输入框 · 请 Ctrl+V（或下方「粘贴」）';
           } else {
             message =
-              '已打开 ' + targetName + ' · 点输入框后按下方「粘贴」';
+              '已打开 ' + targetName + ' · 输入框已定位，请 Ctrl+V（或下方「粘贴」）';
           }
           if (truncated) {
             message = '装订已截断 · ' + message;
@@ -518,6 +629,11 @@
           if (typeof hooks.toast === 'function') {
             hooks.toast(message, focused ? 'scheme' : 'warn');
           }
+          if (typeof hooks.onAimChanged === 'function') {
+            try {
+              hooks.onAimChanged(aimAppId, aimEnsured);
+            } catch (_) {}
+          }
           return {
             outcome: 'clipboard_ready',
             agentId: cap.agentId,
@@ -525,7 +641,10 @@
             sessionId: null,
             lifecycleCreated: false,
             focused: focused,
-            pasteClipboard: usePaste,
+            pasteClipboard: false,
+            aimAppId: aimAppId || null,
+            aimFirstUse: aimFirstUse,
+            aimHasActive: aimOk,
             truncated: truncated,
             message: message,
             ok: true,
@@ -547,6 +666,58 @@
             ok: false,
             error: msg
           };
+        });
+    }
+    // Homepage single-point memory: change / clear (shared composer_anchors).
+    if (kind === 'aim_change' || kind === 'aim_clear') {
+      var aimKind = canonicalKind(
+        (hooks && hooks.aimKind) ||
+          (vm && vm.handoffPreferKind) ||
+          (vm && vm.dto && vm.dto.provider && vm.dto.provider.id) ||
+          'cursor'
+      );
+      var aimTid = appIdForKind(aimKind);
+      var aimName = displayNameForKind(aimKind);
+      if (!aimTid) {
+        return Promise.resolve({ ok: false, error: 'no_app_target', kind: kind });
+      }
+      if (kind === 'aim_clear') {
+        return clearHomeAim(aimTid)
+          .then(function () {
+            if (typeof hooks.toast === 'function') {
+              hooks.toast(aimName + ' 输入位置已清除', 'scheme');
+            }
+            if (typeof hooks.onAimChanged === 'function') hooks.onAimChanged(aimTid, null);
+            return { ok: true, kind: kind, appTargetId: aimTid };
+          })
+          .catch(function (err) {
+            if (typeof hooks.toast === 'function') {
+              hooks.toast('清除失败', 'warn');
+            }
+            return { ok: false, error: String((err && err.message) || err || ''), kind: kind };
+          });
+      }
+      if (typeof hooks.toast === 'function') {
+        hooks.toast('请圈选 ' + aimName + ' 输入框（将覆盖当前记忆）', 'scheme');
+      }
+      return ensureComposerAim(aimTid, {
+        force: true,
+        onNeedCalibrate: function () {}
+      })
+        .then(function (ens) {
+          var ok = !!(ens && (ens.hasActive || ens.needCalibrate === false));
+          if (typeof hooks.toast === 'function') {
+            hooks.toast(
+              ok ? '已更新 ' + aimName + ' 输入位置' : '未完成定位 · 可稍后再改',
+              ok ? 'scheme' : 'warn'
+            );
+          }
+          if (typeof hooks.onAimChanged === 'function') hooks.onAimChanged(aimTid, ens);
+          return { ok: ok, kind: kind, appTargetId: aimTid, aim: ens };
+        })
+        .catch(function (err) {
+          if (typeof hooks.toast === 'function') hooks.toast('未能开始定位', 'warn');
+          return { ok: false, error: String((err && err.message) || err || ''), kind: kind };
         });
     }
     // v1 canvas aliases
@@ -581,6 +752,10 @@
     agentCanFocus: agentCanFocus,
     isProbeKind: isProbeKind,
     wantsPasteClipboard: wantsPasteClipboard,
+    fetchAimStatus: fetchAimStatus,
+    ensureComposerAim: ensureComposerAim,
+    clearHomeAim: clearHomeAim,
+    aimHasActive: aimHasActive,
     PROBE_KINDS: PROBE_KINDS.slice()
   };
 })(typeof window !== 'undefined' ? window : globalThis);

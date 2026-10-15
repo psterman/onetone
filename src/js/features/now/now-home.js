@@ -45,8 +45,13 @@
   var agentHomeFetchTimer = 0;
   var lastAgentHomeKey = '';
   var inventoryCache = null;
+  /** True after first inventory IPC settles (ok or fail) — drives icon float-in. */
+  var inventoryLoaded = false;
+  var inventoryPollTimer = 0;
   var inventoryFetchTimer = 0;
   var lastInventoryKey = '';
+  var INVENTORY_CACHE_KEY = 'onetone.homeAgentInventory.v1';
+  var HOME_FOCUS_CACHE_KEY = 'onetone.homeFocusSnapshot.v1';
   var agentCenterCache = null;
   var agentCenterFetchTimer = 0;
   var lastAgentCenterKey = '';
@@ -54,6 +59,74 @@
   var hfView = 'focus';
   var homeFocusUnsub = null;
   var homeFocusCache = null;
+
+  function readInventorySessionCache() {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.getItem) return null;
+      var raw = ss.getItem(INVENTORY_CACHE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !Array.isArray(o.agents)) return null;
+      return o;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeInventorySessionCache(inv) {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.setItem || !inv) return;
+      ss.setItem(
+        INVENTORY_CACHE_KEY,
+        JSON.stringify({
+          agents: inv.agents || [],
+          highConfidenceCount: Number(inv.highConfidenceCount) || 0,
+          at: Date.now()
+        })
+      );
+    } catch (_) {}
+  }
+
+  function readHomeFocusSessionCache() {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.getItem) return null;
+      var raw = ss.getItem(HOME_FOCUS_CACHE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return o && typeof o === 'object' ? o : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeHomeFocusSessionCache(dto) {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.setItem || !dto) return;
+      ss.setItem(HOME_FOCUS_CACHE_KEY, JSON.stringify(dto));
+    } catch (_) {}
+  }
+
+  // Instant paint on revisit — don't wait for EnumWindows / home-focus IPC.
+  (function hydrateHomeSessionCaches() {
+    var cachedInv = readInventorySessionCache();
+    if (cachedInv) {
+      inventoryCache = cachedInv;
+      inventoryLoaded = true;
+      try {
+        lastInventoryKey = JSON.stringify(
+          (cachedInv.agents || []).map(function (a) {
+            return [a.kind, a.running, a.presence, a.confidence];
+          })
+        );
+      } catch (_) {}
+    }
+    var cachedFocus = readHomeFocusSessionCache();
+    if (cachedFocus) homeFocusCache = cachedFocus;
+  })();
   var hfOverlay = ''; // pick | progress | ''
   var hfPickHtml = '';
   var hfProgressHtml = '';
@@ -62,11 +135,49 @@
   var materialsUnsub = null;
   var skipMaterialsPaint = false;
   var lastMaterialsPaintKey = '';
+  /** Homepage single-point aim memory (shared composer_anchors active slot). */
+  var homeAimKind = 'cursor';
+  var homeAimHasActive = false;
+  var homeAimFetchToken = 0;
 
   function quietDraftStorageKey(vm) {
     if (!vm || !vm.confirmed) return 'onetone.quickDraft:unconfirmed';
     var id = String(vm.projectId || vm.projectName || '').trim() || 'unknown';
     return 'onetone.quickDraft:' + id;
+  }
+
+  function refreshHomeAimMemory(kind, opts) {
+    opts = opts || {};
+    var Policy = global.OneToneHomeActionPolicy;
+    if (!Policy || !Policy.fetchAimStatus || !Policy.appIdForKind) return Promise.resolve(null);
+    var k = Policy.canonicalKind ? Policy.canonicalKind(kind || homeAimKind || 'cursor') : 'cursor';
+    var tid = Policy.appIdForKind(k);
+    if (!tid) {
+      homeAimKind = k;
+      homeAimHasActive = false;
+      return Promise.resolve(null);
+    }
+    var token = ++homeAimFetchToken;
+    return Policy.fetchAimStatus(tid).then(function (st) {
+      if (token !== homeAimFetchToken) return st;
+      homeAimKind = k;
+      homeAimHasActive = !!(Policy.aimHasActive && Policy.aimHasActive(st));
+      if (opts.repaint) {
+        lastPaintHtml = '';
+        paint();
+      }
+      return st;
+    });
+  }
+
+  function homeAimMemoryOpts() {
+    var Policy = global.OneToneHomeActionPolicy;
+    var k = homeAimKind || 'cursor';
+    return {
+      kind: k,
+      label: Policy && Policy.displayNameForKind ? Policy.displayNameForKind(k) : k,
+      hasActive: !!homeAimHasActive
+    };
   }
 
   function readQuietDraft(vm) {
@@ -450,6 +561,7 @@
     ipc
       .invoke('cmd_agent_install_inventory', {})
       .then(function (inv) {
+        inventoryLoaded = true;
         var key = '';
         try {
           var agents = (inv && inv.agents) || [];
@@ -461,12 +573,40 @@
         } catch (_) {
           key = String(Date.now());
         }
-        if (key === lastInventoryKey) return;
+        if (key === lastInventoryKey) {
+          writeInventorySessionCache(inv || inventoryCache);
+          return;
+        }
         lastInventoryKey = key;
         inventoryCache = inv || null;
-        if (mounted) paint();
+        writeInventorySessionCache(inventoryCache);
+        if (mounted) {
+          lastPaintHtml = '';
+          paint();
+        }
       })
-      .catch(function () {});
+      .catch(function () {
+        inventoryLoaded = true;
+        if (mounted && !inventoryCache) {
+          lastPaintHtml = '';
+          paint();
+        }
+      });
+  }
+
+  function startInventoryPoll() {
+    if (inventoryPollTimer) return;
+    // Fresh install/run → icons float in without leaving Home.
+    inventoryPollTimer = setInterval(function () {
+      if (!visible || !mounted) return;
+      fetchInventory();
+    }, 12000);
+  }
+
+  function stopInventoryPoll() {
+    if (!inventoryPollTimer) return;
+    clearInterval(inventoryPollTimer);
+    inventoryPollTimer = 0;
   }
 
   function fetchAgentCenter() {
@@ -504,10 +644,11 @@
 
   function scheduleInventoryRefresh() {
     if (inventoryFetchTimer) return;
+    // Was 800ms — felt like Home waited a beat after every focus change.
     inventoryFetchTimer = setTimeout(function () {
       inventoryFetchTimer = 0;
       fetchInventory();
-    }, 800);
+    }, 80);
   }
 
   function hasFgExe(identity) {
@@ -1080,6 +1221,7 @@
     if (homeFocusUnsub) return;
     homeFocusUnsub = S.subscribe(function (dto) {
       homeFocusCache = dto || null;
+      writeHomeFocusSessionCache(homeFocusCache);
       if (mounted && useHomeFocusSurface()) {
         lastPaintHtml = '';
         // Project root may become available after confirm — refresh home snapshot filter.
@@ -1090,7 +1232,8 @@
     });
     S.fetch();
     S.startPolling(5000);
-    scheduleAgentCenterRefresh();
+    fetchAgentCenter();
+    refreshHomeAimMemory(homeAimKind || 'cursor', { repaint: false });
   }
 
   /** In-memory dismiss of return Hero so Quiet Composer / agent jump can run. */
@@ -1236,6 +1379,8 @@
             draftPreview: draftText,
             materialSummary: materialSummary,
             probeTargets: probeTargets,
+            probePending: !inventoryLoaded,
+            aimMemory: homeAimMemoryOpts(),
             resumeAvailable: !!vm._returnDismissed,
             handoffAct:
               Policy && Policy.handoffActForCap
@@ -1320,7 +1465,11 @@
     skipMaterialsPaint = false;
   }
 
-  /** Agent icon tiles — builtins + install inventory (app / CLI) for homepage handoff. */
+  /**
+   * Agent icon tiles for homepage handoff.
+   * Only float icons that inventory says are installed/running — no fixed dim roster.
+   * Before first inventory IPC: empty (avoids flashing 8 grey tiles then shrinking).
+   */
   function listProbeJumpTargets(snap, inv) {
     var Policy = global.OneToneHomeActionPolicy;
     var agents = (snap && snap.agents) || [];
@@ -1329,6 +1478,7 @@
         ? Policy.PROBE_KINDS
         : ['cursor', 'claude', 'chatgpt', 'minimax', 'workbuddy', 'trae', 'traeCode', 'qoder'];
     inv = inv || inventoryCache;
+    if (!inventoryLoaded && !inv) return [];
     var invByProbe = {};
     var invAgents = (inv && (inv.agents || inv.Agents)) || [];
     for (var ii = 0; ii < invAgents.length; ii++) {
@@ -1383,6 +1533,9 @@
           hasCli ||
           hasApp)
       );
+      var running = !!(invRow && (invRow.running || invRow.Running));
+      // Float-in only: skip not-detected kinds (no grey placeholders).
+      if (!installed && !running) continue;
       var channel = hasCli && !hasApp ? 'cli' : hasCli && hasApp ? 'both' : 'app';
       var appId =
         Policy && Policy.appIdForKind
@@ -1415,12 +1568,12 @@
         icon: icon,
         installed: installed,
         channel: channel,
-        running: !!(invRow && (invRow.running || invRow.Running))
+        running: running
       });
     }
     out.sort(function (a, b) {
-      var ra = a.installed || a.running ? 0 : 1;
-      var rb = b.installed || b.running ? 0 : 1;
+      var ra = a.running ? 0 : a.installed ? 1 : 2;
+      var rb = b.running ? 0 : b.installed ? 1 : 2;
       if (ra !== rb) return ra - rb;
       return order.indexOf(a.kind) - order.indexOf(b.kind);
     });
@@ -1594,9 +1747,44 @@
     if (preferKind) {
       vm = Object.assign({}, vm, { handoffPreferKind: preferKind });
     }
+    var aimKindAttr =
+      (el && el.getAttribute && el.getAttribute('data-hf-aim-kind')) || preferKind || homeAimKind;
+    if (kind === 'aim_change' || kind === 'aim_clear') {
+      homeAimKind = Policy.canonicalKind ? Policy.canonicalKind(aimKindAttr) : aimKindAttr;
+    }
 
     Policy.execute(kind, vm, {
       preferKind: preferKind || undefined,
+      aimKind: aimKindAttr || undefined,
+      onAimChanged: function (appTid, ens) {
+        var k =
+          preferKind ||
+          aimKindAttr ||
+          (ens && ens.appTargetId) ||
+          homeAimKind ||
+          'cursor';
+        if (Policy.canonicalKind) k = Policy.canonicalKind(k);
+        // Map appTargetId back when only tid known.
+        if (appTid && Policy.appIdForKind && Policy.PROBE_KINDS) {
+          var kinds = Policy.PROBE_KINDS;
+          for (var i = 0; i < kinds.length; i++) {
+            if (Policy.appIdForKind(kinds[i]) === appTid) {
+              k = kinds[i];
+              break;
+            }
+          }
+        }
+        homeAimKind = k;
+        homeAimHasActive = !!(
+          ens &&
+          (ens.hasActive ||
+            (Policy.aimHasActive && Policy.aimHasActive(ens.status || ens)))
+        );
+        if (kind === 'aim_clear') homeAimHasActive = false;
+        lastPaintHtml = '';
+        paint();
+        refreshHomeAimMemory(k, { repaint: true });
+      },
       openVoice: function () {
         var btn = root && root.querySelector('[data-now-voice]');
         if (btn) btn.click();
@@ -1674,7 +1862,13 @@
     })
       .then(function (res) {
         if (res && res.outcome === 'clipboard_ready') {
-          // Keep draft; do not invent running.
+          // Keep draft; do not invent running. Refresh aim chip for handoff target.
+          var hk = preferKind || (res && res.provider) || homeAimKind;
+          refreshHomeAimMemory(hk, { repaint: true });
+          return;
+        }
+        if (res && (kind === 'aim_change' || kind === 'aim_clear')) {
+          refreshHomeAimMemory(aimKindAttr || homeAimKind, { repaint: true });
           return;
         }
         if (res && res.ok === false && res.error && res.outcome !== 'failed') {
@@ -2864,6 +3058,7 @@
     if (useRuntime()) {
       fetchAttention();
       fetchInventory();
+      fetchAgentCenter();
       refreshToday();
       startFgPoll();
       fetchAgentHomeSnapshot();
@@ -2884,6 +3079,7 @@
     }
     setSmokeFeedbackHidden(true);
     visible = true;
+    startInventoryPoll();
     // Warm Home Focus cache BEFORE paint — painting on empty dto flashed
     //「你正在使用 未发现应用」+ blank hero until fetch landed.
     if (useHomeFocusSurface()) {
@@ -2897,6 +3093,7 @@
         if (S0 && S0.fetch) S0.fetch();
       } catch (_) {}
       scheduleAgentHomeRefresh();
+      fetchAgentCenter();
     }
     paint();
     syncVoiceStrip();
@@ -2906,6 +3103,7 @@
       if (useRuntime()) {
         fetchAttention();
         fetchInventory();
+        fetchAgentCenter();
         refreshToday();
         startFgPoll();
         scheduleAgentHomeRefresh();
@@ -2915,6 +3113,7 @@
 
   function hide() {
     stopFgPoll();
+    stopInventoryPoll();
     if (root) {
       root.hidden = true;
       root.setAttribute('aria-hidden', 'true');

@@ -315,13 +315,14 @@ pub fn sniff_version(kind: AgentKind) -> Option<String> {
         }
     }
 
+    // Prefer bare .exe first so PATH .cmd/.bat shims never flash a console.
     let found = match kind {
         AgentKind::Cursor => sniff_cursor_version(),
-        AgentKind::Claude => sniff_cli_version(&["claude", "claude.exe"]),
-        AgentKind::Codex => sniff_cli_version(&["codex", "codex.exe"]),
-        AgentKind::Gemini => sniff_cli_version(&["gemini", "gemini.exe"]),
-        AgentKind::OpenCode => sniff_cli_version(&["opencode", "opencode.exe"]),
-        AgentKind::Aider => sniff_cli_version(&["aider", "aider.exe"]),
+        AgentKind::Claude => sniff_cli_version(&["claude.exe", "claude"]),
+        AgentKind::Codex => sniff_cli_version(&["codex.exe", "codex"]),
+        AgentKind::Gemini => sniff_cli_version(&["gemini.exe", "gemini"]),
+        AgentKind::OpenCode => sniff_cli_version(&["opencode.exe", "opencode"]),
+        AgentKind::Aider => sniff_cli_version(&["aider.exe", "aider"]),
         _ => None,
     };
 

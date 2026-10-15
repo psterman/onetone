@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 首页 Agent 管理示意</title>
+  <style>
+    :root {
+      --ink: #14233a;
+      --ink2: #3a4a5c;
+      --muted: #556576;
+      --line: rgba(20, 35, 58, 0.1);
+      --teal: #2a9cc4;
+      --teal-soft: #e6f7fc;
+      --paper: #f7fafc;
+      --bg: #e8eef2;
+      --amber: #8a4b12;
+      --amber-soft: #fff1e6;
+      --red: #a33b2b;
+      --red-soft: #fdeceb;
+      --ok: #0a7a5c;
+      --ok-soft: #e6f7f1;
+      --font: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 14px/1.5 var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 12% -10%, #d7eef7 0%, transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, #e8f0e9 0%, transparent 45%),
+        var(--bg);
+    }
+    .frame {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .badge i {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.18);
+    }
+    .shell {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 18px 48px rgba(20, 35, 58, 0.08);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 168px 1fr;
+      min-height: 620px;
+    }
+    nav {
+      background: #f2f6f8;
+      border-right: 1px solid var(--line);
+      padding: 18px 12px;
+    }
+    nav .brand {
+      font-size: 15px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+      padding: 4px 10px 18px;
+      color: var(--ink);
+    }
+    nav a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: var(--ink2);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    nav a.on {
+      background: #fff;
+      color: var(--teal);
+      box-shadow: 0 1px 0 var(--line);
+    }
+    nav .sec {
+      margin: 16px 10px 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 650;
+      letter-spacing: 0.04em;
+    }
+    main { padding: 22px 26px 20px; display: flex; flex-direction: column; gap: 18px; }
+    .headline {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    .assist {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13.5px;
+      max-width: 52ch;
+    }
+    .composer {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+    }
+    .composer textarea {
+      width: 100%;
+      border: 0;
+      resize: vertical;
+      min-height: 88px;
+      font: inherit;
+      color: var(--ink);
+      outline: none;
+    }
+    .composer .tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .composer .tools span {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 650;
+      margin-right: 4px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 7px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink2);
+      cursor: default;
+    }
+
+    /* —— Agent manage strip (proposed) —— */
+    .manage {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .manage-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px 8px;
+    }
+    .manage-head h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--ink);
+    }
+    .manage-head p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .manage-head .link {
+      border: 0;
+      background: none;
+      color: var(--teal);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .rows { display: flex; flex-direction: column; }
+    .row {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line);
+      transition: background 0.2s ease;
+    }
+    .row:hover { background: rgba(42, 156, 196, 0.04); }
+    .row.is-gone {
+      opacity: 0.45;
+      filter: grayscale(0.4);
+    }
+    .ico {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      display: grid; place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .ico.codex { background: linear-gradient(145deg, #1f6feb, #0d3b7a); }
+    .ico.claude { background: linear-gradient(145deg, #d97757, #a34a2e); }
+    .ico.cursor { background: linear-gradient(145deg, #4b5563, #1f2937); }
+    .ico.opencode { background: linear-gradient(145deg, #0a7a5c, #065f46); }
+    .meta .name {
+      font-weight: 700;
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .tag.ctrl { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
+    .tag.obs { color: var(--ink2); background: #eef2f5; border-color: transparent; }
+    .tag.wait { color: var(--amber); background: var(--amber-soft); border-color: transparent; }
+    .meta .line {
+      font-size: 12.5px;
+      color: var(--ink2);
+      margin-top: 1px;
+    }
+    .meta .when {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .acts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink2);
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .btn:hover { border-color: var(--teal); color: var(--teal); }
+    .btn:active { transform: scale(0.97); }
+    .btn.pri {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+    }
+    .btn.pri:hover { filter: brightness(1.05); color: #fff; }
+    .btn.danger {
+      color: var(--red);
+      border-color: transparent;
+      background: var(--red-soft);
+    }
+    .btn.ghost {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+      transform: none;
+    }
+
+    .keys {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 0 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .kbd {
+      display: inline-grid;
+      place-items: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      border-radius: 5px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink2);
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 20;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .note {
+      margin-top: 16px;
+      font-size: 12.5px;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+    .note code {
+      font-size: 11.5px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    @media (max-width: 720px) {
+      .shell { grid-template-columns: 1fr; }
+      nav { display: none; }
+      .row { grid-template-columns: 36px 1fr; }
+      .acts { grid-column: 2; justify-content: flex-start; margin-top: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="badge"><i></i> 示意 · Quiet 首页 + Agent 短名单（不接真实 IPC）</div>
+
+    <div class="shell" role="application" aria-label="OneTone 首页示意">
+      <nav aria-label="侧栏">
+        <div class="brand">OneTone</div>
+        <a class="on" href="#">首页</a>
+        <a href="#">Agent 工作区</a>
+        <div class="sec">能力与设置</div>
+        <a href="#">按键</a>
+        <a href="#">语音</a>
+        <a href="#">摄像头</a>
+      </nav>
+
+      <main>
+        <header>
+          <h1 class="headline" id="headline">3 个 Agent 需要你留意</h1>
+          <p class="assist" id="assist">Codex 在改布局 · Claude 等权限 · Cursor 刚有活动。按键仍走 Soft Pad。</p>
+        </header>
+
+        <section class="composer" aria-label="下一件事">
+          <textarea id="draft" placeholder="补充当前任务，或描述下一件事…"></textarea>
+          <div class="tools">
+            <span>加入内容</span>
+            <span class="chip">截图</span>
+            <span class="chip">粘贴</span>
+            <span class="chip">附件</span>
+            <span class="chip">网址</span>
+          </div>
+        </section>
+
+        <section class="manage" aria-label="正在工作的 Agent">
+          <div class="manage-head">
+            <div>
+              <h2>正在工作</h2>
+              <p>只显示可行动项 · 点按钮走现有 <code style="font:inherit;font-size:11px">agent.interrupt</code> / focus</p>
+            </div>
+            <button type="button" class="link" id="openWs">打开工作区 →</button>
+          </div>
+          <div class="rows" id="rows"></div>
+        </section>
+
+        <div class="keys" aria-label="Soft Pad 键位提示">
+          Soft Pad：
+          <span class="kbd">Y</span> 批准
+          <span class="kbd">N</span> 拒绝
+          <span class="kbd">Esc</span> 中断焦点 Agent
+          <span class="kbd">1</span>–<span class="kbd">4</span> 切 Agent
+        </div>
+      </main>
+    </div>
+
+    <p class="note">
+      这是首页「缩进 Agent Center 短名单」的视觉稿：保留 Quiet 草稿区，下方只露可控制/待处理行。
+      正式实现应接 <code>cmd_agent_center_snapshot</code> + <code>cmd_agent_center_action</code>，不要嵌外部 cockpit。
+    </p>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    var agents = [
+      {
+        id: 'codex',
+        name: 'Codex',
+        tag: '可控制',
+        tagClass: 'ctrl',
+        line: '正在修改首页布局 · onetone-mac',
+        when: '2 秒前',
+        act: 'interrupt',
+        actLabel: '中断'
+      },
+      {
+        id: 'claude',
+        name: 'Claude Code',
+        tag: '等权限',
+        tagClass: 'wait',
+        line: '等待权限确认 · 修改 3 个文件',
+        when: '刚到',
+        act: 'approve',
+        actLabel: '处理'
+      },
+      {
+        id: 'cursor',
+        name: 'Cursor',
+        tag: '可观察',
+        tagClass: 'obs',
+        line: '最近收到活动信号 · 无确认中断',
+        when: '1 分钟前',
+        act: 'open',
+        actLabel: '打开'
+      },
+      {
+        id: 'opencode',
+        name: 'OpenCode',
+        tag: '仅活动',
+        tagClass: 'obs',
+        line: '最近有本地活动 · 无控制通道',
+        when: '3 分钟前',
+        act: 'detail',
+        actLabel: '详情',
+        hiddenByDefault: true
+      }
+    ];
+
+    var toastEl = document.getElementById('toast');
+    var toastTimer = 0;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        toastEl.classList.remove('show');
+      }, 1800);
+    }
+
+    function syncHeadline() {
+      var live = agents.filter(function (a) {
+        return !a.gone && !a.hiddenByDefault;
+      });
+      var wait = live.filter(function (a) { return a.act === 'approve'; }).length;
+      var run = live.filter(function (a) { return a.act === 'interrupt'; }).length;
+      var el = document.getElementById('headline');
+      var as = document.getElementById('assist');
+      if (!live.length) {
+        el.textContent = '现在没有需要你插手的 Agent';
+        as.textContent = '草稿仍可写；有等待或可中断任务时会浮现到下方。';
+        return;
+      }
+      if (wait) {
+        el.textContent = wait + ' 个 Agent 在等你决定';
+      } else if (run) {
+        el.textContent = run + ' 个 Agent 正在工作';
+      } else {
+        el.textContent = live.length + ' 个 Agent 有近况';
+      }
+    }
+
+    function render() {
+      var host = document.getElementById('rows');
+      var list = agents.filter(function (a) { return !a.hiddenByDefault || a.forceShow; });
+      host.innerHTML = list.map(function (a) {
+        var pri = a.act === 'approve' ? ' pri' : a.act === 'interrupt' ? ' danger' : ' ghost';
+        var dis = a.gone ? ' disabled' : '';
+        return (
+          '<div class="row' + (a.gone ? ' is-gone' : '') + '" data-id="' + a.id + '">' +
+            '<div class="ico ' + a.id + '" aria-hidden="true">' + a.name.slice(0, 2) + '</div>' +
+            '<div class="meta">' +
+              '<div class="name">' + a.name +
+                '<span class="tag ' + a.tagClass + '">' + a.tag + '</span>' +
+              '</div>' +
+              '<div class="line">' + a.line + '</div>' +
+              '<div class="when">' + a.when + '</div>' +
+            '</div>' +
+            '<div class="acts">' +
+              '<button type="button" class="btn' + pri + '" data-act="' + a.act + '" data-id="' + a.id + '"' + dis + '>' +
+                (a.gone ? '已处理' : a.actLabel) +
+              '</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+      syncHeadline();
+    }
+
+    document.getElementById('rows').addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-act]');
+      if (!btn || btn.disabled) return;
+      var id = btn.getAttribute('data-id');
+      var act = btn.getAttribute('data-act');
+      var a = agents.find(function (x) { return x.id === id; });
+      if (!a) return;
+
+      if (act === 'interrupt') {
+        a.line = '已发送中断 · 等待确认停止';
+        a.when = '刚刚';
+        a.tag = '中断中';
+        a.tagClass = 'wait';
+        a.act = 'done';
+        a.actLabel = '已发';
+        a.gone = true;
+        toast('已调用 agent.interrupt → ' + a.name);
+      } else if (act === 'approve') {
+        a.line = '已切到 Claude · 请在窗口内确认权限';
+        a.when = '刚刚';
+        a.tag = '已打开';
+        a.tagClass = 'ctrl';
+        a.act = 'done';
+        a.actLabel = '已开';
+        a.gone = true;
+        toast('focus Claude（批准需在 Agent 内点确认）');
+      } else if (act === 'open') {
+        toast('打开 Cursor（可观察 · 无远程中断）');
+      } else {
+        toast(a.name + ' · 详情');
+      }
+      render();
+    });
+
+    document.getElementById('openWs').addEventListener('click', function () {
+      toast('跳转 Agent 工作区（完整名册）');
+    });
+
+    document.addEventListener('keydown', function (ev) {
+      var k = ev.key.toLowerCase();
+      if (k === 'y') {
+        var w = agents.find(function (a) { return a.act === 'approve' && !a.gone; });
+        if (w) {
+          document.querySelector('[data-act="approve"][data-id="' + w.id + '"]')?.click();
+        }
+      }
+      if (k === 'escape') {
+        var r = agents.find(function (a) { return a.act === 'interrupt' && !a.gone; });
+        if (r) {
+          document.querySelector('[data-act="interrupt"][data-id="' + r.id + '"]')?.click();
+        }
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

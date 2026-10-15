@@ -390,17 +390,25 @@ pub fn parse_arkcli_usage_plan_json(raw: &str) -> Result<(Vec<UsageWindow>, Stri
 }
 
 fn fetch_ark_via_cli() -> Result<(Vec<UsageWindow>, String), String> {
-    let out = Command::new("arkcli")
-        .args([
-            "usage",
-            "plan",
-            "--product",
-            "coding-plan",
-            "--format",
-            "json",
-        ])
-        .output()
-        .map_err(|e| format!("arkcli 不可用: {e}"))?;
+    use std::process::Stdio;
+    let mut cmd = Command::new("arkcli");
+    cmd.args([
+        "usage",
+        "plan",
+        "--product",
+        "coding-plan",
+        "--format",
+        "json",
+    ])
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let out = cmd.output().map_err(|e| format!("arkcli 不可用: {e}"))?;
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
     if !out.status.success() && stdout.trim().is_empty() {

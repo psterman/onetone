@@ -113,6 +113,7 @@ permissions = [
   "allow-cmd-input-aim-calibrate-clear",
   "allow-cmd-input-aim-calibrate-set-active",
   "allow-cmd-input-aim-calibrate-status",
+  "allow-cmd-input-aim-ensure",
   "allow-cmd-smart-capture-begin",
   "allow-cmd-smart-capture-switch-monitor",
   "allow-cmd-smart-capture-get-state",
@@ -265,4 +266,6 @@ permissions = [
   "allow-cmd-tray-collect-from-soft-pad",
   "allow-cmd-tray-collect-drain",
   "allow-cmd-soft-pad-paste-only",
+  "allow-cmd-open-path",
+  "allow-cmd-handoff-write-md",
 ]

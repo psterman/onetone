@@ -369,6 +369,31 @@ pub fn open_path(path: &Path) -> Result<(), String> {
     }
 }
 
+/// Write assembled handoff markdown under `<data_root>/handoffs/<label>-latest.md`.
+/// Users can drag/upload the file when Electron paste truncates.
+pub fn write_handoff_markdown(text: &str, label: &str) -> Result<PathBuf, String> {
+    let label = label
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    let label = if label.is_empty() {
+        "handoff".into()
+    } else {
+        label.chars().take(32).collect::<String>()
+    };
+    let dir = effective_data_root().join("handoffs");
+    fs::create_dir_all(&dir).map_err(|e| format!("handoff_dir:{e}"))?;
+    let path = dir.join(format!("{label}-latest.md"));
+    fs::write(&path, text).map_err(|e| format!("handoff_write:{e}"))?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -380,6 +405,20 @@ mod tests {
             .map(|d| d.as_nanos())
             .unwrap_or(0);
         std::env::temp_dir().join(format!("onetone-data-root-{n}"))
+    }
+
+    #[test]
+    fn handoff_markdown_writes_latest_md() {
+        let body = "# workbuddy handoff\n\nfull prompt body\n";
+        let path = write_handoff_markdown(body, "WorkBuddy/Chat!").expect("write");
+        assert!(path.is_file());
+        assert!(path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .is_some_and(|n| n.ends_with("-latest.md")));
+        let read = fs::read_to_string(&path).unwrap();
+        assert_eq!(read, body);
+        let _ = fs::remove_file(&path);
     }
 
     #[test]

@@ -451,8 +451,17 @@ fn electron_root_exists(names: &[&str]) -> bool {
 fn find_cli_on_path(cmd: &str) -> Option<PathBuf> {
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
+        use std::process::Stdio;
+        // CREATE_NO_WINDOW — where.exe is a console app; without this, homepage
+        // inventory refresh flashes a black CLI behind the agent handoff.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         let output = std::process::Command::new("where.exe")
             .arg(cmd)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .ok()?;
         if !output.status.success() {

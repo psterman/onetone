@@ -41,7 +41,10 @@ check('syncSettingsChrome clears focus-mode when drawer open', /syncSettingsChro
 check('bindNav resolves ShellIa on click', /Resolve at click time[\s\S]*OneToneShellIaConvergence/.test(wb));
 check('keys panel maps to triggers nav', /keys:'triggers'/.test(wb));
 check('agentData maps to agent nav (not agentData button)', /agentData:'agent'/.test(wb));
-check('nav sync prefers live settingsPanel when drawer open', /open&&ui&&ui\.settingsPanel[\s\S]*panel=String\(ui\.settingsPanel\)/.test(wb));
+check('navKeyForPanel helper present', /function navKeyForPanel\(panel\)/.test(wb));
+check('nav sync prefers live settingsPanel when drawer open', /if\(ui&&ui\.settingsPanel\) panel=String\(ui\.settingsPanel\)/.test(wb) && /activeNav=navKeyForPanel\(panel\)/.test(wb));
+check('bindNav optimistic navKey before channel open', /syncNavActiveState\(row\.panel,\{navKey:action\}\)/.test(wb));
+check('bindNav re-syncs after channel open', /openHabitChannelChip\(ch\);\s*\r?\n\s*syncNavActiveState\(row\.panel\)/.test(wb));
 check('softPad focus nav sync guards settingsPanel', /settingsPanel==='softPad'&&global\.OneToneHomeWorkbench/.test(drawer));
 check('wb-nav-item[hidden] forces display:none', /wb-nav-item\[hidden\][\s\S]*display:\s*none\s*!important/.test(css));
 

@@ -1449,8 +1449,16 @@ mod tests {
         assert!(workflow.contains("uia_focus_chat_input_verified"));
         assert!(workflow.contains("click_client_relative_via_message"));
         assert!(workflow.contains("uia_min_score_for_send"));
-        // Send must not open Cursor inline edit via Ctrl+I while caret is in the editor.
-        assert!(workflow.contains("never uses open_key"));
+        // Send may Ctrl+I only after parking on the right when Agent panel is closed —
+        // never while the editor has focus (inline edit) or when composer already exists.
+        // PostMessage park can fail (UIPI); screen park must still unlock open_key.
+        assert!(workflow.contains("open_key only when Agent panel closed"));
+        assert!(workflow.contains("park_screen_fallback"));
+        // Never Ctrl+I while caret still in the editor (closes Agent / inline-edit).
+        assert!(workflow.contains("skip_open_key_not_parked_right"));
+        // Raise target while OneTone still has FG; only disarm hide after composer ok.
+        assert!(workflow.contains("abort_elevated_before_hide"));
+        assert!(workflow.contains("window_is_foreground_target"));
         assert!(workflow.contains("cursor_send_oplog"));
         let def = slot_def("stopOrSend").unwrap();
         assert_eq!(def.micro_key_id, "ACT12");

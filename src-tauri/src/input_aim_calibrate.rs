@@ -26,6 +26,81 @@ fn set_pending(app_target_id: &str, slot: usize) {
     }
 }
 
+/// Homepage / oral single-point memory uses the active slot.
+/// IDE Agent apps default to slot 1 (右下); chat apps to slot 0 (中间).
+pub fn default_calibrate_slot(tid: &str, cfg: &VoiceConfig) -> usize {
+    let tid = tid.trim();
+    if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
+        return a.active.min(ComposerAnchor::MAX_SLOTS.saturating_sub(1));
+    }
+    if tid == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+        || tid == crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+        || tid == crate::app_chat_workflow::QODER_APP_TARGET_ID
+    {
+        1
+    } else {
+        0
+    }
+}
+
+pub fn has_active_composer(cfg: &VoiceConfig, app_target_id: &str) -> bool {
+    cfg.voice_end
+        .composer_anchors
+        .get(app_target_id.trim())
+        .and_then(|a| a.active_point())
+        .is_some()
+}
+
+/// Shared ensure: if the app already has an active memory point, return it;
+/// otherwise open calibrate for the home/default slot (unless `force` re-records).
+/// Oral arm + homepage handoff both call this — one store, no conflict.
+pub fn ensure_composer_aim(
+    app: &AppHandle,
+    state: &AppState,
+    app_target_id: &str,
+    force: bool,
+) -> Result<serde_json::Value, String> {
+    let tid = app_target_id.trim().to_string();
+    if tid.is_empty() {
+        return Err("need_app_target".into());
+    }
+    if crate::app_chat_workflow::profile_for(&tid).is_none() {
+        return Err("unknown_app".into());
+    }
+    let (has_active, slot, status) = {
+        let cfg = state.cfg.lock();
+        let hit = cfg.voice_end.composer_anchors.get(&tid);
+        let has = hit.and_then(|a| a.active_point()).is_some();
+        let slot = default_calibrate_slot(&tid, &cfg);
+        (has, slot, status_payload(&tid, hit))
+    };
+    if has_active && !force {
+        let mut out = status;
+        out["ok"] = serde_json::json!(true);
+        out["needCalibrate"] = serde_json::json!(false);
+        out["hasActive"] = serde_json::json!(true);
+        out["slot"] = serde_json::json!(slot);
+        return Ok(out);
+    }
+    if !queue_begin_for_app(app, &tid, slot) {
+        return Err("unknown_app".into());
+    }
+    let mut out = status;
+    out["ok"] = serde_json::json!(true);
+    out["needCalibrate"] = serde_json::json!(true);
+    out["queued"] = serde_json::json!(true);
+    out["hasActive"] = serde_json::json!(has_active);
+    out["slot"] = serde_json::json!(slot);
+    out["force"] = serde_json::json!(force);
+    crate::app_log::early_line(
+        "input_aim",
+        &format!(
+            "ensure_composer_aim app={tid} slot={slot} force={force} had_active={has_active}"
+        ),
+    );
+    Ok(out)
+}
+
 /// Queue scheme-B calibrate for an app (oral first-use / settings). Returns immediately.
 pub fn queue_begin_for_app(app: &AppHandle, app_target_id: &str, slot: usize) -> bool {
     let tid = app_target_id.trim();
@@ -106,17 +181,24 @@ fn close_overlay(app: &AppHandle) {
     restore_main_after_calibrate(app);
 }
 
-fn cover_primary_monitor(win: &WebviewWindow) {
-    let mon = win
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .or_else(|| win.current_monitor().ok().flatten());
+/// Prefer the monitor hosting the foreground target (after prepare), not always primary.
+/// Multi-monitor: overlay + tip stay on the screen the user is actually looking at.
+fn cover_target_monitor(win: &WebviewWindow) {
+    let mon = monitor_for_point(win, foreground_window_center())
+        .or_else(|| win.current_monitor().ok().flatten())
+        .or_else(|| win.primary_monitor().ok().flatten());
     if let Some(mon) = mon {
         let size = mon.size();
         let pos = mon.position();
         let _ = win.set_size(Size::Physical(PhysicalSize::new(size.width, size.height)));
         let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
+        crate::app_log::early_line(
+            "input_aim",
+            &format!(
+                "calibrate_cover_monitor x={} y={} w={} h={}",
+                pos.x, pos.y, size.width, size.height
+            ),
+        );
         return;
     }
     #[cfg(windows)]
@@ -127,6 +209,51 @@ fn cover_primary_monitor(win: &WebviewWindow) {
         let _ = win.set_size(Size::Physical(PhysicalSize::new(w, h)));
         let _ = win.set_position(Position::Physical(PhysicalPosition::new(0, 0)));
     }
+}
+
+fn monitor_for_point(win: &WebviewWindow, pt: Option<(i32, i32)>) -> Option<tauri::Monitor> {
+    let (cx, cy) = pt?;
+    let monitors = win.available_monitors().ok()?;
+    for m in monitors {
+        let pos = m.position();
+        let size = m.size();
+        let right = pos.x + size.width as i32;
+        let bottom = pos.y + size.height as i32;
+        if cx >= pos.x && cy >= pos.y && cx < right && cy < bottom {
+            return Some(m);
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn foreground_window_center() -> Option<(i32, i32)> {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::{GetForegroundWindow, GetWindowRect};
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            return None;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetWindowRect(hwnd, &mut rect) == 0 {
+            return None;
+        }
+        Some((
+            (rect.left + rect.right) / 2,
+            (rect.top + rect.bottom) / 2,
+        ))
+    }
+}
+
+#[cfg(not(windows))]
+fn foreground_window_center() -> Option<(i32, i32)> {
+    None
 }
 
 fn assert_overlay_on_top(win: &WebviewWindow) {
@@ -166,7 +293,7 @@ fn open_calibrate_overlay(app: &AppHandle) {
     };
 
     let _ = crate::overlay_window::configure_transparent_overlay(&win);
-    cover_primary_monitor(&win);
+    cover_target_monitor(&win);
     let _ = win.show();
     assert_overlay_on_top(&win);
 
@@ -204,16 +331,11 @@ pub fn cmd_input_aim_calibrate_begin(
         return Err("unknown_app".into());
     }
 
+    // Slot 0 = 中间 (chat), slot 1 = 右下 (IDE Agent). Home/oral share this default.
     let slot = {
         let cfg = state.cfg.lock();
-        slot.unwrap_or_else(|| {
-            cfg.voice_end
-                .composer_anchors
-                .get(&tid)
-                .map(|a| a.active)
-                .unwrap_or(0)
-        })
-        .min(ComposerAnchor::MAX_SLOTS.saturating_sub(1))
+        slot.unwrap_or_else(|| default_calibrate_slot(&tid, &cfg))
+            .min(ComposerAnchor::MAX_SLOTS.saturating_sub(1))
     };
 
     if !queue_begin_for_app(&app, &tid, slot) {
@@ -226,6 +348,23 @@ pub fn cmd_input_aim_calibrate_begin(
         "appTargetId": tid,
         "slot": slot
     }))
+}
+
+/// Homepage / oral: ensure one active memory point (inherit if set; else open calibrate).
+#[tauri::command]
+pub fn cmd_input_aim_ensure(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    #[allow(non_snake_case)] appTargetId: Option<String>,
+    app_target_id: Option<String>,
+    force: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    let tid = app_target_id
+        .or(appTargetId)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    ensure_composer_aim(&app, state.inner(), &tid, force.unwrap_or(false))
 }
 
 #[tauri::command]
@@ -429,13 +568,22 @@ fn status_payload(tid: &str, hit: Option<&ComposerAnchor>) -> serde_json::Value 
         })
         .collect();
     let active_pt = bank.active_point();
+    let (cx, cy) = crate::app_chat_workflow::LAYOUT_CENTER;
+    let (rx, ry) = crate::app_chat_workflow::LAYOUT_BOTTOM_RIGHT;
     serde_json::json!({
         "appTargetId": tid,
+        // any_set: voice dual-slot UI; hasActive: homepage single-point memory.
         "calibrated": bank.any_set(),
+        "hasActive": active_pt.is_some(),
         "active": bank.active,
         "slots": slots,
         "x": active_pt.map(|p| p.x),
-        "y": active_pt.map(|p| p.y)
+        "y": active_pt.map(|p| p.y),
+        // Recommended zones for basic calibrate (slot0 中间 / slot1 右下).
+        "presets": [
+            { "slot": 0, "label": "center", "x": cx, "y": cy },
+            { "slot": 1, "label": "bottomRight", "x": rx, "y": ry }
+        ]
     })
 }
 

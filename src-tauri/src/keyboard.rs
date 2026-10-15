@@ -241,6 +241,7 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
         // AttachThreadInput against our own WebView2/UI threads deadlocks the overlay
         // (soft-keyboard clicks → focus Codex while overlay owns FG). Never attach when
         // either side is our process; also never join the calling worker into the queue.
+        // When WE already own FG, SetForegroundWindow can give it away without attach.
         let use_attach = fg_pid != 0
             && target_pid != 0
             && fg_pid != our_pid
@@ -253,11 +254,23 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
         }
         AllowSetForegroundWindow(ASFW_ANY);
         BringWindowToTop(target_hwnd);
-        let ok = SetForegroundWindow(target_hwnd) != 0;
+        let _ = SetForegroundWindow(target_hwnd);
         if use_attach {
             AttachThreadInput(fg_thread, target_thread, 0);
         }
-        ok
+        // SetForegroundWindow can return true without actually changing FG — verify.
+        let fg_after = GetForegroundWindow();
+        if fg_after == target_hwnd {
+            return true;
+        }
+        if target_pid != 0 {
+            let mut after_pid = 0u32;
+            GetWindowThreadProcessId(fg_after, &mut after_pid);
+            if after_pid == target_pid {
+                return true;
+            }
+        }
+        false
     }
 }
 

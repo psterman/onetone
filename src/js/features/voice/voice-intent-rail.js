@@ -1007,23 +1007,25 @@
   function aimHintForBank(bank){
     bank=normalizeAimBank(bank);
     var n=(bank.slots[0]?1:0)+(bank.slots[1]?1:0);
-    var cur=(bank.active|0)+1;
-    if(n===0) return t('voiceAimCalHint','点上方 1 / 2 切换查看；校准写入当前点');
-    if(n===2) return t('voiceAimCalOkBoth','两个光点都已记住 · 当前查看 {n}').replace('{n}',String(cur));
+    var name=function(i){
+      return t(i===0?'voiceAimSlot1':'voiceAimSlot2',i===0?'中间':'右下');
+    };
+    if(n===0) return t('voiceAimCalHint','优先录「中间」或「右下」· 点上方切换；校准写入当前点');
+    if(n===2) return t('voiceAimCalOkBoth','两个光点都已记住 · 当前查看 {n}').replace('{n}',name(bank.active|0));
     if(bank.slots[bank.active|0]){
-      return t('voiceAimCalOkView','光点 {n} 已记住 · 点另一格可切换查看')
-        .replace('{n}',String(cur));
+      return t('voiceAimCalOkView','{n} 已记住 · 点另一格可切换查看')
+        .replace('{n}',name(bank.active|0));
     }
-    return t('voiceAimCalOkSlot','光点 {n} 已记住 · 可再校准另一个')
-      .replace('{n}',String(bank.slots[0]?1:2));
+    return t('voiceAimCalOkSlot','{n} 已记住 · 可再校准另一个')
+      .replace('{n}',name(bank.slots[0]?0:1));
   }
 
   function syncAimSlotDots(bank){
     bank=normalizeAimBank(bank);
     var host=$('voiceAimSlots');
     if(!host) return;
-    // Unset preview: one composer-ish ghost (not a second fake park beside slot 1).
-    var unsetPreview={x:0.50,y:0.86};
+    // Unset preview ghosts: slot0 中间 / slot1 右下 (same as Rust layout presets).
+    var presets=[{x:0.50,y:0.90},{x:0.78,y:0.90}];
     var active=bank.active|0;
     var spots=host.querySelectorAll('.voice-aim-spot[data-aim-slot]');
     for(var i=0;i<spots.length;i++){
@@ -1032,16 +1034,17 @@
       var pt=bank.slots[idx];
       var set=!!pt;
       var on=idx===active;
+      var ghost=presets[idx]||presets[0];
       btn.hidden=!on;
       if(!on){
         btn.classList.remove('is-on');
         btn.setAttribute('aria-selected','false');
         continue;
       }
-      var x=set?pt.x:unsetPreview.x;
-      var y=set?pt.y:unsetPreview.y;
-      if(!isFinite(x)) x=unsetPreview.x;
-      if(!isFinite(y)) y=unsetPreview.y;
+      var x=set?pt.x:ghost.x;
+      var y=set?pt.y:ghost.y;
+      if(!isFinite(x)) x=ghost.x;
+      if(!isFinite(y)) y=ghost.y;
       x=Math.max(0.06,Math.min(0.94,x));
       y=Math.max(0.08,Math.min(0.92,y));
       btn.style.left=(x*100).toFixed(2)+'%';
@@ -1049,11 +1052,11 @@
       btn.classList.toggle('is-set',set);
       btn.classList.add('is-on');
       btn.setAttribute('aria-selected','true');
-      var label=t(idx===0?'voiceAimSlot1':'voiceAimSlot2',idx===0?'位置 1':'位置 2');
+      var label=t(idx===0?'voiceAimSlot1':'voiceAimSlot2',idx===0?'中间':'右下');
       btn.title=set?label:(label+' · '+t('voiceAimSlotEmpty','未校准'));
       btn.setAttribute('aria-label',btn.title);
       var num=btn.querySelector('.voice-aim-spot__n');
-      if(num) num.textContent=String(idx+1);
+      if(num) num.textContent=idx===0?'中':'右';
       var demo=$('voiceAimDemo');
       if(demo){
         demo.style.setProperty('--spot-x',(x*100).toFixed(2)+'%');
@@ -1073,8 +1076,10 @@
         tab.setAttribute('aria-selected',tOn?'true':'false');
         var state=tab.querySelector('[data-aim-slot-state]');
         if(state) state.textContent=tSet?t('voiceAimSlotReady','已记住'):t('voiceAimSlotEmpty','未校准');
-        var tLabel=t(tIdx===0?'voiceAimSlot1':'voiceAimSlot2',tIdx===0?'位置 1':'位置 2');
+        var tLabel=t(tIdx===0?'voiceAimSlot1':'voiceAimSlot2',tIdx===0?'中间':'右下');
         tab.title=tOn?(tLabel+' · '+t('voiceAimSlotViewing','正在查看')):tLabel;
+        var tn=tab.querySelector('.voice-aim-slot-tab__n');
+        if(tn) tn.textContent=tIdx===0?'中':'右';
       }
     }
   }

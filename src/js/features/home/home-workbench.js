@@ -3103,6 +3103,25 @@
     scenes:'schemes'
   };
 
+  function navKeyForPanel(panel){
+    panel=String(panel||'');
+    if(!panel||panel==='home') return 'home';
+    if(panel==='debug') return 'runtime';
+    if(panel==='agent'||panel==='agentData') return 'agent';
+    return NAV_PANEL_MAP[panel]||'general';
+  }
+
+  function paintNavActive(activeNav){
+    var nav=$('wbLeftNav');
+    if(!nav) return;
+    activeNav=String(activeNav||'home');
+    nav.querySelectorAll('[data-wb-nav]').forEach(function(btn){
+      btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
+    });
+    syncSidebarFoot(activeNav);
+    syncNowHomeSurface(activeNav);
+  }
+
   function syncSidebarFoot(activeNav){
     var btn=$('wbBtnTestSend');
     if(!btn) return;
@@ -3147,32 +3166,21 @@
   }
 
   function syncNavActiveState(panel,opts){
-    var nav=$('wbLeftNav');
-    if(!nav) return;
     opts=opts||{};
     var ui=global.OneToneState&&global.OneToneState.ui;
     var open=!!(ui&&ui.drawerOpen);
-    // Drawer open: highlight from live settingsPanel so late focus/rAF callers
-    // (e.g. softPad focus after keys open) cannot paint a stale nav item.
-    if(open&&ui&&ui.settingsPanel){
-      panel=String(ui.settingsPanel);
-    }
     var activeNav='home';
     if(open){
-      if(panel==='debug'){
-        activeNav='runtime';
-      }else if(panel==='agent'||panel==='agentData'){
-        // Agent → 总览 / 数据：主导航始终高亮 Agent
-        activeNav='agent';
-      }else{
-        activeNav=NAV_PANEL_MAP[panel||'']||'general';
-      }
+      // Drawer open: highlight from live settingsPanel so late focus/rAF callers
+      // (e.g. softPad focus after keys open) cannot paint a stale nav item.
+      if(ui&&ui.settingsPanel) panel=String(ui.settingsPanel);
+      activeNav=navKeyForPanel(panel);
+    }else if(opts.navKey){
+      // Click paint before openDrawer flips drawerOpen — otherwise 首页 stays lit
+      // through the keys/voice/camera channel hop.
+      activeNav=String(opts.navKey);
     }
-    nav.querySelectorAll('[data-wb-nav]').forEach(function(btn){
-      btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
-    });
-    syncSidebarFoot(activeNav);
-    syncNowHomeSurface(activeNav);
+    paintNavActive(activeNav);
   }
 
   function eventTs(evt){
@@ -3455,9 +3463,13 @@
         return;
       }
       if(row.panel){
+        // Optimistic paint first — channel routes (keys/voice/camera) used to return
+        // before openDrawer sync, leaving is-active on 首页.
+        syncNavActiveState(row.panel,{navKey:action});
         if(row.panel==='keys'||row.panel==='voiceWake'||row.panel==='camera'){
           var ch=row.panel==='voiceWake'?'voice':row.panel;
           openHabitChannelChip(ch);
+          syncNavActiveState(row.panel);
           return;
         }
         var opts={panel:row.panel};
@@ -3465,6 +3477,7 @@
         if(row.focus) opts.focus=row.focus;
         if(row.agentSub) opts.agentSub=row.agentSub;
         openSettings(opts);
+        syncNavActiveState(row.panel);
       }
     });
   }
@@ -3729,6 +3742,7 @@
     reanchorChipFlyout:reanchorChipFlyout,
     applyLang:applyLang,
     syncNavActiveState:syncNavActiveState,
+    navKeyForPanel:navKeyForPanel,
     buildPerf:buildPerf,
     enrichViewModel:enrichViewModel,
     buildHomeWorkbenchModel:function(opts){

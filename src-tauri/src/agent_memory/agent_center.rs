@@ -1978,10 +1978,16 @@ fn execute_agent_center_action_inner(
                                 Err(format!("composer_focused_paste_failed:{target}"))
                             }
                         }
-                        Err(e) => Err(format!(
-                            "composer_focus_failed:{target}:{}:paste=false",
-                            e.reason("handoff")
-                        )),
+                        Err(e) => {
+                            let mut detail = format!(
+                                "composer_focus_failed:{target}:{}:paste=false",
+                                e.reason("handoff")
+                            );
+                            if crate::app_chat_workflow::cursor_window_looks_elevated() {
+                                detail.push_str(":elevated_target");
+                            }
+                            Err(detail)
+                        }
                     }
                 } else {
                     match crate::app_chat_workflow::focus_chat_app_and_paste(
@@ -2004,7 +2010,12 @@ fn execute_agent_center_action_inner(
                         AgentCenterActionResult::verified_ok(Some(detail))
                     }
                     Err(detail) => {
-                        let _ = crate::app_chat_workflow::focus_app_window_only(&app, target);
+                        // Elevated / failed composer: do not hide OneTone again via window-only.
+                        if !detail.contains("elevated_target")
+                            && !crate::app_chat_workflow::cursor_window_looks_elevated()
+                        {
+                            let _ = crate::app_chat_workflow::focus_app_window_only(&app, target);
+                        }
                         if let Some(k) = kind {
                             crate::soft_pad_runtime::set_follow_pin(Some(k));
                         }

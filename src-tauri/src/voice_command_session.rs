@@ -325,54 +325,59 @@ fn oral_app_target_id(cfg: &crate::config::VoiceConfig, mapping_id: &str) -> Str
 }
 
 fn has_calibrated_composer(cfg: &crate::config::VoiceConfig, app_target_id: &str) -> bool {
-    cfg.voice_end
-        .composer_anchors
-        .get(app_target_id.trim())
-        .and_then(|a| a.active_point())
-        .is_some()
+    crate::input_aim_calibrate::has_active_composer(cfg, app_target_id)
 }
 
-/// After Soft 槽 oral arm: first use opens input-aim calibrate; later uses punch composer.
+/// After Soft 槽 oral arm: shared ensure (same store as homepage); later punch composer.
 pub fn init_composer_on_oral_arm(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) {
-    let (app_target, duration_ms, need_calibrate) = {
+    let (app_target, duration_ms) = {
         let cfg = state.cfg.lock();
         let tid = oral_app_target_id(&cfg, mapping_id);
         if tid.is_empty() || crate::app_chat_workflow::profile_for(&tid).is_none() {
             ORAL_NEED_COMPOSER_AIM.store(false, Ordering::SeqCst);
             return;
         }
-        let need = !has_calibrated_composer(&cfg, &tid);
-        (tid, cfg.key_press_duration_ms, need)
+        (tid, cfg.key_press_duration_ms)
     };
 
-    if need_calibrate {
-        ORAL_NEED_COMPOSER_AIM.store(true, Ordering::SeqCst);
-        crate::codex_micro_overlay::push_state(app, state.as_ref());
-        crate::app_log::log_line(
-            state,
-            "voice_command",
-            &format!("oral_composer_init first_use calibrate app={app_target}"),
-        );
-        let _ = crate::input_aim_calibrate::queue_begin_for_app(app, &app_target, 0);
-        return;
+    match crate::input_aim_calibrate::ensure_composer_aim(app, state.as_ref(), &app_target, false) {
+        Ok(res) if res.get("needCalibrate").and_then(|v| v.as_bool()) == Some(true) => {
+            ORAL_NEED_COMPOSER_AIM.store(true, Ordering::SeqCst);
+            crate::codex_micro_overlay::push_state(app, state.as_ref());
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                &format!("oral_composer_init first_use calibrate app={app_target}"),
+            );
+        }
+        Ok(_) => {
+            ORAL_NEED_COMPOSER_AIM.store(false, Ordering::SeqCst);
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                &format!("oral_composer_init focus app={app_target}"),
+            );
+            let app_h = app.clone();
+            let tid = app_target;
+            let _ = std::thread::Builder::new()
+                .name("oral-composer-init".into())
+                .spawn(move || {
+                    // Brief settle after Soft Pad arm chrome so click-through is ready.
+                    std::thread::sleep(Duration::from_millis(80));
+                    let _pad = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app_h);
+                    let _ =
+                        crate::app_chat_workflow::focus_composer_for_send(&app_h, &tid, duration_ms);
+                });
+        }
+        Err(err) => {
+            ORAL_NEED_COMPOSER_AIM.store(false, Ordering::SeqCst);
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                &format!("oral_composer_init ensure_fail app={app_target} err={err}"),
+            );
+        }
     }
-
-    ORAL_NEED_COMPOSER_AIM.store(false, Ordering::SeqCst);
-    crate::app_log::log_line(
-        state,
-        "voice_command",
-        &format!("oral_composer_init focus app={app_target}"),
-    );
-    let app_h = app.clone();
-    let tid = app_target;
-    let _ = std::thread::Builder::new()
-        .name("oral-composer-init".into())
-        .spawn(move || {
-            // Brief settle after Soft Pad arm chrome so click-through is ready.
-            std::thread::sleep(Duration::from_millis(80));
-            let _pad = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app_h);
-            let _ = crate::app_chat_workflow::focus_composer_for_send(&app_h, &tid, duration_ms);
-        });
 }
 
 /// Soft Pad caption: 「口头收听中 · 可说：…」from oral scheme (Soft + scheme items).

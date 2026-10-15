@@ -2,8 +2,10 @@
 'use strict';
 
 /**
- * Cursor lifecycle probe — fail-open and stdout-empty.
+ * Cursor lifecycle probe — fail-open.
  * Keeps only identity/lifecycle fields and forwards them to OneTone loopback.
+ * Always prints schema-valid JSON on stdout (empty stdout breaks subagentStart /
+ * beforeSubmitPrompt on current Cursor).
  */
 
 var fs = require('fs');
@@ -37,10 +39,15 @@ function extractSafeFields(raw) {
   return {
     ts: Date.now(),
     event: firstScalar(obj, ['hook_event_name', 'event']),
-    sessionId: firstScalar(obj, ['conversation_id', 'session_id', 'sessionId']),
-    turnId: firstScalar(obj, ['generation_id', 'turn_id', 'turnId']),
+    sessionId: firstScalar(obj, [
+      'conversation_id',
+      'session_id',
+      'sessionId',
+      'parent_conversation_id'
+    ]),
+    turnId: firstScalar(obj, ['generation_id', 'turn_id', 'turnId', 'subagent_id']),
     cwd: firstScalar(obj, ['cwd']),
-    model: firstScalar(obj, ['model'])
+    model: firstScalar(obj, ['model', 'subagent_model'])
   };
 }
 
@@ -54,6 +61,16 @@ function buildPostBody(fields) {
     model: fields.model,
     ts: fields.ts
   };
+}
+
+/** stdout response Cursor expects — permission hooks deny on empty/invalid JSON. */
+function buildStdoutResponse(event) {
+  var e = String(event || '').trim();
+  if (e === 'beforeSubmitPrompt') return { continue: true };
+  if (e === 'subagentStart') return { permission: 'allow' };
+  // Unknown event (parse salvage miss): cover both gate schemas without blocking.
+  if (!e) return { continue: true, permission: 'allow' };
+  return {};
 }
 
 function appendJsonl(record, target) {
@@ -96,19 +113,31 @@ function postState(urlStr, body, timeoutMs) {
       };
       var token = readIntegrationToken();
       if (token) headers['X-Onetone-Token'] = token;
-      var req = http.request({
-        hostname: url.hostname,
-        port: url.port || 80,
-        path: url.pathname + (url.search || ''),
-        method: 'POST',
-        headers: headers,
-        timeout: timeoutMs || POST_TIMEOUT_MS
-      }, function (res) {
-        res.resume();
-        res.on('end', function () { resolve({ ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300 }); });
+      var req = http.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 80,
+          path: url.pathname + (url.search || ''),
+          method: 'POST',
+          headers: headers,
+          timeout: timeoutMs || POST_TIMEOUT_MS
+        },
+        function (res) {
+          res.resume();
+          res.on('end', function () {
+            resolve({ ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300 });
+          });
+        }
+      );
+      req.on('error', function () {
+        resolve({ ok: false });
       });
-      req.on('error', function () { resolve({ ok: false }); });
-      req.on('timeout', function () { try { req.destroy(); } catch (_) {} resolve({ ok: false }); });
+      req.on('timeout', function () {
+        try {
+          req.destroy();
+        } catch (_) {}
+        resolve({ ok: false });
+      });
       req.write(bytes);
       req.end();
     } catch (_) {
@@ -117,27 +146,131 @@ function postState(urlStr, body, timeoutMs) {
   });
 }
 
+/** Slice first balanced `{...}` so trailing junk / multi-object stdin still parses. */
+function sliceFirstJsonObject(text) {
+  var start = text.indexOf('{');
+  if (start < 0) return '';
+  var depth = 0;
+  var inStr = false;
+  var esc = false;
+  for (var i = start; i < text.length; i++) {
+    var c = text.charAt(i);
+    if (inStr) {
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === '\\') {
+        esc = true;
+        continue;
+      }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return '';
+}
+
+function parseHookInput(input) {
+  var text = String(input || '');
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  text = text.trim();
+  if (!text) return { ok: true, value: {} };
+
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch (err) {
+    var sliced = sliceFirstJsonObject(text);
+    if (sliced) {
+      try {
+        return { ok: true, value: JSON.parse(sliced) };
+      } catch (_) {}
+    }
+    // Salvage event name only — enough for stdout schema + soft post skip.
+    var m = text.match(/"(?:hook_event_name|event)"\s*:\s*"([^"\\]+)"/);
+    if (m) {
+      return { ok: false, value: { hook_event_name: m[1], event: m[1] }, error: err.message };
+    }
+    return { ok: false, value: {}, error: err.message };
+  }
+}
+
+function writeStdout(obj) {
+  try {
+    process.stdout.write(JSON.stringify(obj || {}) + '\n');
+  } catch (_) {
+    try {
+      process.stdout.write('{}\n');
+    } catch (__) {}
+  }
+}
+
 async function run(opts) {
   opts = opts || {};
   var input = opts.stdinText;
   if (input == null) {
-    try { input = fs.readFileSync(0, 'utf8'); } catch (_) { input = ''; }
+    try {
+      input = fs.readFileSync(0, 'utf8');
+    } catch (_) {
+      input = '';
+    }
   }
-  var parsed = {};
-  try { parsed = JSON.parse(String(input || '').trim() || '{}'); } catch (err) { debugLog('json parse failed: ' + err.message); }
-  var fields = extractSafeFields(parsed);
-  try { appendJsonl(fields, opts.jsonlPath); } catch (err) { debugLog('jsonl append failed: ' + err.message); }
-  if (!opts.skipPost) {
+  var parsed = parseHookInput(input);
+  if (!parsed.ok && parsed.error) {
+    debugLog(
+      'json parse failed: ' +
+        parsed.error +
+        ' len=' +
+        String(input || '').length
+    );
+  }
+  var fields = extractSafeFields(parsed.value);
+  try {
+    appendJsonl(fields, opts.jsonlPath);
+  } catch (err) {
+    debugLog('jsonl append failed: ' + err.message);
+  }
+
+  // Always emit schema-valid stdout before network I/O so Cursor never waits on 8796.
+  if (!opts.skipStdout) {
+    writeStdout(buildStdoutResponse(fields.event));
+  }
+
+  if (!opts.skipPost && fields.event) {
     var body = buildPostBody(fields);
-    var result = await postState(opts.url || process.env.ONETONE_CURSOR_STATE_URL || DEFAULT_URL, body);
-    if (!result.ok) result = await postState(opts.url || process.env.ONETONE_CURSOR_STATE_URL || DEFAULT_URL, body);
-    if (!result.ok) debugLog('post failed event=' + (fields.event || ''));
+    var url = opts.url || process.env.ONETONE_CURSOR_STATE_URL || DEFAULT_URL;
+    var result = await postState(url, body);
+    if (!result.ok) result = await postState(url, body);
+    // OneTone off → expected; don't spam identical lines every turn.
+    if (!result.ok) debugLog('post failed event=' + fields.event + ' (onetone offline?)');
   }
   return fields;
 }
 
 if (require.main === module) {
-  run({}).catch(function (err) { debugLog('fatal: ' + err.message); }).finally(function () { process.exit(0); });
+  run({})
+    .catch(function (err) {
+      debugLog('fatal: ' + err.message);
+      writeStdout({});
+    })
+    .finally(function () {
+      process.exit(0);
+    });
 }
 
-module.exports = { extractSafeFields: extractSafeFields, buildPostBody: buildPostBody, run: run };
+module.exports = {
+  extractSafeFields: extractSafeFields,
+  buildPostBody: buildPostBody,
+  buildStdoutResponse: buildStdoutResponse,
+  parseHookInput: parseHookInput,
+  run: run
+};
