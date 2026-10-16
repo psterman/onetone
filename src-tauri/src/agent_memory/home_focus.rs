@@ -22,6 +22,36 @@ use std::path::PathBuf;
 
 pub const LIFECYCLE_TTL_MS: u64 = 120_000;
 pub const COMPLETED_DISPLAY_MS: u64 = 10 * 60 * 1000;
+/// Checkpoint older than this is not projected as resumable (avoids stale「停在 Codex」Hero).
+pub const RESUME_MAX_AGE_MS: u64 = 7 * 24 * 60 * 60 * 1000;
+
+/// UI CTA / boilerplate — never surface as the step the user "stopped at".
+fn is_resume_cta_label(s: &str) -> bool {
+    let t = s.trim().trim_end_matches('。');
+    matches!(
+        t,
+        "再做一件相关的事"
+            | "从上次进度继续"
+            | "继续上次工作"
+            | "让 Agent 帮我做一件事"
+            | "让 Agent 帮我做"
+            | "查看进度"
+            | "查看并决定"
+            | "开始新任务"
+            | "整理方案"
+            | "可以继续"
+            | "我记得你上次停在这里"
+            | "刚刚完成"
+    )
+}
+
+fn usable_resume_step(raw: Option<&str>) -> Option<String> {
+    let s = raw.map(str::trim).filter(|t| !t.is_empty())?;
+    if is_resume_cta_label(s) {
+        return None;
+    }
+    Some(s.to_string())
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -464,22 +494,24 @@ fn derive_work(
     let can_resume = checkpoint.is_some()
         && project.match_kind == "exact"
         && confirmed
-        && project.id != UNKNOWN_PROJECT_ID;
+        && project.id != UNKNOWN_PROJECT_ID
+        && checkpoint
+            .as_ref()
+            .is_some_and(|ck| now.saturating_sub(ck.updated_at) <= RESUME_MAX_AGE_MS);
     if can_resume {
         let ck = checkpoint.unwrap();
+        let title = usable_resume_step(ck.current_task.as_deref())
+            .or_else(|| usable_resume_step(ck.next_action.as_deref()))
+            .or_else(|| usable_resume_step(Some(title_default.as_str())))
+            .unwrap_or_else(|| "上次进度".into());
+        let description = usable_resume_step(ck.next_action.as_deref())
+            .filter(|s| s != &title)
+            .unwrap_or_else(|| "已保存上次进度。".into());
         return (
             HomeFocusWork {
                 status: "resumable".into(),
-                title: ck
-                    .current_task
-                    .clone()
-                    .filter(|s| !s.trim().is_empty())
-                    .or_else(|| Some(title_default.clone()))
-                    .unwrap_or_else(|| "可以继续".into()),
-                description: ck
-                    .next_action
-                    .clone()
-                    .unwrap_or_else(|| "我记得你上次停在这里。".into()),
+                title,
+                description,
                 updated_at: ck.updated_at,
             },
             HomeFocusSource {
@@ -713,5 +745,16 @@ mod tests {
     #[test]
     fn validate_path_helper_rejects_slash_only() {
         assert!(validate_workspace_path(&PathBuf::from(r"E:\nope\missing")).is_none());
+    }
+
+    #[test]
+    fn resume_cta_labels_are_not_usable_steps() {
+        assert!(is_resume_cta_label("再做一件相关的事"));
+        assert!(is_resume_cta_label("从上次进度继续"));
+        assert!(usable_resume_step(Some("再做一件相关的事")).is_none());
+        assert_eq!(
+            usable_resume_step(Some("修首页顶栏截断")).as_deref(),
+            Some("修首页顶栏截断")
+        );
     }
 }

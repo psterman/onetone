@@ -11,7 +11,7 @@
     var ui=global.OneToneState.ui;
     var t=h.t||function(key){ return global.OneToneI18n.t(key); };
     if(ui.drawerOpen&&ui.settingsPanel==='debug'){
-      if(global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
+      if(global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode&&global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
       else h.renderSettingsDebugSubnav();
     }else{
       var el=$('rawEventLog');

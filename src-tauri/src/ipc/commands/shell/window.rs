@@ -4,6 +4,11 @@ pub fn cmd_window_minimize(window: tauri::WebviewWindow) {
 }
 
 #[tauri::command]
+pub fn cmd_window_maximize(window: tauri::WebviewWindow) {
+    let _ = window.maximize();
+}
+
+#[tauri::command]
 pub fn cmd_window_close(window: tauri::WebviewWindow) {
     let _ = window.close();
 }

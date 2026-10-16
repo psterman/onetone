@@ -541,6 +541,22 @@ pub fn ensure_on_screen(window: &WebviewWindow) {
     }
 }
 
+/// Taskbar restore after close-to-tray `hide()`: HWND is often still at the
+/// Windows (-32000,-32000) park. Tray / single-instance already call
+/// `ensure_on_screen` before show — mirror that on focus, but skip the monitor
+/// enum when the window already has a normal desktop coordinate.
+pub fn ensure_on_screen_after_focus(window: &WebviewWindow) {
+    let Ok(pos) = window.outer_position() else {
+        return;
+    };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let logical = pos.to_logical::<f64>(scale);
+    if is_storable_position(logical.x, logical.y) {
+        return;
+    }
+    ensure_on_screen(window);
+}
+
 pub fn apply_on_startup(window: &WebviewWindow, cfg: &VoiceConfig) {
     if !cfg.window_layout_seen {
         let _ = window.maximize();

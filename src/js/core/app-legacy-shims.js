@@ -120,17 +120,20 @@
     function checkForAppUpdate(manual){ return OneToneUpdate.check(manual); }
     function installAppUpdate(){ return OneToneUpdate.install(); }
     function dismissAppUpdate(){ return OneToneUpdate.dismiss(); }
-    function syncDebugFocusSections(){ return OneToneVoiceDiag.syncFocusSections(); }
-    function setDebugFocusMode(mode){ return OneToneVoiceDiag.setFocusMode(mode); }
-    function renderSettingsDebugSubnav(){ return OneToneVoiceDiag.renderSubnav(); }
-    function setVoiceDiagTab(tab){ return OneToneVoiceDiag.setTab(tab); }
-    function renderVoiceDiagMetrics(kind){ return OneToneVoiceDiag.renderMetrics(kind); }
-    function renderVoiceDiagTabs(){ return OneToneVoiceDiag.renderTabs(); }
-    function scheduleDebugChromeRefresh(){ return OneToneVoiceDiag.scheduleChromeRefresh(); }
-    function renderVoiceDiagLog(kind){ return OneToneVoiceDiag.renderLog(kind); }
-    function pushVoiceDiagLog(kind,label,text,sig){ return OneToneVoiceDiag.pushLog(kind,label,text,sig); }
-    function forceVoiceDiagLog(kind,label,text){ return OneToneVoiceDiag.forceLog(kind,label,text); }
-    function updateVoiceDiagMetric(kind,name,value,label){ return OneToneVoiceDiag.updateMetric(kind,name,value,label); }
+    // voice-diag.js is deferred (data-ot-defer=debug). Process-usage poll and other
+    // early callers must no-op until it loads — bare OneToneVoiceDiag throws in strict mode.
+    function voiceDiag(){ return global.OneToneVoiceDiag||null; }
+    function syncDebugFocusSections(){ var d=voiceDiag(); return d&&d.syncFocusSections?d.syncFocusSections():undefined; }
+    function setDebugFocusMode(mode){ var d=voiceDiag(); return d&&d.setFocusMode?d.setFocusMode(mode):undefined; }
+    function renderSettingsDebugSubnav(){ var d=voiceDiag(); return d&&d.renderSubnav?d.renderSubnav():undefined; }
+    function setVoiceDiagTab(tab){ var d=voiceDiag(); return d&&d.setTab?d.setTab(tab):undefined; }
+    function renderVoiceDiagMetrics(kind){ var d=voiceDiag(); return d&&d.renderMetrics?d.renderMetrics(kind):undefined; }
+    function renderVoiceDiagTabs(){ var d=voiceDiag(); return d&&d.renderTabs?d.renderTabs():undefined; }
+    function scheduleDebugChromeRefresh(){ var d=voiceDiag(); return d&&d.scheduleChromeRefresh?d.scheduleChromeRefresh():undefined; }
+    function renderVoiceDiagLog(kind){ var d=voiceDiag(); return d&&d.renderLog?d.renderLog(kind):undefined; }
+    function pushVoiceDiagLog(kind,label,text,sig){ var d=voiceDiag(); return d&&d.pushLog?d.pushLog(kind,label,text,sig):undefined; }
+    function forceVoiceDiagLog(kind,label,text){ var d=voiceDiag(); return d&&d.forceLog?d.forceLog(kind,label,text):undefined; }
+    function updateVoiceDiagMetric(kind,name,value,label){ var d=voiceDiag(); return d&&d.updateMetric?d.updateMetric(kind,name,value,label):undefined; }
     function voiceEndStateLabel(raw){ return OneToneVoiceEnd.stateLabel(raw); }
     function voiceEndUiUsesLiteMode(){ return OneToneVoiceEnd.uiUsesLiteMode(); }
     function syncVoiceEndModeUi(){ return OneToneVoiceEnd.syncModeUi(); }

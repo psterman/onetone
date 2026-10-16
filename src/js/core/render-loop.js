@@ -41,7 +41,7 @@
       // Sounds / Soft Pad settings must not sync on the render hot path — rewriting
       // controls (or building pickers) here 假死 clicks. Sync on panel open / prefs change.
       if(ui.drawerOpen&&ui.settingsPanel==='debug'){
-        if(global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
+        if(global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode&&global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
         else h.scheduleDebugChromeRefresh();
       }
       if(ui.drawerOpen&&global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel()||global.OneToneSettingsDrawer.isHabitsPanel())) h.renderKeyFinishFlowPanel();

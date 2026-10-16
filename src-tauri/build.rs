@@ -73,6 +73,7 @@ fn main() {
         "cmd_update_check",
         "cmd_update_install",
         "cmd_window_minimize",
+        "cmd_window_maximize",
         "cmd_window_close",
         "cmd_window_set_always_on_top",
         "cmd_sync_theme_backdrop",

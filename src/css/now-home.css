@@ -1844,19 +1844,29 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
+  flex: 1 1 auto;
   min-width: 0;
+  /* Leave room for「历史」; never squeeze brand+project into a few glyphs. */
+  max-width: calc(100% - 7.5rem);
+}
+.now-home .hn-brand {
+  flex: 0 0 auto;
 }
 .now-home .hn-where {
   color: var(--hn-muted);
   font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 6rem;
 }
 .now-home .hn-chrome-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
   margin-left: auto;
 }
 .now-home .hn-top-btn {

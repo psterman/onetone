@@ -22,6 +22,25 @@
   }
 
   var RESUME_LABEL = '继续上次工作';
+  /** Checkpoint older than this is desk-only — never force return Hero. */
+  var RESUME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+  /** UI CTA / boilerplate — never treat as the step you "stopped at". */
+  var RESUME_CTA_LABELS = {
+    '再做一件相关的事': 1,
+    '从上次进度继续': 1,
+    '继续上次工作': 1,
+    '让 Agent 帮我做一件事': 1,
+    '让 Agent 帮我做': 1,
+    '查看进度': 1,
+    '查看并决定': 1,
+    '开始新任务': 1,
+    '整理方案': 1,
+    '可以继续': 1,
+    '我记得你上次停在这里。': 1,
+    '我记得你上次停在这里': 1,
+    '刚刚完成。': 1,
+    '刚刚完成': 1
+  };
 
   function relativeWhen(ts) {
     var n = Number(ts);
@@ -42,6 +61,36 @@
   /** Honest empty-time label — never invent freshness. */
   var WHEN_UNKNOWN = '时间未知';
 
+  function isResumeCtaLabel(s) {
+    var t = String(s || '')
+      .replace(/。$/, '')
+      .trim();
+    if (!t) return true;
+    if (RESUME_CTA_LABELS[t]) return true;
+    // Auto next_action boilerplate: 继续：「…」 with CTA / empty insides.
+    var m = /^继续[：:「"]+([^」"]*)[」"]?$/.exec(t);
+    if (m && isResumeCtaLabel(m[1])) return true;
+    return false;
+  }
+
+  /** Real step text only — strip CTA / session-title noise. */
+  function usableResumeStep(raw, provider) {
+    var step = String(raw || '')
+      .replace(/。$/, '')
+      .trim();
+    if (!step || isResumeCtaLabel(step)) return '';
+    var prov = providerLabelHome(provider);
+    if (/session/i.test(step) && new RegExp(prov, 'i').test(step)) return '';
+    return step;
+  }
+
+  function resumeAgeFresh(ts) {
+    var n = Number(ts);
+    if (!n || !isFinite(n)) return false;
+    var age = Date.now() - n;
+    return age >= 0 && age <= RESUME_MAX_AGE_MS;
+  }
+
   function providerLabelHome(p) {
     var s = String(p || '').toLowerCase();
     if (s.indexOf('claude') >= 0) return 'Claude';
@@ -60,16 +109,21 @@
   /** Single H1 template for return: provider + step, with CJK/Latin spacing. */
   function returnHeadline(provider, task) {
     var prov = providerLabelHome(provider);
-    var step = String(task || '')
-      .replace(/。$/, '')
-      .trim();
-    if (!step) return '你上次的工作可以继续。';
-    // Avoid treating session titles like "codex session" as the agent name alone.
-    var looksLikeSessionTitle = /session/i.test(step) && new RegExp(prov, 'i').test(step);
-    if (looksLikeSessionTitle) {
-      return '你上次停在 ' + prov + '。';
-    }
+    var step = usableResumeStep(task, prov);
+    if (!step) return '你上次停在 ' + prov + '。';
     return '你上次停在 ' + prov + ' 的「' + step + '」。';
+  }
+
+  /** Precise resume stats — age / source / project gate. Never invent %. */
+  function resumeAssistance(projectName, when, opts) {
+    opts = opts || {};
+    var parts = [];
+    if (when) parts.push('上次活动 · ' + when);
+    else parts.push('上次活动 · ' + WHEN_UNKNOWN);
+    parts.push('来源 · checkpoint');
+    if (opts.projUnconfirmed) parts.push('项目未确认');
+    else if (projectName && projectName !== '未知项目') parts.push('项目 · ' + projectName);
+    return parts.join(' · ') + '。可以从停下的地方继续。';
   }
 
   /**
@@ -202,7 +256,12 @@
       primary = { id: 'view_progress', label: attention.primaryLabel };
       // Coarse fact only — no inferred progress fraction / ETA.
       progress = null;
-    } else if (ws === 'resumable' && action && action.kind === 'resume') {
+    } else if (
+      ws === 'resumable' &&
+      action &&
+      action.kind === 'resume' &&
+      resumeAgeFresh(work.updatedAt)
+    ) {
       mode = 'return';
       var resumeProv =
         provider.id === 'claude' || /claude/i.test(String(provider.id || ''))
@@ -210,14 +269,16 @@
           : provider.id === 'codex' || /codex/i.test(String(provider.id || ''))
             ? 'Codex'
             : providerLabelHome(provider.id || appName);
-      headline = returnHeadline(resumeProv, workDesc || workTitle);
-      assistance =
-        '当前项目仍是 ' +
-        projectName +
-        '，可以从停下的地方继续。';
+      var resumeStep =
+        usableResumeStep(workTitle, resumeProv) ||
+        usableResumeStep(workDesc, resumeProv);
+      headline = returnHeadline(resumeProv, resumeStep);
+      assistance = resumeAssistance(projectName, when, {
+        projUnconfirmed: needsProject
+      });
       continuation = {
         title: RESUME_LABEL,
-        detail: workDesc || '已保存上次进度'
+        detail: resumeStep || workDesc || '已保存上次进度'
       };
       primary = { id: 'resume', label: RESUME_LABEL };
       // Leaves return → Quiet Composer (homepage jump). Does not delete checkpoint.
@@ -327,12 +388,24 @@
         note: '可信活跃 · 非等待'
       };
     }
-    if (ws === 'resumable' && action && action.kind === 'resume') {
+    if (
+      ws === 'resumable' &&
+      action &&
+      action.kind === 'resume' &&
+      resumeAgeFresh(work.updatedAt)
+    ) {
+      var deskStep =
+        usableResumeStep(workTitle, agentLabel) ||
+        usableResumeStep(workDesc, agentLabel);
       desk.continueCard = {
-        title: workDesc || workTitle || agentLabel + ' 上次进度',
-        detail: agentLabel + (confirmed || match === 'exact' ? ' · ' + projectName : '') + ' · ' + when,
+        title: deskStep || agentLabel + ' 上次进度',
+        detail:
+          agentLabel +
+          (confirmed || match === 'exact' ? ' · ' + projectName : '') +
+          (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
         note: '已保存上次进度',
         badge: agentLabel,
+        when: when || '',
         sourceBadge: { label: 'checkpoint', tone: 'auth' }
       };
     }
@@ -767,15 +840,11 @@
 
     var ckpt = home.checkpoint || null;
     if (ckpt && !vm.desk.continueCard) {
-      var ckWhen = relativeWhen(
-        ckpt.updatedAt || ckpt.updated_at || ckpt.createdAt || ckpt.created_at
+      var ckTs = Number(
+        ckpt.updatedAt || ckpt.updated_at || ckpt.createdAt || ckpt.created_at || 0
       );
-      var ckTask =
-        ckpt.currentTask ||
-        ckpt.current_task ||
-        ckpt.nextAction ||
-        ckpt.next_action ||
-        '';
+      var ckFresh = resumeAgeFresh(ckTs);
+      var ckWhen = relativeWhen(ckTs);
       var ckSid = String(ckpt.sessionId || ckpt.session_id || '');
       var sessionsForProv = Array.isArray(home.recentSessions)
         ? home.recentSessions
@@ -800,6 +869,11 @@
       if (ckProv === '未知项目' || /未知/.test(ckProv)) {
         ckProv = providerLabelHome((active && active.provider) || 'Agent');
       }
+      // Prefer real task title; never promote UI CTA / next_action boilerplate into H1.
+      var ckTask =
+        usableResumeStep(ckpt.currentTask || ckpt.current_task, ckProv) ||
+        usableResumeStep(ckpt.nextAction || ckpt.next_action, ckProv) ||
+        '';
       var projName =
         (home.project && (home.project.displayName || home.project.display_name)) ||
         vm.projectName ||
@@ -808,11 +882,21 @@
         !vm.confirmed && (vm.match === 'probable' || vm.match === 'unknown' || !vm.match);
       var activeSid = active ? String(active.sessionId || active.session_id || '') : '';
       // Same session still running: Living covers it; skip Continue duplicate.
-      if (!(activeRunning && ckSid && ckSid === activeSid)) {
+      // Stale checkpoint: skip Continue entirely (no precise age → no resume Hero).
+      if (ckFresh && !(activeRunning && ckSid && ckSid === activeSid)) {
+        var ckMatch = Number(
+          (ckSession &&
+            (ckSession.matchConfidence != null
+              ? ckSession.matchConfidence
+              : ckSession.match_confidence)) ||
+            NaN
+        );
         var ckDetailParts = [ckProv];
         if (projUnconfirmed) ckDetailParts.push('项目未确认');
         else if (projName && projName !== '未知项目') ckDetailParts.push(projName);
         if (ckWhen) ckDetailParts.push(ckWhen);
+        else ckDetailParts.push(WHEN_UNKNOWN);
+        if (ckMatch >= 0) ckDetailParts.push('匹配 ' + Math.round(ckMatch * 100) + '%');
         vm.desk.continueCard = {
           title: ckTask || ckProv + ' 上次进度',
           detail: ckDetailParts.join(' · '),
@@ -821,10 +905,14 @@
           badge: ckProv,
           when: ckWhen || '',
           sourceBadge: { label: 'checkpoint', tone: 'auth' },
-          matchBadge: projUnconfirmed ? { label: '未确认', tone: 'warn' } : null
+          matchBadge: projUnconfirmed
+            ? { label: '未确认', tone: 'warn' }
+            : matchConfidenceBadge(ckMatch)
         };
-        // Quiet + checkpoint → return only when not already living/waiting.
+        // Quiet + fresh checkpoint with a real step → return.
+        // CTA-only / empty step: keep desk card, stay quiet (no false「停在」Hero).
         if (
+          ckTask &&
           vm.mode === 'quiet' &&
           !vm.desk.needsYou &&
           !vm.desk.living &&
@@ -832,9 +920,9 @@
         ) {
           vm.mode = 'return';
           vm.headline = returnHeadline(ckProv, ckTask);
-          vm.assistance = projUnconfirmed
-            ? '可以从停下的地方继续。项目仍未确认——不会用猜测绑定。'
-            : '可以从停下的地方继续。';
+          vm.assistance = resumeAssistance(projName, ckWhen, {
+            projUnconfirmed: projUnconfirmed
+          });
           vm.primary = { id: 'resume', label: RESUME_LABEL };
           // Same as base return path — leave return → Quiet Composer.
           vm.secondary = { id: 'start_new_task', label: '开始新任务' };

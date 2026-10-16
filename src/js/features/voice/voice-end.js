@@ -334,19 +334,15 @@
       Array.isArray(res.sendPhrasesEn)?res.sendPhrasesEn:[]
     );
 
-    global.OneToneVoiceDiag.updateMetric('end','state',stateLabel,t('voiceDiagLogState'));
-
-    global.OneToneVoiceDiag.updateMetric('end','phrase',res.lastEndPhrase||'',t('voiceDiagLogPhrase'));
-
-    global.OneToneVoiceDiag.updateMetric('end','action',res.lastAction||'',t('voiceDiagLogAction'));
-
-    global.OneToneVoiceDiag.updateMetric('end','auto',res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'),t('voiceEndAutoSend'));
-
-    global.OneToneVoiceDiag.updateMetric('end','delay',t('voiceEndDelayMs').replace('{n}',String(delayMs)),t('voiceEndDelay'));
-
-    global.OneToneVoiceDiag.updateMetric('end','audio',res.recordingAudioEnabled?t('voiceEndAudioDiagOn'):t('voiceEndAudioDiagOff'),t('voiceDiagLogAudioMute'));
-
-    global.OneToneVoiceDiag.updateMetric('end','audioStrength',t('recordingMuteStrength'+String(res.recordingAudioStrength||'balanced').trim().replace(/^[a-z]/,function(ch){ return ch.toUpperCase(); })),t('voiceDiagLogAudioStrength'));
+    if(global.OneToneVoiceDiag&&global.OneToneVoiceDiag.updateMetric){
+      global.OneToneVoiceDiag.updateMetric('end','state',stateLabel,t('voiceDiagLogState'));
+      global.OneToneVoiceDiag.updateMetric('end','phrase',res.lastEndPhrase||'',t('voiceDiagLogPhrase'));
+      global.OneToneVoiceDiag.updateMetric('end','action',res.lastAction||'',t('voiceDiagLogAction'));
+      global.OneToneVoiceDiag.updateMetric('end','auto',res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'),t('voiceEndAutoSend'));
+      global.OneToneVoiceDiag.updateMetric('end','delay',t('voiceEndDelayMs').replace('{n}',String(delayMs)),t('voiceEndDelay'));
+      global.OneToneVoiceDiag.updateMetric('end','audio',res.recordingAudioEnabled?t('voiceEndAudioDiagOn'):t('voiceEndAudioDiagOff'),t('voiceDiagLogAudioMute'));
+      global.OneToneVoiceDiag.updateMetric('end','audioStrength',t('recordingMuteStrength'+String(res.recordingAudioStrength||'balanced').trim().replace(/^[a-z]/,function(ch){ return ch.toUpperCase(); })),t('voiceDiagLogAudioStrength'));
+    }
 
     syncVoiceEndModeUi();
 

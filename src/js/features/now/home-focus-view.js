@@ -45,15 +45,16 @@
   /** PRODUCT: 顶栏「历史」+ Agent 总览 — acts, not hn-nav data-hf-view. */
   function chromeHtml(vm) {
     vm = vm || {};
+    // Nav already says「现在」— do not prefix it here (was ellipsed to「现在 · v…」).
     var project = String(vm.projectName || '').trim();
-    var where = project ? '现在 · ' + project : '现在';
+    var where = project || '';
     return (
       '<header class="hn-chrome">' +
       '<div class="hn-chrome-left">' +
       '<p class="hn-brand">OneTone</p>' +
-      '<span class="hn-where">' +
-      esc(where) +
-      '</span>' +
+      (where
+        ? '<span class="hn-where" title="' + esc(where) + '">' + esc(where) + '</span>'
+        : '') +
       '</div>' +
       '<div class="hn-chrome-actions">' +
       '<button type="button" class="hn-top-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="近期对话，用于恢复工作">' +

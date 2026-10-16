@@ -2343,7 +2343,7 @@
         errEl.textContent='';
       }
     }
-    if(!liveOnly||ui().settingsPanel==='debug'){
+    if(global.OneToneVoiceDiag&&(!liveOnly||ui().settingsPanel==='debug')){
       global.OneToneVoiceDiag.updateMetric('sapi','state',voiceWakeStateLabel(res.state||'stopped'),t('voiceDiagLogState'));
       global.OneToneVoiceDiag.updateMetric('sapi','phrases',phrases.length?phrases.join(' / '):'',t('voiceSapiWakeWord'));
       global.OneToneVoiceDiag.updateMetric('sapi','heard',heard,t('voiceDiagLogHeard'));
@@ -3124,7 +3124,7 @@
         errEl.textContent='';
       }
     }
-    if(!liveOnly||ui().settingsPanel==='debug'||!ui().drawerOpen){
+    if(global.OneToneVoiceDiag&&(!liveOnly||ui().settingsPanel==='debug'||!ui().drawerOpen)){
       const grammar=res.grammarMode===true?'语法限制':(res.grammarMode===false?'自由识别':'—');
       global.OneToneVoiceDiag.updateMetric('vosk','state',voiceWakeStateLabel(res.state||'stopped'),t('voiceDiagLogState'));
       global.OneToneVoiceDiag.updateMetric('vosk','model',modelPath?modelPath+' ('+modelOk+')':'',t('voiceDiagLogModel'));

@@ -27,6 +27,7 @@
     demoStatus:'idle'
   };
   var openFlag=false;
+  var firstRunSession=false;
   var demoTimer=null;
 
   var VIEW_IDS={
@@ -53,6 +54,31 @@
     }catch(_){}
   }
 
+  function shouldForceFullscreen(){
+    if(firstRunSession) return true;
+    try{
+      if(global.OneToneOnboarding&&typeof global.OneToneOnboarding.shouldAutoOpen==='function'){
+        return !!global.OneToneOnboarding.shouldAutoOpen();
+      }
+    }catch(_){}
+    return false;
+  }
+
+  function ensureFullscreenWindow(){
+    try{
+      if(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function'){
+        global.OneToneIpc.invoke('cmd_window_maximize',{}).catch(function(){});
+      }
+    }catch(_){}
+  }
+
+  function markFirstRunGuideSeen(completed){
+    try{
+      localStorage.setItem('vp_welcome_seen','1');
+      if(completed) localStorage.setItem('vp_onboarding_v2_done','1');
+    }catch(_){}
+  }
+
   function openOverlayShell(){
     notifySetupInteractionActive(true);
     var overlay=overlayEl();
@@ -63,6 +89,7 @@
     if(typeof document!=='undefined'){
       document.documentElement.classList.add('habit-setup-open');
     }
+    if(shouldForceFullscreen()) ensureFullscreenWindow();
   }
 
   function closeOverlayShell(){
@@ -947,12 +974,13 @@
         '</div>'+
       '</div>';
     var cam=$('qsDoneCam'); if(cam) cam.onclick=function(){ openSettingsPanel('camera'); };
-    $('qsDoneHome').onclick=function(){ close(); };
+    $('qsDoneHome').onclick=function(){ close({ completed:true }); };
   }
 
   function open(opts){
     opts=opts||{};
     openFlag=true;
+    firstRunSession=!!opts.firstRun||shouldForceFullscreen();
     route.persona=null;
     route.stepId='intent';
     route.tool=opts.tool||'codex';
@@ -968,8 +996,12 @@
     renderIntent();
   }
 
-  function close(){
+  function close(opts){
+    opts=opts||{};
+    var wasFirstRun=firstRunSession;
+    var completed=!!opts.completed||route.stepId==='done';
     openFlag=false;
+    firstRunSession=false;
     stopDemoTimer();
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.close){
       try{ global.OneToneHabitTriggerSetup.close(); }catch(_){}
@@ -979,6 +1011,17 @@
     closeOverlayShell();
     route.persona=null;
     route.stepId='intent';
+    if(wasFirstRun){
+      markFirstRunGuideSeen(completed);
+      try{
+        if(global.OneToneAppBridge&&typeof global.OneToneAppBridge.setWelcomeOpen==='function'){
+          global.OneToneAppBridge.setWelcomeOpen(false);
+        }
+        if(global.OneToneApp&&typeof global.OneToneApp.onWelcomeClosed==='function'){
+          global.OneToneApp.onWelcomeClosed();
+        }
+      }catch(_){}
+    }
   }
 
   function handleHeaderBack(){

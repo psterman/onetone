@@ -18,6 +18,11 @@
 
   function openWelcome(){
     welcomeOpen=true;
+    // First enter: fullscreen Quick Start (not the old centered onboard modal).
+    if(global.OneToneQuickStart&&typeof global.OneToneQuickStart.open==='function'){
+      global.OneToneQuickStart.open({ entry:'intent', firstRun:true });
+      return;
+    }
     if(global.OneToneOnboarding){
       global.OneToneOnboarding.open(true);
       return;

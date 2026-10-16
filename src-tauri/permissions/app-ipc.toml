@@ -43,6 +43,7 @@ permissions = [
   "allow-cmd-update-check",
   "allow-cmd-update-install",
   "allow-cmd-window-minimize",
+  "allow-cmd-window-maximize",
   "allow-cmd-window-close",
   "allow-cmd-window-set-always-on-top",
   "allow-cmd-sync-theme-backdrop",

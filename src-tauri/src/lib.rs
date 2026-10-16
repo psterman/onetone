@@ -744,6 +744,12 @@ pub fn run() {
                         "main window hidden source=close_request",
                     );
                 }
+                tauri::WindowEvent::Focused(true) => {
+                    // Taskbar click after close-to-tray: OS shows the parked HWND
+                    // without the tray path's ensure_on_screen — re-place if needed.
+                    window_layout::ensure_on_screen_after_focus(&window_clone);
+                    let _ = window_clone.unminimize();
+                }
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
                     // Hot path: schedule_save only bumps atomics when a worker is already armed.
                     window_layout::schedule_save(&state_for_close, &window_clone);
@@ -1070,6 +1076,7 @@ pub fn run() {
             ipc::cmd_mapping_conflicts,
             ipc::cmd_reload_latest,
             ipc::cmd_window_minimize,
+            ipc::cmd_window_maximize,
             ipc::cmd_window_close,
             ipc::cmd_window_set_always_on_top,
             ipc::cmd_sync_theme_backdrop,
