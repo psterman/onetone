@@ -1400,11 +1400,11 @@
 
   function softPadChannelLabel(ch) {
     var map = {
-      ime: ['keysChannelTabIme', '听写方式'],
-      key: ['keysChannelTabKey', '我录的键'],
-      voice: ['keysChannelTabVoice', '口头命令'],
-      cursor: ['keysChannelTabCursor', '软件自带'],
-      softPad: ['keysChannelTabSoftPad', '屏幕按钮'],
+      ime: ['keysChannelTabIme', '输入法'],
+      key: ['keysChannelTabKey', '自定义快捷键'],
+      voice: ['keysChannelTabVoice', '口令'],
+      cursor: ['keysChannelTabCursor', '应用快捷键'],
+      softPad: ['keysChannelTabSoftPad', '软键盘'],
       camera: ['keysChannelTabCamera', '手势']
     };
     var row = map[ch] || map.softPad;

@@ -214,15 +214,22 @@ impl RouteDisposition {
 }
 
 /// Single authority for Options / Route / cameraDirectForbidden DTO projection.
+/// Mid/high risk voice → awaitingConfirmation (Pending); high-risk camera stays Pending via
+/// requiresSecondChannelFrom (and Dangerous belt-and-suspenders below).
 pub fn route_disposition(meta: &SemanticActionMeta, channel: ActionChannel) -> RouteDisposition {
     if meta
         .requires_second_channel_from
         .iter()
         .any(|c| *c == channel.as_str())
     {
-        RouteDisposition::PendingConfirmation
-    } else {
-        RouteDisposition::Execute
+        return RouteDisposition::PendingConfirmation;
+    }
+    match (channel, meta.risk) {
+        (ActionChannel::Voice, RiskLevel::Confirm | RiskLevel::Dangerous) => {
+            RouteDisposition::PendingConfirmation
+        }
+        (ActionChannel::Camera, RiskLevel::Dangerous) => RouteDisposition::PendingConfirmation,
+        _ => RouteDisposition::Execute,
     }
 }
 

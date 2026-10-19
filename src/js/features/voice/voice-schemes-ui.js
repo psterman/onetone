@@ -76,10 +76,25 @@
     if(!id||isGlobalVoiceSentinel(id)){
       ui().voiceEditSchemeId=GLOBAL_SCHEME_ID;
       state().selectedMappingId=null;
+      // Keep top chrome in sync — stale habitScenarioReturnId kept showing Cursor while editing 通用.
+      ui().habitScenarioReturnId=null;
+      ui().habitScenarioReturnPanel=null;
+      ui().cameraEditMode='global';
       return;
     }
     ui().voiceEditSchemeId=id;
     state().selectedMappingId=id;
+    var m=core()&&core().byId?core().byId(id):null;
+    var d=global.OneToneHabitOverrideDiff;
+    if(m&&d&&d.isAppScenarioMapping&&d.isAppScenarioMapping(m)){
+      ui().habitScenarioReturnId=id;
+      ui().habitScenarioReturnPanel='voiceWake';
+      ui().cameraEditMode='appScenario';
+    }else{
+      ui().habitScenarioReturnId=null;
+      ui().habitScenarioReturnPanel=null;
+      ui().cameraEditMode='global';
+    }
   }
 
   function selectedSchemeId(cfg,schemes){
@@ -123,11 +138,27 @@
     }
   }
 
+  function afterVoiceScopePaint(){
+    // Drop in-flight phrase edits from the previous scheme so the new scope paints clean.
+    try{
+      if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.clearWakePhraseSavePending==='function'){
+        global.OneToneVoiceWake.clearWakePhraseSavePending();
+      }
+    }catch(_){}
+    if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.refreshWakeScopeUi==='function'){
+      try{ global.OneToneVoiceWake.refreshWakeScopeUi(); }catch(_){}
+    }
+    if(global.OneToneHabitChannelEditBanner&&global.OneToneHabitChannelEditBanner.renderAll){
+      try{ global.OneToneHabitChannelEditBanner.renderAll(); }catch(_){}
+    }
+  }
+
   function selectVoiceRuntimeGlobal(){
     leaveVoiceSchemeThen(function(){
       setVoiceEditSelection(GLOBAL_SCHEME_ID);
       scheduleVoiceRender();
       render();
+      afterVoiceScopePaint();
     });
   }
 
@@ -144,6 +175,7 @@
       }
       scheduleVoiceRender();
       render();
+      afterVoiceScopePaint();
       var tab=$('voiceWorkflowTab-'+id);
       if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
     },id);
@@ -258,6 +290,7 @@
       }
       scheduleVoiceRender();
       render();
+      afterVoiceScopePaint();
       var tabEdit=$('voiceWorkflowTab-'+id);
       if(tabEdit&&tabEdit.scrollIntoView) tabEdit.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
       if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){

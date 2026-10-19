@@ -310,7 +310,7 @@
     {
       id: 'talk',
       titleKey: 'keysCursorPickGroupTalk',
-      titleFb: '听写',
+      titleFb: '输入法',
       slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel']
     },
     {
@@ -788,7 +788,7 @@
       return { id: 'open', title: t('keysVoicePickGroupOpen', '打开应用') };
     }
     if (/input\.start|startdictation|pushtotalk|听写|麦克风/.test(blob)) {
-      return { id: 'dictation', title: t('keysVoicePickGroupDictation', '听写') };
+      return { id: 'dictation', title: t('keysVoicePickGroupDictation', '输入法') };
     }
     if (/input\.(send|commit)|stoporsend|发送|完成/.test(blob)) {
       return { id: 'send', title: t('keysVoicePickGroupSend', '发送') };
@@ -806,7 +806,7 @@
     var aid = canonicalActionId((row && row.actionId) || '');
     var blob = (aid + ' ' + String((row && row.name) || '')).toLowerCase();
     if (/input\.start|startdictation|pushtotalk|听写|麦克风/.test(blob)) {
-      return { id: 'dictation', title: t('keysSoftPadPickGroupDictation', '听写') };
+      return { id: 'dictation', title: t('keysSoftPadPickGroupDictation', '输入法') };
     }
     if (/input\.(send|commit)|stoporsend|发送|完成/.test(blob)) {
       return { id: 'send', title: t('keysSoftPadPickGroupSend', '发送') };
@@ -872,14 +872,17 @@
   }
 
   function ensureOralScheme(m) {
-    if (!m) return { items: {}, triggerKey: '' };
+    if (!m) return { items: {}, triggerKey: '', activationMode: 'hold' };
     if (!m.oralCommandScheme || typeof m.oralCommandScheme !== 'object') {
-      m.oralCommandScheme = { items: {}, triggerKey: '' };
+      m.oralCommandScheme = { items: {}, triggerKey: '', activationMode: 'hold' };
     }
     if (!m.oralCommandScheme.items || typeof m.oralCommandScheme.items !== 'object') {
       m.oralCommandScheme.items = {};
     }
     if (m.oralCommandScheme.triggerKey == null) m.oralCommandScheme.triggerKey = '';
+    if (m.oralCommandScheme.activationMode !== 'hold' && m.oralCommandScheme.activationMode !== 'toggle') {
+      m.oralCommandScheme.activationMode = 'hold';
+    }
     return m.oralCommandScheme;
   }
 
@@ -897,34 +900,61 @@
   }
 
   /**
-   * One-shot: old「单击=口头」→ oralCommandScheme.triggerKey.
-   * Never call from display reads — that re-copied the latest 听写键 into oral.
+   * Mirror Rust apply_oral_trigger_capture: oral owns this physical key, so clear
+   * matching Soft Pad source_key on every mapping (incl. soft-pad-global) before
+   * save — else Soft Pad pushToTalk keeps stealing side buttons mid/after record.
+   */
+  function clearSoftPadSourceForOralKey(_m, key) {
+    var canon = normalizeChord(key);
+    if (!canon) return false;
+    var isVol = /^volume_/.test(canon) || canon === 'autotrigger';
+    var changed = false;
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    maps.forEach(function (map) {
+      if (!map || !map.codexMicroPad || !Array.isArray(map.codexMicroPad.keys)) return;
+      map.codexMicroPad.keys.forEach(function (route) {
+        if (!route) return;
+        var sk = normalizeChord(route.sourceKey || route.source_key || '');
+        if (!sk) return;
+        var skVol = /^volume_/.test(sk) || sk === 'autotrigger';
+        if (sk === canon || (isVol && skVol)) {
+          route.sourceKey = '';
+          if (route.source_key != null) route.source_key = '';
+          changed = true;
+        }
+      });
+    });
+    return changed;
+  }
+
+  /**
+   * Legacy「单击=口头」used to share habit.triggerKey. Channels now record
+   * separately — only clear the gesture steal; never copy 听写→口头.
+   * Equal oral/dictation keys from the old copy are treated as unset.
    */
   function migrateLegacyOralGesture(m, opts) {
     if (!m) return false;
     var scheme = ensureOralScheme(m);
-    if (String(scheme.triggerKey || '').trim()) {
-      return clearOralGestureSteal(m);
-    }
-    var modes = voiceSchemeGestureModes(m);
+    var changed = clearOralGestureSteal(m);
+    var oralRaw = String(scheme.triggerKey || '').trim();
+    var habitRaw = String(m.triggerKey || '').trim();
     if (
-      modes.tap !== 'voiceCommand' &&
-      modes.double !== 'voiceCommand' &&
-      modes.long !== 'voiceCommand'
+      oralRaw &&
+      habitRaw &&
+      normalizeChord(oralRaw) === normalizeChord(habitRaw)
     ) {
-      return false;
+      // Old migrate copied RShift into oral; leave empty so 口头 must be recorded alone.
+      scheme.triggerKey = '';
+      changed = true;
     }
-    var raw = String(m.triggerKey || '').trim();
-    if (raw) scheme.triggerKey = raw;
-    clearOralGestureSteal(m);
-    if (opts && opts.persist) {
+    if (changed && opts && opts.persist) {
       try {
         if (global.OneToneConfigPersist && typeof global.OneToneConfigPersist.save === 'function') {
           global.OneToneConfigPersist.save({ source: 'oral-migrate-gesture' });
         }
       } catch (_) {}
     }
-    return !!raw;
+    return changed;
   }
 
   function oralTriggerKeyRaw(m) {
@@ -932,11 +962,15 @@
     return String((m && m.oralCommandScheme && m.oralCommandScheme.triggerKey) || '').trim();
   }
 
-  function setOralTriggerKey(m, key) {
+  function setOralTriggerKey(m, key, opts) {
     if (!m) return false;
     var scheme = ensureOralScheme(m);
-    scheme.triggerKey = String(key || '').trim();
+    var raw = String(key || '').trim();
+    scheme.triggerKey = raw;
     clearOralGestureSteal(m);
+    clearSoftPadSourceForOralKey(m, raw);
+    // Backend oral commit already ran persist_and_rebind — skip a second save race.
+    if (opts && opts.persist === false) return true;
     try {
       if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
         global.OneToneConfigPersist.ensureConfig();
@@ -1529,9 +1563,9 @@
   function channelOnlyLabel(channel) {
     var name =
       channel === 'voice'
-        ? t('keysChannelTabVoice', '口头命令')
+        ? t('keysChannelTabVoice', '口令')
         : channel === 'softPad'
-          ? t('keysChannelTabSoftPad', '屏幕按钮')
+          ? t('keysChannelTabSoftPad', '软键盘')
           : t('keysChannelTabCamera', '手势');
     return t('keysChannelKeyOnly', '仅{channel}可用').replace('{channel}', name);
   }
@@ -2015,8 +2049,10 @@
     var finishHint = document.getElementById('keysFinishModeHint');
     if (finishHint && onKey) finishHint.hidden = true;
     var finishMore = document.getElementById('habitFlowFinishMore');
-    // 自定义键强制藏收尾；输入法由 KeyFinishFlowRender 决定 moreHidden
-    if (finishMore && onKey) finishMore.hidden = true;
+    // Stub fold always buried; peer tabs own cancel / send.
+    if (finishMore) finishMore.hidden = true;
+    var finishPeers = document.getElementById('keysFinishPeers');
+    if (finishPeers && onKey) finishPeers.hidden = true;
     var panel = document.getElementById('keysChannelPanel');
     if (panel) panel.hidden = false;
   }
@@ -2238,7 +2274,7 @@
     return sheet
       .openText(start, {
         edit: true,
-        title: t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字'),
+        title: t('keysCustomKeyMatchNamePrompt', '给这条「自定义快捷键」起个名字'),
         sub: t('keysCustomKeyMatchNameSub', '双击列表也可随时改名。'),
         okLabel: t('keysActionSheetSave', '保存')
       })
@@ -2295,7 +2331,7 @@
     input.value = customKeyMatchDisplayName(m);
     input.setAttribute(
       'aria-label',
-      t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字')
+      t('keysCustomKeyMatchNamePrompt', '给这条「自定义快捷键」起个名字')
     );
     input.maxLength = 48;
     trig.textContent = '';
@@ -2826,7 +2862,7 @@
     var title = document.getElementById('keysCustomKeyMatchLbl');
     var addBtn = document.getElementById('btnKeysCustomKeyMatchAdd');
     var pane = document.getElementById('keysCustomKeyMatchPane');
-    var sectionTitle = t('keysChannelTabKey', '我录的键');
+    var sectionTitle = t('keysChannelTabKey', '自定义快捷键');
     if (title) title.textContent = sectionTitle;
     if (pane) pane.setAttribute('aria-label', sectionTitle);
     if (addBtn) {
@@ -2863,11 +2899,11 @@
     if (split) split.classList.toggle('is-empty', !rows.length && !editId);
     var html =
       '<div class="keys-prompt-adopt is-top" role="group" aria-label="' +
-      esc(t('voiceIntentPrompt', '一词注入')) +
+      esc(t('voiceIntentPrompt', '模板')) +
       '">' +
       '<div class="keys-prompt-adopt__head">' +
       '<strong>' +
-      esc(t('voiceIntentPrompt', '一词注入')) +
+      esc(t('voiceIntentPrompt', '模板')) +
       '</strong>' +
       '<span>' +
       esc(t('keysCustomKeyFromPromptHint', '选模板 → 录触发键 → 注入并发送')) +
@@ -2883,7 +2919,7 @@
         esc(t('keysCustomKeyFromPromptEmpty', '还没有模板')) +
         '</p>' +
         '<button type="button" class="keys-prompt-adopt__go" data-go-voice-prompt="1">' +
-        esc(t('keysCustomKeyFromPromptGoVoice', '去语音设置 · 一词注入新建 →')) +
+        esc(t('keysCustomKeyFromPromptGoVoice', '去语音设置 · 模板新建 →')) +
         '</button>';
     } else {
       html += promptPeers
@@ -3123,7 +3159,7 @@
   function createCustomKeyFromPromptInject(promptId) {
     var peer = mappingById(String(promptId || '').trim());
     if (!peer || !isPromptInjectMapping(peer)) {
-      toast(t('keysCustomKeyFromPromptMissing', '找不到这条一词注入'));
+      toast(t('keysCustomKeyFromPromptMissing', '找不到这条模板'));
       return null;
     }
     var text = String(promptTextFromMapping(peer) || '').trim();
@@ -3151,7 +3187,7 @@
     applyHero();
     refreshKeysCustomKeyMatchList();
     toast(
-      t('keysCustomKeyFromPromptCreated', '已用一词注入建好序列。请录触发键。')
+      t('keysCustomKeyFromPromptCreated', '已用模板建好序列。请录触发键。')
     );
     return copy;
   }
@@ -3347,12 +3383,12 @@
       ime: 'keysChannelTabIme'
     };
     var fb = {
-      key: '我录的键',
-      voice: '口头命令',
-      cursor: '软件自带',
-      softPad: '屏幕按钮',
+      key: '自定义快捷键',
+      voice: '口令',
+      cursor: '应用快捷键',
+      softPad: '软键盘',
       camera: '手势',
-      ime: '听写方式'
+      ime: '输入法'
     };
     return t(map[ch] || ch, fb[ch] || ch);
   }
@@ -3546,7 +3582,7 @@
     toast(
       t(
         'keysCustomKeyMatchAppliedAsRecognition',
-        '已用「我录的键」替换听写快捷键 · 触发后执行该系列动作'
+        '已用「自定义快捷键」替换听写快捷键 · 触发后执行该系列动作'
       )
     );
     return true;
@@ -3578,11 +3614,11 @@
       active: true,
       primaryLabel: name,
       secondaryLabel: secondary,
-      badge: t('keysChannelTabKey', '我录的键'),
+      badge: t('keysChannelTabKey', '自定义快捷键'),
       chord: tgt,
       empty: !tgt && !n,
       channel: 'key',
-      channelLabel: t('keysChannelTabKey', '我录的键'),
+      channelLabel: t('keysChannelTabKey', '自定义快捷键'),
       targetLabel: name,
       targetEmpty: !tgt && !n,
       actionId: '',
@@ -3723,11 +3759,11 @@
         active: false,
         primaryLabel: t('badgeNotRecorded', '未设置'),
         secondaryLabel: '',
-        badge: t('keysChannelTabKey', '我录的键'),
+        badge: t('keysChannelTabKey', '自定义快捷键'),
         chord: '',
         empty: true,
         channel: 'key',
-        channelLabel: t('keysChannelTabKey', '我录的键'),
+        channelLabel: t('keysChannelTabKey', '自定义快捷键'),
         targetLabel: t('badgeNotRecorded', '未设置'),
         targetEmpty: true,
         actionId: '',
@@ -3998,13 +4034,18 @@
 
   function heroModel() {
     var cap = resolveHeroCapture();
+    // Prefer live selection icon (Soft Pad / agent keycap) over empty cap.iconHtml.
+    var icon =
+      (selection && selection.iconHtml) ||
+      (cap && cap.iconHtml) ||
+      '';
     return {
       active: !!cap.active,
       actionId: cap.actionId || '',
       chord: cap.chord || '',
       targetLabel: cap.targetLabel || cap.primaryLabel || '',
       targetEmpty: !!cap.targetEmpty,
-      iconHtml: cap.iconHtml || '',
+      iconHtml: icon,
       sourceChannel: cap.sourceChannel || cap.channel || '',
       scopeTitle: cap.scopeTitle || '',
       badge: cap.badge || '',
@@ -4130,12 +4171,22 @@
         if (paintCap === cap) badge.classList.add('is-action');
         else badge.classList.remove('is-action');
       }
-      if (imeIcon) imeIcon.hidden = paintCap !== cap ? false : true;
       if (appBadge) {
         appBadge.hidden = true;
         appBadge.setAttribute('aria-hidden', 'true');
       }
-      syncActionIconHost(paintCap === cap ? hm.iconHtml : '');
+      // Action keycap → agent/Soft Pad icon; IME browse → IME preset badge on keycap.
+      if (paintCap === cap) {
+        if (imeIcon) imeIcon.hidden = true;
+        syncActionIconHost(hm.iconHtml);
+      } else {
+        syncActionIconHost('');
+        if (global.OneToneImePresets && global.OneToneImePresets.renderCardBadge) {
+          try {
+            global.OneToneImePresets.renderCardBadge('mapping');
+          } catch (_) {}
+        }
+      }
       var paintLabel = paintCap.primaryLabel || paintCap.targetLabel || '';
       if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
         global.__otMappingEditorDisplaySync();
@@ -4163,6 +4214,12 @@
       badge.classList.remove('is-action');
     }
     syncActionIconHost('');
+    // IME dictation keycap: always refresh agent/IME icon on the cap.
+    if (global.OneToneImePresets && global.OneToneImePresets.renderCardBadge) {
+      try {
+        global.OneToneImePresets.renderCardBadge('mapping');
+      } catch (_) {}
+    }
     var imeLabel = paintCap.primaryLabel || '';
     if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
       global.__otMappingEditorDisplaySync();
@@ -4632,15 +4689,20 @@
   }
 
   function oralSchemeState(m) {
-    var raw = (m && m.oralCommandScheme) || {};
+    var raw = ensureOralScheme(m);
     var items = raw.items && typeof raw.items === 'object' ? raw.items : {};
-    return { items: items };
+    return { items: items, activationMode: raw.activationMode === 'toggle' ? 'toggle' : 'hold' };
   }
 
   function persistOralScheme(m, items) {
     if (!m) return;
     var prevKey = String((m.oralCommandScheme && m.oralCommandScheme.triggerKey) || '').trim();
-    m.oralCommandScheme = { items: items || {}, triggerKey: prevKey };
+    var prevMode = String((m.oralCommandScheme && m.oralCommandScheme.activationMode) || '').trim();
+    m.oralCommandScheme = {
+      items: items || {},
+      triggerKey: prevKey,
+      activationMode: prevMode === 'toggle' ? 'toggle' : 'hold'
+    };
     try {
       if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
         global.OneToneConfigPersist.ensureConfig();
@@ -4775,7 +4837,7 @@
         say: wake || plabel,
         enabled: pov.enabled !== false,
         source: 'prompt',
-        via: t('voiceIntentPrompt', '一词注入')
+        via: t('voiceIntentPrompt', '模板')
       });
     }
 
@@ -4889,6 +4951,8 @@
   function renderVoicePickHtml() {
     var mid = selectedMappingId();
     var m = mappingById(mid);
+    var oralScheme = ensureOralScheme(m);
+    var activationMode = oralScheme.activationMode === 'toggle' ? 'toggle' : 'hold';
     var triggerLabel = oralTriggerKeyLabel(m);
     var rows = oralCommandRows(m);
     var conflicts = oralDupConflicts(rows);
@@ -4923,13 +4987,18 @@
       : '';
 
     var armLine = triggerLabel
-      ? t('keysOralArmBound', '按 {key} 开口头收听 · 或 Soft Pad 麦键').replace(
-          '{key}',
-          triggerLabel
-        )
+      ? (activationMode === 'toggle'
+          ? t(
+              'keysOralArmBoundPulse',
+              '点按 {key} 开关口头收听 · 或 Soft Pad 麦键'
+            ).replace('{key}', triggerLabel)
+          : t(
+              'keysOralArmBound',
+              '按住 {key} 收听命令，抬起停止 · 或 Soft Pad 麦键'
+            ).replace('{key}', triggerLabel))
       : t(
           'keysOralArmNeedKey',
-          '在左上角录制口头触发键（与听写键分开）· 或用 Soft Pad 麦键'
+          '支持鼠标侧键 / 音量键 / F13–F24 / 普通单键；可在触发方式中选择按住说话或单击切换。不支持组合键。与听写键分开录制。'
         );
 
     var dictKeyLabel = '';
@@ -4964,7 +5033,20 @@
       (triggerLabel ? ' is-primary' : '') +
       '" data-go-softpad="1">' +
       esc(t('keysVoiceSchemeMicBtn', 'Soft Pad 麦键')) +
-      '</button>';
+      '</button>' +
+      (triggerLabel
+        ? '<label class="keys-oral-mode">' +
+          esc(t('keysOralActivationLabel', '触发方式')) +
+          '<select data-oral-activation aria-label="' +
+          esc(t('keysOralActivationLabel', '触发方式')) +
+          '">' +
+          '<option value="hold"' + (activationMode === 'hold' ? ' selected' : '') + '>' +
+          esc(t('keysOralActivationHold', '按住说话，抬起结束')) +
+          '</option>' +
+          '<option value="toggle"' + (activationMode === 'toggle' ? ' selected' : '') + '>' +
+          esc(t('keysOralActivationToggle', '单击开始，再次单击结束')) +
+          '</option></select></label>'
+        : '');
 
     var dupHtml = '';
     if (conflicts.length) {
@@ -4993,7 +5075,7 @@
 
     var groups = [
       { src: 'soft', title: t('keysOralGroupSoft', 'Soft 槽') },
-      { src: 'prompt', title: t('voiceIntentPrompt', '一词注入') },
+      { src: 'prompt', title: t('voiceIntentPrompt', '模板') },
       { src: 'bind', title: t('keysOralViaVoiceBind', '语音绑定') },
       { src: 'extra', title: t('keysOralGroupExtra', '已加入') }
     ];
@@ -5058,7 +5140,7 @@
       esc(t('keysOralGroupSoft', 'Soft 槽')) +
       '</button>' +
       '<button type="button" data-oral-f="prompt">' +
-      esc(t('voiceIntentPrompt', '一词注入')) +
+      esc(t('voiceIntentPrompt', '模板')) +
       '</button>' +
       '<button type="button" data-oral-f="bind">' +
       esc(t('keysOralViaVoiceBind', '语音绑定')) +
@@ -5117,7 +5199,10 @@
         ev.preventDefault();
         try {
           var Rec = global.OneToneMappingRecording;
-          if (Rec && typeof Rec.startTrigger === 'function') Rec.startTrigger(mid);
+          // Force oral slot — do not rely on activeTab (race after drawer open).
+          if (Rec && typeof Rec.startTrigger === 'function') {
+            Rec.startTrigger(mid, { slot: 'oral' });
+          }
         } catch (_) {}
         return;
       }
@@ -5191,6 +5276,16 @@
     });
 
     root.addEventListener('change', function (ev) {
+      if (ev.target && ev.target.matches && ev.target.matches('[data-oral-activation]')) {
+        var map = mappingById(mid);
+        if (map) {
+          var scheme = ensureOralScheme(map);
+          scheme.activationMode = ev.target.value === 'toggle' ? 'toggle' : 'hold';
+          persistOralScheme(map, scheme.items);
+          renderPanelOnly();
+        }
+        return;
+      }
       if (!ev.target.classList || !ev.target.classList.contains('keys-oral-say')) return;
       var input = ev.target;
       var cell = input.parentElement;
@@ -5522,14 +5617,14 @@
     if (channel === 'voice') {
       return t(
         'keysChannelEmptyVoice',
-        '去「按键 · 口头命令」配置可喊列表，或去语音建一词注入'
+        '去「按键 · 口令」配置可喊列表，或去语音建模板'
       );
     }
     if (channel === 'cursor') {
       return t('keysChannelEmptyCursor', '暂无 Cursor 里的事');
     }
     if (channel === 'softPad') {
-      return t('keysChannelEmptySoftPad', '当前习惯暂无可适配为快捷键的屏幕按钮');
+      return t('keysChannelEmptySoftPad', '当前习惯暂无可适配为快捷键的软键盘');
     }
     if (channel === 'camera') {
       return t('keysChannelEmptyCamera', '当前习惯暂无可适配为快捷键的手势');
@@ -7560,7 +7655,7 @@
         bindingRef: 'pushToTalk',
         name: t('voiceWakePrimaryRow', '开启口令'),
         say: wakeSay,
-        func: t('keysChannelTabIme', '听写方式'),
+        func: t('keysChannelTabIme', '输入法'),
         bindable: true
       });
     }
@@ -7587,7 +7682,7 @@
         bindingRef: '',
         name: label,
         say: text,
-        func: t('voiceIntentPrompt', '一词注入'),
+        func: t('voiceIntentPrompt', '模板'),
         bindable: true
       });
     }

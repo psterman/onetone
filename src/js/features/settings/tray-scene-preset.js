@@ -16,7 +16,7 @@
   ];
 
   var SWITCH_IDS = [
-    'voiceMaster', 'voiceEnd', 'keysEnabled', 'keysCancel', 'keysAutoSend',
+    'voiceMaster', 'voiceKeyless', 'voiceEnd', 'keysEnabled', 'keysCancel', 'keysAutoSend',
     'padEnabled', 'padOverlay', 'padRequireFg',
     'camPresence', 'camTriggerAway', 'camAutoMute', 'camNoFaceMute'
   ];

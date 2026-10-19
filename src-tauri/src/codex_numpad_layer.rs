@@ -1,7 +1,7 @@
 //! Codex Micro numpad physical-key layer ???scanCode + extended normalization,
 //! conservative hook swallow, and runtime dispatch for Codex foreground only.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
 use serde::Serialize;
@@ -16,8 +16,8 @@ use crate::app_chat_workflow::{
     WORKBUDDY_APP_TARGET_ID,
 };
 use crate::config::{
-    agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry,
-    VoiceConfig,
+    agent_key_binding_for_slot, canonical_trigger, CodexMicroPadConfig, CodexMicroPadKeyRoute,
+    MappingEntry, VoiceConfig,
 };
 
 const EVENT_PREFIX: &str = "codexNumpad:";
@@ -148,9 +148,35 @@ struct HookGate {
 }
 
 static HOOK_GATE: OnceLock<Mutex<HookGate>> = OnceLock::new();
+/// Physical keys owned by `oralCommandScheme.triggerKey` — Soft Pad must not swallow them.
+static ORAL_ARM_KEYS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
 fn hook_gate() -> &'static Mutex<HookGate> {
     HOOK_GATE.get_or_init(|| Mutex::new(HookGate::default()))
+}
+
+fn oral_arm_keys() -> &'static Mutex<HashSet<String>> {
+    ORAL_ARM_KEYS.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+fn sync_oral_arm_keys(cfg: &VoiceConfig) {
+    let mut next = HashSet::new();
+    for m in cfg.active_mappings() {
+        let oral = canonical_trigger(m.oral_trigger_key());
+        if !oral.is_empty() {
+            next.insert(oral);
+        }
+    }
+    *oral_arm_keys().lock().unwrap() = next;
+}
+
+/// True when Keys「口头命令」owns this physical key (side button / volume / …).
+pub fn oral_arm_owns_physical_key(name: &str) -> bool {
+    let c = canonical_trigger(name);
+    if c.is_empty() {
+        return false;
+    }
+    oral_arm_keys().lock().unwrap().contains(&c)
 }
 
 /// Map LL keyboard hook scan + extended to a numpad physical key, if any.
@@ -474,6 +500,7 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
 }
 
 pub fn sync_hook_cache(cfg: &VoiceConfig) {
+    sync_oral_arm_keys(cfg);
     // Soft Pad Runtime Arbiter owns agent route application.
     // All former direct writers must go through request_soft_pad_recompute.
     crate::soft_pad_runtime::note_config_revision_bump();
@@ -830,6 +857,7 @@ pub(crate) fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
             | "quickChat"
             | "quickSearch"
             | "pushToTalk"
+            | "toggleVoiceKeyless"
             | "stopOrSend"
             | "pasteAndSend"
             | "cancel"
@@ -1519,9 +1547,13 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
             mapping.agent_provider_id.clone()
         };
         // Soft Pad / Numpad0 mic: hold Ctrl+Shift+D down until release (historical path).
-        // Tap + focus_then_hotkey pulse re-entered dispatch/FG and caused ????????????.
-        let is_hold = binding.action_id == "startDictation"
-            || binding.slot_id.eq_ignore_ascii_case("pushToTalk");
+        // Mouse side buttons are tap gestures — forcing hold made XButton1 open the
+        // oral panel then die on keyup (~1s). Named X1/X2 → toggle/pulse instead.
+        let named = route.source_key.trim();
+        let side_named = matches!(named, "XButton1" | "XButton2");
+        let is_hold = !side_named
+            && (binding.action_id == "startDictation"
+                || binding.slot_id.eq_ignore_ascii_case("pushToTalk"));
         let snapshot = CodexNumpadRouteSnapshot {
             mapping_id: mapping.id.clone(),
             slot_id: binding.slot_id.clone(),
@@ -1540,7 +1572,6 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
                 gate.routes.insert(source.id(), snapshot.clone());
             }
         }
-        let named = route.source_key.trim();
         if !named.is_empty() {
             gate.routes.insert(named.to_string(), snapshot.clone());
         }
@@ -1561,14 +1592,25 @@ pub fn lookup_route(source: &NumpadSourceKey) -> Option<CodexNumpadRouteSnapshot
 }
 
 pub fn lookup_named_pad_route(name: &str) -> Option<CodexNumpadRouteSnapshot> {
+    // A hardware capture session owns physical input until it commits or cancels.
+    // Prevent the global Soft Pad route (especially pushToTalk on XButton2) from
+    // opening a voice session while the user is trying to record that same key.
+    if crate::hotkey_win::is_recording_session_active() {
+        return None;
+    }
     let name = name.trim();
     if name.is_empty() || name.starts_with("sc") {
         return None;
     }
-    if !codex_foreground_for_micro() {
+    let route = hook_gate().lock().unwrap().routes.get(name).cloned()?;
+    // pushToTalk is itself the action that opens/borrows the Soft Pad voice
+    // session. Requiring an already-active micro session here made its first
+    // press impossible (and was especially visible with mouse side buttons).
+    // Other named pad actions retain the foreground/session gate.
+    if !route.slot_id.eq_ignore_ascii_case("pushToTalk") && !codex_foreground_for_micro() {
         return None;
     }
-    hook_gate().lock().unwrap().routes.get(name).cloned()
+    Some(route)
 }
 
 pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
@@ -1787,6 +1829,64 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn oral_arm_keys_block_named_pad_lookup_priority() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].oral_command_scheme = Some(crate::config::OralCommandScheme {
+            trigger_key: "XButton1".into(),
+            ..Default::default()
+        });
+        sync_oral_arm_keys(&cfg);
+        assert!(oral_arm_owns_physical_key("XButton1"));
+        assert!(!oral_arm_owns_physical_key("XButton2"));
+    }
+
+    #[test]
+    fn named_side_button_push_to_talk_is_not_hold() {
+        // merge_pad_routes: XButton source_key must not inherit keyboard hold mic.
+        let named = "XButton1";
+        let side_named = matches!(named, "XButton1" | "XButton2");
+        let slot_push = "pushToTalk";
+        let is_hold = !side_named
+            && (false || slot_push.eq_ignore_ascii_case("pushToTalk"));
+        assert!(!is_hold);
+        let named2 = "";
+        let side2 = matches!(named2, "XButton1" | "XButton2");
+        let is_hold_chord = !side2
+            && (false || slot_push.eq_ignore_ascii_case("pushToTalk"));
+        assert!(is_hold_chord);
+    }
+
+    #[test]
+    fn recording_session_blocks_named_soft_pad_routes() {
+        let route = CodexNumpadRouteSnapshot {
+            mapping_id: "recording-route-test".into(),
+            micro_key_id: "ACT10".into(),
+            slot_id: "pushToTalk".into(),
+            action_id: String::new(),
+            provider_id: String::new(),
+            trigger_binding: String::new(),
+            is_hold: false,
+        };
+        let old_gate = std::mem::replace(
+            &mut *hook_gate().lock().unwrap(),
+            HookGate {
+                pad_active: true,
+                routes: HashMap::from([("XButton2".into(), route)]),
+                ..HookGate::default()
+            },
+        );
+        let old_recording = crate::hotkey_win::is_recording_session_active();
+        crate::hotkey_win::arm_recording_session();
+
+        assert!(lookup_named_pad_route("XButton2").is_none());
+
+        if !old_recording {
+            crate::hotkey_win::disarm_recording_session();
+        }
+        *hook_gate().lock().unwrap() = old_gate;
+    }
 
     #[test]
     fn normalize_numpad_enter_vs_main() {

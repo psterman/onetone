@@ -611,7 +611,7 @@
     ];
     var html='<div class="keys-gesture-modes" data-mapping-id="'+esc(m.id)+'">';
     html+='<div class="keys-gesture-modes__head"><span>'+esc(t('keysGestureModesTitle','按法 → 方案'))+'</span>'
-      +'<em>'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'</em></div>';
+      +'<em title="'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'">'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'</em></div>';
     rows.forEach(function(row){
       var cur=modes[row.id]||'off';
       html+='<div class="keys-gesture-modes__row" data-gesture="'+esc(row.id)+'">';
@@ -1137,7 +1137,13 @@
     var previewKey='';
     var conflictMsg='';
     if(recording){
-      text=mode==='trigger'?t('keysRecordingTrigger')
+      var oralSlot=!!(global.OneToneMappingRecording
+        &&global.OneToneMappingRecording.triggerSlot
+        &&global.OneToneMappingRecording.triggerSlot()==='oral');
+      text=mode==='trigger'
+        ?(oralSlot
+          ?t('keysRecordingTriggerOral','请按下口头触发键（支持鼠标侧键 / 音量键 / F13–F24 / 普通单键；默认按住说话，抬起结束）')
+          :t('keysRecordingTrigger'))
         :(mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysRecordingTarget'));
       if(mode==='trigger'&&ed()) previewKey=ed().getEditorTriggerKey?ed().getEditorTriggerKey():'';
       if(mode==='target'&&ed()) previewKey=ed().getEditorTargetKey?ed().getEditorTargetKey():'';
@@ -1409,6 +1415,12 @@
     }
     var cancelTitle=$('keysFinishCancelTitle');
     if(cancelTitle) cancelTitle.textContent=t('habitFlowFinishMoreSummary');
+    var peers=$('keysFinishPeers');
+    if(peers) peers.setAttribute('aria-label',t('keysFinishPeersAria')||'收尾选项');
+    var peerFinish=$('keysFinishPeerFinish');
+    if(peerFinish) peerFinish.textContent=t('keysFinishPeerFinish')||'说完后';
+    var peerCancel=$('keysFinishPeerCancel');
+    if(peerCancel) peerCancel.textContent=t('keysFinishPeerCancel')||'取消听写';
     var desc=$('settingsPanelKeysDesc');
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
     renderTriggerContextBadge();

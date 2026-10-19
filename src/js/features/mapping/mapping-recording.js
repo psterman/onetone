@@ -369,6 +369,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     const targetBtn=$('btnRecordTarget');
     const recording=rec.mode==='trigger'||rec.mode==='target'||rec.mode==='agentBinding';
     if(keySettings) keySettings.classList.toggle('is-recording',recording);
+    var keysPanel=$('settingsPanelKeys');
+    if(keysPanel) keysPanel.classList.toggle('is-recording',recording);
     if(triggerBtn){
       triggerBtn.classList.toggle('is-recording',rec.mode==='trigger');
     }
@@ -480,13 +482,42 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
       var probe=global.OneToneRecordProbe;
       if(probe){
         if(mode!=='none'){
-          probe.clear();
+          // keepProbe: startTrigger clears before cmd_start_recording so Rust
+          // hello/hook_ok is not wiped by this setRecording call.
+          if(!opts.keepProbe) probe.clear();
           probe.setRecording(true, mode);
           probe.push('ui','start',mode, rec.mappingId||'');
         }else{
           probe.setRecording(false);
         }
       }
+      // Mute Soft Pad / oral listen chrome while「请按下快捷键」owns the wire.
+      try{
+        var root=document.documentElement;
+        if(root&&root.classList){
+          if(mode!=='none') root.classList.add('ot-recording-active');
+          else root.classList.remove('ot-recording-active');
+        }
+        if(mode!=='none'){
+          var oralBits=document.querySelectorAll(
+            '[data-oral-listen-armed="1"],.soft-pad-agent-mini-bar__listen:not([hidden]),[data-mini-listen-halo="1"]:not([hidden]),.is-oral-listen'
+          );
+          var leaked=oralBits.length>0;
+          for(var oi=0;oi<oralBits.length;oi++){
+            oralBits[oi].setAttribute('hidden','');
+            oralBits[oi].setAttribute('data-ot-record-muted','1');
+            oralBits[oi].classList.remove('is-oral-listen');
+          }
+          if(leaked&&probe&&probe.push){
+            probe.push('fe','leak','oral-during-record','sticky Soft Pad oral chrome at setRecording');
+          }
+        }else{
+          var muted=document.querySelectorAll('[data-ot-record-muted="1"]');
+          for(var mi=0;mi<muted.length;mi++){
+            muted[mi].removeAttribute('data-ot-record-muted');
+          }
+        }
+      }catch(_){}
     }
     if(opts.silent||hooks().uiBootstrapping()) return;
     hooks().updatePrimaryCTA();
@@ -525,6 +556,16 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     }
   }
 
+  function invokeArmRecordingWire(mappingId,mode){
+    // Await before start: close click→IPC race where a bound side button arms Soft
+    // Pad oral and covers the screen before cmd_start_recording runs. Pass target so
+    // Logitech FE page backup can commit during startPending (no_target otherwise).
+    return invokeRecordingCommand('cmd_arm_recording_wire',{
+      mappingId:mappingId||'',
+      mode:mode||'trigger'
+    });
+  }
+
   function invokeStartRecording(mappingId,mode){
     return invokeRecordingCommand('cmd_start_recording',{mappingId:mappingId||'',mode:mode||'trigger'});
   }
@@ -533,7 +574,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     return invokeRecordingCommand('cmd_stop_recording',{});
   }
 
-  function startTriggerRecord(pinnedMappingId){
+  function startTriggerRecord(pinnedMappingId,opts){
+    opts=opts||{};
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     if(blockIfAcousticCalibrating()) return Promise.resolve(false);
@@ -542,12 +584,25 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     var triggerSlot='default';
     try{
       var P=global.OneToneKeysChannelCommandPicker;
-      if(P&&typeof P.activeTriggerSlot==='function'){
+      var forceSlot=String(opts.slot||opts.triggerSlot||'').trim();
+      if(forceSlot==='oral'||forceSlot==='peer'||forceSlot==='habit'){
+        triggerSlot=forceSlot;
+      }else if(P&&typeof P.activeTriggerSlot==='function'){
         triggerSlot=String(P.activeTriggerSlot()||'default');
       }
+      // 我录的键 · 未选行：先建一条 peer 再录，避免「无法录制」空转。
       if(triggerSlot==='peer-empty'){
-        hooks().toast(t('keysRecordTriggerNeedPeer','请先在「我录的键」里选一条动作，再录触发键'));
-        return Promise.resolve(false);
+        if(P&&typeof P.createCustomKeyMatchMapping==='function'){
+          var created=P.createCustomKeyMatchMapping({quiet:true});
+          if(created&&created.id){
+            pin=String(created.id);
+            triggerSlot='peer';
+          }
+        }
+        if(triggerSlot==='peer-empty'||!pin){
+          hooks().toast(t('keysRecordTriggerNeedPeer','请先在「我录的键」里选一条动作，再录触发键'));
+          return Promise.resolve(false);
+        }
       }
       if(!pin&&P&&typeof P.activeTriggerMappingId==='function'){
         pin=String(P.activeTriggerMappingId()||'').trim();
@@ -570,12 +625,13 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
         String(pref.bindingRef||'').trim()===pin
       );
     }
-    if(pin&&!pinIsCustomKeyMatch&&triggerSlot!=='oral'){
+    if(triggerSlot==='peer'||pinIsCustomKeyMatch) triggerSlot='peer';
+    if(pin&&!pinIsCustomKeyMatch&&triggerSlot!=='oral'&&triggerSlot!=='peer'){
       state.selectedMappingId=pin;
     }else if(!state.selectedMappingId&&fallback){
       state.selectedMappingId=fallback;
     }
-    rec.triggerSlot=triggerSlot==='oral'?'oral':'default';
+    rec.triggerSlot=triggerSlot==='oral'?'oral':(triggerSlot==='peer'?'peer':'default');
     rec.mappingId=pin||state.selectedMappingId||fallback||'';
     beginRecordSnapshot();
     hooks().armTriggerLeftClickIgnore(900);
@@ -585,30 +641,57 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     if(m&&rec.triggerSlot!=='oral'){
       m.triggerSource=null; m.sourceKey=''; m.sourceTime='';
     }
+    // Arm RECORDING_SESSION before showing「请按下快捷键」. Modal-first left a race
+    // where already-bound XButtons went to Soft Pad oral instead of the record channel.
     rec.startPending=true;
-    setRecording('trigger');
+    // Mute Soft Pad chrome immediately (IPC arm is async) so sticky oral HWND cannot
+    // steal the next XButton or cover Cursor.
+    try{
+      var root=document.documentElement;
+      if(root&&root.classList) root.classList.add('ot-recording-active');
+    }catch(_){}
     hooks().pushLog('[record] start trigger mapping='+String(rec.mappingId||'')+' slot='+rec.triggerSlot);
     hooks().pushLog(t('logStartTrigger'));
     var startMode=rec.triggerSlot==='oral'?'oralTrigger':'trigger';
-    return invokeStartRecording(rec.mappingId,startMode).then(function(ok){
+    // Clear probe before IPC so cmd_start_recording's hello/hook_ok survives.
+    try{
+      if(global.OneToneRecordProbe&&global.OneToneRecordProbe.clear) global.OneToneRecordProbe.clear();
+    }catch(_){}
+    // Await prearm (mute Soft Pad / RECORDING_SESSION / recording_target) before start
+    // so XButton1 cannot open 语音命令面板 in the arm→start gap.
+    return invokeArmRecordingWire(rec.mappingId,startMode).then(function(){
+      return invokeStartRecording(rec.mappingId,startMode);
+    }).then(function(ok){
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
-          setRecording('none');
+          // Prearm may have set RECORDING_SESSION — tear it down if start failed.
+          void invokeStopRecording();
           restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
           rec.triggerSlot='default';
           renderRecordCancelBar();
+          try{
+            var rootFail=document.documentElement;
+            if(rootFail&&rootFail.classList) rootFail.classList.remove('ot-recording-active');
+          }catch(_){}
         }
         return false;
       }
+      setRecording('trigger',{keepProbe:true});
       return disableMappingForRecordingAsync(m).then(function(){
         hooks().armTriggerLeftClickIgnore(360);
         updateRecordingPreview('trigger','');
         notifyOnboardingRecordingPreview('trigger','');
         var triggerState=$('triggerState');
         if(triggerState) triggerState.textContent=t('triggerRecordHint');
+        if(rec.triggerSlot==='oral'){
+          hooks().toast(t(
+            'recordOralSideKeyHint',
+            '请把鼠标移到 OneTone 窗口内再按侧键（罗技侧键常进不了系统钩子，需页面备份）'
+          ));
+        }
         rec.timer=setTimeout(function(){
           if(rec.mode==='trigger'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
         },30000);
@@ -668,29 +751,43 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     var captureGen=rec.captureGen;
     var m=OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
     rec.startPending=true;
-    setRecording('agentBinding');
+    try{
+      var rootAb=document.documentElement;
+      if(rootAb&&rootAb.classList) rootAb.classList.add('ot-recording-active');
+    }catch(_){}
     hooks().pushLog('[record] start agent binding mapping='+String(rec.mappingId||''));
     hooks().pushLog(t('logStartTrigger'));
-    return invokeStartRecording(rec.mappingId,'agentBinding').then(function(ok){
+    return invokeArmRecordingWire(rec.mappingId,'agentBinding').then(function(){
+      return invokeStartRecording(rec.mappingId,'agentBinding');
+    }).then(function(ok){
       rec.startPending=false;
       if(!ok){
-        setRecording('none');
+        void invokeStopRecording();
         var onCancel=rec.agentBindingCapture&&rec.agentBindingCapture.onCancel;
         rec.agentBindingCapture=null;
         restoreMappingEnabledAfterRecordCancel(m);
         rec.mappingId='';
         renderRecordCancelBar();
+        try{
+          var rootAbFail=document.documentElement;
+          if(rootAbFail&&rootAbFail.classList) rootAbFail.classList.remove('ot-recording-active');
+        }catch(_){}
         if(onCancel) onCancel();
         return false;
       }
       if(captureGen!==rec.captureGen){
-        setRecording('none');
+        void invokeStopRecording();
         restoreMappingEnabledAfterRecordCancel(m);
         rec.agentBindingCapture=null;
         rec.mappingId='';
         renderRecordCancelBar();
+        try{
+          var rootAbStale=document.documentElement;
+          if(rootAbStale&&rootAbStale.classList) rootAbStale.classList.remove('ot-recording-active');
+        }catch(_){}
         return false;
       }
+      setRecording('agentBinding');
       return disableMappingForRecordingAsync(m).then(function(){
         updateRecordingPreview('agentBinding','');
         var triggerState=$('triggerState');
@@ -737,21 +834,31 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     const captureGen=rec.captureGen;
     const m=OneToneMappingCore.recording();
     rec.startPending=true;
-    setRecording('target');
+    try{
+      var rootTg=document.documentElement;
+      if(rootTg&&rootTg.classList) rootTg.classList.add('ot-recording-active');
+    }catch(_){}
     hooks().pushLog('[record] start target mapping='+String(rec.mappingId||''));
     hooks().pushLog(t('logStartTarget'));
-    return invokeStartRecording(rec.mappingId,'target').then(function(ok){
+    return invokeArmRecordingWire(rec.mappingId,'target').then(function(){
+      return invokeStartRecording(rec.mappingId,'target');
+    }).then(function(ok){
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
-          setRecording('none');
+          void invokeStopRecording();
           restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
           renderRecordCancelBar();
+          try{
+            var rootTgFail=document.documentElement;
+            if(rootTgFail&&rootTgFail.classList) rootTgFail.classList.remove('ot-recording-active');
+          }catch(_){}
         }
         return false;
       }
+      setRecording('target');
       return disableMappingForRecordingAsync(m).then(function(){
         hooks().armTargetLeftClickIgnore(360);
         updateRecordingPreview('target','');
@@ -784,13 +891,17 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
       var trigOral=hooks().normalizeTriggerKey(key);
       if(trigOral==='RAlt') trigOral='AutoTrigger';
       if(!hooks().isAllowedTriggerKey(key||trigOral)) return false;
+      // Guard: oral capture must never write habit.triggerKey.
+      var probe=global.OneToneRecordProbe;
+      if(probe&&probe.push) probe.push('fe','oral-guard',trigOral,'applyBackendKeyCapture oral-only');
       var Picker=global.OneToneKeysChannelCommandPicker;
       if(Picker&&typeof Picker.setOralTriggerKey==='function'){
         Picker.setOralTriggerKey(m,trigOral);
       }else{
-        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{}};
+        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{},activationMode:'hold'};
         m.oralCommandScheme.triggerKey=trigOral;
       }
+      if(probe&&probe.push) probe.push('fe','oral-applied',trigOral,'applyBackendKeyCapture');
       return true;
     }
     if(mode==='target'){
@@ -916,6 +1027,16 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     }
     if(rec.agentBindingCapture) return commitAgentBindingCapture(k, rawSourceKey, source);
     var isOralSlot=rec.triggerSlot==='oral';
+    var isPeerSlot=rec.triggerSlot==='peer';
+    if(!isPeerSlot&&m){
+      var peerRef=m.captureHeroRef;
+      isPeerSlot=!!(
+        peerRef&&
+        typeof peerRef==='object'&&
+        String(peerRef.kind||'').trim().toLowerCase()==='customkey'&&
+        String(peerRef.bindingRef||'').trim()===String(m.id||'')
+      );
+    }
     var prevTrig=hooks().normalizeTriggerKey(
       isOralSlot
         ?(m.oralCommandScheme&&m.oralCommandScheme.triggerKey)||''
@@ -928,7 +1049,15 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
         ?OneToneMappingCore.findMappingByAppAndTrigger(appId,k,m.id)
         :null;
     if(existingOther&&existingOther.id){
-      // Same app already has this trigger — tip + switch; do not steal onto the new row.
+      // 我录的键 peer：冲突时保持录制，让用户换键（切走会表现为「触发键录不上」）。
+      if(isPeerSlot){
+        hooks().toast(t(
+          'recordTriggerAlreadyUsedPeer',
+          '该触发键已被本场景其他动作使用，请换一把不同的键'
+        ));
+        return false;
+      }
+      // Habit / blank scene action: tip + switch; do not steal onto the new row.
       hooks().toast(t(
         'recordTriggerAlreadyUsed',
         '该触发键已被本场景其他动作使用，已切换到该动作'
@@ -957,7 +1086,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     }else if(prevTrig&&prevTrig!==k){
       // Preset apps + universal baseline stay one row — retarget in place.
       // Only appTargetId=custom may fork (multi user-defined app habits).
-      var mayFork=appId==='custom';
+      // 我录的键 peer 永不 fork — 换触发键就地改，避免拆成第二条习惯。
+      var mayFork=appId==='custom'&&!isPeerSlot;
       if(mayFork){
         var forked=
           OneToneMappingCore.forkMappingForTrigger
@@ -985,7 +1115,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
       if(Picker&&typeof Picker.setOralTriggerKey==='function'){
         Picker.setOralTriggerKey(m,k);
       }else{
-        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{}};
+        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{},activationMode:'hold'};
         m.oralCommandScheme.triggerKey=k;
       }
       // Keep editor buffer on dictation key so flushAllEditor cannot overwrite 听写.
@@ -1015,7 +1145,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     m.sourceTime=sourceTime||'';
     applyCapturedTriggerMode(m, opts&&opts.triggerMode);
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(k);
-    m.label=k+' → '+(OneToneMappingCore.editorTarget(m)||'?');
+    if(!isPeerSlot){
+      m.label=k+' → '+(OneToneMappingCore.editorTarget(m)||'?');
+    }
     var oralNow=String((m.oralCommandScheme&&m.oralCommandScheme.triggerKey)||'').trim();
     if(oralNow&&hooks().normalizeTriggerKey(oralNow)===k){
       hooks().toast(t(
@@ -1053,6 +1185,15 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
       var scene=global.OneToneKeysSceneActionsPanel;
       if(scene&&typeof scene.refresh==='function') scene.refresh();
     }catch(_){}
+    if(isPeerSlot){
+      try{
+        var peerPicker=global.OneToneKeysChannelCommandPicker;
+        if(peerPicker&&typeof peerPicker.refreshKeysCustomKeyMatchList==='function'){
+          peerPicker.refreshKeysCustomKeyMatchList();
+        }
+        if(peerPicker&&typeof peerPicker.applyHero==='function') peerPicker.applyHero();
+      }catch(_){}
+    }
     try{
       if(global.OneToneHabitHub&&global.OneToneHabitHub.scheduleHubPaint){
         global.OneToneHabitHub.scheduleHubPaint();

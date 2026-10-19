@@ -165,7 +165,13 @@ fn restore_main_after_calibrate(app: &AppHandle) {
         }
     }
     if let Some(pad) = app.get_webview_window("codex_micro_overlay") {
-        let _ = pad.set_ignore_cursor_events(false);
+        // Never force Soft Pad interactive — that left a click-blocking slab on Cursor
+        // after calibrate. Respect last click-through; recording always punches through.
+        let pass = crate::codex_micro_overlay::soft_pad_click_through();
+        let _ = pad.set_ignore_cursor_events(pass);
+        if pass {
+            crate::codex_micro_overlay::set_overlay_click_through(true);
+        }
     }
 }
 
@@ -179,6 +185,15 @@ fn close_overlay_window_only(app: &AppHandle) {
 fn close_overlay(app: &AppHandle) {
     close_overlay_window_only(app);
     restore_main_after_calibrate(app);
+}
+
+/// Drop fullscreen calibrate cover (Cursor monitor) when key capture starts.
+pub fn abort_if_open(app: &AppHandle) {
+    if app.get_webview_window(LABEL).is_none() {
+        return;
+    }
+    close_overlay(app);
+    crate::app_log::early_line("input_aim", "calibrate_abort_for_recording");
 }
 
 /// Prefer the monitor hosting the foreground target (after prepare), not always primary.

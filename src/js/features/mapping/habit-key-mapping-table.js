@@ -116,7 +116,17 @@
   function rowStatusForStep(m,step){
     if(!m||!core()) return {text:'—',kind:'none'};
     if(step==='trigger'){
-      var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+      // Channel-scoped 起点 (oral / peer / habit) — not always habit.triggerKey.
+      var trig='';
+      try{
+        var P=global.OneToneKeysChannelCommandPicker;
+        if(P&&typeof P.channelTriggerDisplayKey==='function'){
+          trig=String(P.channelTriggerDisplayKey()||'').trim();
+        }
+      }catch(_){}
+      if(!trig){
+        trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+      }
       return trig?{text:t('habitKeyMapStatusEnabled'),kind:'on'}:{text:t('habitKeyMapStatusDisabled'),kind:'off'};
     }
     if(step==='target'){

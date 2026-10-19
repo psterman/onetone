@@ -367,6 +367,9 @@ export async function setDesiredVoiceEngine(engine: string): Promise<DesiredEngi
 export async function setListeningStrategy(strategy: string): Promise<DesiredEngineBundle> {
   return invoke<DesiredEngineBundle>('cmd_voice_set_listening_strategy', { strategy });
 }
+export async function setVoiceActivation(mode: string): Promise<DesiredEngineBundle> {
+  return invoke<DesiredEngineBundle>('cmd_voice_set_activation', { mode });
+}
 export async function getAcousticVoiceCommandStatus(): Promise<unknown> {
   return invoke('cmd_acoustic_voice_command_status', {});
 }

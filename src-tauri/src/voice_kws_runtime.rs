@@ -454,7 +454,8 @@ fn process_kws_detected(
             },
             timestamp_ms: crate::voice_command_router::VoiceDetection::now_ms(),
         };
-        let result = crate::voice_command_router::handle_detection(state, app, &detection);
+        let result =
+            crate::voice_command_router::handle_detection_ex(state, app, &detection, true);
         *state.voice_kws_last_skip.lock() = if result.skipped {
             result.skip_reason
         } else {

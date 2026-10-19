@@ -68,11 +68,28 @@ export function applyKeysFinishChromeHosts(model: KeysFinishChromeModel): void {
   const hint = document.getElementById('keysFinishModeHint');
   if (hint) hint.hidden = !!model.hintHidden;
 
+  // Stub details — peer tabs own cancel; keep fold always buried.
   const more = document.getElementById('habitFlowFinishMore') as HTMLDetailsElement | null;
   if (more) {
-    more.hidden = !!model.moreHidden;
-    // Advanced: default collapsed. Only force-close when leaving the finish desk.
-    if (model.moreHidden) more.open = false;
+    more.hidden = true;
+    more.open = false;
+  }
+
+  const peers = document.getElementById('keysFinishPeers');
+  if (peers) peers.hidden = !!model.moreHidden;
+  if (!model.moreHidden) {
+    // Restore active peer pane after mapping returns.
+    let active =
+      (document.querySelector('#keysFinishPeers [data-finish-peer].is-active') as HTMLElement | null)?.getAttribute(
+        'data-finish-peer'
+      ) || 'finish';
+    if (active !== 'cancel') active = 'finish';
+    document.querySelectorAll('#keysFinishBody [data-finish-peer-pane]').forEach((pane) => {
+      const el = pane as HTMLElement;
+      const match = el.getAttribute('data-finish-peer-pane') === active;
+      el.classList.toggle('is-active', match);
+      el.hidden = !match;
+    });
   }
 
   const cancelSum = document.getElementById('keysFinishCancelSummary');

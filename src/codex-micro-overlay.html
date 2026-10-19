@@ -371,6 +371,7 @@
       reject:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
       fork:'<svg viewBox="0 0 24 24"><path d="M7 4v8a4 4 0 004 4h2a4 4 0 004-4V4"/><path d="M17 4l3 3-3 3M7 4L4 7l3 3"/></svg>',
       mic:'<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+      wake:'<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/><path d="M3 8c1-2 2.5-3 4-3M21 8c-1-2-2.5-3-4-3"/></svg>',
       send:'<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 7v10"/></svg>',
       clipboardPaste:'<svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 00-1 1v2h8V3a1 1 0 00-1-1z"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M21 14H11"/><path d="M15 10l-4 4 4 4"/></svg>',
       codex:'<svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z"/></svg>',
@@ -2013,6 +2014,7 @@
     function defaultMiniToolSlots(chrome){
       var all=[
         {slotId:'pushToTalk',iconId:'mic',labelZh:'麦克风',microKeyId:'ACT10',holdMs:0},
+        {slotId:'toggleVoiceKeyless',iconId:'wake',labelZh:'免按键',microKeyId:'',holdMs:0},
         {slotId:'stopOrSend',iconId:'send',labelZh:'发送',microKeyId:'ACT12',holdMs:0},
         {slotId:'continue',iconId:'sparkles',labelZh:'继续',microKeyId:'AG02',holdMs:0},
         {slotId:'newThread',iconId:'messagePlus',labelZh:'新建',microKeyId:'AG01',holdMs:0},
@@ -2025,21 +2027,41 @@
       return all.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
     }
 
-    /** Agent beginner slots lack materials — append when chrome allows (paste/preview hub). */
-    function withMaterialsMiniSlot(rows, chrome){
+    /** Always pin 免按键 after mic so users can find it; materials stays optional via chrome. */
+    function withPinnedMiniSlots(rows, chrome){
       rows=Array.isArray(rows)?rows.slice():[];
-      var has=rows.some(function(r){
-        return String((r&&(r.slotId||r.slot_id))||'')==='materials';
-      });
-      if(has) return rows;
-      // toolsAll=false + empty toolIds = show none; append only when materials selected or toolsAll.
-      var allow=!(chrome&&chrome.toolsAll===false);
-      if(chrome&&chrome.toolsAll===false){
-        allow=Array.isArray(chrome.toolIds)&&chrome.toolIds.indexOf('materials')>=0;
+      function hasSlot(slotId){
+        return rows.some(function(r){
+          return String((r&&(r.slotId||r.slot_id))||'')===slotId;
+        });
       }
-      if(!allow) return rows;
-      rows.push({slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0});
+      function insertAfterMic(row){
+        var i=0;
+        for(;i<rows.length;i++){
+          if(String((rows[i]&&(rows[i].slotId||rows[i].slot_id))||'')==='pushToTalk'){
+            rows.splice(i+1,0,row);
+            return;
+          }
+        }
+        rows.unshift(row);
+      }
+      if(!hasSlot('toggleVoiceKeyless')){
+        insertAfterMic({slotId:'toggleVoiceKeyless',iconId:'wake',labelZh:'免按键',microKeyId:'',holdMs:0});
+      }
+      if(!hasSlot('materials')){
+        var allowMats=!(chrome&&chrome.toolsAll===false);
+        if(chrome&&chrome.toolsAll===false){
+          allowMats=Array.isArray(chrome.toolIds)&&chrome.toolIds.indexOf('materials')>=0;
+        }
+        if(allowMats){
+          rows.push({slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0});
+        }
+      }
       return rows;
+    }
+
+    function withMaterialsMiniSlot(rows, chrome){
+      return withPinnedMiniSlots(rows, chrome);
     }
 
     function applyMiniToolsRow(s){
@@ -2069,9 +2091,9 @@
             })
             :[];
         }
-        slotRows=withMaterialsMiniSlot(slotRows, chromeT);
+        slotRows=withPinnedMiniSlots(slotRows, chromeT);
       } else {
-        slotRows=defaultMiniToolSlots(chromeT);
+        slotRows=withPinnedMiniSlots(defaultMiniToolSlots(chromeT), chromeT);
       }
       if(!slotRows.length){
         miniBeginnerActions.hidden=true;
@@ -2094,20 +2116,28 @@
         var microKey=slot.microKeyId||slot.micro_key_id||'';
         var label=slot.labelZh||slot.label_zh||slotId;
         if(slotId==='materials') label=label==='materials'?'材料':label;
+        if(slotId==='toggleVoiceKeyless') label='免按键';
         if(!iconId){
-          var fallback={pushToTalk:'mic',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject',materials:'materials'};
+          var fallback={pushToTalk:'mic',toggleVoiceKeyless:'wake',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject',materials:'materials'};
           icon=ICON[fallback[slotId]||'']||ICON.empty;
         }
         var badgeHtml=slotId==='materials'
           ?'<span class="overlay-mini__action-badge" data-sp-mini-mats-count hidden aria-hidden="true"></span>'
           :'';
-        var padOnly=useBeginner?(slotId==='materials'?' data-pad-only="1"':''):' data-pad-only="1"';
-        return '<button type="button" class="overlay-mini__action'+(slotId==='materials'?' overlay-mini__action--materials':'')+'" data-beginner-slot="'+escHtml(slotId)+'"'
+        var feOnly=slotId==='materials'||slotId==='toggleVoiceKeyless';
+        var padOnly=useBeginner?(feOnly?' data-pad-only="1"':''):' data-pad-only="1"';
+        var keylessOn=slotId==='toggleVoiceKeyless'&&!!(s&&(s.voiceWakeListeningOptIn||s.voice_wake_listening_opt_in||String(s.voiceActivation||s.voice_activation||'')==='wakeOrPushToTalk'));
+        var onCls=keylessOn?' is-on':'';
+        var keylessTxt=slotId==='toggleVoiceKeyless'
+          ?('<span class="overlay-mini__action-txt">免按键</span>')
+          :'';
+        return '<button type="button" class="overlay-mini__action'+(slotId==='materials'?' overlay-mini__action--materials':'')+(slotId==='toggleVoiceKeyless'?' overlay-mini__action--keyless':'')+onCls+'" data-beginner-slot="'+escHtml(slotId)+'"'
           +padOnly
           +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
           +(slotId==='materials'?' aria-haspopup="dialog" aria-expanded="false"':'')
-          +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
-          +'<span class="overlay-mini__action-icon">'+icon+'</span>'+badgeHtml+'</button>';
+          +(slotId==='toggleVoiceKeyless'?' role="switch" aria-checked="'+(keylessOn?'true':'false')+'"':'')
+          +' aria-label="'+escHtml(label==='免按键'?'免按键语音':label)+'" title="'+escHtml(label==='免按键'?'免按键语音：开关后台听唤醒词':label)+'">'
+          +'<span class="overlay-mini__action-icon">'+icon+'</span>'+keylessTxt+badgeHtml+'</button>';
       }).join('');
       miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
         bindBeginnerMiniAction(btn);
@@ -2189,6 +2219,12 @@
 
     function applyOralListenMini(s){
       var oralArmed=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
+      // Recording gate already sets visible=false; also mute sticky oral chrome if a
+      // late arm arrives while habit/oral key capture owns the wire.
+      var gateReason=String((s&&(s.visibleReason||s.visible_reason))||'');
+      if(oralArmed&&gateReason==='recording_active'){
+        oralArmed=false;
+      }
       wrap.classList.toggle('is-oral-listen', oralArmed);
       var keys=Array.isArray(s&&(s.oralListenMicroKeys||s.oral_listen_micro_keys))
         ?(s.oralListenMicroKeys||s.oral_listen_micro_keys):[];
@@ -2536,6 +2572,41 @@
       return map[String(slotId||'')]||'';
     }
 
+    function voiceKeylessOnFromSnap(s){
+      s=s||lastSnap||{};
+      if(String(s.voiceActivation||s.voice_activation||'')==='wakeOrPushToTalk') return true;
+      return !!(s.voiceWakeListeningOptIn||s.voice_wake_listening_opt_in);
+    }
+
+    function toggleVoiceKeylessFromOverlay(btn){
+      var on=voiceKeylessOnFromSnap(lastSnap);
+      var next=!on;
+      if(next){
+        var ok=true;
+        try{
+          ok=window.confirm('开启后会在后台本地听唤醒词。确定开启免按键语音？');
+        }catch(_){ ok=true; }
+        if(!ok) return;
+      }
+      var mode=next?'wakeOrPushToTalk':'pushToTalk';
+      invoke('cmd_voice_set_activation',{mode:mode}).then(function(res){
+        if(lastSnap){
+          lastSnap.voiceActivation=mode;
+          lastSnap.voice_activation=mode;
+          lastSnap.voiceWakeListeningOptIn=!!next;
+          lastSnap.voice_wake_listening_opt_in=!!next;
+        }
+        if(btn){
+          btn.classList.toggle('is-on',!!next);
+          btn.setAttribute('aria-checked',next?'true':'false');
+        }
+        toast(next?'已开启免按键语音':'已关闭免按键语音');
+        return res;
+      }).catch(function(err){
+        toast(String(err||'切换失败'));
+      });
+    }
+
     function clearOralListenChromeLocal(){
       if(!lastSnap) lastSnap={};
       lastSnap.oralListenArmed=false;
@@ -2690,6 +2761,22 @@
           btn.classList.remove('is-pressed');
           var Carry=window.OneToneSoftPadCarry;
           if(Carry&&typeof Carry.toggleMiniMaterials==='function') Carry.toggleMiniMaterials();
+        });
+        btn.addEventListener('pointerleave',function(){ btn.classList.remove('is-pressed'); });
+        btn.addEventListener('pointercancel',function(){ btn.classList.remove('is-pressed'); });
+        btn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); });
+        return;
+      }
+      if(slotId==='toggleVoiceKeyless'){
+        btn.addEventListener('pointerdown',function(e){
+          if(e.button!=null&&e.button!==0) return;
+          e.preventDefault(); e.stopPropagation();
+          btn.classList.add('is-pressed');
+        });
+        btn.addEventListener('pointerup',function(e){
+          e.preventDefault(); e.stopPropagation();
+          btn.classList.remove('is-pressed');
+          toggleVoiceKeylessFromOverlay(btn);
         });
         btn.addEventListener('pointerleave',function(){ btn.classList.remove('is-pressed'); });
         btn.addEventListener('pointercancel',function(){ btn.classList.remove('is-pressed'); });

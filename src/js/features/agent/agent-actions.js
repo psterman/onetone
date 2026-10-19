@@ -58,12 +58,14 @@
     { id: 'switchAgent', labelZh: '切换助手', labelEn: 'Switch agent', risk: 'confirm', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '切换助手', phrasesEn: 'switch agent', insert: '/agent' },
     { id: 'claudeModel', labelZh: 'Claude 模型', labelEn: 'Claude model', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '切换 Claude 模型', phrasesEn: 'claude model', insert: '/model' },
     { id: 'switchModel', labelZh: '切换模型', labelEn: 'Switch model', risk: 'confirm', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '切换模型', phrasesEn: 'switch model', insert: '/model' },
-    { id: 'appsOrPlugins', labelZh: '应用与插件', labelEn: 'Apps', risk: 'safe', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '打开应用', phrasesEn: 'open apps', insert: '/apps' }
+    { id: 'appsOrPlugins', labelZh: '应用与插件', labelEn: 'Apps', risk: 'safe', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '打开应用', phrasesEn: 'open apps', insert: '/apps' },
+    { id: 'toggleVoiceKeyless', labelZh: '免按键语音', labelEn: 'Hands-free voice', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '免按键语音', phrasesEn: 'hands-free voice' }
   ];
 
   var SLOTS = [
     { slotId: 'summonCodex', actionId: 'openAgent', labelZh: '召唤 Codex', labelEn: 'Summon Codex' },
     { slotId: 'pushToTalk', actionId: 'startDictation', labelZh: '开始说话', labelEn: 'Start talking' },
+    { slotId: 'toggleVoiceKeyless', actionId: 'toggleVoiceKeyless', labelZh: '免按键语音', labelEn: 'Hands-free voice' },
     { slotId: 'stopOrSend', actionId: 'stopOrSendDictation', labelZh: '结束或发送', labelEn: 'Stop or send' },
     { slotId: 'pasteAndSend', actionId: 'pasteAndSend', labelZh: '粘贴发送', labelEn: 'Paste and send' },
     { slotId: 'runTargetSequence', actionId: 'runTargetSequence', labelZh: '执行动作序列', labelEn: 'Run action sequence' },

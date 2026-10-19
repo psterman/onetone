@@ -3072,6 +3072,18 @@
       border-radius:999px;padding:4px 10px;min-height:0;font:inherit;font-size:11.5px;font-weight:550;
       color:var(--on-surface-muted);cursor:pointer;line-height:1.2;
     }
+    #settingsPanelKeys .keys-cancel-chip--gest{
+      display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;border-radius:10px;
+    }
+    #settingsPanelKeys .keys-cancel-chip--gest .keys-cancel-gest-ico{
+      flex-shrink:0;display:block;
+    }
+    #settingsPanelKeys .keys-cancel-chip--gest .keys-cancel-gest-lab{
+      white-space:nowrap;
+    }
+    #settingsPanelKeys .keys-cancel-chip--gest.is-dim{
+      opacity:.48;
+    }
     #settingsPanelKeys .keys-cancel-chip.is-active{
       border-color:var(--keys-cyan-bd,#9bc6da);background:var(--cyan-soft,#e4f2f9);color:var(--primary-strong);font-weight:650;
     }
@@ -3197,10 +3209,46 @@
     @keyframes keys-recording-pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.85)}}
     .keys-recording-feedback-text{font-size:11px;font-weight:700;color:var(--on-surface)}
     .keys-recording-conflict{margin:6px 0 0;font-size:10px;font-weight:700;color:#b42318;line-height:1.4}
+    /* Centered record modal — feedback lives in the rail; panel.is-recording / .is-trigger|target drives overlay */
+    #settingsPanelKeys.is-recording .keys-recording-feedback:not([hidden]),
+    #settingsPanelKeys .keys-recording-feedback.is-trigger:not([hidden]),
+    #settingsPanelKeys .keys-recording-feedback.is-target:not([hidden]){
+      position:fixed;inset:0;z-index:12000;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      margin:0;padding:24px;border:0;border-radius:0;
+      background:rgba(12,22,32,.52);
+      backdrop-filter:blur(3px);
+      -webkit-backdrop-filter:blur(3px);
+    }
+    #settingsPanelKeys.is-recording .keys-recording-feedback-main,
+    #settingsPanelKeys .keys-recording-feedback.is-trigger .keys-recording-feedback-main,
+    #settingsPanelKeys .keys-recording-feedback.is-target .keys-recording-feedback-main{
+      min-width:min(360px,92vw);max-width:420px;
+      padding:22px 24px;border-radius:16px;
+      border:1px solid rgba(220,53,69,.35);
+      background:var(--keys-paper,#fff);
+      box-shadow:0 18px 48px rgba(12,22,32,.28);
+      flex-direction:column;gap:14px;
+    }
+    #settingsPanelKeys.is-recording .keys-recording-feedback-lead,
+    #settingsPanelKeys .keys-recording-feedback.is-trigger .keys-recording-feedback-lead,
+    #settingsPanelKeys .keys-recording-feedback.is-target .keys-recording-feedback-lead{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+    }
+    #settingsPanelKeys.is-recording .keys-recording-feedback-text,
+    #settingsPanelKeys .keys-recording-feedback.is-trigger .keys-recording-feedback-text,
+    #settingsPanelKeys .keys-recording-feedback.is-target .keys-recording-feedback-text{
+      font-size:15px;font-weight:800;color:var(--on-surface,#13202c);
+    }
+    #settingsPanelKeys.is-recording .keys-recording-feedback-main .btn-cancel-record,
+    #settingsPanelKeys .keys-recording-feedback.is-trigger .btn-cancel-record,
+    #settingsPanelKeys .keys-recording-feedback.is-target .btn-cancel-record{
+      margin-left:0;width:100%;height:40px;
+    }
     #settingsPanelKeys .habit-flow-step.is-recording-active{
       border-color:rgba(220,53,69,.45);box-shadow:0 0 0 2px rgba(220,53,69,.12);
     }
-    #settingsPanelKeys .key-wake-settings.is-recording .keys-recording-feedback{display:block}
+    #settingsPanelKeys .key-wake-settings.is-recording .keys-recording-feedback{display:flex}
     #settingsPanelKeys .keys-recording-feedback-main .btn-cancel-record{margin-left:auto;flex-shrink:0}
     /* Cancel must read as the primary escape during record — not a muted ghost pill. */
     #settingsPanelKeys .keys-recording-feedback-main .btn-cancel-record,

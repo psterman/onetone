@@ -285,15 +285,28 @@
       hint.textContent=model.hintText||'';
       hint.hidden=!!model.hintHidden;
     }
+    // Stub details kept for legacy callers; peer tabs own cancel visibility.
     var more=$('habitFlowFinishMore');
     if(more){
-      more.hidden=!!model.moreHidden;
-      // Advanced fold: default collapsed; keep user toggle while visible.
-      if(model.moreHidden) more.open=false;
-      else if(model.cancelSummary!=null){
-        var sum=$('keysFinishCancelSummary');
-        if(sum) sum.textContent=model.cancelSummary;
-      }
+      more.hidden=true;
+      more.open=false;
+    }
+    var peers=$('keysFinishPeers');
+    if(peers) peers.hidden=!!model.moreHidden;
+    if(!model.moreHidden){
+      var activePeer='finish';
+      var activeBtn=document.querySelector('#keysFinishPeers [data-finish-peer].is-active');
+      if(activeBtn) activePeer=activeBtn.getAttribute('data-finish-peer')||'finish';
+      if(activePeer!=='cancel') activePeer='finish';
+      document.querySelectorAll('#keysFinishBody [data-finish-peer-pane]').forEach(function(pane){
+        var match=pane.getAttribute('data-finish-peer-pane')===activePeer;
+        pane.classList.toggle('is-active',match);
+        pane.hidden=!match;
+      });
+    }
+    if(model.cancelSummary!=null){
+      var sum=$('keysFinishCancelSummary');
+      if(sum) sum.textContent=model.cancelSummary;
     }
     syncKeysAimFold(model);
     var el=$('keysFinishStrategyPreview');
@@ -413,6 +426,30 @@
     okHand:'OK'
   };
 
+  /** Compact SVG mark per cancel gesture — each switch chip gets its own icon. */
+  function cancelGestureIconSvg(gk){
+    var common=' class="keys-cancel-gest-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    if(gk==='shakeHead'){
+      return '<svg'+common+'><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/><path d="M3 9h2M19 9h2"/></svg>';
+    }
+    if(gk==='openPalm'){
+      return '<svg'+common+'><path d="M8 11V6.5a1.5 1.5 0 0 1 3 0V10"/><path d="M11 10V5a1.5 1.5 0 0 1 3 0v5"/><path d="M14 10V6a1.5 1.5 0 0 1 3 0v7"/><path d="M7 12v3a5 5 0 0 0 10 0v-2"/><path d="M5.5 12.5c-.8.4-1.5 1.4-1.5 2.5a4 4 0 0 0 4 4"/></svg>';
+    }
+    if(gk==='deliberateBlink'){
+      return '<svg'+common+'><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 12h16"/></svg>';
+    }
+    if(gk==='wave'){
+      return '<svg'+common+'><path d="M7 11V7.5a1.5 1.5 0 0 1 3 0V11"/><path d="M10 11V6a1.5 1.5 0 0 1 3 0v5"/><path d="M13 11V7a1.5 1.5 0 0 1 3 0v6"/><path d="M6 13v2a5 5 0 0 0 10 0v-1"/><path d="M18 8c1 .8 1.5 2 1.5 3.5"/></svg>';
+    }
+    if(gk==='fist'){
+      return '<svg'+common+'><path d="M8 11V9a1.2 1.2 0 0 1 2.4 0v2"/><path d="M10.4 11V8.2a1.2 1.2 0 0 1 2.4 0V11"/><path d="M12.8 11V8.6a1.2 1.2 0 0 1 2.4 0V11"/><path d="M7 12.5v2a4.5 4.5 0 0 0 9 0v-1.5"/><path d="M6 13h12"/></svg>';
+    }
+    if(gk==='okHand'){
+      return '<svg'+common+'><circle cx="10" cy="10" r="3.2"/><path d="M13 12.5c.8 1.2 2.2 2 3.8 2.2"/><path d="M14.5 8.5c1.2-.2 2.4.2 3.2 1.1"/></svg>';
+    }
+    return '';
+  }
+
   function escHtmlLocal(s){
     if(hooks().escHtml) return hooks().escHtml(s);
     return String(s==null?'':s)
@@ -458,12 +495,33 @@
     var en=end.cancelPhrasesEn||end.cancel_phrases_en||[];
     if(!Array.isArray(zh)) zh=[];
     if(!Array.isArray(en)) en=[];
-    return {zh:zh,en:en,enabled:!!(end.enabled||end.Enabled)};
+    // Dedicated channel flag — not voiceEnd.enabled (that's end/send master).
+    var chOn=end.cancelPhrasesEnabled;
+    if(chOn==null) chOn=end.cancel_phrases_enabled;
+    if(chOn==null) chOn=true;
+    return {zh:zh,en:en,channelOn:!!chOn};
   }
 
   function cancelPhraseChannelOn(){
-    var lists=readCancelPhraseLists();
-    return !!(lists.enabled&&(lists.zh.length||lists.en.length));
+    return !!readCancelPhraseLists().channelOn;
+  }
+
+  function setCancelPhraseChannel(wantOn){
+    var cfg=appState().config||{};
+    if(!cfg.voiceEnd||typeof cfg.voiceEnd!=='object') cfg.voiceEnd={};
+    cfg.voiceEnd.cancelPhrasesEnabled=!!wantOn;
+    if(wantOn){
+      var lists=readCancelPhraseLists();
+      if(!lists.zh.length) cfg.voiceEnd.cancelPhrasesZh=['取消输入','不要了','撤掉'];
+      if(!lists.en.length) cfg.voiceEnd.cancelPhrasesEn=['cancel input'];
+      persistKeysCancelPhrases(
+        cfg.voiceEnd.cancelPhrasesZh||lists.zh,
+        cfg.voiceEnd.cancelPhrasesEn||lists.en
+      );
+    }
+    var p=global.OneToneConfigPersist;
+    if(p&&p.saveAsync) p.saveAsync({source:'keys-cancel-phrase'});
+    else if(p&&p.save) p.save({source:'keys-cancel-phrase'});
   }
 
   function setCameraCancelGesture(bindKey,wantOn){
@@ -566,25 +624,7 @@
       if(Math.abs(ms-winPresets[i])<50){ winMatched=winPresets[i]; break; }
     }
 
-    var activePills=[];
-    if(keyOn) activePills.push(t('keysCancelSummaryKey'));
-    if(phraseOn) activePills.push(t('keysCancelSummaryPhrase'));
-    if(camOn&&camGestures.length) activePills.push(t('keysCancelSummaryCamera'));
-
     var html='<div class="keys-cancel-strategy'+(keyOk?'':' is-key-gated')+'" data-keys-cancel-strategy="1">';
-    html+='<div class="keys-cancel-head">';
-    html+='<div class="keys-cancel-head-main">';
-    html+='<p class="keys-cancel-title">'+escHtmlLocal(t('habitFlowFinishMoreSummary'))+'</p>';
-    if(activePills.length){
-      html+='<div class="keys-cancel-active" aria-label="'+escHtmlLocal(t('keysCancelOrShort'))+'">';
-      activePills.forEach(function(label){
-        html+='<span class="keys-cancel-dot"><i aria-hidden="true"></i>'+escHtmlLocal(label)+'</span>';
-      });
-      html+='</div>';
-    }
-    html+='</div>';
-    html+='<p class="keys-cancel-or">'+escHtmlLocal(t('keysCancelOrShort'))+'</p>';
-    html+='</div>';
     if(!keyOk){
       html+='<p class="keys-cancel-gate-note">'+escHtmlLocal(t('keysCancelKeyGated'))+'</p>';
     }
@@ -611,7 +651,7 @@
     html+='<button type="button" class="toggle-switch'+(keyOn?' is-on':'')+'" data-timing-toggle="'+escHtmlLocal(id)+'" data-field="cancelEnabled"'+(keyOk?'':' disabled')+' role="switch" aria-checked="'+(keyOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryKey'))+'"></button>';
     html+='</div>';
 
-    // Phrase row — inline tags (no master switch; voiceEnd has no cancel-only flag)
+    // Phrase row — always keep master switch (on + off)
     html+='<div class="keys-cancel-row'+(phraseOn?' is-on':'')+'" data-cancel-row="phrase">';
     html+='<span class="keys-cancel-lab">'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'</span>';
     html+='<div class="keys-cancel-ctrl">';
@@ -631,50 +671,23 @@
       html+='<span class="keys-cancel-meta">'+escHtmlLocal(t('keysCancelPhraseOffHint','说取消词 → Esc'))+'</span>';
     }
     html+='</div>';
-    if(!phraseOn){
-      html+='<button type="button" class="toggle-switch" data-cancel-channel="phrase" role="switch" aria-checked="false" aria-label="'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'"></button>';
-    }else{
-      html+='<span class="keys-cancel-switch-slot" aria-hidden="true"></span>';
-    }
-    html+='</div>';
-    html+='<div class="keys-cancel-demo" data-cancel-demo="phrase" aria-hidden="true">';
-    html+='<div class="keys-cancel-demo__stage keys-cancel-demo__stage--phrase">';
-    html+='<span class="keys-cancel-demo__mic"></span>';
-    html+='<span class="keys-cancel-demo__wave"></span>';
-    html+='<span class="keys-cancel-demo__bubble">'+escHtmlLocal(t('keysCancelDemoPhraseWord','取消'))+'</span>';
-    html+='<span class="keys-cancel-demo__arrow">→</span>';
-    html+='<span class="keys-cancel-demo__esc">Esc</span>';
-    html+='</div>';
-    html+='<p class="keys-cancel-demo__cap">'+escHtmlLocal(t('keysCancelDemoPhraseCap','说出取消词 → Esc 丢弃本次听写'))+'</p>';
+    html+='<button type="button" class="toggle-switch'+(phraseOn?' is-on':'')+'" data-cancel-channel="phrase" role="switch" aria-checked="'+(phraseOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'"></button>';
     html+='</div>';
 
-    // Camera row
+    // Camera row — each gesture chip has its own icon
     html+='<div class="keys-cancel-row'+(camOn?' is-on':'')+'" data-cancel-row="camera">';
     html+='<span class="keys-cancel-lab">'+escHtmlLocal(t('keysCancelSummaryCamera'))+'</span>';
     html+='<div class="keys-cancel-ctrl">';
-    if(camOn){
-      CANCEL_GESTURE_KEYS.forEach(function(gk){
-        var active=camGestures.indexOf(gk)>=0;
-        var label=t(CANCEL_GESTURE_I18N[gk])||CANCEL_GESTURE_FALLBACK[gk];
-        html+='<button type="button" class="keys-cancel-chip'+(active?' is-active':'')+'" data-cancel-gesture="'+gk+'" aria-pressed="'+(active?'true':'false')+'">'+escHtmlLocal(label)+'</button>';
-      });
-      if(!camGestures.length){
-        html+='<span class="keys-cancel-gesture-warn">'+escHtmlLocal(t('keysCancelGestureNeedOne'))+'</span>';
-      }
-    }else{
-      html+='<span class="keys-cancel-meta">'+escHtmlLocal(t('keysCancelCameraOffHint','手势取消'))+'</span>';
-    }
+    CANCEL_GESTURE_KEYS.forEach(function(gk){
+      var active=camOn&&camGestures.indexOf(gk)>=0;
+      var label=t(CANCEL_GESTURE_I18N[gk])||CANCEL_GESTURE_FALLBACK[gk];
+      html+='<button type="button" class="keys-cancel-chip keys-cancel-chip--gest'+(active?' is-active':'')+(camOn?'':' is-dim')+'" data-cancel-gesture="'+gk+'" aria-pressed="'+(active?'true':'false')+'" title="'+escHtmlLocal(label)+'">'
+        +cancelGestureIconSvg(gk)
+        +'<span class="keys-cancel-gest-lab">'+escHtmlLocal(label)+'</span>'
+        +'</button>';
+    });
     html+='</div>';
     html+='<button type="button" class="toggle-switch'+(camOn?' is-on':'')+'" data-cancel-channel="camera" role="switch" aria-checked="'+(camOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryCamera'))+'"></button>';
-    html+='</div>';
-    html+='<div class="keys-cancel-demo" data-cancel-demo="camera" aria-hidden="true">';
-    html+='<div class="keys-cancel-demo__stage keys-cancel-demo__stage--camera">';
-    html+='<span class="keys-cancel-demo__cam"></span>';
-    html+='<span class="keys-cancel-demo__palm"></span>';
-    html+='<span class="keys-cancel-demo__arrow">→</span>';
-    html+='<span class="keys-cancel-demo__esc">Esc</span>';
-    html+='</div>';
-    html+='<p class="keys-cancel-demo__cap">'+escHtmlLocal(t('keysCancelDemoCameraCap','张掌手势 → Esc 丢弃本次听写'))+'</p>';
     html+='</div>';
 
     html+='</div></div>';
@@ -1288,18 +1301,7 @@
       e.stopPropagation();
       var ch=cancelCh.getAttribute('data-cancel-channel');
       if(ch==='phrase'){
-        // Enable-only: no cancelPhrasesEnabled flag; manage phrases inline when on.
-        if(cancelPhraseChannelOn()) return true;
-        var lists=readCancelPhraseLists();
-        var cfg=appState().config||{};
-        if(!cfg.voiceEnd||typeof cfg.voiceEnd!=='object') cfg.voiceEnd={};
-        cfg.voiceEnd.enabled=true;
-        var zh=lists.zh.length?lists.zh.slice():['取消输入','不要了','撤掉'];
-        var en=lists.en.length?lists.en.slice():['cancel input'];
-        cfg.voiceEnd.cancelPhrasesZh=zh;
-        cfg.voiceEnd.cancelPhrasesEn=en;
-        scheduleTimingSave();
-        persistKeysCancelPhrases(zh,en);
+        setCancelPhraseChannel(!cancelPhraseChannelOn());
         refreshAfterGestureChange();
         return true;
       }
@@ -1375,6 +1377,7 @@
       var cfgAdd=appState().config||{};
       if(!cfgAdd.voiceEnd||typeof cfgAdd.voiceEnd!=='object') cfgAdd.voiceEnd={};
       cfgAdd.voiceEnd.enabled=true;
+      cfgAdd.voiceEnd.cancelPhrasesEnabled=true;
       cfgAdd.voiceEnd.cancelPhrasesZh=nextZhAdd;
       cfgAdd.voiceEnd.cancelPhrasesEn=nextEnAdd;
       persistKeysCancelPhrases(nextZhAdd,nextEnAdd);

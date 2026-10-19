@@ -175,6 +175,44 @@ export async function removeEndPhrase(phrase: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Voice activation (start mode) — authority for tray「免按键语音」+ settings radios
+// ---------------------------------------------------------------------------
+
+export type VoiceActivation = 'pushToTalk' | 'softPad' | 'wakeOrPushToTalk' | 'disabled';
+
+export function getVoiceActivation(): VoiceActivation {
+  const cfg = getConfig();
+  const raw = String(cfg.voiceActivation || cfg.voice_activation || '').trim();
+  if (raw === 'softPad' || raw === 'wakeOrPushToTalk' || raw === 'disabled' || raw === 'pushToTalk') {
+    return raw;
+  }
+  if (cfg.voiceWakeListeningOptIn) return 'wakeOrPushToTalk';
+  if (cfg.voiceAssistEnabled === false) return 'disabled';
+  return 'pushToTalk';
+}
+
+export async function setVoiceActivation(mode: VoiceActivation): Promise<void> {
+  const cfg = getConfig();
+  cfg.voiceActivation = mode;
+  cfg.voiceWakeListeningOptIn = mode === 'wakeOrPushToTalk';
+  if (mode === 'disabled') cfg.voiceAssistEnabled = false;
+  else if (cfg.voiceAssistEnabled === false) cfg.voiceAssistEnabled = true;
+  persistSoon();
+  try {
+    await typed.setVoiceActivation(mode);
+  } catch (err) {
+    console.error('voiceConfig.setVoiceActivation', err);
+  }
+  try {
+    const sync = (window as unknown as { __vp_syncWakeListeningOptInToggle__?: () => void })
+      .__vp_syncWakeListeningOptInToggle__;
+    if (typeof sync === 'function') sync();
+  } catch {
+    /* ignore */
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Listening strategy / engine selection
 // ---------------------------------------------------------------------------
 

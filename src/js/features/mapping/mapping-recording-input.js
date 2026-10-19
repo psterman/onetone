@@ -9,6 +9,15 @@
     var probe=global.OneToneRecordProbe;
     if(probe&&probe.push) probe.push(src, kind, key, note);
   }
+  // Recording-input hooks historically omitted normalizeTriggerKey → oral IPC
+  // committed then FE finish threw. Prefer hook, then AppKeyUtils, then raw.
+  function normalizeTriggerKeySafe(key){
+    var h=hooks();
+    if(h&&typeof h.normalizeTriggerKey==='function') return h.normalizeTriggerKey(key);
+    var util=global.OneToneAppKeyUtils;
+    if(util&&typeof util.normalizeTriggerKey==='function') return util.normalizeTriggerKey(key);
+    return String(key||'').trim();
+  }
   var cap={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
   // FE-side gesture for lone modifiers (Shift/Ctrl/…). Matches Rust RECORD_* timing.
   // Needed because focused-window presses often never reach the LL hook, and the
@@ -101,13 +110,25 @@
   // a toast that explains what may have gone wrong. The bridge case
   // (Bluetooth RAlt → Volume_Up) and the side-button race both benefit from
   // this — without it, the user just stares at "未设置" with no feedback.
-  var RECONCILE_GRACE_MS=1800;
+  // Watchdog must wait longer than a single backup IPC: persist_and_rebind can
+  // exceed 2s; retrying mid-flight doubles load and causes the ipc-timeout the user sees.
+  var RECONCILE_GRACE_MS=3200;
+  var BACKUP_DEDUPE_MS=300;
+  var BACKUP_IPC_TIMEOUT_MS=4500;
   var reconcileWatchdog=null;
   var reconcileAwaiting=false;
   var lastHardwarePressKey='';
   var lastHardwarePressDevice='';
   var recGen=-1;
   var sawVolumeToken=false;
+  // In-flight until IPC settles (not a short dedupe window).
+  var backupInFlight={};
+  var lastIpcReturnAt=0;
+  var lastIpcReturnKey='';
+  function isBackupInFlight(key){
+    var k=String(key||'').trim();
+    return !!(k&&backupInFlight[k]);
+  }
   function syncPeripheralSession(){
     var gen=Rec()&&Rec().captureGen?Rec().captureGen():0;
     if(gen!==recGen){
@@ -152,34 +173,205 @@
     if(k) lastHardwarePressKey=k;
     if(device!=null) lastHardwarePressDevice=String(device||'');
   }
+  function resolveRecordMappingId(){
+    var id=String(Rec().mappingId&&Rec().mappingId()||'').trim();
+    if(id) return id;
+    try{
+      var core=global.OneToneMappingCore;
+      var m=core&&core.recording?core.recording():null;
+      if(m&&m.id) return String(m.id);
+      m=core&&core.selected?core.selected():null;
+      if(m&&m.id) return String(m.id);
+    }catch(_){}
+    try{
+      var st=global.OneToneState&&global.OneToneState.state;
+      if(st&&st.selectedMappingId) return String(st.selectedMappingId).trim();
+    }catch(_){}
+    return '';
+  }
+  function markIpcReturn(key){
+    lastIpcReturnAt=Date.now();
+    lastIpcReturnKey=String(key||'').trim();
+  }
+  function recentlyGotIpcReturn(key){
+    var k=String(key||'').trim();
+    if(!k||k!==lastIpcReturnKey) return false;
+    return (Date.now()-lastIpcReturnAt)<BACKUP_DEDUPE_MS*4;
+  }
+  function applyBackupIpcCommit(physical, result, mode){
+    var key=String(result&&result.key||physical||'').trim()||physical;
+    var mid=String(result&&result.mappingId||'').trim();
+    clearReconcileWatchdog();
+    markIpcReturn(key);
+    probePush('rs','commit',key,'ipc-return');
+    // to_js may be lost under Logitech/driver noise — finish UI from IPC return.
+    if(Rec().mode()==='none') return true;
+    if(mode==='oralTrigger'||(Rec().triggerSlot&&Rec().triggerSlot()==='oral')){
+      var om=OneToneMappingCore.byId(mid)||OneToneMappingCore.selected();
+      var written=false;
+      if(om&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
+        written=!!global.OneToneKeysChannelCommandPicker.setOralTriggerKey(
+          om,
+          normalizeTriggerKeySafe(key),
+          {persist:false}
+        );
+      }
+      if(!written){
+        probePush('fe','oral-apply-fail',key,'setOralTriggerKey failed mid='+(mid||'(empty)'));
+        hooks().toast(t('recordOralTriggerApplyFail','口头触发键未能写入，请再录一次'));
+        return false;
+      }
+      probePush('fe','oral-applied',key,'oralCommandScheme.triggerKey');
+      Rec().setRecording('none');
+      try{ hooks().render(); }catch(_){}
+      return true;
+    }
+    if(Rec().mode()==='agentBinding'){
+      Rec().finishAgentBinding(key,'','');
+      return true;
+    }
+    if(Rec().mode()==='trigger'){
+      Rec().finishTrigger(key,null,key,String(Date.now()),{backendCommitted:true,triggerMode:'tap'});
+      return true;
+    }
+    return true;
+  }
   function invokeFrontendKeydownBackup(key){
     const physical=String(key||'').trim();
     if(!physical) return Promise.resolve(false);
-    const ipc=global.OneToneIpc;
-    const invoke=ipc&&typeof ipc.invoke==='function'?ipc.invoke.bind(ipc):global.__vp_invoke__;
-    if(!invoke) return Promise.resolve(false);
+    // One in-flight backup per key until IPC settles (watchdog used to re-fire at 1.8s).
+    if(isBackupInFlight(physical)){
+      probePush('fe','skip',physical,'backup in-flight');
+      return Promise.resolve(false);
+    }
+    if(recentlyGotIpcReturn(physical)&&Rec().mode()==='none'){
+      probePush('fe','skip',physical,'already ipc-return');
+      return Promise.resolve(true);
+    }
+    // IPC owns ack — do not let watchdog stack a second cmd_frontend_keydown.
+    clearReconcileWatchdog();
+    backupInFlight[physical]=Date.now();
     // Oral arm records with Rec.mode()==='trigger' + triggerSlot oral — backend needs oralTrigger.
     var slot=(Rec().triggerSlot&&Rec().triggerSlot())||'';
     var mode=slot==='oral'?'oralTrigger':(Rec().mode()||'trigger');
-    const payload=global.__vp_tauri_args__?global.__vp_tauri_args__({
-      key:physical,
-      mappingId:Rec().mappingId()||'',
-      mode:mode
-    }):{key:physical,mappingId:Rec().mappingId()||'',mode:mode};
-    return invoke('cmd_frontend_keydown',payload).then(function(){ return true; }).catch(function(err){
-      hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+String(err&&err.message||err||'unknown'));
+    var mappingId=resolveRecordMappingId();
+    if(mappingId&&Rec().setMappingId&&!String(Rec().mappingId()||'').trim()){
+      Rec().setMappingId(mappingId);
+    }
+    var args={key:physical,mappingId:mappingId,mode:mode};
+    var meta='mode='+mode+' mid='+(mappingId?mappingId.slice(0,18):'(empty)');
+    probePush('fe','keydown',physical,'fe-backup '+meta);
+    var t0=Date.now();
+    const ipc=global.OneToneIpc;
+    const invokeTimeout=ipc&&typeof ipc.invokeTimeout==='function'?ipc.invokeTimeout.bind(ipc):null;
+    const invoke=ipc&&typeof ipc.invoke==='function'?ipc.invoke.bind(ipc):global.__vp_invoke__;
+    function clearFlight(){
+      if(backupInFlight[physical]) delete backupInFlight[physical];
+    }
+    function onIpcOk(result){
+      clearFlight();
+      var committed=!!(result&&result.committed===true);
+      var stage=String(result&&result.stage||'');
+      // Second backup after a successful commit — do not scare the probe.
+      if(!committed&&(stage==='not_recording'||stage==='pending')&&recentlyGotIpcReturn(physical)){
+        probePush('fe','skip',physical,'duplicate after ipc-return stage='+stage);
+        return true;
+      }
+      probePush(
+        'fe',
+        'ipc-ok',
+        physical,
+        'cmd_frontend_keydown '+meta+' '+String(Date.now()-t0)+'ms'
+          +(stage?' stage='+stage:'')
+          +(result&&typeof result.committed==='boolean'?' committed='+committed:'')
+      );
+      if(committed){
+        clearReconcileWatchdog();
+        try{
+          return !!applyBackupIpcCommit(physical, result, mode);
+        }catch(err){
+          // Backend already wrote — never rebrand UI finish errors as ipc-fail.
+          var umsg=String(err&&err.message||err||'ui finish');
+          probePush('fe','ipc-warn',physical,'commit ok; ui finish failed: '+umsg);
+          hooks().pushLog('[record] applyBackupIpcCommit after commit: '+umsg);
+          return true;
+        }
+      }
+      if(!mappingId){
+        probePush('fe','ipc-warn',physical,'empty mappingId — backend cannot write habit');
+      }else if(stage==='pending'||stage==='not_recording'){
+        probePush('fe','ipc-warn',physical,'backend '+stage+' (Logitech hook may have blocked; waiting watchdog)');
+        armReconcileWatchdog();
+      }
       return false;
-    });
+    }
+    function onIpcFail(err){
+      clearFlight();
+      // If we already committed via a twin invoke, this is noise.
+      if(recentlyGotIpcReturn(physical)||Rec().mode()==='none'){
+        probePush('fe','skip',physical,'fail after ipc-return: '+String(err&&err.message||err||''));
+        return true;
+      }
+      var msg=String(err&&err.message||err||'unknown');
+      var kind=/timeout/i.test(msg)?'ipc-timeout':'ipc-fail';
+      probePush('fe',kind,physical,msg);
+      hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+msg);
+      // One more chance after a true timeout — only when nothing is in flight.
+      armReconcileWatchdog();
+      return false;
+    }
+    if(invokeTimeout||invoke){
+      const payload=global.__vp_tauri_args__?global.__vp_tauri_args__(args):args;
+      var run=invokeTimeout
+        ?invokeTimeout('cmd_frontend_keydown',payload,BACKUP_IPC_TIMEOUT_MS)
+        :invoke('cmd_frontend_keydown',payload);
+      return run.then(onIpcOk).catch(onIpcFail);
+    }
+    // WebView2 bridge fallback (same as start/stop recording).
+    try{
+      if(window.chrome&&window.chrome.webview&&window.chrome.webview.postMessage){
+        window.chrome.webview.postMessage({
+          type:'mvp_frontend_keydown',
+          key:physical,
+          mappingId:mappingId,
+          mode:mode
+        });
+        clearFlight();
+        probePush('fe','ipc-ok',physical,'postMessage '+meta);
+        return Promise.resolve(false);
+      }
+    }catch(err){
+      return Promise.resolve(onIpcFail(err));
+    }
+    clearFlight();
+    probePush('fe','ipc-fail',physical,'invoke unavailable');
+    return Promise.resolve(false);
   }
   function retryPeripheralCaptureFromWatchdog(){
-    if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return Promise.resolve(false);
+    var mode=Rec().mode();
+    if(mode!=='trigger'&&mode!=='agentBinding'&&mode!=='padBind') return Promise.resolve(false);
     const preview=String(Rec().previewKey&&Rec().previewKey()||'').trim();
     const seen=String(lastHardwarePressKey||'').trim();
     const hw=(Rec().resolveHardwareTriggerFromSeen&&Rec().resolveHardwareTriggerFromSeen(seen||preview))
       ||seen||preview;
     if(!hw||!(Rec().isHardwareCaptureToken&&Rec().isHardwareCaptureToken(hw))) return Promise.resolve(false);
+    // Already committed via IPC return — do not page-finish oral / re-backup.
+    if(recentlyGotIpcReturn(hw)||Rec().mode()==='none'){
+      probePush('fe','skip',hw,'watchdog after ipc-return');
+      return Promise.resolve(true);
+    }
+    // First backup still running (persist/rebind) — wait, do not stack IPC.
+    if(isBackupInFlight(hw)){
+      probePush('fe','skip',hw,'watchdog while backup in-flight');
+      armReconcileWatchdog();
+      return Promise.resolve(true);
+    }
     hooks().pushLog('[record] watchdog retry peripheral key='+hw);
     probePush('fe','retry',hw,'watchdog');
+    // Soft Pad padBind / oral: backend-only. Never page-finish (stops RECORDING_SESSION early).
+    if(mode==='padBind'||(Rec().triggerSlot&&Rec().triggerSlot()==='oral')){
+      return invokeFrontendKeydownBackup(hw);
+    }
     Rec().finishDetectedHardwareTrigger(hw, lastHardwarePressDevice||'');
     if(Rec().mode()==='none') return Promise.resolve(true);
     return invokeFrontendKeydownBackup(hw);
@@ -196,11 +388,18 @@
         hooks().toast(t('recordWatchdogNoAck','检测到按键信号，但未能完成录制。请再按一次鼠标侧键或蓝牙音量键，并保持 OneTone 窗口在前台。'));
         hooks().pushLog('[record] watchdog: hardware press not confirmed after '+RECONCILE_GRACE_MS+'ms');
         probePush('fe','watchdog', lastHardwarePressKey||'', String(RECONCILE_GRACE_MS));
+        try{
+          var probe=global.OneToneRecordProbe;
+          if(probe&&typeof probe.pushDiagSnapshot==='function'){
+            probe.pushDiagSnapshot('watchdog '+RECONCILE_GRACE_MS+'ms');
+          }
+        }catch(_){}
       });
     },RECONCILE_GRACE_MS);
   }
   function noteHardwarePressAwaitingAck(key, device){
-    if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return;
+    var mode=Rec().mode();
+    if(mode!=='trigger'&&mode!=='agentBinding'&&mode!=='padBind') return;
     rememberHardwarePress(key, device);
     armReconcileWatchdog();
   }
@@ -409,8 +608,8 @@
   function isRecognitionKeyEcho(key){
     const m=OneToneMappingCore.recording()||OneToneMappingCore.byId(Rec().mappingId())||OneToneMappingCore.selected();
     if(!m) return false;
-    const tgt=hooks().normalizeTriggerKey(OneToneMappingCore.editorTarget(m)||m.targetKey||'');
-    const k=hooks().normalizeTriggerKey(key);
+    const tgt=normalizeTriggerKeySafe(OneToneMappingCore.editorTarget(m)||m.targetKey||'');
+    const k=normalizeTriggerKeySafe(key);
     return !!(tgt&&k&&tgt===k);
   }
 
@@ -419,6 +618,9 @@
     if(!hw) return false;
     hooks().armTriggerPeripheralGuard(450);
     noteHardwarePressAwaitingAck(hw, device||'');
+    // Seen is a preview, not a persisted capture. Oral recording completes on
+    // mvp_key_captured; the watchdog can retry the native capture if needed.
+    if(Rec().triggerSlot&&Rec().triggerSlot()==='oral') return true;
     Rec().finishDetectedHardwareTrigger(hw, device||'');
     return true;
   }
@@ -631,6 +833,9 @@
   }
 
   function isCancelRecordEvent(e){
+    // Side/middle buttons must never cancel — hovering「取消录制」时按 X1/X2
+    // used to wipe the session and leave probe at「页面收到、前端未发备份」.
+    if(e&&e.button!=null&&e.button!==0) return false;
     var el=eventEl(e);
     if(el&&el.closest&&el.closest('#btnCancelRecord,#btnCancelRecordInline,#recordCancelBar,.btn-cancel-record')) return true;
     var path=e&&e.composedPath?e.composedPath():null;
@@ -654,7 +859,13 @@
   }
 
   function handleMouseDown(e){
-    if(Rec().mode()!=='target'&&Rec().mode()!=='trigger') return;
+    var mode=Rec().mode();
+    if(mode!=='target'&&mode!=='trigger'&&mode!=='padBind'){
+      if(e&&(e.button===3||e.button===4)){
+        probePush('fe','skip',normalizeMouseButton(e.button)||('b'+e.button),'mousedown mode='+mode);
+      }
+      return;
+    }
     if(isCancelRecordEvent(e)){
       cancelFromUiEvent(e);
       return;
@@ -662,27 +873,84 @@
     e.preventDefault();
     e.stopPropagation();
     const btn=normalizeMouseButton(e.button);
-    if(!btn) return;
+    if(!btn){
+      probePush('fe','skip','','no mouse btn='+String(e&&e.button));
+      return;
+    }
+    // Soft Pad padBind: LL mouse often misses X2; page auxclick/pointer is the backup
+    // (keydown path already covers volume/F-keys — mouse was the gap).
+    if(mode==='padBind'){
+      if(!Rec().isHardwareCaptureToken(btn)) return;
+      noteHardwarePressAwaitingAck(btn);
+      probePush('fe','keydown',btn,'page-side-padBind');
+      invokeFrontendKeydownBackup(btn);
+      return;
+    }
     const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
     const combo=sanitizeTargetCombo(normalizeTargetCombination(mods, btn, cap.modSide));
-    if(rejectLeftMouseRecording(Rec().mode(), combo, btn, null)) return;
-    if(Rec().mode()==='trigger'){
-    if(Rec().isHardwareCaptureToken(btn)){
-    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(btn);
-    hooks().armTriggerPeripheralGuard(450);
+    if(rejectLeftMouseRecording(mode, combo, btn, null)){
+      probePush('fe','skip',btn,'reject-left');
+      return;
+    }
+    if(mode==='trigger'){
+    if(Rec().isHardwareCaptureToken&&Rec().isHardwareCaptureToken(btn)){
+    // Probe before UI paint — friendlyKeyName/DOM throws used to leave「页面收到 only」.
+    probePush('fe','keydown',btn,'page-side');
+    try{
+      if($('triggerState')){
+        var label=hooks().friendlyKeyName?hooks().friendlyKeyName(btn):btn;
+        $('triggerState').textContent=t('triggerRecordDetected')+label;
+      }
+      if(hooks().armTriggerPeripheralGuard) hooks().armTriggerPeripheralGuard(450);
+    }catch(err){
+      probePush('fe','ipc-warn',btn,'page-side ui: '+String(err&&err.message||err||''));
+    }
     noteHardwarePressAwaitingAck(btn);
-    // Side buttons often hit WebView before LL hook — push Rust while session is still live.
-    invokeFrontendKeydownBackup(btn).finally(function(){
-      if(Rec().mode()==='trigger') Rec().finishDetectedHardwareTrigger(btn);
-    });
+    var oralSlot=!!(Rec().triggerSlot&&Rec().triggerSlot()==='oral');
+    // Oral: keep RECORDING_SESSION until backend oralTrigger commit. Page finish
+    // stopped the session early → next side-press fired Soft Pad 听写 instead of
+    // writing the trigger key.
+    if(oralSlot){
+      invokeFrontendKeydownBackup(btn);
+      armReconcileWatchdog();
+      return;
+    }
+    // Habit/peer: page backup is the commit path when LL mouse never fires
+    // (Logitech / WebView2). Do not finishDetected from WebView — that races
+    // RECORDING_SESSION and can stop the session before XButton poll sees the edge.
+    armReconcileWatchdog();
+    invokeFrontendKeydownBackup(btn);
     return;
     }
+    probePush('fe','skip',btn,'not-hardware-token');
     if(isSpuriousGhostCombo(combo)) return;
-    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+(hooks().friendlyKeyName?hooks().friendlyKeyName(combo):combo);
     Rec().finishFrontendTrigger(combo);
     return;
     }
     Rec().finishTarget(combo);
+  }
+
+  /** Direct X1/X2 capture for app-keyboard when DOM hit-tests are noisy. */
+  function captureSideButton(btn){
+    var key=String(btn||'').trim();
+    if(key!=='XButton1'&&key!=='XButton2') return false;
+    var mode=Rec().mode();
+    var pending=!!(Rec().isPending&&Rec().isPending());
+    // startPending: backend arming — still accept side keys so Soft Pad cannot win the race.
+    if(mode!=='trigger'&&mode!=='padBind'&&mode!=='agentBinding'&&!pending){
+      probePush('fe','skip',key,'side-capture mode='+mode);
+      return false;
+    }
+    noteHardwarePressAwaitingAck(key);
+    probePush('fe','keydown',key,mode==='padBind'?'page-side-padBind':'page-side-direct');
+    if(mode==='agentBinding'){
+      Rec().finishAgentBinding(key);
+      return true;
+    }
+    armReconcileWatchdog();
+    invokeFrontendKeydownBackup(key);
+    return true;
   }
 
   function handleKeyUp(e){
@@ -882,18 +1150,30 @@
     return true;
     }
     if(captureMode==='trigger'||captureMode==='oralTrigger'){
+    markIpcReturn(key);
     if(Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
     if(isRecognitionKeyEcho(key)) return true;
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
     return true;
     }
-    // oralTrigger must not fall through as habit.triggerKey when slot already cleared.
-    if(captureMode==='oralTrigger'&&(Rec().triggerSlot&&Rec().triggerSlot())!=='oral'){
-      var om=OneToneMappingCore.byId(msg.mappingId||'')||OneToneMappingCore.selected();
-      if(om&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
-        global.OneToneKeysChannelCommandPicker.setOralTriggerKey(om, hooks().normalizeTriggerKey(key));
+    // oralTrigger → oralCommandScheme only; never habit.triggerKey.
+    if(captureMode==='oralTrigger'){
+      var omOral=OneToneMappingCore.byId(msg.mappingId||'')||OneToneMappingCore.selected();
+      var wrote=false;
+      if(omOral&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
+        wrote=!!global.OneToneKeysChannelCommandPicker.setOralTriggerKey(
+          omOral,
+          normalizeTriggerKeySafe(key),
+          {persist:false}
+        );
       }
+      if(!wrote){
+        probePush('fe','oral-apply-fail',key,'mvp_key_captured oralTrigger');
+      }else{
+        probePush('fe','oral-applied',key,'mvp_key_captured oralTrigger');
+      }
+      Rec().setRecording('none');
       hooks().render();
       return true;
     }
@@ -901,9 +1181,15 @@
     }else if(captureMode==='oralTrigger'){
     // Orphan backend oral commit — apply oral field only, never habit.triggerKey.
     var om=OneToneMappingCore.byId(msg.mappingId||'')||OneToneMappingCore.selected();
+    var wroteOrphan=false;
     if(om&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
-      global.OneToneKeysChannelCommandPicker.setOralTriggerKey(om, hooks().normalizeTriggerKey(key));
+      wroteOrphan=!!global.OneToneKeysChannelCommandPicker.setOralTriggerKey(
+        om,
+        normalizeTriggerKeySafe(key),
+        {persist:false}
+      );
     }
+    probePush('fe',wroteOrphan?'oral-applied':'oral-apply-fail',key,'orphan oralTrigger');
     hooks().render();
     }else if(Rec().applyBackendKeyCapture(msg)){
     Rec().clearMappingGuard();
@@ -951,6 +1237,7 @@
   global.OneToneMappingRecordingInput={
     tryEscapeRecording:tryEscapeRecording,handleKeyDown:handleKeyDown,
     handleKeyUp:handleKeyUp,handleMouseDown:handleMouseDown,
+    captureSideButton:captureSideButton,
     handleWebViewMessage:handleWebViewMessage,resetTargetCapture:resetTargetCapture,
     sanitizeTargetCombo:sanitizeTargetCombo,normalizeKeyFromCode:normalizeKeyFromCode,
     armReconcileWatchdog:armReconcileWatchdog,

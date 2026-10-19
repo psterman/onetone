@@ -158,11 +158,42 @@
     }
   }
 
+  function setFinishPeer(peer){
+    peer=String(peer||'finish');
+    if(peer!=='cancel') peer='finish';
+    var peers=document.querySelectorAll('#keysFinishPeers [data-finish-peer]');
+    var panes=document.querySelectorAll('#keysFinishBody [data-finish-peer-pane]');
+    var i;
+    for(i=0;i<peers.length;i++){
+      var on=peers[i].getAttribute('data-finish-peer')===peer;
+      peers[i].classList.toggle('is-active',on);
+      peers[i].setAttribute('aria-selected',on?'true':'false');
+    }
+    for(i=0;i<panes.length;i++){
+      var match=panes[i].getAttribute('data-finish-peer-pane')===peer;
+      panes[i].classList.toggle('is-active',match);
+      panes[i].hidden=!match;
+    }
+  }
+
+  function bindFinishPeers(){
+    var host=$('keysFinishPeers');
+    if(!host||host.dataset.finishPeersBound==='1') return;
+    host.dataset.finishPeersBound='1';
+    host.addEventListener('click',function(e){
+      var btn=e.target&&e.target.closest&&e.target.closest('[data-finish-peer]');
+      if(!btn||!host.contains(btn)) return;
+      e.preventDefault();
+      setFinishPeer(btn.getAttribute('data-finish-peer'));
+    });
+  }
+
   function bindEvents(){
     bindPanelFallback($('settingsPanelKeys'));
     bindPanelFallback($('keysCapturePopover'));
     bindVoiceBridge();
     bindAimSetup();
+    bindFinishPeers();
   }
-  global.OneToneKeyFinishFlowUi={bindEvents:bindEvents};
+  global.OneToneKeyFinishFlowUi={bindEvents:bindEvents,setFinishPeer:setFinishPeer};
 })((typeof window!=='undefined')?window:globalThis);

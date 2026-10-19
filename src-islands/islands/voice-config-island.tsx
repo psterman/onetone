@@ -9,10 +9,23 @@ function toast(msg: string): void {
   else console.log('[voice-config-island]', msg);
 }
 
+function t(key: string, fb: string): string {
+  const i18n = (window as unknown as { OneToneI18n?: { t?: (k: string, f?: string) => string } }).OneToneI18n;
+  const v = i18n && typeof i18n.t === 'function' ? i18n.t(key, fb) : fb;
+  return v && v !== key ? v : fb;
+}
+
 const STRATEGIES: { key: string; label: string }[] = [
   { key: 'auto', label: '自动' },
   { key: 'resourceSaver', label: '省电' },
   { key: 'enhanced', label: '增强' },
+];
+
+const ACTIVATIONS: { key: vc.VoiceActivation; labelKey: string; fb: string }[] = [
+  { key: 'pushToTalk', labelKey: 'voiceActivationPushToTalk', fb: '按住快捷键说话（推荐）' },
+  { key: 'softPad', labelKey: 'voiceActivationSoftPad', fb: '点击 SoftPad 开始/结束' },
+  { key: 'wakeOrPushToTalk', labelKey: 'voiceActivationWakeOrPtt', fb: '唤醒词或按键' },
+  { key: 'disabled', labelKey: 'voiceActivationDisabled', fb: '始终关闭' },
 ];
 
 function getWakeApi(): {
@@ -25,6 +38,53 @@ function getWakeApi(): {
     isModeSwitchPending?: () => boolean;
     isOpenClickGuarded?: () => boolean;
   } }).OneToneVoiceWake;
+}
+
+function ActivationSelector(): JSX.Element {
+  const [mode, setMode] = React.useState<vc.VoiceActivation>(() => vc.getVoiceActivation());
+  const [busy, setBusy] = React.useState(false);
+  useIslandRefresh(() => {
+    setMode(vc.getVoiceActivation());
+  });
+
+  const apply = async (key: vc.VoiceActivation): Promise<void> => {
+    if (busy) return;
+    setMode(key);
+    setBusy(true);
+    try {
+      await vc.setVoiceActivation(key);
+      toast(t('voiceActivationTitle', '语音启动方式') + '：' + t(
+        ACTIVATIONS.find((a) => a.key === key)?.labelKey || '',
+        ACTIVATIONS.find((a) => a.key === key)?.fb || key
+      ));
+    } catch {
+      toast('保存失败，请重试');
+      setMode(vc.getVoiceActivation());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="ot-vc-block">
+      <div className="ot-vc-label">{t('voiceActivationTitle', '语音启动方式')}</div>
+      <div className="ot-vc-seg ot-vc-seg--stack" role="radiogroup" aria-label={t('voiceActivationTitle', '语音启动方式')} aria-busy={busy ? 'true' : 'false'}>
+        {ACTIVATIONS.map((a) => (
+          <button
+            key={a.key}
+            type="button"
+            role="radio"
+            className={cn('ot-vc-seg-btn', mode === a.key ? 'is-active' : '')}
+            aria-checked={mode === a.key}
+            disabled={busy}
+            onClick={() => apply(a.key)}
+          >
+            {t(a.labelKey, a.fb)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function StrategySelector(): JSX.Element {
@@ -65,7 +125,7 @@ function StrategySelector(): JSX.Element {
 
   return (
     <div className="ot-vc-block">
-      <div className="ot-vc-label">监听策略 / 引擎</div>
+      <div className="ot-vc-label">唤醒灵敏度 / 引擎</div>
       <div className="ot-vc-seg" role="group" aria-label="监听策略" aria-busy={busy ? 'true' : 'false'}>
         {STRATEGIES.map((s) => (
           <button
@@ -84,11 +144,21 @@ function StrategySelector(): JSX.Element {
   );
 }
 
-/** P6: listening strategy only — cancel/end phrase editors live in step 02 legacy UI. */
+/** P6: activation radios + wake extras only when wakeOrPushToTalk. */
 export function VoiceConfigIsland(): JSX.Element {
+  const [mode, setMode] = React.useState<vc.VoiceActivation>(() => vc.getVoiceActivation());
+  useIslandRefresh(() => setMode(vc.getVoiceActivation()));
+  const showWake = mode === 'wakeOrPushToTalk';
+
   return (
     <div className="ot-voice-config">
-      <StrategySelector />
+      <ActivationSelector />
+      {showWake ? (
+        <>
+          <p className="ot-vc-hint">{t('voiceActivationWakePanelHint', '仅在「唤醒词或按键」时使用下方选项')}</p>
+          <StrategySelector />
+        </>
+      ) : null}
     </div>
   );
 }

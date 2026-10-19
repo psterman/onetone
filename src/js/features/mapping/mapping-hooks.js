@@ -58,6 +58,7 @@
     };
     global.__vp_mapping_recording_input_hooks__={
       normalizeMediaTargetKey:deps.normalizeMediaTargetKey,
+      normalizeTriggerKey:deps.normalizeTriggerKey,
       buildPeripheralTriggerSource:deps.buildPeripheralTriggerSource,
       friendlyKeyName:deps.friendlyKeyName,
       pushLog:deps.pushLog,

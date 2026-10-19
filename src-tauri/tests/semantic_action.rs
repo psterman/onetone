@@ -5,12 +5,12 @@ use onetone::semantic_action::{
     commit_policy_for_raw_action, context_risk_gate, ingest_codex_app_server_event, insert_pending,
     kind_from_attention_cause, peek_public, pending_test_lock, project_action_bindings_for_mapping,
     project_needs_input_kind, public_catalog_dto, reset_for_test, reset_pending_for_test,
-    resolve_canonical_action_id, resolve_input_start_target_from_parts, semantic_action_options,
-    semantic_meta_by_id, semantic_slot_id, take_unique_match, take_valid,
+    resolve_canonical_action_id, resolve_input_start_target_from_parts, route_disposition,
+    semantic_action_options, semantic_meta_by_id, semantic_slot_id, take_unique_match, take_valid,
     take_valid_if_action_matches, test_lock, ActionChannel, AgentBinding, AgentKind,
     AttentionCause, CameraOverride, CodexMicroPadConfig, CodexMicroPadKeyRoute, CommitPolicy,
-    FinishPolicy, NeedsInputKind, VoiceConfig, ALL_CHANNELS, FEATURE_ACTION_PICKER_UI,
-    FEATURE_DYNAMIC_CONTEXT_ACTIONS, LAYER1_ACTION_IDS,
+    FinishPolicy, NeedsInputKind, RouteDisposition, VoiceConfig, ALL_CHANNELS,
+    FEATURE_ACTION_PICKER_UI, FEATURE_DYNAMIC_CONTEXT_ACTIONS, LAYER1_ACTION_IDS,
 };
 
 #[test]
@@ -94,6 +94,41 @@ fn camera_cannot_direct_send_or_approve() {
     let send = semantic_meta_by_id("input.send").unwrap();
     // Bindable on camera; disposition still Pending (not direct execute).
     assert!(channel_allowed(send, ActionChannel::Camera));
+}
+
+#[test]
+fn high_risk_voice_enters_awaiting_confirmation() {
+    let send = semantic_meta_by_id("input.send").unwrap();
+    assert!(channel_allowed(send, ActionChannel::Voice));
+    assert_eq!(
+        route_disposition(send, ActionChannel::Voice),
+        RouteDisposition::PendingConfirmation
+    );
+    let approve = semantic_meta_by_id("agent.approve").unwrap();
+    assert_eq!(
+        route_disposition(approve, ActionChannel::Voice),
+        RouteDisposition::PendingConfirmation
+    );
+    // Mid-risk voice also pending.
+    let commit = semantic_meta_by_id("input.commit").unwrap();
+    assert_eq!(
+        route_disposition(commit, ActionChannel::Voice),
+        RouteDisposition::PendingConfirmation
+    );
+    // Low-risk voice still direct.
+    let pause = semantic_meta_by_id("onetone.pause").unwrap();
+    assert_eq!(
+        route_disposition(pause, ActionChannel::Voice),
+        RouteDisposition::Execute
+    );
+}
+
+#[test]
+fn disallowed_channel_cannot_bind() {
+    let shortcut = semantic_meta_by_id("app.shortcut").unwrap();
+    assert!(!channel_allowed(shortcut, ActionChannel::Voice));
+    assert!(!channel_allowed(shortcut, ActionChannel::Camera));
+    assert!(channel_allowed(shortcut, ActionChannel::Key));
 }
 
 #[test]
@@ -275,7 +310,12 @@ fn camera_cannot_complete_pending_confirm() {
         peek_public(&row.id).is_some(),
         "camera self-confirm leaves row"
     );
-    assert!(take_valid(&row.id, "voice").is_ok());
+    // High-risk: voice cannot complete; SoftPad/Key may.
+    assert_eq!(
+        take_valid(&row.id, "voice").unwrap_err(),
+        "high_risk_requires_key_or_softpad"
+    );
+    assert!(take_valid(&row.id, "softPad").is_ok());
 }
 
 #[test]
@@ -391,7 +431,11 @@ fn pending_unique_match_and_scope() {
     assert!(take_unique_match("input.send", "key", None, Some("codex"))
         .unwrap()
         .is_none());
-    let taken = take_unique_match("input.send", "voice", Some("m1"), Some("codex"))
+    // High-risk: voice cannot unique-match complete.
+    assert!(take_unique_match("input.send", "voice", Some("m1"), Some("codex"))
+        .unwrap()
+        .is_none());
+    let taken = take_unique_match("input.send", "softPad", Some("m1"), Some("codex"))
         .unwrap()
         .expect("unique");
     assert_eq!(taken.action_id, "input.send");

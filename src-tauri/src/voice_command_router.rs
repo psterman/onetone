@@ -98,6 +98,22 @@ pub fn handle_detection(
     app: &AppHandle,
     detection: &VoiceDetection,
 ) -> VoiceCommandRouterResult {
+    handle_detection_ex(
+        state,
+        app,
+        detection,
+        crate::voice_command_session::is_armed(),
+    )
+}
+
+/// Like [`handle_detection`], but `oral_armed` can latch Soft Pad listen across a spawn
+/// (ASR Final may arrive after hold_up clears live `is_armed()`).
+pub fn handle_detection_ex(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    detection: &VoiceDetection,
+    oral_armed: bool,
+) -> VoiceCommandRouterResult {
     let session = session_state(state);
     let idle = session == "idle";
     let active = session == "dictating";
@@ -108,7 +124,7 @@ pub fn handle_detection(
     };
 
     // On-demand oral session: match whitelist before global beginner / wake gates.
-    if crate::voice_command_session::is_armed() {
+    if oral_armed {
         if let Some(result) = try_route_oral_armed(state, app, &detection.engine, phrase) {
             return result;
         }
@@ -416,12 +432,20 @@ fn try_route_oral_armed(
         }
     }
 
-    // Voice agentBindings (say on triggerBinding; scheme = enabled).
+    // Voice agentBindings (say on triggerBinding).
+    // Armed habit: voice commands default on (oral window hears that habit's 命令词).
+    // Other habits / explicit scheme.enabled:false still gate via whitelist.
     {
         let cfg = state.cfg.lock();
         let scheme = oral_scheme_for_cfg(&cfg);
+        let armed_id = crate::voice_command_session::armed_mapping_id();
         let mut bind_ref = None;
-        for m in cfg.mappings.iter().filter(|m| m.enabled) {
+        let mut maps: Vec<&crate::config::MappingEntry> =
+            cfg.mappings.iter().filter(|m| m.enabled).collect();
+        if !armed_id.is_empty() {
+            maps.sort_by_key(|m| if m.id == armed_id { 0 } else { 1 });
+        }
+        for m in maps {
             if let Some(b) = crate::config::find_agent_voice_binding(m, phrase) {
                 let bref = if !b.slot_id.trim().is_empty() {
                     b.slot_id.trim().to_string()
@@ -429,7 +453,8 @@ fn try_route_oral_armed(
                     b.trigger_binding.trim().to_string()
                 };
                 let id = format!("bind:{}", bref);
-                if oral_item_enabled(scheme.as_ref(), &id, false) {
+                let default_on = !armed_id.is_empty() && m.id == armed_id;
+                if oral_item_enabled(scheme.as_ref(), &id, default_on) {
                     bind_ref = Some(bref);
                     break;
                 }
@@ -728,6 +753,7 @@ mod tests {
             soft_oral_default_on("continue")
         ));
         assert!(!oral_item_enabled(None, "bind:x", false));
+        assert!(oral_item_enabled(None, "bind:x", true)); // armed habit default_on
         assert!(!oral_item_enabled(None, "prompt:y", false));
     }
 }

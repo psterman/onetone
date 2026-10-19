@@ -5,6 +5,7 @@
   "config.cameraPrefs.autoMute.noFaceMute",
   "config.cameraPrefs.presenceActions.enabled",
   "config.cameraPrefs.presenceActions.triggers.away",
+  "config.voiceActivation",
   "config.voiceAssistEnabled",
   "config.voiceEnd.enabled",
   "mappings[].appBehaviorRules[].appId",

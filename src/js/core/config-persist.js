@@ -805,10 +805,21 @@
     if(cfg.voiceAssistEnabled===undefined){
       cfg.voiceAssistEnabled=String(cfg.voiceListeningStrategy||'off').trim()!=='off';
     }
-    if(cfg.voiceWakeListeningOptIn===undefined){
-      var st0=String(cfg.voiceListeningStrategy||'').trim();
-      cfg.voiceWakeListeningOptIn=st0==='resourceSaver'||st0==='auto'||st0==='enhanced';
+    if(cfg.voiceActivation===undefined||cfg.voiceActivation===null||String(cfg.voiceActivation).trim()===''){
+      if(cfg.voiceWakeListeningOptIn===undefined){
+        var st0=String(cfg.voiceListeningStrategy||'').trim();
+        cfg.voiceWakeListeningOptIn=st0==='resourceSaver'||st0==='auto'||st0==='enhanced';
+      }
+      if(cfg.voiceWakeListeningOptIn) cfg.voiceActivation='wakeOrPushToTalk';
+      else if(cfg.voiceAssistEnabled===false) cfg.voiceActivation='disabled';
+      else cfg.voiceActivation='pushToTalk';
     }
+    cfg.voiceActivation=String(cfg.voiceActivation||'pushToTalk').trim()||'pushToTalk';
+    if(cfg.voiceActivation!=='pushToTalk'&&cfg.voiceActivation!=='softPad'
+      &&cfg.voiceActivation!=='wakeOrPushToTalk'&&cfg.voiceActivation!=='disabled'){
+      cfg.voiceActivation='pushToTalk';
+    }
+    cfg.voiceWakeListeningOptIn=cfg.voiceActivation==='wakeOrPushToTalk';
     if(Array.isArray(cfg.mappings)){
       cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
     }
@@ -979,6 +990,7 @@
       desiredEngine:'none',
       voiceListeningStrategy:'off',
       voiceAssistEnabled:true,
+      voiceActivation:'pushToTalk',
       voiceWakeListeningOptIn:false,
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
@@ -991,7 +1003,7 @@
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
       voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:'',inputAimStrategy:'none',aimDefaultRev:1,composerAnchors:{}},
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],cancelPhrasesEnabled:true,sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:'',inputAimStrategy:'none',aimDefaultRev:1,composerAnchors:{}},
       voiceWakeAcousticCommands:[]
     };
   }
@@ -1175,11 +1187,15 @@
   }
 
   /** Persist oral arm key + whitelist — must keep triggerKey (else UI shows侧键 but Rust bindings stay empty). */
+  /** activationMode must survive save/reload (else toggle falls back to hold). */
   function serializeOralCommandScheme(scheme){
-    if(!scheme||typeof scheme!=='object') return {items:{},triggerKey:''};
+    if(!scheme||typeof scheme!=='object') return {items:{},triggerKey:'',activationMode:'hold'};
+    var mode=String(scheme.activationMode||'').trim().toLowerCase();
+    if(mode!=='hold'&&mode!=='toggle') mode='hold';
     return {
       items:(scheme.items&&typeof scheme.items==='object')?scheme.items:{},
-      triggerKey:String(scheme.triggerKey||'').trim()
+      triggerKey:String(scheme.triggerKey||'').trim(),
+      activationMode:mode
     };
   }
   function serializeCaptureHeroRef(ref){
@@ -1501,7 +1517,8 @@
       })(),
       voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'off'),
       voiceAssistEnabled:st.config.voiceAssistEnabled!==false,
-      voiceWakeListeningOptIn:!!st.config.voiceWakeListeningOptIn,
+      voiceActivation:String(st.config.voiceActivation||'pushToTalk'),
+      voiceWakeListeningOptIn:!!st.config.voiceWakeListeningOptIn||String(st.config.voiceActivation||'')==='wakeOrPushToTalk',
       imePresetId:String(st.config.imePresetId||''),
       voiceWakeAcousticCommands:(function(){
         const cfg=st.config||{};

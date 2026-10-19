@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -12,10 +12,7 @@ macro_rules! w {
     }};
 }
 
-use crate::config::{
-    bindings_need_mouse_hook, is_peripheral_trigger_key, is_volume_hotkey, SCHEME_CYCLE_MARKER,
-    SCHEME_SELECT_PREFIX,
-};
+use crate::config::{is_peripheral_trigger_key, is_volume_hotkey, SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX};
 use crate::device_identity;
 use crate::input_ext::InputExtensionBus;
 use crate::input_obs::{InputDebugMeta, InputObsEvent};
@@ -71,6 +68,18 @@ pub fn arm_recording_session() {
 }
 
 pub fn disarm_recording_session() {
+    RECORDING_SESSION.store(false, Ordering::SeqCst);
+}
+
+/// True from StartRecording→StopRecording (includes hook IPC race windows).
+pub fn is_recording_session_active() -> bool {
+    RECORDING_SESSION.load(Ordering::SeqCst)
+}
+
+/// Clear the native recording owner on every capture exit path, including
+/// rejected/duplicate captures that return before HotkeyManager::StopRecording.
+pub fn abort_recording_session() {
+    *recording_sender().lock().unwrap() = None;
     RECORDING_SESSION.store(false, Ordering::SeqCst);
 }
 
@@ -320,9 +329,24 @@ fn resolve_active_binding(name: &str, device: Option<&str>) -> Option<String> {
 }
 
 fn try_dispatch_named_pad(name: &str, is_keyup: bool) -> bool {
+    // 「请按下快捷键」owns the wire — Soft Pad must not steal side buttons mid-record.
+    if RECORDING_SESSION.load(Ordering::SeqCst) {
+        return false;
+    }
+    // Oral arm key wins over Soft Pad lattice (FE save races can leave source_key set).
+    if crate::codex_numpad_layer::oral_arm_owns_physical_key(name) {
+        return false;
+    }
+    // Habit / oral BindAll registration also beats Soft Pad. Without this, a leftover
+    // Soft Pad source_key on XButton2 steals the edge before 01 识别 / oral dispatch.
+    if resolve_active_binding(name, None).is_some() {
+        return false;
+    }
     let Some(snap) = crate::codex_numpad_layer::lookup_named_pad_route(name) else {
         return false;
     };
+    // Soft Pad pushToTalk / startDictation: fire micro → oral listen / dictation.
+    // Keys oral unique key already gated above via oral_arm_owns_physical_key.
     if let Some(sender) = active_sender().lock().unwrap().as_ref() {
         sender
             .send(crate::codex_numpad_layer::format_micro_key_event(
@@ -425,6 +449,12 @@ impl HotkeyManager {
         // ponytail: recording_sender is set inside Cmd::StartRecording AFTER hooks are
         // installed, so the mouse hook is ready before any events can arrive.
         self.cmd_tx.send(Cmd::StartRecording).ok();
+    }
+
+    /// FE prearm: wire the capture channel before Cmd::StartRecording lands so
+    /// arm→start IPC gap side-button edges are not lost in PENDING_RECORDING_MOUSE.
+    pub fn prime_recording_sender(&self) {
+        *recording_sender().lock().unwrap() = Some(self.event_tx.clone());
     }
 
     pub fn stop_recording(&self) {
@@ -802,8 +832,11 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
         return true;
     }
 
-    if RECORDING_SESSION.load(Ordering::SeqCst) && !ev.is_keyup {
-        if is_peripheral_trigger_key(&ev.key) || is_volume_hotkey(&ev.key) {
+    if RECORDING_SESSION.load(Ordering::SeqCst) {
+        // Recording owns the wire — never Soft Pad / agent-dispatch mid-capture
+        // (even when recording_sender is briefly None during hook install).
+        if !ev.is_keyup && (is_peripheral_trigger_key(&ev.key) || is_volume_hotkey(&ev.key))
+        {
             pending_recording_mouse()
                 .lock()
                 .unwrap()
@@ -816,8 +849,8 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
                 "recording_pending",
                 source,
             );
-            return true;
         }
+        return true;
     }
 
     if try_dispatch_named_pad(&ev.key, ev.is_keyup) {
@@ -944,11 +977,27 @@ unsafe fn remove_keyboard_hook() {
     }
 }
 
-unsafe fn sync_runtime_mouse_hook(bindings: &[String], recording: bool) {
-    if recording || bindings_need_mouse_hook(bindings) {
-        install_mouse_hook();
+unsafe fn sync_runtime_mouse_hook(_bindings: &[String], _recording: bool) {
+    // Keep WH_MOUSE_LL installed for the lifetime of the hotkey manager.  A
+    // dedicated oral side key can be stored in a mapping that is not part of
+    // the current foreground pack, so deriving hook ownership only from the
+    // active binding list makes XButton1/2 silently disappear.  The callback
+    // still forwards/swallow events only when a binding or recording session
+    // owns them, so this does not steal unrelated mouse clicks.
+    install_mouse_hook();
+}
+
+/// During a capture session Raw Input and WH_MOUSE_LL can race for the same
+/// side-button down. The hook path owns/swallow the event, so Raw Input must not
+/// mark the shared runtime claim first and thereby suppress the recording wire.
+fn claim_raw_xbutton(name: &str, is_up: bool) -> bool {
+    if RECORDING_SESSION.load(Ordering::SeqCst) || is_recording() {
+        return true;
+    }
+    if is_up {
+        claim_xbutton_up(name)
     } else {
-        remove_mouse_hook();
+        claim_xbutton_down(name)
     }
 }
 
@@ -964,8 +1013,17 @@ unsafe fn install_mouse_hook() {
 /// Same physical side-button press often arrives on both WH_MOUSE_LL and Raw Input.
 /// First source wins; the other is dropped for ~80ms so Typeless/oral is not toggled twice.
 const XBUTTON_DEDUPE_MS: u64 = 80;
+/// Skip orphan-mask release on the first poll after claim (~8ms runtime tick).
+const XBUTTON_ORPHAN_SKIP_AFTER_CLAIM_MS: u64 = 8;
+/// Consecutive poll samples with VK released before orphan release (2 × ~8ms).
+const XBUTTON_ORPHAN_RELEASE_SAMPLES: u8 = 2;
 static LAST_XBUTTON_DISPATCH_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_XBUTTON_WHICH: AtomicU64 = AtomicU64::new(0);
+static XBUTTON_ACTIVE_MASK: AtomicU64 = AtomicU64::new(0);
+static XBUTTON1_CLAIM_MS: AtomicU64 = AtomicU64::new(0);
+static XBUTTON2_CLAIM_MS: AtomicU64 = AtomicU64::new(0);
+static XBUTTON1_ORPHAN_STREAK: AtomicU8 = AtomicU8::new(0);
+static XBUTTON2_ORPHAN_STREAK: AtomicU8 = AtomicU8::new(0);
 
 fn xbutton_which(name: &str) -> u64 {
     match name {
@@ -975,13 +1033,33 @@ fn xbutton_which(name: &str) -> u64 {
     }
 }
 
+fn xbutton_claim_ms_slot(name: &str) -> Option<&'static AtomicU64> {
+    match name {
+        "XButton1" => Some(&XBUTTON1_CLAIM_MS),
+        "XButton2" => Some(&XBUTTON2_CLAIM_MS),
+        _ => None,
+    }
+}
+
+fn xbutton_orphan_streak_slot(name: &str) -> Option<&'static AtomicU8> {
+    match name {
+        "XButton1" => Some(&XBUTTON1_ORPHAN_STREAK),
+        "XButton2" => Some(&XBUTTON2_ORPHAN_STREAK),
+        _ => None,
+    }
+}
+
 fn note_xbutton_dispatched(name: &str) {
     let which = xbutton_which(name);
     if which == 0 {
         return;
     }
     LAST_XBUTTON_WHICH.store(which, Ordering::SeqCst);
-    LAST_XBUTTON_DISPATCH_MS.store(unix_now_ms(), Ordering::SeqCst);
+    let now = unix_now_ms();
+    LAST_XBUTTON_DISPATCH_MS.store(now, Ordering::SeqCst);
+    if let Some(slot) = xbutton_claim_ms_slot(name) {
+        slot.store(now, Ordering::SeqCst);
+    }
 }
 
 fn xbutton_recently_dispatched(name: &str) -> bool {
@@ -999,7 +1077,36 @@ fn claim_xbutton_down(name: &str) -> bool {
         return false;
     }
     note_xbutton_dispatched(name);
+    let bit = 1u64 << xbutton_which(name);
+    XBUTTON_ACTIVE_MASK.fetch_or(bit, Ordering::SeqCst);
+    if let Some(streak) = xbutton_orphan_streak_slot(name) {
+        streak.store(0, Ordering::SeqCst);
+    }
+    crate::app_log::early_line(
+        "xbutton",
+        &format!("claim_down name={name} mask={:#x}", XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst)),
+    );
     true
+}
+
+/// Pair the release with the single native source that won the down edge.
+/// Raw Input and WH_MOUSE_LL both report XButton up; only one may reach Soft Pad.
+fn claim_xbutton_up(name: &str) -> bool {
+    let bit = 1u64 << xbutton_which(name);
+    let won = (XBUTTON_ACTIVE_MASK.fetch_and(!bit, Ordering::SeqCst) & bit) != 0;
+    if won {
+        if let Some(slot) = xbutton_claim_ms_slot(name) {
+            slot.store(0, Ordering::SeqCst);
+        }
+        if let Some(streak) = xbutton_orphan_streak_slot(name) {
+            streak.store(0, Ordering::SeqCst);
+        }
+        crate::app_log::early_line(
+            "xbutton",
+            &format!("claim_up name={name} mask={:#x}", XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst)),
+        );
+    }
+    won
 }
 
 unsafe fn remove_mouse_hook() {
@@ -1032,35 +1139,247 @@ pub(crate) fn drain_pending_recording_mouse() -> Vec<String> {
 fn xbutton_name_from_mouse_data(mouse_data: u32) -> Option<&'static str> {
     // Spec: HIWORD(mouseData) is XBUTTON1/2. Some dongles put the button in
     // the low word, or stash RAWMOUSE button flags (0x0040 / 0x0100) instead.
+    // Prefer HIWORD when non-zero — scanning both words let a stale LOWORD flag
+    // flip XButton1↔XButton2 (side1 "can't record" / only side2 works).
     let hi = (mouse_data >> 16) as u16;
     let lo = (mouse_data & 0xFFFF) as u16;
-    for v in [hi, lo] {
-        if v == winapi::um::winuser::XBUTTON1 as u16 || v == 0x0040 {
-            return Some("XButton1");
-        }
-        if v == winapi::um::winuser::XBUTTON2 as u16 || v == 0x0100 {
-            return Some("XButton2");
-        }
+    let v = if hi != 0 { hi } else { lo };
+    if v == 0 {
+        return None;
+    }
+    if v == winapi::um::winuser::XBUTTON1 as u16 || v == 0x0040 {
+        return Some("XButton1");
+    }
+    if v == winapi::um::winuser::XBUTTON2 as u16 || v == 0x0100 {
+        return Some("XButton2");
     }
     None
 }
 
+/// Rising-edge pick from GetAsyncKeyState bits. Sticky latch on the other side
+/// button must not steal the name (old code preferred X2 → side1 looked dead).
+fn xbutton_from_async_bits(x1: bool, x2: bool, was1: bool, was2: bool) -> Option<&'static str> {
+    if x1 && !was1 {
+        return Some("XButton1");
+    }
+    if x2 && !was2 {
+        return Some("XButton2");
+    }
+    if x1 && !x2 {
+        return Some("XButton1");
+    }
+    if x2 && !x1 {
+        return Some("XButton2");
+    }
+    None
+}
+
+static LAST_ASYNC_X1_DOWN: AtomicBool = AtomicBool::new(false);
+static LAST_ASYNC_X2_DOWN: AtomicBool = AtomicBool::new(false);
+
+fn note_async_xbutton_level(name: &str, down: bool) {
+    match name {
+        "XButton1" => LAST_ASYNC_X1_DOWN.store(down, Ordering::SeqCst),
+        "XButton2" => LAST_ASYNC_X2_DOWN.store(down, Ordering::SeqCst),
+        _ => {}
+    }
+}
+
+/// Held-level VK identity (no rising-edge). Used when WH_MOUSE_LL has empty
+/// mouseData during recording — Logitech often omits HIWORD but still latches VK.
+fn xbutton_name_from_held_vk() -> Option<&'static str> {
+    unsafe {
+        use winapi::um::winuser::GetAsyncKeyState;
+        const VK_XBUTTON1: i32 = 0x05;
+        const VK_XBUTTON2: i32 = 0x06;
+        let x1 = GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0;
+        let x2 = GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0;
+        if x1 && !x2 {
+            return Some("XButton1");
+        }
+        if x2 && !x1 {
+            return Some("XButton2");
+        }
+        None
+    }
+}
+
+/// Pure identity for `WM_XBUTTONUP` with empty `mouseData`. No latch/claim writes.
+/// Exactly one claimed side button + VK released → that name; both claimed or unclear → None.
+fn xbutton_name_from_empty_up(
+    mask: u64,
+    _latch1: bool,
+    _latch2: bool,
+    vk1: bool,
+    vk2: bool,
+) -> Option<&'static str> {
+    let c1 = (mask & (1u64 << 1)) != 0;
+    let c2 = (mask & (1u64 << 2)) != 0;
+    if c1 && c2 {
+        // Never guess when both sides are claimed.
+        return None;
+    }
+    if c1 {
+        // VK still down → not a trusted release (hook/VK timing); leave to poll.
+        return if !vk1 { Some("XButton1") } else { None };
+    }
+    if c2 {
+        return if !vk2 { Some("XButton2") } else { None };
+    }
+    None
+}
+
+fn emit_xbutton_wire(name: &str, is_up: bool) {
+    let wire = if is_up {
+        format!("keyup:{name}")
+    } else {
+        name.to_string()
+    };
+    let session_active = RECORDING_SESSION.load(Ordering::SeqCst);
+    if session_active {
+        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+            sender.send(wire).ok();
+        } else if !is_up {
+            pending_recording_mouse()
+                .lock()
+                .unwrap()
+                .push(name.to_string());
+        }
+    } else if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+        sender.send(wire).ok();
+    }
+}
+
+fn reset_xbutton_orphan_streak(name: &str) {
+    if let Some(streak) = xbutton_orphan_streak_slot(name) {
+        streak.store(0, Ordering::SeqCst);
+    }
+}
+
+/// MASK still claimed but no falling edge reached claim_up (empty-UP sync used to
+/// wipe the poll latch). Require two consecutive release samples and skip the
+/// first poll after claim so LL-down-before-VK does not premature-release.
+fn try_xbutton_orphan_release(name: &str, vk_down: bool) {
+    let which = xbutton_which(name);
+    if which == 0 {
+        return;
+    }
+    let bit = 1u64 << which;
+    if (XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst) & bit) == 0 {
+        reset_xbutton_orphan_streak(name);
+        return;
+    }
+    if vk_down {
+        reset_xbutton_orphan_streak(name);
+        return;
+    }
+    let claim_ms = xbutton_claim_ms_slot(name)
+        .map(|s| s.load(Ordering::SeqCst))
+        .unwrap_or(0);
+    if claim_ms != 0
+        && unix_now_ms().saturating_sub(claim_ms) < XBUTTON_ORPHAN_SKIP_AFTER_CLAIM_MS
+    {
+        return;
+    }
+    let Some(streak) = xbutton_orphan_streak_slot(name) else {
+        return;
+    };
+    let n = streak.fetch_add(1, Ordering::SeqCst).saturating_add(1);
+    if n < XBUTTON_ORPHAN_RELEASE_SAMPLES {
+        return;
+    }
+    if claim_xbutton_up(name) {
+        crate::app_log::early_line("xbutton", &format!("orphan_up name={name} src=poll"));
+        emit_xbutton_wire(name, true);
+    }
+    streak.store(0, Ordering::SeqCst);
+}
+
+/// Polling fallback for mice/drivers that do not deliver WM_XBUTTON* to the
+/// low-level hook and do not expose usable Raw Input button flags.  The normal
+/// hook updates the same latches, so this only emits an edge when both native
+/// paths missed it.
+pub(crate) fn poll_xbutton_fallback() {
+    unsafe {
+        use winapi::um::winuser::GetAsyncKeyState;
+        const VK_XBUTTON1: i32 = 0x05;
+        const VK_XBUTTON2: i32 = 0x06;
+        let current = [
+            ("XButton1", GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0),
+            ("XButton2", GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0),
+        ];
+        let recording = RECORDING_SESSION.load(Ordering::SeqCst) || is_recording();
+        for (name, down) in current {
+            let previous = match name {
+                "XButton1" => LAST_ASYNC_X1_DOWN.swap(down, Ordering::SeqCst),
+                "XButton2" => LAST_ASYNC_X2_DOWN.swap(down, Ordering::SeqCst),
+                _ => false,
+            };
+            if previous != down {
+                if recording {
+                    // Capture owns the key. Do not use the runtime's 80ms
+                    // cross-source claim here: a Soft Pad event may have won it
+                    // immediately before the recording session was armed.
+                    if down {
+                        note_xbutton_dispatched(name);
+                        XBUTTON_ACTIVE_MASK.fetch_or(1u64 << xbutton_which(name), Ordering::SeqCst);
+                        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                            sender.send(name.to_string()).ok();
+                        } else {
+                            pending_recording_mouse().lock().unwrap().push(name.to_string());
+                        }
+                    } else {
+                        XBUTTON_ACTIVE_MASK.fetch_and(!(1u64 << xbutton_which(name)), Ordering::SeqCst);
+                        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                            sender.send(format!("keyup:{name}")).ok();
+                        }
+                    }
+                    crate::app_log::early_line(
+                        "xbutton",
+                        &format!("poll_recording_edge name={name} down={down}"),
+                    );
+                    continue;
+                }
+                let claimed = if down {
+                    claim_xbutton_down(name)
+                } else {
+                    claim_xbutton_up(name)
+                };
+                if claimed {
+                    crate::app_log::early_line(
+                        "xbutton",
+                        &format!(
+                            "poll_edge name={name} down={down} mask={:#x}",
+                            XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst)
+                        ),
+                    );
+                    emit_xbutton_wire(name, !down);
+                }
+                if !down {
+                    reset_xbutton_orphan_streak(name);
+                }
+                continue;
+            }
+            if !recording {
+                try_xbutton_orphan_release(name, down);
+            }
+        }
+    }
+}
+
 /// Some mice / Logitech stacks deliver WM_XBUTTON* with mouseData=0 to WH_MOUSE_LL
-/// while WebView still sees button3/4. Fall back to VK state on keydown.
+/// while WebView still sees button3/4. Fall back to VK rising-edge on keydown.
 fn xbutton_name_from_async_state() -> Option<&'static str> {
     unsafe {
         use winapi::um::winuser::GetAsyncKeyState;
-        // Prefer XButton2 first — both can read pressed if the OS latches briefly.
         const VK_XBUTTON1: i32 = 0x05;
         const VK_XBUTTON2: i32 = 0x06;
-        if GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0 {
-            return Some("XButton2");
-        }
-        if GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0 {
-            return Some("XButton1");
-        }
+        let x1 = GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0;
+        let x2 = GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0;
+        let was1 = LAST_ASYNC_X1_DOWN.swap(x1, Ordering::SeqCst);
+        let was2 = LAST_ASYNC_X2_DOWN.swap(x2, Ordering::SeqCst);
+        xbutton_from_async_bits(x1, x2, was1, was2)
     }
-    None
 }
 
 unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -1078,29 +1397,68 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             WM_MBUTTONDOWN => Some("MButton"),
             WM_XBUTTONDOWN | WM_XBUTTONUP => {
                 let info = *(lparam as *const MSLLHOOKSTRUCT);
-                xbutton_name_from_mouse_data(info.mouseData).or_else(|| {
-                    // mouseData empty: still name the button on down via VK state.
+                let named = xbutton_name_from_mouse_data(info.mouseData).or_else(|| {
                     if is_x_up {
-                        None
+                        // Empty mouseData UP: infer only when identity is unambiguous.
+                        // Never sync LAST_ASYNC_* here — that ate the poll falling edge.
+                        use winapi::um::winuser::GetAsyncKeyState;
+                        const VK_XBUTTON1: i32 = 0x05;
+                        const VK_XBUTTON2: i32 = 0x06;
+                        let vk1 = GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0;
+                        let vk2 = GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0;
+                        xbutton_name_from_empty_up(
+                            XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst),
+                            LAST_ASYNC_X1_DOWN.load(Ordering::SeqCst),
+                            LAST_ASYNC_X2_DOWN.load(Ordering::SeqCst),
+                            vk1,
+                            vk2,
+                        )
                     } else {
-                        xbutton_name_from_async_state()
+                        // Prefer held VK over rising-edge async: poll_xbutton_fallback
+                        // may already have advanced LAST_ASYNC_* for this same edge,
+                        // which made XButton2 (empty mouseData) fall through to Forward.
+                        xbutton_name_from_held_vk().or_else(xbutton_name_from_async_state)
                     }
-                })
+                });
+                if let Some(n) = named {
+                    note_async_xbutton_level(n, !is_x_up);
+                }
+                named
             }
             _ => None,
         };
         if let Some(name) = btn {
             let is_side = name == "XButton1" || name == "XButton2";
+            // Observing a global side button must not make OneTone its owner.
+            // In particular, an unbound XButton must keep its normal Windows
+            // behavior (browser back/forward, mouse-driver actions, etc.).
+            // Recording is the one intentional exception: the capture dialog
+            // temporarily owns every supported hardware key.
+            if is_side && !session_active && !side_button_is_owned(name) {
+                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
+            // Claim the complete down/up pair once. LL and Raw Input both emit
+            // XButton edges; forwarding both copies makes Soft Pad flicker.
+            if is_side {
+                let claimed = if is_x_up {
+                    claim_xbutton_up(name)
+                } else {
+                    claim_xbutton_down(name)
+                };
+                if !claimed && !session_active {
+                    return 1;
+                }
+            }
             // Recording owns side buttons for the whole session — never voice-dispatch
             // them even when `recording_sender` is not wired yet (IPC / hook race).
             if is_side && session_active {
                 if !is_x_up {
-                    // Claim even when sender is not ready — blocks Raw twin during record.
-                    let _ = claim_xbutton_down(name);
+                    // The first native source wins. Raw Input may have already
+                    // delivered the same down edge; do not send it twice.
                     if sender_ready {
-                        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-                            sender.send(name.to_string()).ok();
-                        }
+                            if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                                sender.send(name.to_string()).ok();
+                            }
                     } else {
                         pending_recording_mouse()
                             .lock()
@@ -1112,12 +1470,12 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             }
             if sender_ready {
                 if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-                    if !is_x_up {
-                        if is_side {
-                            let _ = claim_xbutton_down(name);
-                        }
-                        sender.send(name.to_string()).ok();
-                    }
+                    let payload = if is_x_up {
+                        format!("keyup:{name}")
+                    } else {
+                        name.to_string()
+                    };
+                    sender.send(payload).ok();
                 }
                 // Swallow side buttons so WebView2 does not treat them as Back/Forward.
                 if is_side {
@@ -1127,29 +1485,71 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 return 1;
             } else if is_side || resolve_active_binding(name, None).is_some() {
                 // Side buttons always enter the runtime loop (oral arm may match even
-                // when BindAll briefly lagged). Still only swallow when registered.
-                if !is_x_up {
-                    // Skip if Raw already claimed this press (avoids Typeless on→off).
-                    let should_send = !is_side || claim_xbutton_down(name);
-                    if should_send {
-                        if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-                            sender.send(name.to_string()).ok();
+                // when BindAll briefly lagged). Always swallow claimed side buttons —
+                // leaving them unregistered used to leak XButton2 as Browser_Forward.
+                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                    let payload = if is_x_up {
+                        format!("keyup:{name}")
+                    } else {
+                        name.to_string()
+                    };
+                    sender.send(payload).ok();
+                }
+                return 1;
+            }
+        } else if w == WM_XBUTTONDOWN || w == WM_XBUTTONUP {
+            // Empty mouseData (common on Logitech): last-chance held-VK naming for
+            // record + runtime. Only swallow if OneTone owns the key; otherwise
+            // let Windows / the foreground app process the side-button event.
+            if !is_x_up {
+                if let Some(name) = xbutton_name_from_held_vk() {
+                    if !session_active && !side_button_is_owned(name) {
+                        return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+                    }
+                    if claim_xbutton_down(name) {
+                        crate::app_log::early_line(
+                            "xbutton",
+                            &format!("empty_data_named name={name} record={session_active}"),
+                        );
+                        note_async_xbutton_level(name, true);
+                        if session_active {
+                            if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                                sender.send(name.to_string()).ok();
+                            } else {
+                                pending_recording_mouse()
+                                    .lock()
+                                    .unwrap()
+                                    .push(name.to_string());
+                            }
+                        } else if !try_dispatch_named_pad(name, false) {
+                            if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                                sender.send(name.to_string()).ok();
+                            }
                         }
                     }
-                }
-                if !is_side || resolve_active_binding(name, None).is_some() {
                     return 1;
                 }
             }
-        } else if w == WM_XBUTTONDOWN || w == WM_XBUTTONUP {
-            // mouseData empty and VK state already released — still swallow while
-            // recording so WebView2 cannot navigate Forward.
             if session_active {
-                return 1;
+                // Logitech often omits mouseData + VK. Soft Pad is already blocked by
+                // RECORDING_SESSION in try_dispatch_named_pad / begin_session. Do NOT
+                // swallow here — return 1 used to kill WebView button3/4, so FE page
+                // backup (the only name path for those mice) never saw XButton1.
+                crate::app_log::early_line(
+                    "xbutton",
+                    "record_empty_data_unnamed — pass to FE page backup",
+                );
             }
+            return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
         }
     }
     CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+}
+
+fn side_button_is_owned(name: &str) -> bool {
+    resolve_active_binding(name, None).is_some()
+        || crate::codex_numpad_layer::oral_arm_owns_physical_key(name)
+        || crate::codex_numpad_layer::lookup_named_pad_route(name).is_some()
 }
 
 /// Pure bridge helper extracted from `keyboard_proc` so the Bluetooth
@@ -1662,17 +2062,13 @@ unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
         return dispatch_raw_hid_input(raw, device.as_deref());
     }
     if let Some((name, is_up)) = raw_mouse_xbutton(raw) {
-        // Pulse triggers: never feed Raw ups (LL is down-only; ups are noise).
-        // Recording: LL owns the capture path.
-        if is_up || RECORDING_SESSION.load(Ordering::SeqCst) {
+        // Raw Input is the reliable source for mice that emit empty mouseData in
+        // WH_MOUSE_LL. Runtime uses shared edge claims to dedupe sources. During
+        // recording, the runtime claim must not suppress the capture channel.
+        if !claim_raw_xbutton(&name, is_up) {
             return true;
         }
-        // First-wins vs WH_MOUSE_LL — hard-suppressing Raw while the hook is
-        // installed killed mice that only deliver reliable XButtons via Raw.
-        if !claim_xbutton_down(&name) {
-            return true;
-        }
-        return dispatch_key_event(&name, false, device.as_deref(), "raw_input");
+        return dispatch_key_event(&name, is_up, device.as_deref(), "raw_input");
     }
     if let Some((name, is_up)) = raw_input_to_event(raw) {
         return dispatch_key_event(&name, is_up, device.as_deref(), "raw_input");
@@ -1834,11 +2230,14 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        active_bindings, bridge_injected_ralt_to_volume, claim_xbutton_down,
+        active_bindings, bridge_injected_ralt_to_volume, claim_xbutton_down, claim_xbutton_up,
+        try_xbutton_orphan_release, unix_now_ms, xbutton_name_from_empty_up, XBUTTON1_CLAIM_MS,
+        XBUTTON1_ORPHAN_STREAK, XBUTTON2_CLAIM_MS, XBUTTON2_ORPHAN_STREAK,
+        XBUTTON_ORPHAN_RELEASE_SAMPLES, XBUTTON_ORPHAN_SKIP_AFTER_CLAIM_MS,
         drain_pending_recording_mouse, is_ghost_media_key_token, note_volume_for_ghost_suppress,
-        scan_consumer_bytes, should_swallow_ghost_media_key, xbutton_name_from_mouse_data,
-        GHOST_MEDIA_SUPPRESS_UNTIL_MS, LAST_XBUTTON_DISPATCH_MS, LAST_XBUTTON_WHICH,
-        RECORDING_SESSION,
+        scan_consumer_bytes, should_swallow_ghost_media_key, xbutton_from_async_bits,
+        xbutton_name_from_mouse_data, GHOST_MEDIA_SUPPRESS_UNTIL_MS, LAST_XBUTTON_DISPATCH_MS,
+        LAST_XBUTTON_WHICH, RECORDING_SESSION, XBUTTON_ACTIVE_MASK,
     };
     use crate::config::is_volume_hotkey;
     use std::sync::atomic::Ordering;
@@ -1907,10 +2306,163 @@ mod tests {
     }
 
     #[test]
+    fn xbutton_hi_word_wins_over_stale_lo_flag() {
+        // HIWORD=XButton1, LOWORD has RI_MOUSE_BUTTON_5 (0x0100) noise — must stay X1.
+        assert_eq!(xbutton_name_from_mouse_data(0x0001_0100), Some("XButton1"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0002_0040), Some("XButton2"));
+    }
+
+    #[test]
+    fn xbutton_async_rising_edge_ignores_sticky_peer() {
+        // Sticky X2 latched + fresh X1 down → XButton1 (old prefer-X2 mis-recorded).
+        assert_eq!(
+            xbutton_from_async_bits(true, true, false, true),
+            Some("XButton1")
+        );
+        assert_eq!(
+            xbutton_from_async_bits(true, true, true, false),
+            Some("XButton2")
+        );
+        assert_eq!(
+            xbutton_from_async_bits(true, false, false, false),
+            Some("XButton1")
+        );
+        assert_eq!(
+            xbutton_from_async_bits(false, true, false, false),
+            Some("XButton2")
+        );
+        assert_eq!(xbutton_from_async_bits(true, true, true, true), None);
+    }
+
+    #[test]
+    fn xbutton_empty_up_names_only_when_identity_clear() {
+        let x1 = 1u64 << 1;
+        let x2 = 1u64 << 2;
+        // Exactly one claimed + VK released → name that button.
+        assert_eq!(
+            xbutton_name_from_empty_up(x1, true, false, false, false),
+            Some("XButton1")
+        );
+        assert_eq!(
+            xbutton_name_from_empty_up(x2, false, true, false, false),
+            Some("XButton2")
+        );
+        // VK still pressed → do not release early (poll may compensate later).
+        assert_eq!(
+            xbutton_name_from_empty_up(x1, true, false, true, false),
+            None
+        );
+        // Both claimed → never guess.
+        assert_eq!(
+            xbutton_name_from_empty_up(x1 | x2, true, true, false, false),
+            None
+        );
+        // No claim → leave to poll / Raw.
+        assert_eq!(
+            xbutton_name_from_empty_up(0, true, false, false, false),
+            None
+        );
+    }
+
+    #[test]
+    fn xbutton_orphan_needs_two_release_samples_and_skips_fresh_claim() {
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        XBUTTON1_CLAIM_MS.store(0, Ordering::SeqCst);
+        XBUTTON1_ORPHAN_STREAK.store(0, Ordering::SeqCst);
+        XBUTTON2_CLAIM_MS.store(0, Ordering::SeqCst);
+        XBUTTON2_ORPHAN_STREAK.store(0, Ordering::SeqCst);
+
+        assert!(claim_xbutton_down("XButton1"));
+        // Fresh claim: first orphan poll must not release even if VK reads up.
+        try_xbutton_orphan_release("XButton1", false);
+        assert_eq!(
+            XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst) & (1u64 << 1),
+            1u64 << 1,
+            "fresh claim must survive first orphan sample"
+        );
+
+        // Age the claim past the skip window.
+        XBUTTON1_CLAIM_MS.store(
+            unix_now_ms().saturating_sub(XBUTTON_ORPHAN_SKIP_AFTER_CLAIM_MS + 1),
+            Ordering::SeqCst,
+        );
+        try_xbutton_orphan_release("XButton1", false);
+        assert_eq!(
+            XBUTTON1_ORPHAN_STREAK.load(Ordering::SeqCst),
+            1,
+            "first stable release sample only bumps streak"
+        );
+        assert_eq!(
+            XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst) & (1u64 << 1),
+            1u64 << 1
+        );
+        assert!(
+            XBUTTON_ORPHAN_RELEASE_SAMPLES >= 2,
+            "orphan path requires ≥2 samples"
+        );
+        try_xbutton_orphan_release("XButton1", false);
+        assert_eq!(
+            XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst) & (1u64 << 1),
+            0,
+            "second stable sample releases the orphan claim"
+        );
+
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        XBUTTON1_CLAIM_MS.store(0, Ordering::SeqCst);
+        XBUTTON1_ORPHAN_STREAK.store(0, Ordering::SeqCst);
+    }
+
+    #[test]
+    fn xbutton_empty_mouse_data_up_dispatches_once_when_claimed() {
+        use winapi::um::winuser::{MSLLHOOKSTRUCT, WM_XBUTTONDOWN, WM_XBUTTONUP};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let old_sender = super::active_sender().lock().unwrap().replace(tx);
+        let old_bindings = std::mem::replace(
+            &mut *active_bindings().lock().unwrap(),
+            vec!["XButton1".into()],
+        );
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+        let old_recording = super::recording_sender().lock().unwrap().take();
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        super::LAST_ASYNC_X1_DOWN.store(false, Ordering::SeqCst);
+        super::LAST_ASYNC_X2_DOWN.store(false, Ordering::SeqCst);
+
+        let mut info: MSLLHOOKSTRUCT = unsafe { std::mem::zeroed() };
+        info.mouseData = 1u32 << 16; // named down
+        unsafe {
+            super::mouse_proc(0, WM_XBUTTONDOWN as usize, &info as *const _ as isize);
+        }
+        info.mouseData = 0; // empty UP — must still release via claim+VK path
+        unsafe {
+            super::mouse_proc(0, WM_XBUTTONUP as usize, &info as *const _ as isize);
+            // Twin empty UP must not second-fire.
+            super::mouse_proc(0, WM_XBUTTONUP as usize, &info as *const _ as isize);
+        }
+        let actual: Vec<String> = rx.try_iter().collect();
+        *super::active_sender().lock().unwrap() = old_sender;
+        *super::recording_sender().lock().unwrap() = old_recording;
+        *active_bindings().lock().unwrap() = old_bindings;
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+
+        // Empty UP naming uses GetAsyncKeyState — on CI without a physical press VK is
+        // already up, so claimed+!vk should name XButton1 and emit one keyup.
+        assert_eq!(actual, ["XButton1", "keyup:XButton1"]);
+    }
+
+    #[test]
     fn xbutton_down_claim_dedupes_ll_and_raw_twins() {
         // Reset shared atoms (parallel tests may race; serialize via unique names).
         LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
         LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
         assert!(claim_xbutton_down("XButton1"), "first LL/Raw down wins");
         assert!(
             !claim_xbutton_down("XButton1"),
@@ -1921,8 +2473,121 @@ mod tests {
             "other side button is independent"
         );
         assert!(!claim_xbutton_down("XButton2"));
+        assert!(claim_xbutton_up("XButton1"), "first up releases the claimed pair");
+        assert!(!claim_xbutton_up("XButton1"), "twin up must not second-fire");
+        assert!(claim_xbutton_up("XButton2"), "second button releases independently");
         LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
         LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+    }
+
+    #[test]
+    fn xbutton_hook_delivers_registered_down_and_up_once() {
+        // Exercise the actual callback, not just its dedupe helper. Run this
+        // global-hook test with --test-threads=1 alongside other native tests.
+        use winapi::um::winuser::{MSLLHOOKSTRUCT, WM_XBUTTONDOWN, WM_XBUTTONUP};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let old_sender = super::active_sender().lock().unwrap().replace(tx);
+        let old_bindings = std::mem::replace(
+            &mut *active_bindings().lock().unwrap(),
+            vec!["XButton1".into(), "XButton2".into()],
+        );
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+        let old_recording = super::recording_sender().lock().unwrap().take();
+        let mut actual = Vec::new();
+        for which in [1u32, 2] {
+            LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+            LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+            XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+            let mut info: MSLLHOOKSTRUCT = unsafe { std::mem::zeroed() };
+            info.mouseData = which << 16;
+            for message in [WM_XBUTTONDOWN, WM_XBUTTONDOWN, WM_XBUTTONUP, WM_XBUTTONUP] {
+                unsafe { super::mouse_proc(0, message as usize, &info as *const _ as isize); }
+            }
+            actual.extend(rx.try_iter());
+        }
+        *super::active_sender().lock().unwrap() = old_sender;
+        *super::recording_sender().lock().unwrap() = old_recording;
+        *active_bindings().lock().unwrap() = old_bindings;
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        assert_eq!(actual, ["XButton1", "keyup:XButton1", "XButton2", "keyup:XButton2"]);
+    }
+
+    #[test]
+    fn xbutton_recording_ignores_runtime_claim_and_routes_to_capture() {
+        use winapi::um::winuser::{MSLLHOOKSTRUCT, WM_XBUTTONDOWN};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let old_recording_sender = super::recording_sender().lock().unwrap().replace(tx);
+        let old_active_bindings = std::mem::replace(
+            &mut *active_bindings().lock().unwrap(),
+            vec!["XButton2".into()],
+        );
+        let old_active_sender = super::active_sender().lock().unwrap().take();
+        RECORDING_SESSION.store(true, Ordering::SeqCst);
+        LAST_XBUTTON_WHICH.store(2, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(unix_now_ms(), Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(1u64 << 2, Ordering::SeqCst);
+        let mut info: MSLLHOOKSTRUCT = unsafe { std::mem::zeroed() };
+        info.mouseData = 2u32 << 16;
+
+        let result = unsafe {
+            super::mouse_proc(0, WM_XBUTTONDOWN as usize, &info as *const _ as isize)
+        };
+        let actual: Vec<String> = rx.try_iter().collect();
+
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+        *super::recording_sender().lock().unwrap() = old_recording_sender;
+        *super::active_sender().lock().unwrap() = old_active_sender;
+        *active_bindings().lock().unwrap() = old_active_bindings;
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+
+        assert_eq!(result, 1, "capture session must own the physical press");
+        assert_eq!(actual, ["XButton2"], "X2 must reach the recording sender");
+    }
+
+    #[test]
+    fn raw_xbutton_recording_does_not_consume_runtime_claim() {
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        RECORDING_SESSION.store(true, Ordering::SeqCst);
+
+        assert!(super::claim_raw_xbutton("XButton2", false));
+        assert_eq!(XBUTTON_ACTIVE_MASK.load(Ordering::SeqCst), 0);
+
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+    }
+
+    #[test]
+    fn unbound_xbutton_is_left_to_windows() {
+        // OneTone's global observer must not claim an unbound side button.
+        use winapi::um::winuser::{MSLLHOOKSTRUCT, WM_XBUTTONDOWN};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let old_sender = super::active_sender().lock().unwrap().replace(tx);
+        let old_bindings = std::mem::replace(&mut *active_bindings().lock().unwrap(), vec![]);
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+        let old_recording = super::recording_sender().lock().unwrap().take();
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        let mut info: MSLLHOOKSTRUCT = unsafe { std::mem::zeroed() };
+        info.mouseData = 2u32 << 16;
+        let swallowed = unsafe {
+            super::mouse_proc(0, WM_XBUTTONDOWN as usize, &info as *const _ as isize)
+        };
+        let actual: Vec<String> = rx.try_iter().collect();
+        *super::active_sender().lock().unwrap() = old_sender;
+        *super::recording_sender().lock().unwrap() = old_recording;
+        *active_bindings().lock().unwrap() = old_bindings;
+        LAST_XBUTTON_WHICH.store(0, Ordering::SeqCst);
+        LAST_XBUTTON_DISPATCH_MS.store(0, Ordering::SeqCst);
+        XBUTTON_ACTIVE_MASK.store(0, Ordering::SeqCst);
+        assert_eq!(swallowed, 0, "unbound XButton2 must reach its normal handler");
+        assert!(actual.is_empty(), "unbound XButton2 must not enter OneTone");
     }
 
     /// The Bluetooth keyboard bridge — when VK_RMENU arrives during recording

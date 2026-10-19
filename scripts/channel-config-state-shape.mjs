@@ -7,6 +7,7 @@ export const CHANNEL_CONFIG_STATE_SHAPE = [
   'mappings[].triggerMode',
   'mappings[].appTargetId',
   'config.voiceAssistEnabled',
+  'config.voiceActivation',
   'config.voiceEnd.enabled',
   'mappings[].voiceOverride.engine',
   'mappings[].codexMicroPad.enabled',

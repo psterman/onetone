@@ -1710,8 +1710,13 @@
 }
 
 /* 取消听写 · 取消词 / 摄像头演示 */
+/* Demo / detailed captions retired — keep rules inert if markup returns */
 #settingsPanelKeys .keys-cancel-demo,
 .keys-capture-popover .keys-cancel-demo {
+  display: none !important;
+}
+#settingsPanelKeys .keys-cancel-demo--legacy,
+.keys-capture-popover .keys-cancel-demo--legacy {
   margin: 0 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
@@ -3094,6 +3099,75 @@
   visibility: hidden !important;
 }
 
+/* Peer tabs: 说完后 / 取消听写 / 口令发送 — match left rail selected rhythm */
+#settingsPanelKeys .keys-finish-peers,
+.keys-capture-popover .keys-finish-peers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--keys-line, #d5dee8);
+  background: var(--keys-wash, #f3f7fa);
+  box-sizing: border-box;
+}
+#settingsPanelKeys .keys-finish-peer,
+.keys-capture-popover .keys-finish-peer {
+  appearance: none;
+  min-width: 0;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--on-surface-muted, #5a6b7c);
+  cursor: pointer;
+  text-align: center;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+#settingsPanelKeys .keys-finish-peer:hover,
+#settingsPanelKeys .keys-finish-peer:focus-visible,
+.keys-capture-popover .keys-finish-peer:hover,
+.keys-capture-popover .keys-finish-peer:focus-visible {
+  color: var(--on-surface, #13202c);
+  background: rgba(255, 255, 255, 0.55);
+  outline: none;
+}
+#settingsPanelKeys .keys-finish-peer.is-active,
+.keys-capture-popover .keys-finish-peer.is-active {
+  background: #fff;
+  color: var(--primary-deep, #0f5f7a);
+  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06);
+}
+#settingsPanelKeys .keys-finish-peer-pane[hidden],
+.keys-capture-popover .keys-finish-peer-pane[hidden] {
+  display: none !important;
+}
+#settingsPanelKeys .keys-finish-peer-head,
+.keys-capture-popover .keys-finish-peer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+#settingsPanelKeys .keys-finish-peer-head .keys-finish-adv-title,
+.keys-capture-popover .keys-finish-peer-head .keys-finish-adv-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+#settingsPanelKeys .keys-finish-peer-head .keys-finish-adv-sum,
+.keys-capture-popover .keys-finish-peer-head .keys-finish-adv-sum {
+  font-size: 11.5px;
+  color: var(--on-surface-muted);
+}
+
 #settingsPanelKeys .keys-finish-segments,
 #settingsPanelKeys #voiceEndKeyModePanel.keys-finish-segments,
 .keys-capture-popover .keys-finish-segments,
@@ -3200,13 +3274,14 @@
 
 #settingsPanelKeys .keys-finish-voice-bridge,
 .keys-capture-popover .keys-finish-voice-bridge {
-  margin: 6px 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  align-items: center;
-  font-size: 12px;
-  color: var(--on-surface-muted, #666);
+  display: none !important;
+}
+#settingsPanelKeys .keys-finish-adv-fold,
+.keys-capture-popover .keys-finish-adv-fold {
+  display: none !important;
+}
+#settingsPanelKeys .keys-work-tag {
+  display: none !important;
 }
 #settingsPanelKeys .keys-finish-voice-bridge-go,
 .keys-capture-popover .keys-finish-voice-bridge-go {
@@ -3431,7 +3506,7 @@
 }
 
 #settingsPanelKeys .keys-page-rail__item[data-channel="voice"].is-active {
-  color: var(--primary-strong, #1a7a9c);
+  color: var(--primary);
 }
 
 #settingsPanelKeys .keys-oral-page, #voiceIntentPaneOral .keys-oral-page {
@@ -3566,6 +3641,25 @@
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
   background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
   color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-mode, #voiceIntentPaneOral .keys-oral-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--on-surface-muted, #5a6b7c);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+#settingsPanelKeys .keys-oral-mode select, #voiceIntentPaneOral .keys-oral-mode select {
+  border: 1px solid var(--outline-variant, #d5dee8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--on-surface, #243342);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
 }
 
 #settingsPanelKeys .keys-oral-head__hint, #voiceIntentPaneOral .keys-oral-head__hint {
@@ -4161,10 +4255,12 @@
 }
 #settingsPanelKeys .keys-pick-subtab.is-active,
 .keys-capture-popover .keys-pick-subtab.is-active {
-  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, #fff);
-  border-color: var(--primary-strong, #1f8fb8);
-  color: var(--primary-strong, #1f8fb8);
-  font-weight: 750;
+  /* Align with settings-nav-item / keys-page-rail__item.is-active */
+  background: var(--primary-soft);
+  border-color: transparent;
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: none;
 }
 
 #settingsPanelKeys .keys-cursor-pick-list,
@@ -4250,9 +4346,12 @@
 }
 #settingsPanelKeys .keys-voice-pick-row.is-selected,
 .keys-capture-popover .keys-voice-pick-row.is-selected {
-  border-color: var(--primary-strong, #1f8fb8);
-  background: color-mix(in srgb, var(--primary-strong, #1f8fb8) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-strong, #1f8fb8) 28%, transparent);
+  /* Align with settings-nav-item / keys-page-rail__item.is-active */
+  border-color: transparent;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: none;
 }
 #settingsPanelKeys .keys-voice-pick-row-name,
 .keys-capture-popover .keys-voice-pick-row-name {
@@ -5028,8 +5127,12 @@
 }
 
 #settingsPanelKeys .keys-channel-item.is-selected, .keys-capture-popover .keys-channel-item.is-selected {
-  border-color: var(--primary-strong);
-  background: color-mix(in srgb, var(--primary-strong) 10%, transparent);
+  /* Align with settings-nav-item / keys-page-rail__item.is-active */
+  border-color: transparent;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: none;
 }
 
 #settingsPanelKeys .keys-channel-item-wrap.is-hero-mapped .keys-channel-item,
@@ -5264,16 +5367,18 @@
 
 #settingsPanelKeys .ime-preset-item--labeled.is-selected {
   border: 0 !important;
-  background: transparent !important;
+  background: #fff !important;
   outline: none !important;
-  box-shadow: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06) !important;
+  padding: 4px 6px !important;
 }
 
 #settingsPanelKeys .ime-preset-item--labeled.is-selected .ime-preset-icon,
 #settingsPanelKeys .ime-preset-item--labeled.is-selected .ime-preset-custom-icon {
-  border-color: rgba(42, 156, 196, 0.55);
-  background: var(--cyan-soft, #e4f2f9);
-  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
+  border-color: transparent;
+  background: var(--keys-paper, #fff);
+  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06);
 }
 
 #settingsPanelKeys .ime-preset-name {
@@ -5391,7 +5496,34 @@
   display: none !important;
 }
 
-/* Capture / ??? ? same physical keycap material as trigger */
+/* Dictation keycap: IME/agent badge beside chord */
+#settingsPanelKeys #keysCaptureKeycapHost #targetDisplay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+#settingsPanelKeys #keysCaptureKeycapHost #targetDisplay .target-ime-badge:not([hidden]) {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(42, 156, 196, 0.18);
+}
+#settingsPanelKeys #keysCaptureKeycapHost #targetDisplay .keys-target-action-icon:not([hidden]) {
+  width: 28px;
+  height: 28px;
+  margin-right: 0;
+}
+#settingsPanelKeys #keysCaptureKeycapHost #targetDisplay .keys-target-action-icon:not([hidden]) svg,
+#settingsPanelKeys #keysCaptureKeycapHost #targetDisplay .keys-target-action-icon:not([hidden]) .micro-hw__icon {
+  width: 100%;
+  height: 100%;
+}
+
+/* Capture / hero — same physical keycap material as trigger */
 #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
 #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:not(.empty),
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display,
@@ -7227,6 +7359,11 @@
   font-weight: 500;
   font-size: 0.68rem;
   color: var(--ot-muted, #6b7280);
+  flex: 1 1 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.35;
 }
 #settingsPanelKeys .keys-gesture-modes__row,
 .habit-scenario-keys-advanced .keys-gesture-modes__row {
@@ -8481,7 +8618,42 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   color:#445;
 }
 .record-probe-hint{ margin:6px 0 8px; color:#667; line-height:1.4; }
+.record-probe-diag{
+  margin:0 0 8px;
+  padding:8px 10px;
+  border-radius:8px;
+  background:rgba(23,92,211,.08);
+  border:1px solid rgba(23,92,211,.18);
+  color:#173b7a;
+  font-size:12px;
+  line-height:1.45;
+  white-space:pre-wrap;
+}
+.record-probe-diag.is-ok{
+  background:rgba(236,253,243,.95);
+  border-color:rgba(2,122,72,.28);
+  color:#027a48;
+}
+.record-probe-diag.is-warn{
+  background:rgba(255,250,235,.95);
+  border-color:rgba(181,71,8,.28);
+  color:#b54708;
+}
+.record-probe-diag.is-bad{
+  background:rgba(180,35,24,.08);
+  border-color:rgba(180,35,24,.22);
+  color:#7a1c14;
+}
 .record-probe-adv{ display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; color:#445; cursor:pointer; }
+.record-probe-line.is-ipc-ok .k,
+.record-probe-line.is-ipc-ok .n{ color:#027a48; }
+.record-probe-line.is-ipc-warn .k,
+.record-probe-line.is-ipc-warn .n,
+.record-probe-line.is-ipc-fail .k,
+.record-probe-line.is-ipc-fail .n,
+.record-probe-line.is-ipc-timeout .k,
+.record-probe-line.is-ipc-timeout .n{ color:#b42318; }
+.record-probe-line.is-diag .n{ color:#173b7a; white-space:normal; }
 .record-probe-hid-box{ margin:0 0 8px; }
 .record-probe-hid-list{ margin:0; padding:0; list-style:none; }
 .record-probe-hid-item{ display:flex; align-items:center; gap:8px; margin:0 0 4px; font-family:ui-monospace,Consolas,monospace; font-size:12px; }
@@ -8654,7 +8826,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item {
   display: grid;
   grid-template-columns: 3px 16px minmax(0, 1fr) auto auto;
-  align-items: center;
+  align-items: start;
   gap: 2px 6px;
   margin: 0;
   padding: 9px 4px 9px 8px;
@@ -8662,6 +8834,9 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   background: transparent;
   border-radius: 10px;
   overflow: visible;
+}
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item.has-trail {
+  grid-template-columns: 3px 16px minmax(0, 1fr) auto auto minmax(0, auto);
 }
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__drag {
   grid-column: 2;
@@ -8704,6 +8879,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 8px;
   opacity: 0.75;
 }
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__trail--end {
+  grid-column: 6;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  display: inline-flex;
+  max-width: 7.5rem;
+  min-width: 0;
+}
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__body {
   display: contents;
 }
@@ -8711,13 +8895,16 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   grid-column: 3;
   font-size: 13px;
   font-weight: 650;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dot {
   grid-column: 4;
   grid-row: 1;
   width: 7px;
   height: 7px;
-  margin-top: 0;
+  margin-top: 4px;
   border-radius: 50%;
   background: #15803d;
   justify-self: end;
@@ -8731,9 +8918,13 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   font-size: 11px;
   font-weight: 650;
   color: var(--on-surface-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
 }
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item.is-active .keys-scene-actions__s {
   color: var(--primary-strong, #0f5f7a);
@@ -9243,7 +9434,8 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   min-height: 0;
   height: 100%;
   max-height: 100%;
-  padding: 8px 4px;
+  /* Match .settings-sidebar horizontal inset so active pills line up with 主面板 */
+  padding: 8px 6px;
   box-sizing: border-box;
   background: var(--keys-wash, #eef3f7);
   border-right: 1px solid var(--outline-variant, #d5dee8);
@@ -9385,7 +9577,8 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 
 #settingsPanelKeys .keys-page-rail__dir-lbl {
-  margin: 4px 6px 2px;
+  /* Same horizontal inset as .settings-nav-item / rail items */
+  margin: 4px 10px 2px;
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.04em;
@@ -9401,27 +9594,28 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   overflow: auto !important;
   padding: 0 !important;
   width: 100% !important;
-  gap: 1px !important;
+  gap: 2px !important;
   justify-content: flex-start !important;
 }
 
+/* Match .settings-nav-item — same selected / hover language as 主面板 */
 #settingsPanelKeys .keys-page-rail__item {
   appearance: none;
   display: block !important;
   width: 100% !important;
   box-sizing: border-box;
   height: auto !important;
-  min-height: 0 !important;
+  min-height: 36px !important;
   max-height: none !important;
-  padding: 8px 6px !important;
+  padding: 0 10px !important;
   border: 0 !important;
-  border-radius: 8px !important;
+  border-radius: 12px !important;
   font: inherit;
-  font-size: 12.5px !important;
-  font-weight: 650 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
   line-height: 1.3 !important;
   text-align: left;
-  color: var(--on-surface-muted, #5a6b7c) !important;
+  color: var(--on-surface-muted) !important;
   background: transparent !important;
   box-shadow: none !important;
   cursor: pointer;
@@ -9429,16 +9623,16 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 
 #settingsPanelKeys .keys-page-rail__item:hover,
 #settingsPanelKeys .keys-page-rail__item:focus-visible {
-  background: rgba(255, 255, 255, 0.55) !important;
-  color: var(--on-surface, #13202c) !important;
+  background: var(--primary-soft) !important;
+  color: var(--on-surface) !important;
   outline: none;
 }
 
 #settingsPanelKeys .keys-page-rail__item.is-active {
-  background: #fff !important;
-  color: var(--primary-deep, #0f5f7a) !important;
-  font-weight: 650 !important;
-  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
 }
 
 #settingsPanelKeys .keys-page-rail__item.is-codex-hidden {

@@ -175,6 +175,13 @@
     return null;
   }
 
+  function clearWakePhraseSavePending(){
+    clearTimeout(voiceWakePresetSaveTimer);
+    voiceWakePresetSaveTimer=0;
+    voiceWakePresetSavePending=null;
+    voiceWakePresetSaveSeq++;
+  }
+
   function syncVoiceEngineTabButtons(tabMode,loading){
     if(global.__otVoiceEngineTabsMounted&&typeof global.__otVoiceEngineTabsSync==='function'){
       global.__otVoiceEngineTabsSync();
@@ -2576,11 +2583,72 @@
     return pc&&pc.presetPhrasesIn?pc.presetPhrasesIn(sel):[];
   }
 
+  function editingWakeScopeMapping(){
+    var ctx=global.OneToneVoiceSchemeContext;
+    if(ctx&&typeof ctx.editingMapping==='function'){
+      try{ return ctx.editingMapping(); }catch(_){ return null; }
+    }
+    return null;
+  }
+
+  function isAppScopedWakeEdit(mapping){
+    mapping=mapping||editingWakeScopeMapping();
+    if(!mapping) return false;
+    var d=global.OneToneHabitOverrideDiff;
+    return !!(d&&d.isAppScenarioMapping&&d.isAppScenarioMapping(mapping));
+  }
+
+  /** App-scenario wake phrases live on voiceOverride — never treat global engine tables as the edit buffer. */
+  function scopedWakePhraseList(mapping){
+    mapping=mapping||editingWakeScopeMapping();
+    if(!mapping||!isAppScopedWakeEdit(mapping)) return null;
+    var cfg=state().config||{};
+    var sc=global.OneToneSceneConfig;
+    if(sc&&typeof sc.baseWakePhrases==='function'){
+      return normalizePhraseList(sc.baseWakePhrases(cfg,mapping));
+    }
+    var ov=mapping.voiceOverride;
+    if(ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length){
+      return normalizePhraseList(ov.wakePhrases);
+    }
+    return normalizePhraseList((sc&&sc.globalWakePhrases)?sc.globalWakePhrases(cfg):[]);
+  }
+
+  function writeWakePhrasesToEditingOverride(next){
+    next=normalizePhraseList(next);
+    if(!next.length) next=['开始输入'];
+    var mapping=editingWakeScopeMapping();
+    if(!mapping||!isAppScopedWakeEdit(mapping)) return false;
+    if(!mapping.voiceOverride||typeof mapping.voiceOverride!=='object') mapping.voiceOverride={};
+    mapping.voiceOverride.wakePhrases=next.slice();
+    mapping.updatedAt=Date.now();
+    return true;
+  }
+
+  function refreshWakeScopeUi(){
+    var list=currentWakePhraseList();
+    var head=list&&list[0]?list[0]:'';
+    if(head) paintWakeCapPhrase(head);
+    renderWakePhraseTags();
+    try{
+      if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.syncHeroVals==='function'){
+        global.OneToneVoiceIntentRail.syncHeroVals();
+      }
+    }catch(_){}
+    try{
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      }
+    }catch(_){}
+  }
+
   function currentWakePhraseList(){
     const cfg=state().config||{};
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     const pending=pendingWakePhrases();
     if(pending&&pending.length) return pending;
+    var scoped=scopedWakePhraseList();
+    if(scoped&&scoped.length) return scoped;
     if(mode==='kws'){
       const kws=cfg.voiceKws||cfg.voice_kws||{};
       return normalizePhraseList(kws.phrases);
@@ -2728,6 +2796,23 @@
   function applyWakePhrasesLocally(next){
     next=normalizePhraseList(next);
     if(!next.length) next=['开始输入'];
+    // App scenario: persist on mapping.voiceOverride only — writing global engines would
+    // clobber 通用设置 and make every scheme show the same wake phrase.
+    if(writeWakePhrasesToEditingOverride(next)){
+      paintWakeCapPhrase(next[0]);
+      renderWakePhraseTags();
+      try{
+        if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.syncHeroVals==='function'){
+          global.OneToneVoiceIntentRail.syncHeroVals();
+        }
+      }catch(_){}
+      try{
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      }catch(_){}
+      return;
+    }
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     mirrorWakePhrasesAllEngines(next);
     if(mode==='vosk'){
@@ -2742,6 +2827,11 @@
     // Local apply must paint 01 hero before IPC round-trip.
     renderWakePhraseTags();
     try{
+      if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.syncHeroVals==='function'){
+        global.OneToneVoiceIntentRail.syncHeroVals();
+      }
+    }catch(_){}
+    try{
       if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
         global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
       }
@@ -2752,6 +2842,28 @@
     const next=voiceWakePresetSavePending;
     if(!next) return Promise.resolve();
     const saveSeq=++voiceWakePresetSaveSeq;
+    // App-scoped edits: config save only (runtime merges voiceOverride.wakePhrases).
+    if(isAppScopedWakeEdit()){
+      writeWakePhrasesToEditingOverride(next);
+      paintWakeCapPhrase(next[0]);
+      renderWakePhraseTags();
+      voiceWakePresetSavePending=null;
+      try{
+        if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.syncHeroVals==='function'){
+          global.OneToneVoiceIntentRail.syncHeroVals();
+        }
+      }catch(_){}
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
+        return global.OneToneConfigPersist.saveAsync({source:'voice'}).then(function(){ return null; });
+      }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+        global.OneToneConfigPersist.save();
+      }
+      return Promise.resolve();
+    }
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     // Persist to the active engine; siblings already mirrored in config for UI consistency.
     let invoke;
@@ -3925,6 +4037,9 @@
     addCustomWakePhrase:addCustomWakePhrase,
     replacePrimaryWakePhrase:replacePrimaryWakePhrase,
     currentWakePhraseList:currentWakePhraseList,
+    refreshWakeScopeUi:refreshWakeScopeUi,
+    clearWakePhraseSavePending:clearWakePhraseSavePending,
+    isAppScopedWakeEdit:isAppScopedWakeEdit,
     removeCustomWakePhrase:removeCustomWakePhrase,
     renderWakeCustomPhrases:renderWakeCustomPhrases,
     renderWakePhraseTags:renderWakePhraseTags,

@@ -2256,6 +2256,14 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
   display: block;
 }
 .soft-pad-agent-mini-bar__listen[hidden] { display: none !important; }
+/* Habit/oral key capture: force-hide Soft Pad oral listen chrome (sticky DOM). */
+html.ot-recording-active .soft-pad-agent-mini-bar__listen,
+html.ot-recording-active [data-oral-listen-armed="1"],
+html.ot-recording-active [data-mini-listen-halo="1"],
+html.ot-recording-active .is-oral-listen {
+  display: none !important;
+  visibility: hidden !important;
+}
 @keyframes soft-pad-mini-listen-halo {
   0%, 100% { box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.08); }
   50% { box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2); }

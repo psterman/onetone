@@ -180,7 +180,10 @@ fn overlay_runtime_gate_flags(state: &AppState) -> (bool, bool, bool, bool) {
     let setup_open = *state.setup_interaction_active.lock();
     let settings_open = *state.settings_drawer_open.lock();
     let verify_active = state.trigger_verify_listen.lock().is_some();
-    let recording_active = *state.recording.lock();
+    // RECORDING_SESSION covers the FE→IPC race before `state.recording` flips,
+    // and sticky oral HWND after force_cancel while hooks are still installing.
+    let recording_active =
+        *state.recording.lock() || crate::hotkey_win::is_recording_session_active();
     (setup_open, settings_open, verify_active, recording_active)
 }
 
@@ -191,14 +194,15 @@ pub(crate) fn overlay_runtime_gate_reason_flags(
     verify_active: bool,
     recording_active: bool,
 ) -> Option<&'static str> {
-    if setup_open {
+    // Recording always wins — Soft Pad oral chrome must never cover「请按下快捷键」.
+    if recording_active {
+        Some("recording_active")
+    } else if setup_open {
         Some("setup_open")
     } else if settings_open {
         Some("settings_open")
     } else if verify_active {
         Some("verify_active")
-    } else if recording_active {
-        Some("recording_active")
     } else {
         None
     }
@@ -207,15 +211,17 @@ pub(crate) fn overlay_runtime_gate_reason_flags(
 fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
     let (setup_open, settings_open, verify_active, recording_active) =
         overlay_runtime_gate_flags(state);
+    // 「请按下快捷键」owns the wire — hide Soft Pad even if oral is still armed
+    // (FE click → IPC race, or force_cancel lag before SESSION_ARMED clears).
+    if recording_active {
+        return Some("recording_active");
+    }
     // Oral listen arms Soft Pad as the "I'm listening" chrome. Keys drawer must not
     // hide it — otherwise 侧键 opens a session with zero visual (session_begin in logs,
-    // Soft Pad stays gone).
+    // Soft Pad stays gone). Recording already returned above.
     if crate::voice_command_session::is_armed() {
         if setup_open {
             return Some("setup_open");
-        }
-        if recording_active {
-            return Some("recording_active");
         }
         return None;
     }
@@ -225,12 +231,27 @@ fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
 /// Toggle WS_EX_TRANSPARENT on the overlay HWND (any thread ? does not need the UI loop).
 /// Used so PermissionRequest can enable click-through even when WebView main is wedged.
 pub fn set_overlay_click_through(pass: bool) {
-    set_overlay_click_through_impl(pass, false);
+    set_overlay_click_through_impl(pass, false, true);
 }
 
 /// Last applied Soft Pad click-through (ignore-cursor) state — for capture chrome restore.
 pub fn soft_pad_click_through() -> bool {
     *last_pass_through().lock()
+}
+
+/// Sync hide Soft Pad while「请按下快捷键」owns the wire.
+/// Coalesced `push_state` can lag a frame — a sticky interactive HWND on the Cursor
+/// monitor then steals XButton pointer events (page backup never sees them) and blocks clicks.
+pub fn mute_overlay_for_recording(app: &AppHandle) {
+    *last_visible().lock() = false;
+    // Punch through WITHOUT show_window — the old path resurrected a click-blocking
+    // Soft Pad slab over the whole monitor (侧键录完 / 口头武装后全屏不可点).
+    set_overlay_click_through_impl(true, true, false);
+    if let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+        let _ = win.set_ignore_cursor_events(true);
+        let _ = win.hide();
+        reconcile_overlay_input_mode(&win, false, true);
+    }
 }
 
 /// Soft Pad must stay clickable without becoming the foreground window.
@@ -276,7 +297,7 @@ pub struct SoftPadSendPassGuard {
 impl SoftPadSendPassGuard {
     pub fn engage(app: &AppHandle) -> Self {
         let restore_pass = *last_pass_through().lock();
-        set_overlay_click_through_impl(true, true);
+        set_overlay_click_through_impl(true, true, true);
         if let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
             let _ = win.set_ignore_cursor_events(true);
         }
@@ -289,14 +310,16 @@ impl SoftPadSendPassGuard {
 
 impl Drop for SoftPadSendPassGuard {
     fn drop(&mut self) {
-        set_overlay_click_through_impl(self.restore_pass, true);
+        set_overlay_click_through_impl(self.restore_pass, true, true);
         if let Some(win) = self.app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
             let _ = win.set_ignore_cursor_events(self.restore_pass);
         }
     }
 }
 
-fn set_overlay_click_through_impl(pass: bool, force: bool) {
+/// `allow_show`: when false, only flip EXSTYLE — never `show_window_no_activate`.
+/// Mute/hide paths must pass false or Soft Pad resurfaces as a full-monitor click slab.
+fn set_overlay_click_through_impl(pass: bool, force: bool, allow_show: bool) {
     // Soft Pad drag owns EXSTYLE (LAYERED stripped). Do not punch/restore mid-gesture —
     // that re-ORs WS_EX_LAYERED and starves SetWindowPos (setposMaxMs 748).
     if overlay_is_dragging() {
@@ -331,7 +354,9 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
                 SetWindowLongW(hwnd, GWL_EXSTYLE, new_style);
             }
             apply_overlay_no_activate();
-            let _ = crate::keyboard::show_window_no_activate(hwnd);
+            if allow_show {
+                let _ = crate::keyboard::show_window_no_activate(hwnd);
+            }
         }
         *last = pass;
         // Drag Lag panel breadcrumb: when the pad cannot be dragged at all
@@ -347,7 +372,7 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
     }
     #[cfg(not(windows))]
     {
-        let _ = pass;
+        let _ = (pass, allow_show);
         *last = pass;
     }
 }
@@ -391,12 +416,13 @@ fn reconcile_overlay_input_mode(win: &WebviewWindow, visible: bool, pass: bool) 
     if !visible {
         clear_overlay_dragging();
         // Hidden: punch through so a failed hide cannot steal clicks from settings.
-        set_overlay_click_through_impl(true, true);
+        // Do not show_window — that resurrects a click-blocking Soft Pad slab.
+        set_overlay_click_through_impl(true, true, false);
         let _ = win.set_ignore_cursor_events(true);
         return;
     }
     // Force: hide→show / EXSTYLE reset must not leave a stale pass-through.
-    set_overlay_click_through_impl(pass, true);
+    set_overlay_click_through_impl(pass, true, true);
     let _ = win.set_ignore_cursor_events(pass);
     // During permission wait / Soft Pad file dialog: do not re-assert always_on_top
     // (keeps ChatGPT approval / OS picker above pad).
@@ -5946,6 +5972,19 @@ mod tests {
         assert_eq!(
             overlay_runtime_gate_reason_flags(false, false, false, false),
             None
+        );
+    }
+
+    #[test]
+    fn recording_gate_beats_settings_and_verify() {
+        // Soft Pad oral must stay gone while「请按下快捷键」owns the wire.
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(false, true, true, true),
+            Some("recording_active")
+        );
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(true, false, false, true),
+            Some("recording_active")
         );
     }
 

@@ -492,18 +492,15 @@
     var key = currentKeyForContext(ctx);
     var customSelected = !selectedId && !!key;
     var html = '';
+    // Ponytail: drop「选键」catalog;「录制」custom chip last so presets lead.
     if(ctx === 'mapping'){
-      html += '<button type="button" class="ime-preset-item ime-preset-item--picker ime-preset-item--labeled"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
-        +PICKER_ICON_SVG
-        +'<span class="ime-preset-name">'+esc(t('imePresetPick'))+'</span>'
-        +'</button>';
+      html += PRESETS.map(function(p){
+        return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:true });
+      }).join('');
       html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
         +CUSTOM_ICON_SVG
         +'<span class="ime-preset-name">'+esc(t('imePresetCustom'))+'</span>'
         +'</button>';
-      html += PRESETS.map(function(p){
-        return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:true });
-      }).join('');
       host.classList.add('ime-preset-strip--labeled');
       host.innerHTML = html;
       syncMappingConfirmLine(selectedId, key);
@@ -511,21 +508,12 @@
       return;
     }
     host.classList.remove('ime-preset-strip--labeled');
-    if(ctx === 'onboarding'){
-      html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
-        +PICKER_ICON_SVG
-        +'</button>';
-      html += '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
-        +CUSTOM_ICON_SVG
-        +'</button>';
-    } else {
-      html += '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
-        +CUSTOM_ICON_SVG
-        +'</button>';
-    }
     html += PRESETS.map(function(p){
       return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:false });
     }).join('');
+    html += '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
+      +CUSTOM_ICON_SVG
+      +'</button>';
     host.innerHTML = html;
     renderCardBadge(ctx);
     if(ctx === 'voice'){
@@ -630,19 +618,15 @@
     var disabled = !!opts.disabled;
     var ctx = String(opts.context || 'softPadLayout');
     var html = '';
-    html += '<button type="button" class="ime-preset-item ime-preset-item--picker ime-preset-item--labeled"'+(disabled?' disabled':'')+' data-soft-pad-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
-      +PICKER_ICON_SVG
-      +'<span class="ime-preset-name">'+esc(t('imePresetPick'))+'</span>'
-      +'</button>';
-    html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+((!selectedId && opts.customKey)?' is-selected':'')+'" data-soft-pad-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'">'
-      +CUSTOM_ICON_SVG
-      +'<span class="ime-preset-name">'+esc(t('imePresetCustom'))+'</span>'
-      +'</button>';
     html += PRESETS.map(function(p){
       return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:true })
         .replace(/data-ime-id="/g, 'data-soft-pad-ime-id="')
         .replace(/data-ime-context="[^"]*"/g, 'data-soft-pad-ime-context="'+esc(ctx)+'"');
     }).join('');
+    html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+((!selectedId && opts.customKey)?' is-selected':'')+'" data-soft-pad-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'">'
+      +CUSTOM_ICON_SVG
+      +'<span class="ime-preset-name">'+esc(t('imePresetCustom'))+'</span>'
+      +'</button>';
     return html;
   }
 

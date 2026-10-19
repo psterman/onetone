@@ -1567,7 +1567,7 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
         }
         return;
     }
-    let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode) = {
+    let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode, cancel_on) = {
         let cfg = state.cfg.lock();
         if !cfg.voice_end.enabled {
             crate::app_log::log_line(
@@ -1578,6 +1578,7 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
             return;
         }
         let send_mode = cfg.voice_end.send_mode.clone();
+        let cancel_on = cfg.voice_end.cancel_phrases_enabled;
         let snapshot = state.voice_session_snapshot.lock();
         let Some(snap) = snapshot.as_ref() else {
             crate::app_log::log_line(
@@ -1596,14 +1597,17 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
             snap.effective.end_phrases.en.clone(),
             snap.effective.wake_phrases.clone(),
             send_mode,
+            cancel_on,
         )
     };
     if text_matches_wake_phrases(&wake_phrases, text) {
         return;
     }
-    if let Some(phrase) = matches_cancel_phrase(text, &cancel_zh, &cancel_en) {
-        handle_cancel_phrase(state, app, &phrase);
-        return;
+    if cancel_on {
+        if let Some(phrase) = matches_cancel_phrase(text, &cancel_zh, &cancel_en) {
+            handle_cancel_phrase(state, app, &phrase);
+            return;
+        }
     }
     if send_mode_allows_phrase(&send_mode) {
         if let Some(phrase) = matches_send_phrase(text, &send_zh, &send_en) {
@@ -2129,6 +2133,7 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
         "phrasesEn": cfg.voice_end.phrases_en,
         "cancelPhrasesZh": cfg.voice_end.cancel_phrases_zh,
         "cancelPhrasesEn": cfg.voice_end.cancel_phrases_en,
+        "cancelPhrasesEnabled": cfg.voice_end.cancel_phrases_enabled,
         "cancelPhrases": {
             "zh": cfg.voice_end.cancel_phrases_zh,
             "en": cfg.voice_end.cancel_phrases_en,

@@ -7,7 +7,8 @@
     return v&&v!==key?v:(fallback||key);
   };
 
-  var INTENTS=['ime','key','prompt','oral','cursor','softpad','gesture'];
+  // Oral first: hold-to-listen command window is the primary voice-command entry.
+  var INTENTS=['oral','ime','key','prompt','cursor','softpad','gesture'];
   var promptEditId='';
   var autosaveTimer=0;
   var saveHintPulseTimer=0;
@@ -70,7 +71,7 @@
 
   function promptLabelFromText(text){
     text=String(text||'').trim();
-    if(!text) return t('voiceIntentPrompt','口头指令');
+    if(!text) return t('voiceIntentPrompt','模板');
     return text.length>16?text.slice(0,16)+'…':text;
   }
 
@@ -660,46 +661,239 @@
     });
   }
 
+  function oralStartKeyLabel(){
+    var m=selectedOrHabit();
+    var Oral=global.OneToneOralCommandUi;
+    var P=global.OneToneKeysChannelCommandPicker;
+    var raw='';
+    try{
+      if(Oral&&typeof Oral.oralTriggerKeyLabel==='function'){
+        var lbl=String(Oral.oralTriggerKeyLabel(m)||'').trim();
+        if(lbl) return lbl;
+      }
+      if(P&&typeof P.oralTriggerKeyRaw==='function') raw=String(P.oralTriggerKeyRaw(m)||'').trim();
+      else if(m&&m.oralCommandScheme) raw=String(m.oralCommandScheme.triggerKey||'').trim();
+    }catch(_){}
+    if(!raw) return '';
+    try{
+      var KL=global.OneToneKeyLabels;
+      if(KL&&typeof KL.friendlyKeyName==='function'){
+        return String(KL.friendlyKeyName(raw)||raw).trim()||raw;
+      }
+    }catch(_){}
+    return raw;
+  }
+
+  /** First spoken command for the current scheme — not the shared wake prefix. */
+  function primarySchemeCommandPhrase(intent){
+    intent=String(intent||'');
+    var m=selectedOrHabit();
+    if(intent==='prompt'){
+      var title=readPromptTitleUi();
+      if(title) return title;
+      var ta=$('voicePromptInjectBody');
+      var body=ta?String(ta.value||'').trim():'';
+      if(body) return promptLabelFromText(body);
+      var peer=currentPromptPeer();
+      if(peer){
+        var pl=String(peer.label||'').trim();
+        if(pl) return pl.length>18?pl.slice(0,18)+'…':pl;
+      }
+    }
+    if(!m) return '';
+    var i;
+    if(Array.isArray(m.acousticVoiceCommands)){
+      for(i=0;i<m.acousticVoiceCommands.length;i++){
+        var ac=m.acousticVoiceCommands[i];
+        if(!ac||ac.enabled===false) continue;
+        var ap=String(ac.displayText||ac.label||ac.canonicalPhrase||'').trim();
+        if(ap) return ap;
+      }
+    }
+    if(Array.isArray(m.agentBindings)){
+      for(i=0;i<m.agentBindings.length;i++){
+        var b=m.agentBindings[i];
+        if(!b||b.enabled===false) continue;
+        if(String(b.triggerType||b.trigger_type||'')!=='voice') continue;
+        var ph=String(b.triggerBinding||b.trigger_binding||b.phrase||'').trim();
+        if(ph) return ph;
+      }
+    }
+    if(Array.isArray(m.voiceCommands)){
+      for(i=0;i<m.voiceCommands.length;i++){
+        var vc=m.voiceCommands[i];
+        if(!vc||vc.enabled===false) continue;
+        var cp=String(vc.canonicalPhrase||vc.displayText||vc.label||'').trim();
+        if(cp) return cp;
+      }
+    }
+    return '';
+  }
+
+  function isCommandIntent(intent){
+    intent=String(intent||'');
+    return intent==='key'||intent==='prompt'||intent==='cursor'
+      ||intent==='softpad'||intent==='gesture';
+  }
+
+  /**
+   * Left-rail「起点」:
+   * - ime: wake only (opens dictation)
+   * - oral: physical arm key
+   * - key/prompt/…: scheme command word; wake is prefix only
+   */
+  function resolveStartSurface(intent){
+    intent=String(intent||currentIntent()||'ime');
+    var finish=intentFinishLabel(intent);
+    if(intent==='oral'){
+      var key=oralStartKeyLabel();
+      var display=key
+        ? key
+        : t('voiceStartOralUnset','未设置口头键');
+      return {
+        kind:'oral',
+        unset:!key,
+        badge:t('voiceStartBadgeOral','口头起点'),
+        title:t('voiceStartTitleOral','怎么开收听'),
+        hint:key
+          ? t('voiceStartHintOral','去按键设置改口头触发键')
+          : t('voiceStartHintOralUnset','去按键设置录制口头触发键'),
+        display:display,
+        wrapQuotes:false,
+        lead:t('voiceMatchChainLeadPress','按'),
+        chainWake:'',
+        chainPhrase:display,
+        finish:finish,
+        prefix:''
+      };
+    }
+    var wake=primaryWakePhraseDisplay();
+    var wakeDisp=String(wake||'').trim()||'—';
+    if(isCommandIntent(intent)){
+      var cmd=primarySchemeCommandPhrase(intent);
+      var unset=!cmd;
+      var cmdDisp=cmd||t('voiceStartCommandUnset','未设命令词');
+      var prefixFmt=t('voiceStartWakePrefixFmt','前置唤醒「{wake}」');
+      return {
+        kind:'command',
+        unset:unset,
+        badge:t('voiceStartBadgeCommand','本方案命令'),
+        title:t('voiceStartTitleCommand','命令词'),
+        hint:unset
+          ? t('voiceStartHintCommandUnset','点右侧列表为本方案加命令词')
+          : t('voiceStartHintCommand','点右侧可改本方案命令词'),
+        display:cmdDisp,
+        wrapQuotes:!unset,
+        lead:t('voiceMatchChainLead','说'),
+        chainWake:wakeDisp,
+        chainPhrase:cmdDisp,
+        finish:finish,
+        prefix:prefixFmt.replace('{wake}',wakeDisp)
+      };
+    }
+    return {
+      kind:'wake',
+      unset:false,
+      badge:t('voiceStartBadgeWake','输入法起点'),
+      title:t('voiceStartTitleWake','唤醒词'),
+      hint:t('voiceWakePhraseTapHint','点按可改唤醒词'),
+      display:wakeDisp,
+      wrapQuotes:true,
+      lead:t('voiceMatchChainLead','说'),
+      chainWake:'',
+      chainPhrase:wakeDisp,
+      finish:finish,
+      prefix:''
+    };
+  }
+
   function syncHeroVals(){
     var wakeVal=$('voiceFlowNodeWakeVal');
     var finishVal=$('voiceFlowNodeFinishVal');
-    var phrase=primaryWakePhraseDisplay();
-    if(wakeVal) wakeVal.textContent=phrase;
     var intent=currentIntent();
-    var finish=intentFinishLabel(intent);
-    if(finishVal) finishVal.textContent=finish;
+    var start=resolveStartSurface(intent);
+    // Flow 01 node still shows global wake phrase (how you enter dictation).
+    var wakePhrase=primaryWakePhraseDisplay();
+    if(wakeVal) wakeVal.textContent=wakePhrase;
+    if(finishVal) finishVal.textContent=start.finish;
     paintPromptArmed();
-    paintMatchChain(phrase, finish);
-    paintIntentStartSlim(phrase);
+    paintMatchChain(start);
+    paintIntentStartSlim(start);
   }
 
   function intentFinishLabel(intent){
-    if(intent==='ime') return t('voiceIntentIme','听写方式');
-    if(intent==='prompt') return t('voiceIntentPrompt','口头指令');
+    if(intent==='ime') return t('voiceIntentIme','输入法');
+    if(intent==='prompt') return t('voiceIntentPrompt','模板');
     if(intent==='oral') return t('voiceIntentOral','口头命令');
-    if(intent==='key') return t('voiceIntentKey','我录的键');
-    if(intent==='cursor') return t('voiceIntentCursor','软件自带');
-    if(intent==='softpad') return t('voiceIntentSoftPad','屏幕按钮');
+    if(intent==='key') return t('voiceIntentKey','自定义快捷键');
+    if(intent==='cursor') return t('voiceIntentCursor','应用快捷键');
+    if(intent==='softpad') return t('voiceIntentSoftPad','软键盘');
     if(intent==='gesture') return t('voiceIntentGesture','手势');
     return '—';
   }
 
-  function paintMatchChain(phrase, finish){
+  function paintMatchChain(start){
+    start=start||resolveStartSurface();
     var lead=$('voiceMatchChainLead');
+    var wakeEl=$('voiceMatchChainWake');
+    var wakeArr=$('voiceMatchChainWakeArr');
     var pEl=$('voiceMatchChainPhrase');
     var iEl=$('voiceMatchChainIntent');
     var chain=$('voiceMatchChain');
-    if(lead) lead.textContent=t('voiceMatchChainLead','说');
-    if(pEl) pEl.textContent=phrase||'—';
-    if(iEl) iEl.textContent=finish||'—';
-    if(chain) chain.classList.add('is-on');
+    var showWake=start.kind==='command'&&!!String(start.chainWake||'').trim();
+    if(lead) lead.textContent=start.lead||t('voiceMatchChainLead','说');
+    if(wakeEl){
+      wakeEl.hidden=!showWake;
+      if(showWake){
+        var w=String(start.chainWake||'').trim();
+        wakeEl.textContent=(w&&w.charAt(0)!=='「')?('「'+w+'」'):(w||'—');
+      }else{
+        wakeEl.textContent='';
+      }
+    }
+    if(wakeArr) wakeArr.hidden=!showWake;
+    if(pEl){
+      var mid=String(start.chainPhrase||'—').trim();
+      if(start.kind==='command'&&start.wrapQuotes!==false&&mid&&mid!=='—'&&mid.charAt(0)!=='「'){
+        mid='「'+mid+'」';
+      }
+      pEl.textContent=mid||'—';
+    }
+    if(iEl) iEl.textContent=start.finish||'—';
+    if(chain){
+      chain.classList.add('is-on');
+      chain.setAttribute('data-start-kind',start.kind||'wake');
+    }
   }
 
-  function paintIntentStartSlim(phrase){
+  function paintIntentStartSlim(start){
+    start=start||resolveStartSurface();
+    var slim=$('voiceIntentStartSlim');
+    if(slim){
+      slim.setAttribute('data-start-kind',start.kind||'wake');
+      slim.classList.toggle('is-unset',!!start.unset);
+    }
+    var badge=$('voiceIntentStartBadge');
+    if(badge) badge.textContent=start.badge||t('voiceStartBadge','起点');
+    var title=$('voiceIntentStartTitle');
+    if(title) title.textContent=start.title||t('voiceFlowNodeWakeTitle','说了什么');
+    var prefix=$('voiceIntentStartPrefix');
+    if(prefix){
+      var pre=String(start.prefix||'').trim();
+      prefix.hidden=!pre;
+      prefix.textContent=pre;
+    }
+    var hint=$('voiceIntentStartHint');
+    if(hint) hint.textContent=start.hint||t('voiceWakePhraseTapHint','点按可改唤醒词');
+    var btn=$('btnVoiceIntentStartPhrase');
+    if(btn){
+      btn.title=start.hint||t('voiceWakePhraseCapTitle','点击改唤醒词');
+      btn.setAttribute('data-start-kind',start.kind||'wake');
+    }
     var text=$('voiceIntentStartPhraseText');
     if(text){
-      var p=String(phrase||'—').trim();
-      if(p && p.charAt(0)!=='「') p='「'+p+'」';
+      var p=String(start.display||'—').trim();
+      if(start.wrapQuotes!==false&&p&&p!=='—'&&p.charAt(0)!=='「') p='「'+p+'」';
       text.textContent=p||'—';
     }
   }
@@ -735,11 +929,15 @@
       if(oralHost){
         // ponytail: voice settings re-render calls setIntent often — remounting
         // wipes .keys-oral-say focus (flicker, can't edit). Only mount when empty
-        // or caller asks forceRemount.
+        // or caller asks forceRemount / mapping changed.
         var live=oralHost.querySelector('[data-oral-page][data-oral-mode="editor"]');
-        var force=!!opts.forceRemount || !live;
+        var wantMid=String(opts.mappingId||'').trim();
+        var liveMid=live?String(live.getAttribute('data-oral-mapping')||'').trim():'';
+        var force=!!opts.forceRemount || !live || (!!wantMid && wantMid!==liveMid);
         if(force){
-          try{ global.OneToneOralCommandUi.mountEditor(oralHost,{}); }catch(_){}
+          try{
+            global.OneToneOralCommandUi.mountEditor(oralHost, wantMid?{mappingId:wantMid}:{});
+          }catch(_){}
         }
       }
     }
@@ -1333,11 +1531,12 @@
 
   function syncLabels(){
     var map=[
-      ['voiceIntentTabIme','voiceIntentIme','听写方式'],
-      ['voiceIntentTabKey','voiceIntentKey','我录的键'],
-      ['voiceIntentTabPrompt','voiceIntentPrompt','口头指令'],
-      ['voiceIntentTabCursor','voiceIntentCursor','软件自带'],
-      ['voiceIntentTabSoftPad','voiceIntentSoftPad','屏幕按钮'],
+      ['voiceIntentTabIme','voiceIntentIme','输入法'],
+      ['voiceIntentTabKey','voiceIntentKey','自定义快捷键'],
+      ['voiceIntentTabPrompt','voiceIntentPrompt','模板'],
+      ['voiceIntentTabOral','voiceIntentOral','口头命令'],
+      ['voiceIntentTabCursor','voiceIntentCursor','应用快捷键'],
+      ['voiceIntentTabSoftPad','voiceIntentSoftPad','软键盘'],
       ['voiceIntentTabGesture','voiceIntentGesture','手势']
     ];
     map.forEach(function(row){
@@ -1351,14 +1550,8 @@
     if(rail) rail.setAttribute('aria-label',t('voiceIntentRailLbl','意图分类'));
     var railSec=$('voiceIntentRailSec');
     if(railSec) railSec.textContent=t('voiceIntentRailSec','意图');
-    var startBadge=$('voiceIntentStartBadge');
-    if(startBadge) startBadge.textContent=t('voiceStartBadge','起点');
-    var startTitle=$('voiceIntentStartTitle');
-    if(startTitle) startTitle.textContent=t('voiceFlowNodeWakeTitle','说了什么');
-    var startHint=$('voiceIntentStartHint');
-    if(startHint) startHint.textContent=t('voiceWakePhraseTapHint','点按可改口令');
-    var startBtn=$('btnVoiceIntentStartPhrase');
-    if(startBtn) startBtn.title=t('voiceWakePhraseCapTitle','点击改口令');
+    // Start slim chrome follows intent (wake vs oral) — do not hardcode wake copy.
+    paintIntentStartSlim(resolveStartSurface(currentIntent()));
     [['voiceIntentPromptTitle','voiceIntentPromptTitle'],
      ['voiceIntentPromptDesc','voiceIntentPromptDesc'],
      ['voiceIntentPromptLabel','voiceIntentPromptLabel'],
@@ -1772,6 +1965,7 @@
     init:init,
     setIntent:setIntent,
     getIntent:currentIntent,
+    resolveStartSurface:resolveStartSurface,
     syncRailVisibility:syncRailVisibility,
     syncLabels:syncLabels,
     syncHeroVals:syncHeroVals,

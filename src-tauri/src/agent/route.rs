@@ -125,13 +125,18 @@ fn next_confirmation_id() -> String {
 }
 
 pub fn camera_pending_eligible(channel: ActionChannel, canonical: &str) -> bool {
-    if channel != ActionChannel::Camera {
+    pending_confirmation_eligible(channel, canonical) && channel == ActionChannel::Camera
+}
+
+/// Voice mid/high risk and Camera pending channels create Pending instead of execute.
+pub fn pending_confirmation_eligible(channel: ActionChannel, canonical: &str) -> bool {
+    if !matches!(channel, ActionChannel::Camera | ActionChannel::Voice) {
         return false;
     }
     let Some(meta) = semantic_meta_by_id(canonical) else {
         return false;
     };
-    route_disposition(meta, ActionChannel::Camera) == RouteDisposition::PendingConfirmation
+    route_disposition(meta, channel) == RouteDisposition::PendingConfirmation
 }
 
 fn needs_kind_now(state: &AppState) -> String {
@@ -364,9 +369,12 @@ fn route_semantic_action_inner(
         );
     }
 
-    // Camera pending create with ContextRiskGate.
-    if camera_pending_eligible(channel, &canonical) {
-        if let Some(code) = context_risk_gate(&canonical, channel.as_str(), &kind, true, false) {
+    // Camera / mid-high voice: create Pending with ContextRiskGate (awaitingConfirmation).
+    if pending_confirmation_eligible(channel, &canonical) {
+        let creating_camera = channel == ActionChannel::Camera;
+        if let Some(code) =
+            context_risk_gate(&canonical, channel.as_str(), &kind, creating_camera, false)
+        {
             return SemanticRouteResult::base(
                 RouteStatus::Unavailable,
                 canonical,
@@ -385,7 +393,7 @@ fn route_semantic_action_inner(
                 mapping_id,
                 None,
             )
-            .with_reason("no_provider", Some("camera pending needs provider".into()));
+            .with_reason("no_provider", Some("pending confirmation needs provider".into()));
         };
         if mapping_id.is_none() {
             return SemanticRouteResult::base(
@@ -395,7 +403,7 @@ fn route_semantic_action_inner(
                 None,
                 Some(pid),
             )
-            .with_reason("no_mapping", Some("camera pending needs mappingId".into()));
+            .with_reason("no_mapping", Some("pending confirmation needs mappingId".into()));
         }
         let confirmation_id = next_confirmation_id();
         pending_confirm::insert_pending(
@@ -405,15 +413,25 @@ fn route_semantic_action_inner(
             mapping_id.clone(),
             Some(pid.clone()),
         );
+        let reason = if creating_camera {
+            "camera_requires_confirmation"
+        } else {
+            "voice_requires_confirmation"
+        };
+        let detail = if creating_camera {
+            "camera cannot complete send/approve alone"
+        } else {
+            "mid/high risk voice awaits Key or SoftPad confirmation"
+        };
         return SemanticRouteResult {
             status: RouteStatus::PendingConfirmation.as_str(),
             action_id: canonical,
             source_channel: channel.as_str().to_string(),
             mapping_id,
             provider_id: Some(pid),
-            reason_code: Some("camera_requires_confirmation".into()),
+            reason_code: Some(reason.into()),
             confirmation_id: Some(confirmation_id),
-            detail: Some("camera cannot complete send/approve alone".into()),
+            detail: Some(detail.into()),
             ok: None,
         };
     }

@@ -611,6 +611,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     // Oral Soft Pad listen: all soft says / 退出 — bypass wake-key cooldown.
     // Side-key RAlt / 「说话」arms that gap and used to drop 继续/截图/退出.
+    // Latch oral_armed at detect time — hold_up may clear is_armed before the spawn runs.
     if crate::voice_command_session::is_armed() {
         *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
         let state2 = Arc::clone(state);
@@ -629,7 +630,9 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
             timestamp_ms: crate::voice_command_router::VoiceDetection::now_ms(),
         };
         std::thread::spawn(move || {
-            let result = crate::voice_command_router::handle_detection(&state2, &app2, &detection);
+            let result = crate::voice_command_router::handle_detection_ex(
+                &state2, &app2, &detection, true,
+            );
             *state2.voice_vosk_last_skip.lock() = if result.skipped {
                 result.skip_reason
             } else {

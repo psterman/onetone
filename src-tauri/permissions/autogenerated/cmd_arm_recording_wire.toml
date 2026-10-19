@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-arm-recording-wire"
+description = "Enables the cmd_arm_recording_wire command without any pre-configured scope."
+commands.allow = ["cmd_arm_recording_wire"]
+
+[[permission]]
+identifier = "deny-cmd-arm-recording-wire"
+description = "Denies the cmd_arm_recording_wire command without any pre-configured scope."
+commands.deny = ["cmd_arm_recording_wire"]

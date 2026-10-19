@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 唤醒词 / 口头命令 · 落地页</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ECE8E0; --ink:#1C1917; --muted:#44403C; --faint:#78716C;
+  --card:#FFFCF7; --line:#D6D0C4; --soft:#F5F1EA;
+  --primary:#0F766E; --primary-soft:#CCFBF1;
+  --oral:#9A3412; --oral-soft:#FFEDD5;
+  --bad:#9F1239; --bad-soft:#FFE4E6;
+  --ok:#15803D; --ok-soft:#DCFCE7;
+  --sample:#1D4ED8; --sample-soft:#DBEAFE;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--ink);
+  font:500 14px/1.5 "DM Sans","PingFang SC","Microsoft YaHei UI",sans-serif;
+  background:
+    radial-gradient(800px 360px at 0% 0%,rgba(15,118,110,.1),transparent 55%),
+    radial-gradient(640px 300px at 100% 0%,rgba(154,52,18,.08),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 18px 64px}
+header{margin-bottom:18px}
+header h1{margin:0 0 6px;font:800 26px/1.15 "DM Sans";letter-spacing:-.03em}
+header p{margin:0;color:var(--muted);max-width:68ch;font-size:13.5px}
+.eyebrow{
+  display:inline-flex;gap:6px;align-items:center;margin-bottom:8px;
+  padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);
+  font:700 11px/1 "DM Sans";letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
+.tools button{
+  border:1px solid var(--line);background:#fff;padding:7px 12px;border-radius:9px;
+  font:700 12px/1 "DM Sans";color:var(--muted);cursor:pointer;
+}
+.tools button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.tools .sep{width:1px;background:var(--line);margin:0 2px}
+
+/* checklist */
+.check{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+  margin-bottom:18px;
+}
+.check h2{margin:0 0 10px;font:800 14px/1.2 "DM Sans"}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:700 11px/1.2 "DM Sans";letter-spacing:.04em;text-transform:uppercase;color:var(--faint);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px}
+.before{color:var(--bad);text-decoration:line-through;text-decoration-thickness:1px}
+.after{color:var(--ok);font-weight:700}
+.where{color:var(--muted);font-size:11.5px}
+
+/* stage */
+.stage{display:none}
+.stage.on{display:block}
+.layout{display:grid;grid-template-columns:220px 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.rail-mock{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;
+  display:grid;gap:6px;position:sticky;top:12px;
+}
+.rail-mock .sec{
+  font:700 10px/1 "DM Sans";letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+  margin:6px 2px 2px;
+}
+.rail-mock button{
+  text-align:left;border:1px solid transparent;background:transparent;border-radius:10px;
+  padding:9px 10px;font:700 13px/1.2 "DM Sans";color:var(--muted);cursor:pointer;display:flex;
+  justify-content:space-between;align-items:baseline;gap:8px;
+}
+.rail-mock button .n{font:600 10px/1 "DM Sans";color:var(--faint);letter-spacing:.04em}
+.rail-mock button.on{background:var(--oral);border-color:var(--oral);color:#fff}
+.rail-mock button.on .n{color:rgba(255,255,255,.75)}
+.rail-mock button.ime.on{background:var(--primary);border-color:var(--primary)}
+.start-slim{
+  padding:10px;border-radius:12px;background:var(--soft);border:1px solid var(--line);margin-bottom:4px;
+}
+.start-slim .badge{font:700 10px/1 "DM Sans";letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.start-slim h3{margin:4px 0 0;font:800 13px/1.2 "DM Sans"}
+.start-slim .ph{
+  margin-top:8px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;
+  border-radius:10px;padding:10px 12px;font:800 18px/1.2 "DM Sans";cursor:pointer;color:var(--ink);
+}
+.start-slim .hint{margin:6px 0 0;font-size:12px;color:var(--muted)}
+
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 0 rgba(28,25,23,.04);
+}
+.chrome{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--soft);
+  border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);
+}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.r{background:#E57373}.dot.y{background:#F0C674}.dot.g{background:#9BC97E}
+.path{font:500 11px/1 "JetBrains Mono";background:#fff;padding:3px 7px;border-radius:4px;border:1px solid var(--line)}
+.diff-pill{
+  margin-left:auto;padding:3px 8px;border-radius:999px;font:700 10px/1 "DM Sans";
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.diff-pill.chg{background:var(--ok-soft);color:var(--ok)}
+.body{padding:14px;display:grid;gap:12px}
+
+.hero{
+  padding:14px;border-radius:14px;border:1px solid var(--line);
+  background:linear-gradient(165deg,#fff,#F8FFFD);
+}
+.hero.oral{background:linear-gradient(165deg,#fff,#FFF7ED)}
+.hero.sample{background:linear-gradient(165deg,#fff,#EFF6FF)}
+.kicker{margin:0;font:700 11px/1 "DM Sans";letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.phrase{margin:6px 0 0;font:800 24px/1.15 "DM Sans";letter-spacing:-.02em}
+.desc{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.callout{
+  margin-top:10px;padding:8px 10px;border-radius:10px;font-size:12px;
+  background:var(--ok-soft);border:1px solid #86EFAC;color:var(--ok);
+}
+.callout.warn{background:var(--oral-soft);border-color:#FDBA74;color:var(--oral)}
+
+.optin{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--soft);
+}
+.optin .lbl{font:700 13px/1.3 "DM Sans"}
+.optin .hint{font-size:12px;color:var(--muted);margin-top:3px}
+.toggle{
+  width:42px;height:24px;border-radius:999px;background:var(--primary);position:relative;flex-shrink:0;border:0;
+}
+.toggle::after{
+  content:"";position:absolute;top:3px;left:20px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);
+  font-size:12px;color:var(--muted);
+}
+.chip.add{border-style:dashed;color:var(--primary);font-weight:700}
+.keycap{
+  display:inline-flex;align-items:center;justify-content:center;min-width:48px;
+  padding:6px 10px;border-radius:8px;background:#1C1917;color:#FFFCF7;
+  font:700 12px/1 "JetBrains Mono";
+}
+.oral-card{
+  padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff;display:grid;gap:10px;
+}
+.oral-card .row{display:flex;justify-content:space-between;align-items:center}
+.oral-card .row strong{font-weight:800}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.acts button{
+  border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;
+  font:700 12px/1 "DM Sans";cursor:pointer;color:var(--ink);
+}
+.acts button.pri{background:var(--oral);border-color:var(--oral);color:#fff}
+
+.finish-adv{
+  border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;
+}
+.finish-adv summary{
+  list-style:none;cursor:pointer;padding:12px 14px;font:700 13px/1.3 "DM Sans";
+  background:var(--sample-soft);display:flex;justify-content:space-between;gap:8px;
+}
+.finish-adv summary::-webkit-details-marker{display:none}
+.finish-adv .inner{padding:12px 14px;display:grid;gap:8px;border-top:1px solid var(--line)}
+.finish-adv p{margin:0;font-size:12.5px;color:var(--muted)}
+
+.note{
+  margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--card);
+  border:1px solid var(--line);font-size:12.5px;color:var(--muted);
+}
+.note strong{color:var(--ink)}
+.note code{font-family:"JetBrains Mono",monospace;font-size:11px;background:var(--soft);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">落地 · 只改文案 / IA · 不重拆 runtime</div>
+      <h1>语音设置页面怎么改</h1>
+      <p>对照真实抽屉结构：左上「说了什么」、意图轨「口头命令」、高级「声音样本」。下方可切换查看改后界面；表格是 i18n 落点。</p>
+    </header>
+
+    <div class="tools" role="tablist" aria-label="查看哪一屏">
+      <button type="button" class="on" data-stage="wake">01 · 说了什么（唤醒词）</button>
+      <button type="button" data-stage="oral">02 · 意图 · 口头命令</button>
+      <button type="button" data-stage="sample">高级 · 声音样本</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" data-stage="diff">改字对照表</button>
+    </div>
+
+    <!-- WAKE -->
+    <section class="stage on" id="stage-wake" aria-label="唤醒词屏">
+      <div class="layout">
+        <aside class="rail-mock" aria-hidden="true">
+          <div class="start-slim" style="border:2px solid rgba(15,118,110,.4);box-shadow:0 0 0 3px rgba(15,118,110,.1)">
+            <div class="badge" style="background:var(--primary);color:#fff;padding:3px 8px;border-radius:999px;display:inline-block">输入法起点</div>
+            <h3>唤醒词</h3>
+            <button type="button" class="ph" style="font-size:18px;font-weight:800;color:var(--primary)">「小助手」</button>
+            <p class="hint">点按可改唤醒词 · 只开输入法</p>
+          </div>
+          <div class="sec">意图</div>
+          <button type="button" class="ime on">输入法<span class="n">IME</span></button>
+          <button type="button">口头命令<span class="n">说法</span></button>
+          <button type="button">模板<span class="n">Prompt</span></button>
+          <button type="button">自定义快捷键<span class="n">Custom</span></button>
+        </aside>
+        <div class="panel">
+          <div class="chrome">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="path">settings / voiceWake · 说了什么</span>
+            <span class="diff-pill chg">改后</span>
+          </div>
+          <div class="body">
+            <div class="hero">
+              <p class="kicker">唤醒词</p>
+              <p class="phrase">「小助手」</p>
+              <p class="desc">说出后进入输入法听写 · 不是口头命令</p>
+              <div class="callout">原「点按可改口令」→「点按可改唤醒词」；hero 不再叫口令。</div>
+            </div>
+            <div class="optin">
+              <div>
+                <div class="lbl">全局唤醒</div>
+                <div class="hint">后台听唤醒词，开输入法；更耗资源。不是口头命令开关。</div>
+              </div>
+              <div class="toggle" title="voiceWakeListeningOptIn" aria-label="全局唤醒开"></div>
+            </div>
+            <div>
+              <div class="kicker" style="margin-bottom:8px">其他唤醒词</div>
+              <div class="chips">
+                <span class="chip">你好助手</span>
+                <span class="chip">开始输入</span>
+                <span class="chip add">+ 添加唤醒词</span>
+              </div>
+            </div>
+            <div class="optin" style="background:#fff">
+              <div>
+                <div class="lbl">识别方式 · 只听唤醒</div>
+                <div class="hint">原「只听口令」→「只听唤醒」（KWS）</div>
+              </div>
+              <span class="chip" style="font-weight:700;color:var(--primary)">KWS</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORAL -->
+    <section class="stage" id="stage-oral" aria-label="口头命令屏">
+      <div class="layout">
+        <aside class="rail-mock">
+          <div class="start-slim" style="border:2px solid rgba(154,52,18,.45);box-shadow:0 0 0 3px rgba(154,52,18,.12);background:linear-gradient(180deg,#fff7ed,#fff)">
+            <div class="badge" style="background:var(--oral);color:#fff;padding:3px 8px;border-radius:999px;display:inline-block">口头起点</div>
+            <h3>怎么开收听</h3>
+            <button type="button" class="ph" style="font-size:17px;font-weight:800;color:var(--oral)">X2</button>
+            <p class="hint">点按重录口头触发键 · 不是唤醒词</p>
+          </div>
+          <div class="sec">意图</div>
+          <button type="button">输入法<span class="n">IME</span></button>
+          <button type="button" class="on">口头命令<span class="n">说法</span></button>
+          <button type="button">模板<span class="n">Prompt</span></button>
+          <button type="button">自定义快捷键<span class="n">Custom</span></button>
+        </aside>
+        <div class="panel">
+          <div class="chrome">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="path">settings / voiceWake · 意图 · 口头命令</span>
+            <span class="diff-pill chg">改后</span>
+          </div>
+          <div class="body">
+            <div class="hero oral">
+              <p class="kicker">怎么开收听</p>
+              <p class="phrase" style="font-size:17px">按 <span class="keycap">X2</span> 开口头收听</p>
+              <p class="desc">或 Soft Pad 麦键 · 与听写键分开</p>
+              <div class="callout warn">这里<strong>不画语音开关</strong>。口头不是全局常听；按一下才听，说完即停。</div>
+            </div>
+            <div class="acts">
+              <button type="button" class="pri">录制口头触发键</button>
+              <button type="button">Soft Pad 麦键</button>
+            </div>
+            <div class="oral-card">
+              <div class="row">
+                <strong>可喊的命令</strong>
+                <span style="font-size:12px;color:var(--muted)">已启用 4 条</span>
+              </div>
+              <div class="chips">
+                <span class="chip">发送</span>
+                <span class="chip">取消</span>
+                <span class="chip">继续</span>
+                <span class="chip">说话</span>
+                <span class="chip add">+ 添加</span>
+              </div>
+              <p style="margin:0;font-size:12px;color:var(--muted)">说法在本页编辑；左上「唤醒词」只负责开输入法，不管这些命令。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SAMPLE -->
+    <section class="stage" id="stage-sample" aria-label="声音样本">
+      <div class="panel">
+        <div class="chrome">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="path">settings / voiceWake · 说完后 · 高级</span>
+          <span class="diff-pill chg">改后</span>
+        </div>
+        <div class="body">
+          <div class="hero sample">
+            <p class="kicker">高级（可选）</p>
+            <p class="phrase" style="font-size:18px">声音样本</p>
+            <p class="desc">用声学指纹替代文字唤醒 / 结束 / 取消 · 仍属全局匹配池</p>
+          </div>
+          <details class="finish-adv" open>
+            <summary>
+              <span>高级 · 录制声音样本</span>
+              <span style="font:600 11px/1 DM Sans;color:var(--sample)">改前：声音口令</span>
+            </summary>
+            <div class="inner">
+              <p>用声音样本代替文字唤醒词（可选）。录了才进全局匹配；与口头命令页无关。</p>
+              <div class="chips">
+                <span class="chip">唤醒样本</span>
+                <span class="chip">结束样本</span>
+                <span class="chip">取消样本</span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIFF TABLE -->
+    <section class="stage" id="stage-diff" aria-label="改字对照">
+      <div class="check">
+        <h2>i18n / HTML 落点</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>位置</th>
+              <th>键 / 节点</th>
+              <th>现在</th>
+              <th>改成</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="where">全局开关</td>
+              <td class="mono">voiceWakeListeningOptInLabel</td>
+              <td class="before">全局口令唤醒</td>
+              <td class="after">全局唤醒</td>
+            </tr>
+            <tr>
+              <td class="where">全局开关 hint</td>
+              <td class="mono">voiceWakeListeningOptInHint</td>
+              <td class="before">后台听唤醒词…可加多条口令</td>
+              <td class="after">后台听唤醒词，开输入法；更耗资源。不是口头命令。</td>
+            </tr>
+            <tr>
+              <td class="where">左上 hero hint</td>
+              <td class="mono">voiceWakePhraseTapHint / DisplayHint</td>
+              <td class="before">点按可改口令</td>
+              <td class="after">点按可改唤醒词</td>
+            </tr>
+            <tr>
+              <td class="where">流程 01 hint</td>
+              <td class="mono">#voiceFlowNodeWakeHint</td>
+              <td class="before">这句口令</td>
+              <td class="after">这句唤醒词</td>
+            </tr>
+            <tr>
+              <td class="where">页副标</td>
+              <td class="mono">#voiceWakePageSub</td>
+              <td class="before">设置口令；说出后匹配意图效果</td>
+              <td class="after">设置唤醒词；说出后进入所选意图</td>
+            </tr>
+            <tr>
+              <td class="where">别名区</td>
+              <td class="mono">#voiceWakeAliasSectionLbl / PoolAdd</td>
+              <td class="before">其他开启口令 / + 添加口令</td>
+              <td class="after">其他唤醒词 / + 添加唤醒词</td>
+            </tr>
+            <tr>
+              <td class="where">识别方式</td>
+              <td class="mono">#voiceRecognizeSourceKws</td>
+              <td class="before">只听口令</td>
+              <td class="after">只听唤醒</td>
+            </tr>
+            <tr>
+              <td class="where">意图轨 tab</td>
+              <td class="mono">voiceIntentOral</td>
+              <td class="before">口令</td>
+              <td class="after">口头命令</td>
+            </tr>
+            <tr>
+              <td class="where">意图轨副标</td>
+              <td class="mono">voiceIntentOralHintShort</td>
+              <td class="before">说法</td>
+              <td class="after">说法（可留）</td>
+            </tr>
+            <tr>
+              <td class="where">Keys 通道 tab</td>
+              <td class="mono">keysChannelTabVoice</td>
+              <td class="before">口令</td>
+              <td class="after">口头命令</td>
+            </tr>
+            <tr>
+              <td class="where">收尾高级</td>
+              <td class="mono">voiceFinishHabitAdvSummary / Lead</td>
+              <td class="before">录制声音口令 / 代替文字口令</td>
+              <td class="after">录制声音样本 / 代替文字唤醒词</td>
+            </tr>
+            <tr>
+              <td class="where">模板说明</td>
+              <td class="mono">voicePromptColWhatSub 等</td>
+              <td class="before">左上口令负责唤醒</td>
+              <td class="after">左上唤醒词负责开输入法</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <strong>不改：</strong>
+        <code>oralCommandScheme</code> /
+        <code>voiceWakeListeningOptIn</code> /
+        <code>voiceWakeAcousticCommands</code> 数据结构与路由。
+        口头页继续强调触发键（<code>keysOralArm*</code>），不要加假「语音开关」。
+        IA 总图见 <code>voice-wake-oral-ia.html</code>。
+      </div>
+    </section>
+  </div>
+  <script>
+  (function () {
+    var tools = document.querySelectorAll('.tools [data-stage]');
+    var stages = document.querySelectorAll('.stage');
+    tools.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-stage');
+        tools.forEach(function (b) { b.classList.toggle('on', b === btn); });
+        stages.forEach(function (s) { s.classList.toggle('on', s.id === 'stage-' + id); });
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

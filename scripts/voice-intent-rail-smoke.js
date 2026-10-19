@@ -31,6 +31,8 @@ var need = [
   'id="voiceIntentStartSlim"',
   'id="btnVoiceIntentStartPhrase"',
   'id="voiceMatchChain"',
+  'id="voiceMatchChainWake"',
+  'id="voiceIntentStartPrefix"',
   'voice-start-slim',
   'id="voiceSceneActionsPanel"',
   'id="voiceSceneActionsDir"',

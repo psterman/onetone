@@ -21,6 +21,7 @@
     "test:codex-smoke": "node scripts/test-codex-smoke-feedback.mjs && cargo test --manifest-path src-tauri/Cargo.toml --lib codex_smoke -- --nocapture",
     "test:claude-smoke": "node scripts/test-claude-smoke-feedback.mjs && cargo test --manifest-path src-tauri/Cargo.toml --lib claude_smoke -- --nocapture",
     "test:home-default-surface": "node scripts/test-home-default-surface.mjs",
+    "test:home-agent-v2": "node scripts/test-home-agent-v2.mjs",
     "test:agent-detect-home": "node scripts/test-agent-detect-home.mjs && node scripts/smoke-agent-detect-home.mjs",
     "test:agent-home-pulse": "node scripts/test-agent-home-pulse.mjs",
     "test:agent-center": "node scripts/test-agent-center.mjs",

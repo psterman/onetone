@@ -629,15 +629,15 @@
 
   function channelTabLabel(ch) {
     var fb = {
-      key: '我录的键',
-      voice: '口头指令',
-      cursor: '软件自带',
-      softPad: '屏幕按钮',
+      key: '自定义快捷键',
+      voice: '口头命令',
+      cursor: '应用快捷键',
+      softPad: '软键盘',
       camera: '手势',
-      ime: '听写方式',
-      recognition: '听写方式',
-      customKey: '我录的键',
-      prompt: '口头指令'
+      ime: '输入法',
+      recognition: '输入法',
+      customKey: '自定义快捷键',
+      prompt: '模板'
     };
     var keys = {
       key: 'keysChannelTabKey',
@@ -733,7 +733,7 @@
     // Voice dock: title = 用户口令（如「一声」），不是泛称「语音输入」.
     var label = onVoicePage()
       ? primaryWakePhraseLabel() || t('keysSceneActionsVoiceLabel', '语音输入')
-      : t('keysChannelTabIme', '听写方式');
+      : t('keysChannelTabIme', '输入法');
     var bindLine = trigLine;
     if (!onVoicePage()) {
       // Keys dock: show 01 trigger · 02 recognition so录键后右侧立即可见.
@@ -821,7 +821,7 @@
       ? wakes.join('、')
       : String((sm && sm.label) || '').trim();
     if (!label || label === preview || label.length > 18) {
-      label = t('voiceIntentPrompt', '口头指令');
+      label = t('voiceIntentPrompt', '模板');
     }
     if (preview.length > 28) preview = preview.slice(0, 28) + '…';
     return {
@@ -1126,7 +1126,7 @@
             rec.unset = false;
           } else if (String(sm.imePresetId || '').trim()) {
             rec.binds = {
-              key: (rec.ime && rec.ime.name) || t('keysChannelTabIme', '听写方式')
+              key: (rec.ime && rec.ime.name) || t('keysChannelTabIme', '输入法')
             };
             rec.unset = false;
           } else {
@@ -1870,6 +1870,7 @@
         global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
           ? global.OneToneState.state.config
           : {};
+      if (String(cfg.voiceActivation || '') === 'wakeOrPushToTalk') return true;
       return !!cfg.voiceWakeListeningOptIn;
     } catch (_) {
       return false;
@@ -2006,17 +2007,18 @@
   }
 
   function ensureGlobalWakeOptInFromCard() {
+    var K = global.OneToneVoiceKeyless;
+    if (K && typeof K.toggle === 'function') {
+      K.toggle({ reason: 'keysSceneWakeOptIn' }).then(function () {
+        paint();
+      });
+      return;
+    }
     var cfg =
       global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
         ? global.OneToneState.state.config
         : null;
     if (!cfg) return;
-    if (cfg.voiceWakeListeningOptIn) {
-      // Toggle off via the shared control.
-      clickHidden('voiceWakeListeningOptInToggle');
-      paint();
-      return;
-    }
     clickHidden('voiceWakeListeningOptInToggle');
     paint();
   }
@@ -2068,7 +2070,7 @@
                 '<button type="button" class="keys-scene-actions__dir-main" data-jump="' +
                 esc(a.key) +
                 '" title="' +
-                esc(t('keysSceneActionsEditHint', '点击编辑')) +
+                esc(t('keysSceneActionsEditHint', '点击编辑') + (v ? ' · ' + v : '')) +
                 '">' +
                 '<span class="keys-scene-actions__body">' +
                 '<span class="keys-scene-actions__n">' +
@@ -2079,11 +2081,6 @@
                     (a.unset ? '' : ' is-ok') +
                     '">' +
                     esc(v) +
-                    '</span>'
-                  : '') +
-                (trail
-                  ? '<span class="keys-scene-actions__trail keys-scene-actions__trail--foot">' +
-                    trail +
                     '</span>'
                   : '') +
                 '</span>' +
@@ -2099,6 +2096,7 @@
                 (a.unset ? ' is-unset' : '') +
                 (on ? ' is-active' : '') +
                 (wake ? ' has-wake' : '') +
+                (trail ? ' has-trail' : '') +
                 '" role="listitem" draggable="' +
                 (canDrag ? 'true' : 'false') +
                 '" data-row-key="' +
@@ -2119,6 +2117,11 @@
                 '" aria-label="' +
                 esc(delLbl) +
                 '">×</button>' +
+                (trail
+                  ? '<span class="keys-scene-actions__trail keys-scene-actions__trail--end">' +
+                    trail +
+                    '</span>'
+                  : '') +
                 '</div>'
               );
             })

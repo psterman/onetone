@@ -97,12 +97,20 @@ pub fn take_valid(id: &str, completing_channel: &str) -> Result<PendingConfirmat
     if Instant::now() >= row.expires_at {
         return Err("confirmation_expired");
     }
-    // Camera cannot complete its own pending; key/voice/softPad may.
+    // Camera cannot complete pending. High-risk (Dangerous) needs Key/SoftPad only.
     if completing_channel == "camera" {
         g.insert(row.id.clone(), row);
         return Err("camera_cannot_complete_confirmation");
     }
-    if completing_channel != "key"
+    let high_risk = crate::agent::semantic::semantic_meta_by_id(&row.action_id)
+        .map(|m| matches!(m.risk, crate::agent::actions::RiskLevel::Dangerous))
+        .unwrap_or(false);
+    if high_risk {
+        if completing_channel != "key" && completing_channel != "softPad" {
+            g.insert(row.id.clone(), row);
+            return Err("high_risk_requires_key_or_softpad");
+        }
+    } else if completing_channel != "key"
         && completing_channel != "voice"
         && completing_channel != "softPad"
     {
@@ -135,7 +143,14 @@ pub fn take_valid_if_action_matches(
     if completing_channel == "camera" {
         return Err("camera_cannot_complete_confirmation");
     }
-    if completing_channel != "key"
+    let high_risk = crate::agent::semantic::semantic_meta_by_id(&row.action_id)
+        .map(|m| matches!(m.risk, crate::agent::actions::RiskLevel::Dangerous))
+        .unwrap_or(false);
+    if high_risk {
+        if completing_channel != "key" && completing_channel != "softPad" {
+            return Err("high_risk_requires_key_or_softpad");
+        }
+    } else if completing_channel != "key"
         && completing_channel != "voice"
         && completing_channel != "softPad"
     {
@@ -178,7 +193,14 @@ pub fn take_unique_match(
     if completing_channel == "camera" {
         return Ok(None);
     }
-    if completing_channel != "key"
+    let high_risk = crate::agent::semantic::semantic_meta_by_id(action_id.trim())
+        .map(|m| matches!(m.risk, crate::agent::actions::RiskLevel::Dangerous))
+        .unwrap_or(false);
+    if high_risk {
+        if completing_channel != "key" && completing_channel != "softPad" {
+            return Ok(None);
+        }
+    } else if completing_channel != "key"
         && completing_channel != "voice"
         && completing_channel != "softPad"
     {

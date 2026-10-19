@@ -769,7 +769,12 @@ pub fn run() {
                 const FG_TRACK_MS: u64 = 150;
 
                 loop {
-                    sleep(Duration::from_millis(40)).await;
+                    // Input events are delivered by the native hook/Raw Input
+                    // thread. A 40ms polling tick made XButton recording and
+                    // push-to-talk feel delayed, especially when down/up edges
+                    // arrived back-to-back. Keep the loop responsive while the
+                    // existing 80ms event dedupe remains the final guard.
+                    sleep(Duration::from_millis(8)).await;
 
                     if last_fg_track.elapsed() >= Duration::from_millis(FG_TRACK_MS) {
                         keyboard::track_foreground_for_send();
@@ -795,6 +800,11 @@ pub fn run() {
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &app2);
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
                     voice_kws_runtime::drain_voice_kws_events(&state2, &app2);
+                    // Some mouse drivers expose XButton state through
+                    // GetAsyncKeyState but omit WM_XBUTTON/Raw Input edges.
+                    // Polling here closes that driver-specific gap during
+                    // recording and normal oral activation.
+                    crate::hotkey_win::poll_xbutton_fallback();
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
                     crate::voice_bootstrap::maybe_idle_downgrade_wake(&app2, &state2);
                     crate::cursor_beginner::maybe_timeout_arm(state2.as_ref(), &app2);
@@ -864,7 +874,9 @@ pub fn run() {
                         // captured into a fallback buffer because the recording sender
                         // was momentarily not visible from inside the hook (race window
                         // around Cmd::StartRecording / Cmd::StopRecording transitions).
-                        let pendings = if *state2.recording.lock() {
+                        let pendings = if *state2.recording.lock()
+                            || crate::hotkey_win::is_recording_session_active()
+                        {
                             crate::hotkey_win::drain_pending_recording_mouse()
                         } else {
                             Vec::new()
@@ -874,11 +886,16 @@ pub fn run() {
 
                     // Replay any buffered mouse side-button captures into the live
                     // recording sender so they reach handle_hardware_record_key on
-                    // the next loop iteration.
+                    // the next loop iteration. If sender is not primed yet, commit
+                    // directly — do not drop the edge (arm→start used to lose X1).
                     if !mouse_pendings.is_empty() {
                         if let Some(sender) = crate::hotkey_win::recording_sender_clone() {
                             for name in mouse_pendings {
                                 let _ = sender.send(name);
+                            }
+                        } else if *state2.recording.lock() {
+                            for name in mouse_pendings {
+                                ipc::handle_hardware_record_key(&state2, &win2, &name);
                             }
                         }
                     }
@@ -1032,6 +1049,7 @@ pub fn run() {
             ipc::cmd_save,
             ipc::cmd_save_camera_prefs,
             ipc::cmd_scheme_select,
+            ipc::cmd_arm_recording_wire,
             ipc::cmd_start_recording,
             ipc::cmd_stop_recording,
             ipc::cmd_start_trigger_compat_probe,
@@ -1112,6 +1130,7 @@ pub fn run() {
             ipc::cmd_process_usage,
             ipc::cmd_voice_set_desired_engine,
             ipc::cmd_voice_set_listening_strategy,
+            ipc::cmd_voice_set_activation,
             ipc::cmd_voice_vosk_status,
             ipc::cmd_voice_vosk_set_enabled,
             ipc::cmd_voice_vosk_set_phrases,

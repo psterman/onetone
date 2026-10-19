@@ -397,6 +397,9 @@
     if(!Array.isArray(m.acousticVoiceCommands)) m.acousticVoiceCommands=[];
     if(!m.oralCommandScheme || typeof m.oralCommandScheme!=='object') m.oralCommandScheme={items:{}};
     if(!m.oralCommandScheme.items || typeof m.oralCommandScheme.items!=='object') m.oralCommandScheme.items={};
+    if(m.oralCommandScheme.activationMode!=='hold'&&m.oralCommandScheme.activationMode!=='toggle'){
+      m.oralCommandScheme.activationMode='hold';
+    }
     if(m.timeMachineWorkspace===undefined) m.timeMachineWorkspace='';
     if(m.captureHeroRef===undefined) m.captureHeroRef=null;
   }

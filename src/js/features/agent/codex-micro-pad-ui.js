@@ -78,6 +78,7 @@
     quickChat: 1,
     quickSearch: 1,
     pushToTalk: 1,
+    toggleVoiceKeyless: 1,
     stopOrSend: 1,
     cancel: 1,
     undo: 1,
@@ -102,6 +103,7 @@
     quickChat: 1,
     quickSearch: 1,
     pushToTalk: 1,
+    toggleVoiceKeyless: 1,
     stopOrSend: 1,
     pasteAndSend: 1,
     cancel: 1,
@@ -124,6 +126,7 @@
     quickChat: 1,
     quickSearch: 1,
     pushToTalk: 1,
+    toggleVoiceKeyless: 1,
     stopOrSend: 1,
     cancel: 1,
     undo: 1,
@@ -144,6 +147,7 @@
     quickChat: 'sparkles',
     quickSearch: 'search',
     pushToTalk: 'mic',
+    toggleVoiceKeyless: 'mic',
     stopOrSend: 'send',
     pasteAndSend: 'clipboardPaste',
     cancel: 'reject',
@@ -2207,6 +2211,11 @@
       return lang().indexOf('en') === 0
         ? (name + ' — Codex Start dictation (Ctrl+Shift+D)')
         : (name + ' — Codex 开始听写（Ctrl+Shift+D）');
+    }
+    if (String(slotId) === 'toggleVoiceKeyless') {
+      return lang().indexOf('en') === 0
+        ? (name + ' — toggle background wake-word listening')
+        : (name + ' — 开关后台唤醒词监听（免按键语音）');
     }
     if (String(slotId) === 'claudeModel') {
       return lang().indexOf('en') === 0
@@ -6512,6 +6521,24 @@
   function setPadRunStatus(status, microKeyId) {
     var next = String(status || 'idle');
     if (['idle', 'running', 'listening', 'done', 'failed'].indexOf(next) < 0) next = 'idle';
+    // Habit/oral key capture owns the wire — never show Soft Pad「口头收听中」skin.
+    if (next === 'listening') {
+      try {
+        var rec = global.OneToneMappingRecording;
+        var probing = global.OneToneRecordProbe;
+        var recording = !!(rec && typeof rec.mode === 'function' && rec.mode() !== 'none')
+          || !!(probing && probing.isLiveRecording && probing.isLiveRecording())
+          || !!(document.documentElement && document.documentElement.classList
+            && document.documentElement.classList.contains('ot-recording-active'));
+        if (recording) {
+          if (probing && probing.noteOralDuringRecord) {
+            probing.noteOralDuringRecord('setPadRunStatus listening mid-record');
+          }
+          next = 'idle';
+          microKeyId = '';
+        }
+      } catch (_) {}
+    }
     padRunStatus = next;
     padRunMicroKeyId = next === 'idle' ? '' : String(microKeyId || padRunMicroKeyId || '');
     applyPadRunStatusDom();
@@ -8217,7 +8244,7 @@
 
   function layoutChannelTabLabel(tab) {
     tab = normalizeLayoutChannelTab(tab);
-    if (tab === 'ime') return t('keysChannelTabIme', '听写方式');
+    if (tab === 'ime') return t('keysChannelTabIme', '输入法');
     if (tab === 'key') return t('keysChannelTabKey', '我录的键');
     if (tab === 'voice') return t('keysChannelTabVoice', '口头命令');
     if (tab === 'camera') return t('keysChannelTabCamera', '手势');
@@ -8605,7 +8632,7 @@
           .replace('{chord}', friendlyChord(chord) || chord)
       );
     } else {
-      toast(t('imePresetApplied', '已应用听写方式'));
+      toast(t('imePresetApplied', '已填入该输入法的默认快捷键'));
     }
   }
 
@@ -8863,7 +8890,7 @@
       esc(t('keysCaptureKeyFinishTitle', '说完后')) +
       '</p>' +
       '<p class="soft-pad-layout-ime-finish__hint">' +
-      esc(t('softPadImeFinishHint', '听写键说完后怎么收尾（跟按键页听写方式一致）')) +
+      esc(t('softPadImeFinishHint', '输入法键说完后怎么收尾（跟按键页输入法一致）')) +
       '</p>' +
       '<div class="soft-pad-layout-ime-finish__modes" role="radiogroup">';
     allowed.forEach(function (mode) {
@@ -8938,7 +8965,7 @@
     html +=
       '<p class="soft-pad-layout-ime-step-lbl">' +
       '<span class="soft-pad-layout-ime-finish__num" aria-hidden="true">1</span>' +
-      esc(t('keysChannelTabIme', '听写方式')) +
+      esc(t('keysChannelTabIme', '输入法')) +
       '</p>';
     if (Ime && typeof Ime.buildLabeledStripHtml === 'function') {
       html +=
@@ -10928,13 +10955,13 @@
         var imePickerBtn = ev.target.closest && ev.target.closest('[data-soft-pad-ime-picker]');
         if (imePickerBtn && host.contains(imePickerBtn)) {
           ev.preventDefault();
-          toast(t('softPadLayoutImeGoKeys', '自定义听写键请去按键设置 → 听写方式'));
+          toast(t('softPadLayoutImeGoKeys', '自定义输入法键请去按键设置 → 输入法'));
           return;
         }
         var imeCustomBtn = ev.target.closest && ev.target.closest('[data-soft-pad-ime-custom]');
         if (imeCustomBtn && host.contains(imeCustomBtn)) {
           ev.preventDefault();
-          toast(t('softPadLayoutImeGoKeys', '自定义听写键请去按键设置 → 听写方式'));
+          toast(t('softPadLayoutImeGoKeys', '自定义输入法键请去按键设置 → 输入法'));
           return;
         }
         var customKeyBtn = ev.target.closest && ev.target.closest('[data-layout-custom-key]');
@@ -14558,6 +14585,7 @@
 
   var MINI_TOOL_DEFS = [
     { id: 'pushToTalk', label: '口头指令', slot: 'ACT10', ico: 'mic' },
+    { id: 'toggleVoiceKeyless', label: '免按键语音', slot: '', ico: 'wake' },
     { id: 'stopOrSend', label: '发送', slot: 'ACT12', ico: 'send' },
     { id: 'continue', label: '继续', slot: 'AG02', ico: 'spark' },
     { id: 'newThread', label: '新建', slot: 'AG01', ico: 'plus' },
@@ -14566,6 +14594,7 @@
   ];
   var MINI_TOOL_ICON = {
     pushToTalk: '🎙',
+    toggleVoiceKeyless: '👂',
     stopOrSend: '⏎',
     continue: '⚡',
     newThread: '💬',
@@ -14574,6 +14603,7 @@
   };
   var MINI_TOOL_SVG = {
     mic: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+    wake: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M3 8c1-2 2.5-3 4-3M21 8c-1-2-2.5-3-4-3"/></svg>',
     send: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>',
     spark: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z"/></svg>',
     plus: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 5v14M5 12h14"/><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/></svg>',

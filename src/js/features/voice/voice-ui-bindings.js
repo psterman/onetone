@@ -369,39 +369,48 @@
     function syncWakeListeningOptInToggle(){
       if(!wakeOptInBtn) return;
       var cfg=global.OneToneState.state.config||{};
-      var on=!!cfg.voiceWakeListeningOptIn;
+      var on=String(cfg.voiceActivation||'')==='wakeOrPushToTalk'||!!cfg.voiceWakeListeningOptIn;
       wakeOptInBtn.classList.toggle('is-on',on);
       wakeOptInBtn.setAttribute('aria-checked',on?'true':'false');
+      var row=$('voiceWakeListeningOptInRow');
+      if(row) row.hidden=false;
     }
     global.__vp_syncWakeListeningOptInToggle__=syncWakeListeningOptInToggle;
     if(wakeOptInBtn){
       wakeOptInBtn.onclick=function(){
+        var K=global.OneToneVoiceKeyless;
+        if(K&&typeof K.toggle==='function'){
+          K.toggle({ reason:'voiceWakeOptIn' }).then(function(){ syncWakeListeningOptInToggle(); });
+          return;
+        }
         var cfg=global.OneToneState.state.config||{};
-        var next=!cfg.voiceWakeListeningOptIn;
+        var on=String(cfg.voiceActivation||'')==='wakeOrPushToTalk'||!!cfg.voiceWakeListeningOptIn;
+        var next=!on;
         if(next){
           if(!global.confirm(t('voiceWakeListeningOptInConfirm'))) return;
-          cfg.voiceWakeListeningOptIn=true;
-          if(cfg.voiceAssistEnabled!==false&&global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
-            global.OneToneVoiceWake.switchListeningStrategy('resourceSaver',{force:true});
-          }
-        }else{
-          cfg.voiceWakeListeningOptIn=false;
-          var strat=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'off');
-          if((strat==='resourceSaver'||strat==='auto'||strat==='enhanced')
-            &&global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
-            global.OneToneVoiceWake.switchListeningStrategy('off',{force:true});
-          }
         }
-        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.invokeSaveOnce){
-          global.OneToneConfigPersist.invokeSaveOnce('voiceWakeOptIn');
-        }
+        var mode=next?'wakeOrPushToTalk':'pushToTalk';
+        cfg.voiceActivation=mode;
+        cfg.voiceWakeListeningOptIn=!!next;
+        if(next) cfg.voiceAssistEnabled=true;
         syncWakeListeningOptInToggle();
-        try{
-          var scene=global.OneToneKeysSceneActionsPanel;
-          if(scene&&typeof scene.refresh==='function') scene.refresh();
-        }catch(_){}
-        if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
-        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+        var ipc=global.OneToneIpc&&global.OneToneIpc.invoke
+          ?global.OneToneIpc.invoke('cmd_voice_set_activation',{mode:mode})
+          :Promise.resolve();
+        Promise.resolve(ipc).then(function(){
+          if(global.OneToneConfigPersist&&global.OneToneConfigPersist.invokeSaveOnce){
+            global.OneToneConfigPersist.invokeSaveOnce('voiceWakeOptIn');
+          }
+          try{
+            var scene=global.OneToneKeysSceneActionsPanel;
+            if(scene&&typeof scene.refresh==='function') scene.refresh();
+          }catch(_){}
+          if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
+          if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+          if(global.OneToneIslands&&global.OneToneIslands.refresh) global.OneToneIslands.refresh('voiceConfig');
+        }).catch(function(err){
+          console.error('voice_set_activation',err);
+        });
       };
       syncWakeListeningOptInToggle();
     }
@@ -1467,7 +1476,7 @@
       var bridgeText=$('voiceFinishKeysBridgeText');
       if(bridgeText) bridgeText.textContent=t('voiceFinishKeysBridgeText','键怎么收尾（按住 / 确认发送）');
       var bridgeGo=$('btnVoiceFinishOpenKeys');
-      if(bridgeGo) bridgeGo.textContent=t('voiceFinishKeysBridgeGo','按键设置 · 听写方式 →');
+      if(bridgeGo) bridgeGo.textContent=t('voiceFinishKeysBridgeGo','按键设置 · 输入法 →');
       var stepTitle=$('voiceFinishStepTitle');
       if(stepTitle) stepTitle.textContent=t('keysCaptureKeyFinishTitle','说完后');
       var sum=$('voiceFinishMoreDetailsSummary');
@@ -1506,15 +1515,17 @@
       btnVoiceOralOpenKeys._oralBound=true;
       btnVoiceOralOpenKeys.addEventListener('click',function(e){
         e.preventDefault();
-        try{
-          if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.setIntent==='function'){
-            global.OneToneVoiceIntentRail.setIntent('oral',{persist:true});
-            return;
-          }
-        }catch(_){}
+        // Always forceRemount on habit via openVoiceOralSettings — raw setIntent
+        // can leave a peer-mounted oral editor sticky.
         if(global.OneToneOralCommandUi&&global.OneToneOralCommandUi.openVoiceOralSettings){
           global.OneToneOralCommandUi.openVoiceOralSettings();
+          return;
         }
+        try{
+          if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.setIntent==='function'){
+            global.OneToneVoiceIntentRail.setIntent('oral',{persist:true,forceRemount:true});
+          }
+        }catch(_){}
       });
     }
     var oralBridgeText=$('voiceOralKeysBridgeText');
@@ -1577,7 +1588,26 @@
       });
     }
     bindOpenOverlay('btnVoiceWakePhraseCap',function(){ openWakePhrasePopover('replace'); });
-    bindOpenOverlay('btnVoiceIntentStartPhrase',function(){ openWakePhrasePopover('replace'); });
+    bindOpenOverlay('btnVoiceIntentStartPhrase',function(){
+      var Rail=global.OneToneVoiceIntentRail;
+      var intent=Rail&&typeof Rail.getIntent==='function'?String(Rail.getIntent()||''):'';
+      if(intent==='oral'){
+        var Oral=global.OneToneOralCommandUi;
+        if(Oral&&typeof Oral.openKeysOralArmSettings==='function'){
+          Oral.openKeysOralArmSettings();
+          return;
+        }
+      }
+      // Command intents: wake is only a prefix — jump to this scheme's command list.
+      if(intent==='key'||intent==='prompt'||intent==='cursor'||intent==='softpad'||intent==='gesture'){
+        var dock=$('voiceSceneActionsPanel')||$('voiceSceneActionsDir');
+        if(dock&&typeof dock.scrollIntoView==='function'){
+          try{ dock.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){}
+        }
+        return;
+      }
+      openWakePhrasePopover('replace');
+    });
     bindOpenOverlay('btnVoiceWakePhraseEditLink',function(){
       var more=$('voiceWakeMoreAliases');
       if(more) more.open=true;

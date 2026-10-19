@@ -41,7 +41,7 @@ function applySoftPadShowMode(pad, mode) {
   pad.requireForeground = mode !== 'front';
 }
 
-const ALL_IDS = ['pushToTalk', 'stopOrSend', 'continue', 'newThread', 'cancelListen', 'materials'];
+const ALL_IDS = ['pushToTalk', 'toggleVoiceKeyless', 'stopOrSend', 'continue', 'newThread', 'cancelListen', 'materials'];
 
 function toggleTool(chrome, id) {
   const cur = chrome.toolsAll !== false

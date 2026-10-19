@@ -140,25 +140,87 @@
       h.pushLog(new Date().toLocaleTimeString()+' key='+h.lastKeyDebug().key+' code='+h.lastKeyDebug().code);
       if(rec&&rec.handleKeyDown) rec.handleKeyDown(e);
     },true);
+    function isSideMouseButton(e){
+      return !!(e&&(e.button===3||e.button===4));
+    }
+    // XButton2 == Browser Forward in Chromium/WebView2. Must cancel default on EVERY
+    // mouse/pointer phase (not only auxclick) or history.forward swallows X2 while X1 works.
+    function killSideButtonBrowserNav(e){
+      if(!isSideMouseButton(e)) return false;
+      try{ e.preventDefault(); }catch(_){}
+      try{ e.stopPropagation(); }catch(_){}
+      try{ if(e.stopImmediatePropagation) e.stopImmediatePropagation(); }catch(_){}
+      return true;
+    }
     function routeSideMouse(e){
       var rec=recordingInput();
-      probeWv(e.type||'mouse', 'button'+(e.button!=null?e.button:'?'), e.pointerType||'');
+      var side=isSideMouseButton(e);
+      if(side) killSideButtonBrowserNav(e);
+      // A single XButton press can emit several WebView2 DOM events. Record
+      // only one down edge to prevent duplicate/unstable commits.
+      var type=String(e&&e.type||'');
+      if(type!=='mousedown'&&type!=='pointerdown') return;
+      var now=Date.now();
+      var dedupe=global.__oneToneSideButtonDomDedupe||(global.__oneToneSideButtonDomDedupe={});
+      var dk=String(e&&e.button!=null?e.button:'');
+      if(dedupe[dk]&&now-dedupe[dk]<120) return;
+      dedupe[dk]=now;
+      // Map DOM button → XButton* so 录制检测 shows the runtime key, not raw button3.
+      var mapped='';
+      try{
+        if(e.button===3) mapped='XButton1';
+        else if(e.button===4) mapped='XButton2';
+      }catch(_){}
+      probeWv(
+        e.type||'mouse',
+        mapped||('button'+(e.button!=null?e.button:'?')),
+        mapped?('button'+(e.button!=null?e.button:'?')+' '+(e.pointerType||'')):(e.pointerType||'')
+      );
+      var recState=global.OneToneMappingRecording;
+      var pending=!!(recState&&recState.isPending&&recState.isPending());
+      var live=recMode()!=='none'||pending;
+      // Left-click during capture is noise — tip so「页面收到、前端未发备份」is not a mystery.
+      if(!mapped&&live&&e.button===0){
+        var probeL=global.OneToneRecordProbe;
+        if(probeL&&probeL.push){
+          probeL.push('fe','skip','button0','left-click ignored — press XButton1/2 with cursor over OneTone');
+        }
+      }
+      // X1/X2: prefer direct capture. handleMouseDown used to early-return (cancel-bar
+      // hit-test / UI throw) and leave probe stuck at「页面收到、前端未发备份」.
+      if(mapped&&rec&&typeof rec.captureSideButton==='function'&&live){
+        try{
+          if(rec.captureSideButton(mapped)) return;
+        }catch(err){
+          var probe=global.OneToneRecordProbe;
+          if(probe&&probe.push) probe.push('fe','ipc-warn',mapped,'captureSideButton: '+String(err&&err.message||err||''));
+        }
+      }
       if(!rec||!rec.handleMouseDown) return;
       rec.handleMouseDown(e);
     }
     document.addEventListener('mousedown',routeSideMouse,true);
     // WebView2 often skips mousedown for X1/X2; auxclick/pointerdown/up still fire.
-    // XButton2 is Browser Forward — preventDefault so history navigation cannot eat it.
     function routeSideButton(e){
-      if(e.button!==3&&e.button!==4) return;
-      e.preventDefault();
-      e.stopPropagation();
+      if(!killSideButtonBrowserNav(e)) return;
       routeSideMouse(e);
     }
     document.addEventListener('auxclick',routeSideButton,true);
     document.addEventListener('pointerdown',routeSideButton,true);
     document.addEventListener('mouseup',routeSideButton,true);
     document.addEventListener('pointerup',routeSideButton,true);
+    // Belt: if WebView2 still queues history for X2, eat popstate while capturing.
+    window.addEventListener('popstate',function(e){
+      var recState=global.OneToneMappingRecording;
+      var live=(recState&&typeof recState.mode==='function'&&recState.mode()!=='none')
+        ||(recState&&recState.isPending&&recState.isPending());
+      if(!live) return;
+      try{ e.preventDefault(); }catch(_){}
+      try{
+        var probe=global.OneToneRecordProbe;
+        if(probe&&probe.push) probe.push('fe','skip','XButton2','blocked history popstate (Browser Forward)');
+      }catch(_){}
+    },true);
     document.addEventListener('keyup',function(e){
       var rec=recordingInput();
       probeWv('keyup', e.key||'', e.code||'');

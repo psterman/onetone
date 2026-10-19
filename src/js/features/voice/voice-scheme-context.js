@@ -154,11 +154,13 @@
     if(global.OneToneHabitOverrideDiff
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(mapping)){
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.refreshWakeScopeUi){
+        global.OneToneVoiceWake.refreshWakeScopeUi();
+      }else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
         global.OneToneVoiceWake.renderWakeCustomPhrases();
-      }
-      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
-        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
       }
       return false;
     }
@@ -177,11 +179,13 @@
     var hasAppScope=!!String(mapping.appTargetId||'').trim();
     if(!hasOverride&&!isVoiceOnly(mapping)&&!hasAppScope) return false;
     if(!hasOverride&&hasAppScope){
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.refreshWakeScopeUi){
+        global.OneToneVoiceWake.refreshWakeScopeUi();
+      }else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
         global.OneToneVoiceWake.renderWakeCustomPhrases();
-      }
-      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
-        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
       }
       return true;
     }

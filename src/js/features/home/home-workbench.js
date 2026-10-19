@@ -3115,6 +3115,11 @@
     var nav=$('wbLeftNav');
     if(!nav) return;
     activeNav=String(activeNav||'home');
+    if(activeNav==='home'){
+      try{
+        if(localStorage.getItem('onetone.homeSurface')==='agentV2') activeNav='homeV2';
+      }catch(_){}
+    }
     nav.querySelectorAll('[data-wb-nav]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
     });
@@ -3452,6 +3457,20 @@
       var btn=e.target.closest&&e.target.closest('[data-wb-nav]');
       if(!btn) return;
       var action=btn.getAttribute('data-wb-nav');
+      if(action==='homeV2'){
+        try{ localStorage.setItem('onetone.homeSurface','agentV2'); }catch(_){}
+        location.reload();
+        return;
+      }
+      if(action==='home'){
+        try{
+          if(localStorage.getItem('onetone.homeSurface')==='agentV2'){
+            localStorage.setItem('onetone.homeSurface','classic');
+            location.reload();
+            return;
+          }
+        }catch(_){}
+      }
       // Resolve at click time — do not close over a null ShellIa from an early bindOnce.
       var ia=global.OneToneShellIaConvergence;
       var row=ia&&ia.resolve?ia.resolve(action):null;

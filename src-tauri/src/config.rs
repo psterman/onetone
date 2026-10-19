@@ -1441,14 +1441,56 @@ pub struct MappingEntry {
 }
 
 /// Enabled whitelist (+ optional soft/key phrase overrides) for on-demand oral listen.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OralCommandScheme {
     /// Dedicated physical key that arms oral listen (independent of habit `triggerKey` / 听写).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub trigger_key: String,
+    /// How the physical key owns the oral listen session: hold or toggle.
+    /// This is explicit configuration; the physical key name must not choose semantics.
+    #[serde(default = "default_oral_activation_mode")]
+    pub activation_mode: String,
     #[serde(default)]
     pub items: std::collections::HashMap<String, OralCommandItem>,
+}
+
+fn default_oral_activation_mode() -> String {
+    "hold".into()
+}
+
+impl Default for OralCommandScheme {
+    fn default() -> Self {
+        Self {
+            trigger_key: String::new(),
+            activation_mode: default_oral_activation_mode(),
+            items: std::collections::HashMap::new(),
+        }
+    }
+}
+
+impl OralCommandScheme {
+    pub fn normalized_activation_mode(&self) -> &'static str {
+        match self.activation_mode.trim() {
+            "toggle" | "tap" | "click" => "toggle",
+            _ => "hold",
+        }
+    }
+}
+
+#[cfg(test)]
+mod oral_activation_mode_tests {
+    use super::OralCommandScheme;
+
+    #[test]
+    fn oral_activation_mode_defaults_to_hold_and_accepts_toggle() {
+        assert_eq!(OralCommandScheme::default().normalized_activation_mode(), "hold");
+        let parsed: OralCommandScheme = serde_json::from_str(
+            r#"{"triggerKey":"F13","activationMode":"toggle","items":{}}"#,
+        )
+        .expect("oral scheme json");
+        assert_eq!(parsed.normalized_activation_mode(), "toggle");
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -2488,7 +2530,11 @@ pub struct VoiceConfig {
     /// Home single-switch: voice assist on (key path may keep strategy off).
     #[serde(default = "default_true", rename = "voiceAssistEnabled")]
     pub voice_assist_enabled: bool,
-    /// Opt-in background wake-word listening (resourceSaver when on).
+    /// How voice sessions start: pushToTalk | softPad | wakeOrPushToTalk | disabled.
+    /// Authority for tray「免按键语音」and settings radios. Default pushToTalk.
+    #[serde(default = "default_voice_activation", rename = "voiceActivation")]
+    pub voice_activation: String,
+    /// Opt-in background wake-word listening (mirror of voiceActivation==wakeOrPushToTalk).
     #[serde(default = "default_false", rename = "voiceWakeListeningOptIn")]
     pub voice_wake_listening_opt_in: bool,
     #[serde(default, skip_serializing)]
@@ -2804,6 +2850,9 @@ pub struct VoiceEndConfig {
     pub cancel_phrases_zh: Vec<String>,
     #[serde(default = "default_voice_end_cancel_phrases_en")]
     pub cancel_phrases_en: Vec<String>,
+    /// Keys cancel-word channel; independent of voiceEnd.enabled (end/send master).
+    #[serde(default = "default_true")]
+    pub cancel_phrases_enabled: bool,
     #[serde(default = "default_voice_end_send_phrases_zh")]
     pub send_phrases_zh: Vec<String>,
     #[serde(default = "default_voice_end_send_phrases_en")]
@@ -3181,6 +3230,7 @@ impl Default for VoiceEndConfig {
             phrases_en: default_voice_end_phrases_en(),
             cancel_phrases_zh: default_voice_end_cancel_phrases_zh(),
             cancel_phrases_en: default_voice_end_cancel_phrases_en(),
+            cancel_phrases_enabled: true,
             send_phrases_zh: default_voice_end_send_phrases_zh(),
             send_phrases_en: default_voice_end_send_phrases_en(),
             send_mode: default_voice_end_send_mode(),
@@ -3728,15 +3778,87 @@ pub fn derive_voice_listening_strategy_from_legacy(cfg: &VoiceConfig) -> &'stati
     }
 }
 
-pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
+fn default_voice_activation() -> String {
+    "pushToTalk".into()
+}
+
+pub fn normalize_voice_activation(raw: &str) -> &'static str {
+    match raw.trim() {
+        "softPad" | "soft_pad" | "softpad" => "softPad",
+        "wakeOrPushToTalk" | "wake_or_push_to_talk" | "wake" | "keyless" => "wakeOrPushToTalk",
+        "disabled" | "off" | "none" => "disabled",
+        _ => "pushToTalk",
+    }
+}
+
+/// Sync opt-in mirror from activation; does not touch strategy/assist.
+pub fn sync_wake_opt_in_from_activation(cfg: &mut VoiceConfig) {
+    let mode = normalize_voice_activation(&cfg.voice_activation);
+    cfg.voice_activation = mode.to_string();
+    cfg.voice_wake_listening_opt_in = mode == "wakeOrPushToTalk";
+}
+
+/// Migrate missing voiceActivation from legacy opt-in / assist.
+pub fn migrate_voice_activation_from_legacy(cfg: &mut VoiceConfig) {
+    if cfg.voice_activation.trim().is_empty() {
+        if cfg.voice_wake_listening_opt_in {
+            cfg.voice_activation = "wakeOrPushToTalk".into();
+        } else if !cfg.voice_assist_enabled {
+            cfg.voice_activation = "disabled".into();
+        } else {
+            cfg.voice_activation = default_voice_activation();
+        }
+    }
+    sync_wake_opt_in_from_activation(cfg);
+}
+
+/// Authoritative start-mode write. Closing keyless (→ pushToTalk) never clears assist/PTT.
+pub fn apply_voice_activation(cfg: &mut VoiceConfig, mode: &str) {
+    let mode = normalize_voice_activation(mode);
+    cfg.voice_activation = mode.to_string();
+    sync_wake_opt_in_from_activation(cfg);
+    match mode {
+        "wakeOrPushToTalk" => {
+            cfg.voice_assist_enabled = true;
+            // Keyword-only mic while waiting for wake.
+            apply_voice_listening_strategy_engine_only(cfg, "resourceSaver");
+        }
+        "disabled" => {
+            cfg.voice_assist_enabled = false;
+            apply_voice_listening_strategy_engine_only(cfg, "off");
+        }
+        // pushToTalk | softPad: stop wake engines, keep assist so hotkey/SoftPad still work.
+        _ => {
+            cfg.voice_assist_enabled = true;
+            apply_voice_listening_strategy_engine_only(cfg, "off");
+        }
+    }
+}
+
+/// Tray「免按键语音」quick toggle. Off → pushToTalk (not disabled).
+pub fn apply_keyless_wake(cfg: &mut VoiceConfig, on: bool) {
+    if on {
+        apply_voice_activation(cfg, "wakeOrPushToTalk");
+    } else {
+        // Preserve softPad mode when turning keyless off from softPad+wake hybrid.
+        let cur = normalize_voice_activation(&cfg.voice_activation);
+        if cur == "softPad" {
+            apply_voice_listening_strategy_engine_only(cfg, "off");
+            cfg.voice_wake_listening_opt_in = false;
+        } else {
+            apply_voice_activation(cfg, "pushToTalk");
+        }
+    }
+}
+
+/// Engine/strategy only — never clears voice_assist_enabled (PTT / SoftPad gate).
+pub fn apply_voice_listening_strategy_engine_only(cfg: &mut VoiceConfig, strategy: &str) {
     cfg.voice_listening_strategy = normalize_voice_listening_strategy(strategy).to_string();
-    cfg.voice_assist_enabled = cfg.voice_listening_strategy != "off";
     match cfg.voice_listening_strategy.as_str() {
         "off" => {
             cfg.desired_engine = "none".into();
             sync_enabled_flags_from_desired(cfg);
         }
-        // auto + enhanced: free STT on home. resourceSaver keeps keyword-only mic.
         "auto" | "enhanced" => {
             cfg.desired_engine = "vosk".into();
             sync_enabled_flags_from_desired(cfg);
@@ -3748,6 +3870,15 @@ pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
         "advanced" => {}
         _ => sync_enabled_flags_from_desired(cfg),
     }
+}
+
+pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
+    apply_voice_listening_strategy_engine_only(cfg, strategy);
+    // Turning an engine strategy on implies assist; turning off must NOT kill PTT/SoftPad.
+    if cfg.voice_listening_strategy != "off" {
+        cfg.voice_assist_enabled = true;
+    }
+    sync_wake_opt_in_from_activation(cfg);
 }
 
 /// Write `desired_engine` and mirror it onto the three `enabled` flags. Does not save.
@@ -4222,16 +4353,27 @@ pub fn find_agent_key_binding<'a>(
 }
 
 /// Find an enabled agent voice binding whose phrase fuzzy-matches `text`.
+/// `trigger_binding` may be multi-phrase (`保存、另存`); any token can match.
 pub fn find_agent_voice_binding<'a>(m: &'a MappingEntry, text: &str) -> Option<&'a AgentBinding> {
     let text = text.trim();
     if text.is_empty() {
         return None;
     }
     m.agent_bindings.iter().find(|b| {
-        b.enabled
-            && b.trigger_type.eq_ignore_ascii_case("voice")
-            && !b.trigger_binding.trim().is_empty()
-            && phrases_fuzzy_match(text, &b.trigger_binding)
+        if !b.enabled || !b.trigger_type.eq_ignore_ascii_case("voice") {
+            return false;
+        }
+        let raw = b.trigger_binding.trim();
+        if raw.is_empty() {
+            return false;
+        }
+        if phrases_fuzzy_match(text, raw) {
+            return true;
+        }
+        raw.split(|c: char| c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；'))
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .any(|p| phrases_fuzzy_match(text, p))
     })
 }
 
@@ -4524,6 +4666,7 @@ impl Default for VoiceConfig {
             desired_engine: default_desired_engine(),
             voice_listening_strategy: default_voice_listening_strategy(),
             voice_assist_enabled: true,
+            voice_activation: default_voice_activation(),
             voice_wake_listening_opt_in: false,
             scenes: None,
             scheme_switch_key: String::new(),
@@ -5245,6 +5388,11 @@ impl VoiceConfig {
         } else {
             normalize_voice_listening_strategy(&self.voice_listening_strategy).to_string()
         };
+        if self.voice_activation.trim().is_empty() {
+            migrate_voice_activation_from_legacy(self);
+        } else {
+            sync_wake_opt_in_from_activation(self);
+        }
         reconcile_voice_engine_flags(self);
         if self.voice_vosk.model_preset == "auto" {
             self.voice_vosk.model_preset = "cn-light".to_string();
@@ -6213,9 +6361,13 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     if raw.get("voiceAssistEnabled").is_none() {
         cfg.voice_assist_enabled = existing.voice_assist_enabled;
     }
+    if raw.get("voiceActivation").is_none() {
+        cfg.voice_activation = existing.voice_activation.clone();
+    }
     if raw.get("voiceWakeListeningOptIn").is_none() {
         cfg.voice_wake_listening_opt_in = existing.voice_wake_listening_opt_in;
     }
+    sync_wake_opt_in_from_activation(&mut cfg);
     if raw.get("runtimeHabitControl").is_none() {
         cfg.runtime_habit_control = existing.runtime_habit_control.clone();
     }
@@ -6864,7 +7016,53 @@ mod tests {
         assert!(cfg.voice_assist_enabled);
 
         apply_voice_listening_strategy(&mut cfg, "off");
+        // Strategy off stops wake engines but must not kill Push-to-Talk / SoftPad assist.
+        assert!(cfg.voice_assist_enabled);
+        assert_eq!(cfg.desired_engine, "none");
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn keyless_off_preserves_push_to_talk_assist() {
+        let mut cfg = VoiceConfig::default();
+        apply_voice_activation(&mut cfg, "wakeOrPushToTalk");
+        assert_eq!(cfg.voice_activation, "wakeOrPushToTalk");
+        assert!(cfg.voice_wake_listening_opt_in);
+        assert!(cfg.voice_kws.enabled);
+        assert!(cfg.voice_assist_enabled);
+
+        apply_keyless_wake(&mut cfg, false);
+        assert_eq!(cfg.voice_activation, "pushToTalk");
+        assert!(!cfg.voice_wake_listening_opt_in);
+        assert_eq!(cfg.desired_engine, "none");
+        assert!(!cfg.voice_kws.enabled);
+        assert!(cfg.voice_assist_enabled, "PTT assist must survive keyless off");
+    }
+
+    #[test]
+    fn voice_activation_migrates_from_legacy_opt_in() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_activation.clear();
+        cfg.voice_wake_listening_opt_in = true;
+        cfg.voice_assist_enabled = true;
+        migrate_voice_activation_from_legacy(&mut cfg);
+        assert_eq!(cfg.voice_activation, "wakeOrPushToTalk");
+        assert!(cfg.voice_wake_listening_opt_in);
+
+        cfg.voice_activation.clear();
+        cfg.voice_wake_listening_opt_in = false;
+        migrate_voice_activation_from_legacy(&mut cfg);
+        assert_eq!(cfg.voice_activation, "pushToTalk");
+    }
+
+    #[test]
+    fn disabled_activation_clears_assist_and_engines() {
+        let mut cfg = VoiceConfig::default();
+        apply_voice_activation(&mut cfg, "disabled");
+        assert_eq!(cfg.voice_activation, "disabled");
         assert!(!cfg.voice_assist_enabled);
+        assert!(!cfg.voice_wake_listening_opt_in);
+        assert_eq!(cfg.desired_engine, "none");
     }
 
     #[test]
@@ -7731,6 +7929,22 @@ mod tests {
         assert!(!is_allowed_trigger("MButton"));
         assert!(is_allowed_trigger("XButton1"));
         assert!(is_allowed_trigger("XButton2"));
+    }
+
+    #[test]
+    fn find_agent_voice_binding_matches_split_phrases() {
+        let mut m = VoiceConfig::default().mappings[0].clone();
+        m.agent_bindings = vec![AgentBinding {
+            slot_id: "save".into(),
+            action_id: "app.save".into(),
+            trigger_type: "voice".into(),
+            trigger_binding: "保存、另存".into(),
+            enabled: true,
+            ..AgentBinding::default()
+        }];
+        assert!(find_agent_voice_binding(&m, "保存").is_some());
+        assert!(find_agent_voice_binding(&m, "另存").is_some());
+        assert!(find_agent_voice_binding(&m, "发送").is_none());
     }
 
     #[test]

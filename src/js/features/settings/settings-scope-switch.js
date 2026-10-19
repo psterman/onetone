@@ -270,6 +270,17 @@
     }
     syncSoftPadScopeFromHabit(m, panel);
     syncEditor(state().selectedMappingId);
+    if (panel === 'voice') {
+      if (global.OneToneVoiceSchemeContext && global.OneToneVoiceSchemeContext.activateEditingScheme) {
+        try { global.OneToneVoiceSchemeContext.activateEditingScheme(); } catch (_) {}
+      }
+      if (global.OneToneVoiceWake && typeof global.OneToneVoiceWake.clearWakePhraseSavePending === 'function') {
+        try { global.OneToneVoiceWake.clearWakePhraseSavePending(); } catch (_) {}
+      }
+      if (global.OneToneVoiceWake && typeof global.OneToneVoiceWake.refreshWakeScopeUi === 'function') {
+        try { global.OneToneVoiceWake.refreshWakeScopeUi(); } catch (_) {}
+      }
+    }
     repaintPanel(panel);
     if (Banner && Banner.renderAll) Banner.renderAll();
     return true;

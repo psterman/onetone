@@ -29,6 +29,7 @@
 
   var CONTROL_DEFS = [
     { id: 'voiceMaster', channel: 'voice', tier: 'l1', stateKey: 'config.voiceAssistEnabled', ipc: 'config', labelKey: 'trayChVoiceMaster', hintKey: 'trayChVoiceMasterHint', needs: null },
+    { id: 'voiceKeyless', channel: 'voice', tier: 'l1', stateKey: 'config.voiceActivation', ipc: 'config', labelKey: 'trayChVoiceKeyless', hintKey: 'trayChVoiceKeylessHint', needs: 'voiceMaster' },
     { id: 'voiceEnd', channel: 'voice', tier: 'l2', stateKey: 'config.voiceEnd.enabled', ipc: 'config', labelKey: 'trayChVoiceEnd', hintKey: 'trayChVoiceEndHint', needs: 'voiceMaster' },
     { id: 'keysEnabled', channel: 'keys', tier: 'l1', stateKey: 'mappings[].enabled', ipc: 'config', labelKey: 'trayChKeysUseScenario', hintKey: 'trayChKeysUseScenarioHint', needs: null },
     { id: 'keysCancel', channel: 'keys', tier: 'l2', stateKey: 'mappings[].cancelEnabled', ipc: 'config', labelKey: 'trayChKeysCancel', hintKey: 'trayChKeysCancelHint', needs: 'keysEnabled' },
@@ -48,7 +49,7 @@
   }
 
   var LABEL_FB = {
-    trayChVoiceMaster: '语音输入', trayChVoiceEnd: '说完就停',
+    trayChVoiceMaster: '语音通道', trayChVoiceKeyless: '免按键语音', trayChVoiceEnd: '说完就停',
     trayChKeysUseScenario: '快捷键', trayChKeysCancel: '再按可取消', trayChKeysAutoSend: '自动发送',
     trayChPadEnabled: '启用小键盘', trayChPadShowKeyboard: '显示小键盘', trayChPadRequireFg: '跟着前台助手',
     trayChCamPresence: '镜头动作识别', trayChCamTriggerAway: '检测离席',

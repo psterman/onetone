@@ -84,12 +84,13 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
     }
 
     if let Some(effective) = crate::scene_config::resolve_idle_effective_scene(cfg) {
-        if matches_cancel_phrase(
-            text,
-            &effective.cancel_phrases.zh,
-            &effective.cancel_phrases.en,
-        )
-        .is_some()
+        if cfg.voice_end.cancel_phrases_enabled
+            && matches_cancel_phrase(
+                text,
+                &effective.cancel_phrases.zh,
+                &effective.cancel_phrases.en,
+            )
+            .is_some()
         {
             return VoiceKeywordKind::Cancel;
         }
@@ -115,7 +116,9 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
     } else {
         let cancel_zh = &cfg.voice_end.cancel_phrases_zh;
         let cancel_en = &cfg.voice_end.cancel_phrases_en;
-        if matches_cancel_phrase(text, cancel_zh, cancel_en).is_some() {
+        if cfg.voice_end.cancel_phrases_enabled
+            && matches_cancel_phrase(text, cancel_zh, cancel_en).is_some()
+        {
             return VoiceKeywordKind::Cancel;
         }
         let send_zh = &cfg.voice_end.send_phrases_zh;

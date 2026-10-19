@@ -157,7 +157,8 @@ var testSendRs = read('src-tauri/src/ipc/commands/runtime/test_send.rs');
 assert.ok(/note_soft_pad_surface_for_mapping/.test(testSendRs), 'agent test send pushes soft pad');
 
 var mouseRs = read('src-tauri/src/hotkey_win.rs');
-assert.ok(/Side buttons are pulse-only/.test(mouseRs), 'side button keyup no double dispatch');
+// Side buttons have canonical down/up edges; duplicate native sources are deduped.
+assert.ok(/is_x_up/.test(mouseRs) && /if !is_x_up/.test(mouseRs), 'side button keyup no double dispatch');
 assert.ok(/WM_XBUTTONUP/.test(mouseRs), 'swallow XButton up during record');
 assert.ok(/WebView2 does not treat them as Back\/Forward/.test(mouseRs), 'side button swallow while recording');
 
@@ -291,13 +292,18 @@ assert.ok(!/expanded:opts\.expanded!==false/.test(probeJs), 'probe no longer aut
 
 var hotkeyRs = read('src-tauri/src/hotkey_win.rs');
 assert.ok(/xbutton_name_from_mouse_data/.test(hotkeyRs), 'side button mouseData hi/lo word');
+assert.ok(/xbutton_from_async_bits/.test(hotkeyRs), 'side button async rising-edge (no prefer-X2)');
+assert.ok(/Prefer HIWORD|hi != 0/.test(hotkeyRs), 'mouseData prefers HIWORD over stale LOWORD');
 assert.ok(/raw_mouse_xbutton/.test(hotkeyRs), 'raw input mouse XButton2');
 assert.ok(/RI_MOUSE_BUTTON_5_DOWN/.test(hotkeyRs), 'raw XButton2 down flag');
 assert.ok(/scan_bitmap\(payload, 0x00E9\)/.test(hotkeyRs), 'BLE volume bitfield after report id');
 assert.ok(!/"RAlt"/.test(hotkeyRs.split('const RECORD_KEYS')[1].split('];')[0]), 'RAlt not in RECORD_KEYS');
 assert.ok(/send_guard::is_active\(\) && !session_active/.test(hotkeyRs), 'mouse hook records during send_guard');
 assert.ok(/RECORDING_SESSION/.test(hotkeyRs), 'recording session flag for pending side-button buffer');
-assert.ok(/mouseData was empty\/unrecognized/.test(hotkeyRs), 'swallow unnamed XButton so WebView cannot go Forward');
+assert.ok(
+  /Raw Input resolves[\s\S]{0,500}if session_active\s*\{\s*return 1;/.test(hotkeyRs),
+  'swallow unnamed XButton so WebView cannot go Forward'
+);
 
 var html = read('src/index.html');
 assert.ok(html.includes('id="btnVoiceDockTryMic"'), 'dock try mic button');
@@ -387,6 +393,10 @@ assert.ok(/invokeStart\(m && m.id, 'padBind'\)/.test(read('src/js/features/agent
 assert.ok(/2\[0-4\]/.test(recJs), 'F13-F24 hardware capture token');
 assert.ok(/mvp_pad_bind_captured/.test(recInput), 'frontend handles pad bind capture');
 assert.ok(/mode\(\)===\'padBind\'/.test(recInput), 'webview backup during pad bind');
+assert.ok(
+  /page-side-padBind/.test(recInput) || /mode==='padBind'[\s\S]{0,400}invokeFrontendKeydownBackup/.test(recInput),
+  'padBind page-side mouse backup for XButton1/2'
+);
 assert.ok(/rec\.mode==='padBind'/.test(recJs), 'cancel pad bind without restoring 01 snapshot');
 
 var kuCtx = { globalThis: null };

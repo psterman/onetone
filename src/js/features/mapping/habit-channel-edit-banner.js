@@ -27,6 +27,16 @@
   var bound=false;
 
   function resolveEditMapping(){
+    var panel=String(ui().settingsPanel||'').trim();
+    // Voice page owns voiceEditSchemeId — prefer it so top chrome tracks「切换 · …」.
+    if(panel==='voiceWake'||panel==='voice'){
+      var vid=String(ui().voiceEditSchemeId||'').trim();
+      if(!vid||vid==='__global__') return null;
+      if(core()&&core().byId){
+        var fromVoice=core().byId(vid);
+        if(fromVoice) return fromVoice;
+      }
+    }
     var rid=String(ui().habitScenarioReturnId||'').trim();
     if(rid&&core()&&core().byId){
       var fromReturn=core().byId(rid);
@@ -37,6 +47,61 @@
     var id=String(sel).trim();
     if(!id||!core()||!core().byId) return null;
     return core().byId(id);
+  }
+
+  function foregroundAppLabel(){
+    var rt=global.OneToneRuntimeHabitControl;
+    var nav=global.OneToneHabitLayerNav;
+    var fg=null;
+    if(nav&&typeof nav.getForegroundIdentity==='function'){
+      try{ fg=nav.getForegroundIdentity(); }catch(_){ fg=null; }
+    }
+    if(!fg&&ui()&&ui().habitHubFgIdentity) fg=ui().habitHubFgIdentity;
+    if(!fg&&rt&&typeof rt.foregroundIdentity==='function'){
+      try{ fg=rt.foregroundIdentity(); }catch(_){ fg=null; }
+    }
+    if(!fg) return '';
+    var appId=String(
+      fg.matchedPresetAppId||fg.matched_preset_app_id||fg.appId||fg.appTargetId||''
+    ).trim();
+    var rules=global.OneToneAppBehaviorRules;
+    if(appId&&rules&&typeof rules.appDisplayName==='function'){
+      var named=String(rules.appDisplayName(appId)||'').trim();
+      if(named) return named;
+    }
+    if(appId) return appId;
+    var title=String(fg.windowTitle||fg.window_title||fg.exeName||fg.exe_name||'').trim();
+    return title;
+  }
+
+  var lastFgPollAt=0;
+  var lastFgLabelSig='';
+  function ensureForegroundFresh(){
+    var now=Date.now();
+    if(now-lastFgPollAt<1600) return;
+    lastFgPollAt=now;
+    var rt=global.OneToneRuntimeHabitControl;
+    var nav=global.OneToneHabitLayerNav;
+    if(nav&&typeof nav.getForegroundIdentity==='function'&&rt&&rt.noteForegroundIdentity){
+      try{
+        var held=nav.getForegroundIdentity();
+        if(held) rt.noteForegroundIdentity(held);
+      }catch(_){}
+    }
+    if(ui()&&ui().habitHubFgIdentity&&rt&&rt.noteForegroundIdentity){
+      try{ rt.noteForegroundIdentity(ui().habitHubFgIdentity); }catch(_){}
+    }
+    if(!(global.OneToneIpc&&global.OneToneIpc.invoke)) return;
+    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      if(!res) return;
+      if(rt&&rt.noteForegroundIdentity){
+        try{ rt.noteForegroundIdentity(res); }catch(_){}
+      }
+      var next=foregroundAppLabel();
+      if(next===lastFgLabelSig) return;
+      lastFgLabelSig=next;
+      renderAll();
+    }).catch(function(){});
   }
 
   function editMappingId(){
@@ -361,9 +426,15 @@
     if(spec.scopeMountId&&scopeSwitch()){
       scopeHtml=scopeSwitch().renderScopeSwitchMount(spec.panel, activeScopeId);
     }
+    var fgLabel=foregroundAppLabel();
+    if(fgLabel) lastFgLabelSig=fgLabel;
+    var fgChip=fgLabel
+      ?('<span class="settings-context-chrome__fg">'+esc(t('habitEditBannerFg','前台：{name}').replace('{name}',fgLabel))+'</span>')
+      :'';
     chrome.innerHTML=
       '<div class="settings-context-chrome__left">'
       +'<span class="settings-context-chrome__editing"'+(previewTip?' title="'+esc(previewTip)+'"':'')+'>'+esc(editingLine)+'</span>'
+      +fgChip
       +(vs.aligned?'<span class="settings-context-chrome__aligned">'+esc(t('habitEditBannerAligned','已与前台一致'))+'</span>':'')
       +(scopeHtml?'<div class="settings-context-chrome__scope" id="'+esc(spec.scopeMountId)+'">'+scopeHtml+'</div>':'')
       +'</div>'
@@ -395,6 +466,7 @@
       }
       return;
     }
+    ensureForegroundFresh();
     var m=resolveEditMapping();
     var vs=resolveEditVsRuntime();
     renderContextRow(spec, m, vs);

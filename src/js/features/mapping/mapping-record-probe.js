@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var MAX=48;
+  var MAX=64;
   var lines=[];
   var hidRows=[];
   var advancedHid=false;
@@ -8,6 +8,7 @@
   var liveRecording=false;
   var uiRevealed=false;
   var problemOpen=false;
+  var lastDiag='';
   function $(id){ return global.OneToneDom&&global.OneToneDom.$(id); }
   function t(key,fb){
     try{
@@ -56,7 +57,6 @@
       :t('keysCaptureProbeChipOpen','查看');
   }
   function syncRecordingProbeLink(){
-    // Dock chip replaces the old inline link.
     var link=$('btnKeysRecordingProbe');
     if(link) link.hidden=true;
   }
@@ -77,15 +77,15 @@
     problemOpen=true;
     var panel=$('recordProbePanel');
     if(panel) panel.classList.add('is-problem');
-    // Chip only — sheet opens when user taps 右下角 / 看问题.
-    setUiVisible(true,{expanded:!!opts.expanded});
+    // Auto-open sheet on problem so diagnosis is visible without an extra tap.
+    setUiVisible(true,{expanded:opts.expanded!==false});
     var status=$('recordProbeStatus');
     if(status&&opts.message) status.textContent=opts.message;
     syncChipCta();
+    updateDiag();
   }
   function closeSheet(){
     syncSheetOpen(false);
-    // Keep dock chip if recording or a problem was flagged.
     if(!liveRecording&&!problemOpen){
       setUiVisible(false);
     }
@@ -100,25 +100,202 @@
     lines=[];
     hidRows=[];
     sawRs=false;
+    lastDiag='';
     setUiVisible(false);
     renderHid();
+    updateDiag();
     var ol=$('recordProbeLog');
     if(ol) ol.innerHTML='';
   }
-  function maybeRevealForProblem(kind, src){
-    if(kind==='drop'||kind==='unknown'){
-      reveal({message:t('keysCaptureProbeProblemUnknown','检测到异常按键，请查看日志')});
+  function countSrc(src){
+    var n=0;
+    for(var i=0;i<lines.length;i++) if(lines[i].src===src) n++;
+    return n;
+  }
+  function hasNote(re){
+    for(var i=0;i<lines.length;i++){
+      if(re.test(String(lines[i].note||'')+' '+String(lines[i].kind||''))) return true;
+    }
+    return false;
+  }
+  function lastKeyOf(src){
+    for(var i=lines.length-1;i>=0;i--){
+      if(lines[i].src===src&&lines[i].key) return lines[i].key;
+    }
+    return '';
+  }
+  function hasRsCommit(){
+    for(var i=0;i<lines.length;i++){
+      var row=lines[i];
+      if(row.src!=='rs') continue;
+      if(/^(commit|captured|finish|recv|hello)$/.test(row.kind)) return true;
+      if(/pulse_peripheral|fe_recover|hook_ok|ipc-return/.test(String(row.note||''))) return true;
+    }
+    return false;
+  }
+  function backendConfirmed(){
+    return hasRsCommit()||hasNote(/committed=true/);
+  }
+  function buildDiag(){
+    var wv=countSrc('wv');
+    var fe=countSrc('fe');
+    var rs=countSrc('rs');
+    var ipcOk=hasNote(/ipc-ok/);
+    // Post-commit twin-backup / UI-finish noise must not count as a real fail.
+    var ipcFail=!backendConfirmed()&&hasNote(/ipc-fail|ipc-timeout/);
+    var feBackup=hasNote(/fe-backup|page-side/);
+    var emptyMid=hasNote(/mid=\(empty\)/);
+    var ipcCommitted=hasNote(/committed=true/);
+    var ipcPending=hasNote(/committed=false|stage=pending|stage=not_recording/);
+    var dropped=hasNote(/\bdrop\b|not_recording|already_idle/);
+    var oralFail=hasNote(/oral-apply-fail/);
+    var oralLeak=hasNote(/oral-during-record/)||(function(){
+      for(var i=0;i<lines.length;i++){
+        var row=lines[i];
+        if(row.kind==='leak'&&/oral-during-record/.test(String(row.key||'')+' '+String(row.note||''))) return true;
+      }
+      return false;
+    })();
+    var rsOk=hasRsCommit()&&!dropped;
+    var key=lastKeyOf('wv')||lastKeyOf('fe')||lastKeyOf('rs')||'—';
+    var linesOut=[];
+    linesOut.push(
+      t('keysCaptureProbeDiagCounts','计数：页面 {wv} · 前端 {fe} · 系统钩子 {rs}')
+        .replace('{wv}',String(wv))
+        .replace('{fe}',String(fe))
+        .replace('{rs}',String(rs))
+    );
+    linesOut.push(t('keysCaptureProbeDiagKey','最近侧键/按键：{key}').replace('{key}',key));
+    var level='ok';
+    var verdict='';
+    if(oralFail){
+      level='bad';
+      verdict=t(
+        'keysCaptureProbeDiagOralFail',
+        '结论：口头触发键未写入 oralCommandScheme。请再点「录制口头触发键」并按下侧键。'
+      );
+    }else if(oralLeak){
+      level='warn';
+      verdict=t(
+        'keysCaptureProbeDiagOralLeak',
+        '结论：录制中误开口头 / Soft Pad 收听条（已强制静音）。若仍闪一下可忽略。'
+      );
+    }else if(rsOk||ipcCommitted){
+      level='ok';
+      verdict=t('keysCaptureProbeDiagOk','结论：底层已确认，录制链路正常。');
+    }else if(ipcFail){
+      level='bad';
+      verdict=t('keysCaptureProbeDiagIpcFail','结论：前端 IPC 调用失败。检查 OneTone 是否以前端桥接运行，或查看 ipc-fail 行。');
+    }else if(feBackup&&ipcOk&&emptyMid){
+      level='bad';
+      verdict=t(
+        'keysCaptureProbeDiagEmptyMid',
+        '结论：IPC 已调用但 mappingId 为空，后端无法写入习惯。请重新点录制（不要只刷新页面）。'
+      );
+    }else if(feBackup&&ipcOk&&(ipcPending||rs===0)){
+      level='bad';
+      verdict=t(
+        'keysCaptureProbeDiagLogitech',
+        '结论：页面收到侧键且 IPC 已调用，但底层未提交。常见于罗技 G HUB 占用侧键（拦截 WH_MOUSE_LL）。请关闭 G HUB 对侧键的全局绑定后重试，并完整重启 OneTone（npm run tauri dev）。'
+      );
+    }else if(wv>0&&!feBackup&&rs===0){
+      level='warn';
+      if(/button0|LButton/i.test(key)||hasNote(/left-click ignored/)){
+        verdict=t(
+          'keysCaptureProbeDiagLeftClick',
+          '结论：收到的是鼠标左键，不是侧键。请把光标移到 OneTone 窗口内再按 XButton1/2（罗技侧键常靠页面备份，光标在 Cursor 上时 OneTone 收不到）。'
+        );
+      }else{
+        verdict=t(
+          'keysCaptureProbeDiagWvOnly',
+          '结论：只有页面收到、前端未发备份。侧键事件可能未进入录制态，或不是硬件捕获键。若录制口头触发键：先确认 Soft Pad 未挡在 Cursor 上，再在 OneTone 窗口内按侧键。'
+        );
+      }
+    }else if(feBackup&&!ipcOk&&rs===0){
+      level='warn';
+      verdict=t(
+        'keysCaptureProbeDiagBackupPending',
+        '结论：已发起页面备份，等待 IPC / 系统钩子确认…'
+      );
+    }else if(dropped){
+      level='warn';
+      verdict=t('keysCaptureProbeDiagDropped','结论：后端丢弃了按键（见 drop / not_recording）。可再按一次侧键。');
+    }else if(liveRecording){
+      level='ok';
+      verdict=t('keysCaptureProbeDiagWaiting','结论：正在录制，请按鼠标侧键 / 音量键 / F13。');
+    }else{
+      level='ok';
+      verdict=t('keysCaptureProbeDiagIdle','结论：空闲。开始录制后这里会显示链路诊断。');
+    }
+    linesOut.push(verdict);
+    return {text:linesOut.join('\n'),level:level,verdict:verdict};
+  }
+  function updateDiag(){
+    var el=$('recordProbeDiag');
+    if(!el) return;
+    if(!liveRecording&&!problemOpen&&!lines.length){
+      el.hidden=true;
+      el.textContent='';
+      el.className='record-probe-diag';
+      lastDiag='';
       return;
     }
-    if(liveRecording&&src==='wv'){
-      var hasWv=false;
-      for(var i=0;i<lines.length;i++){
-        if(lines[i].src==='wv') hasWv=true;
-        if(lines[i].src==='rs') sawRs=true;
+    var d=buildDiag();
+    lastDiag=d.text;
+    el.hidden=false;
+    el.textContent=d.text;
+    el.className='record-probe-diag is-'+d.level;
+  }
+  function maybeRevealForProblem(kind, src){
+    if(kind==='oral-apply-fail'){
+      reveal({
+        message:t('keysCaptureProbeProblemOral','口头触发键未写入，请展开日志')
+      });
+      return;
+    }
+    if(kind==='leak'){
+      var leakHit=false;
+      for(var li=0;li<lines.length;li++){
+        var lr=lines[li];
+        if(lr.kind==='leak'&&/oral-during-record/.test(String(lr.key||'')+' '+String(lr.note||''))){
+          leakHit=true;
+          break;
+        }
       }
-      if(hasWv&&!sawRs){
+      if(leakHit){
+        reveal({
+          message:t('keysCaptureProbeProblemOralLeak','录制中误开口头面板，请展开日志')
+        });
+      }
+      return;
+    }
+    if(kind==='drop'||kind==='unknown'||kind==='ipc-fail'||kind==='ipc-timeout'){
+      // Twin backup after ipc-return must not flip the chip to「IPC 失败」.
+      if((kind==='ipc-fail'||kind==='ipc-timeout')&&backendConfirmed()) return;
+      reveal({
+        message:kind==='ipc-fail'||kind==='ipc-timeout'
+          ?t('keysCaptureProbeProblemIpc','侧键备份 IPC 失败，请展开日志')
+          :t('keysCaptureProbeProblemUnknown','检测到异常按键，请查看日志')
+      });
+      return;
+    }
+    if(liveRecording&&(src==='wv'||src==='fe')){
+      if(backendConfirmed()) return;
+      var hasWv=countSrc('wv')>0;
+      var hasFeBackup=hasNote(/fe-backup|page-side/);
+      var ipcOk=hasNote(/ipc-ok/);
+      if(hasWv&&!sawRs&&!hasFeBackup){
         reveal({
           message:t('keysCaptureProbeProblemHook','按键到了界面，但系统钩子没接到。可尝试重新编译并重启')
+        });
+      }else if(hasWv&&hasFeBackup&&ipcOk&&!sawRs){
+        reveal({
+          message:t('keysCaptureProbeFeBackupNoRs','IPC 已调用，仍无系统钩子确认 — 请展开诊断')
+        });
+      }else if(hasWv&&hasFeBackup&&!sawRs){
+        reveal({
+          message:t('keysCaptureProbeFeBackup','侧键已由页面备份提交，等待写入…'),
+          expanded:false
         });
       }
     }
@@ -145,7 +322,8 @@
       ui:t('keysCaptureProbeSrcUi','界面'),
       wv:t('keysCaptureProbeSrcWv','页面收到'),
       fe:t('keysCaptureProbeSrcFe','前端处理'),
-      rs:t('keysCaptureProbeSrcRs','系统钩子')
+      rs:t('keysCaptureProbeSrcRs','系统钩子'),
+      diag:t('keysCaptureProbeSrcDiag','诊断')
     };
     return map[src]||src||'?';
   }
@@ -166,7 +344,18 @@
       unknown:t('keysCaptureProbeKindUnknown','未知键'),
       retry:t('keysCaptureProbeKindRetry','重试'),
       watchdog:t('keysCaptureProbeKindWatchdog','超时等待'),
-      probe:t('keysCaptureProbeKindProbe','探测')
+      probe:t('keysCaptureProbeKindProbe','探测'),
+      'ipc-ok':t('keysCaptureProbeKindIpcOk','IPC 成功'),
+      'ipc-warn':t('keysCaptureProbeKindIpcWarn','IPC 未提交'),
+      'ipc-fail':t('keysCaptureProbeKindIpcFail','IPC 失败'),
+      'ipc-timeout':t('keysCaptureProbeKindIpcTimeout','IPC 超时'),
+      'oral-apply-fail':t('keysCaptureProbeKindOralFail','口头写入失败'),
+      'oral-applied':t('keysCaptureProbeKindOralOk','口头已写入'),
+      'oral-guard':t('keysCaptureProbeKindOralGuard','口头槽位守卫'),
+      leak:t('keysCaptureProbeKindLeak','误开口头'),
+      diag:t('keysCaptureProbeKindDiag','链路摘要'),
+      hello:t('keysCaptureProbeKindHello','钩子就绪'),
+      recv:t('keysCaptureProbeKindRecv','底层收到')
     };
     return map[kind]||kind||'';
   }
@@ -179,10 +368,19 @@
     }
     if(n==='keyup'||n==='keydown') return kindLabel(n);
     if(n==='after-volume') return t('keysCaptureProbeNoteAfterVol','音量键之后的多余信号');
-    if(n==='recognition-echo') return t('keysCaptureProbeNoteEcho','与听写键相同，已忽略');
+    if(n==='recognition-echo'||n==='recognition_key_echo') return t('keysCaptureProbeNoteEcho','与听写键相同，已忽略');
     if(n==='ui-leak') return t('keysCaptureProbeNoteUiLeak','界面按键，已忽略');
     if(n==='padBind') return t('keysCaptureProbeNotePad','SoftPad 绑键');
     if(n==='watchdog') return t('keysCaptureProbeNoteWatchdog','等待系统确认超时');
+    if(n==='fe_recover') return t('keysCaptureProbeNoteFeRecover','恢复录制会话后接收');
+    if(n==='not_recording') return t('keysCaptureProbeNoteNotRec','后端不在录制态');
+    if(n==='already_idle') return t('keysCaptureProbeNoteIdle','会话已结束');
+    if(n==='pulse_peripheral') return t('keysCaptureProbeNotePulse','外设按下即提交');
+    if(n==='oralTrigger') return t('keysCaptureProbeNoteOral','口头触发键');
+    if(n==='hook_ok') return t('keysCaptureProbeNoteHookOk','底层录制钩子已打开');
+    if(n.indexOf('fe-backup')===0) return t('keysCaptureProbeNoteFeBackup','页面备份 ')+n.slice(9).trim();
+    if(n.indexOf('cmd_frontend_keydown')===0) return t('keysCaptureProbeNoteIpcCmd','已调用 ')+n;
+    if(n.indexOf('postMessage')===0) return t('keysCaptureProbeNotePostMsg','桥接发送 ')+n;
     if(n.indexOf('trigger')===0&&n.length>8) return t('keysCaptureProbeKindTrigger','开始录触发');
     return n;
   }
@@ -211,24 +409,36 @@
         :t('keysCaptureProbeWaiting','等待按键…');
     }
     refreshRebuildHint();
+    updateDiag();
     renderHid();
   }
   function refreshRebuildHint(){
     var status=$('recordProbeStatus');
     if(!status||!liveRecording) return;
-    var hasWv=false;
-    for(var i=0;i<lines.length;i++){
-      if(lines[i].src==='wv') hasWv=true;
-      if(lines[i].src==='rs') sawRs=true;
-    }
-    if(hasWv && !sawRs){
+    if(backendConfirmed()) return;
+    var hasWv=countSrc('wv')>0;
+    var hasFeBackup=hasNote(/fe-backup|page-side/);
+    var ipcOk=hasNote(/ipc-ok/);
+    if(hasWv&&!sawRs&&!hasFeBackup){
       reveal({
         message:t('keysCaptureProbeProblemHook','按键到了界面，但系统钩子没接到。可尝试重新编译并重启')
+      });
+    }else if(hasWv&&hasFeBackup&&ipcOk&&!sawRs){
+      reveal({
+        message:t('keysCaptureProbeFeBackupNoRs','IPC 已调用，仍无系统钩子确认 — 请展开诊断')
+      });
+    }else if(hasWv&&hasFeBackup&&!sawRs){
+      reveal({
+        message:t('keysCaptureProbeFeBackup','侧键已由页面备份提交，等待写入…'),
+        expanded:false
       });
     }
   }
   function push(src, kind, key, note){
     if(src==='rs') sawRs=true;
+    if(src==='rs'&&(kind==='captured'||kind==='commit'||kind==='finish'||kind==='recv'||kind==='hello')){
+      sawRs=true;
+    }
     lines.push({
       t:stamp(),
       src:String(src||'?'),
@@ -244,6 +454,10 @@
       var log=global.OneToneApp&&global.OneToneApp.pushLog;
       if(log) log('[record-probe] '+src+' '+kind+' '+key+' '+note);
     }catch(_){}
+  }
+  function pushDiagSnapshot(reason){
+    var d=buildDiag();
+    push('diag','diag','', (reason?reason+' · ':'')+d.verdict);
   }
   function ingestUnknown(key, note){
     var k=String(key||'').trim();
@@ -269,6 +483,7 @@
   function clear(){
     lines=[];
     hidRows=[];
+    lastDiag='';
     render();
   }
   function setRecording(on, mode){
@@ -287,9 +502,9 @@
         status.dataset.live='1';
         status.textContent=t('keysCaptureProbeLive','正在录制 · {mode}').replace('{mode}',mode||'trigger');
       }
-      // Bottom-right chip while recording; sheet stays closed until problem / tap.
       setUiVisible(true,{expanded:false});
       renderHid();
+      updateDiag();
       return;
     }
     if(panel) panel.classList.remove('is-live');
@@ -305,6 +520,7 @@
     else{
       syncRecordingProbeLink();
       syncChipCta();
+      updateDiag();
     }
     renderHid();
   }
@@ -315,18 +531,21 @@
     renderHid();
   }
   function text(){
-    return lines.map(function(row){
-      return row.t+'\t'+srcLabel(row.src)+'\t'+kindLabel(row.kind)+'\t'+(row.key||'')+'\t'+(row.alias||'')+'\t'+noteLabel(row.note);
+    var head=lastDiag||buildDiag().text;
+    var body=lines.map(function(row){
+      return row.t+'\t'+srcLabel(row.src)+'\t'+kindLabel(row.kind)+'\t'+(row.key||'')+'\t'+(row.alias||'')+'\t'+noteLabel(row.note)+'\t'+(row.note||'');
     }).join('\n');
+    return '=== 录制检测诊断 ===\n'+head+'\n=== 明细（含原始 note） ===\n'+(body||'(empty)');
   }
   function copy(){
-    var body=text()||'(empty)';
+    var body=text();
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(body).catch(function(){});
     }
   }
   function openSheet(){
     setUiVisible(true,{expanded:true});
+    updateDiag();
   }
   function bind(){
     var btn=$('btnRecordProbeCopy');
@@ -388,6 +607,11 @@
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
   else bind();
+  function noteOralDuringRecord(note){
+    if(!liveRecording) return false;
+    push('fe','leak','oral-during-record',String(note||'Soft Pad oral arm while recording'));
+    return true;
+  }
   global.OneToneRecordProbe={
     push:push,
     clear:clear,
@@ -397,6 +621,9 @@
     setAdvancedHid:setAdvancedHid,
     reveal:reveal,
     dismiss:dismiss,
+    pushDiagSnapshot:pushDiagSnapshot,
+    noteOralDuringRecord:noteOralDuringRecord,
+    isLiveRecording:function(){ return liveRecording; },
     isVisible:function(){ return uiRevealed; },
     syncRecordingProbeLink:syncRecordingProbeLink
   };

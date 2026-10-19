@@ -854,6 +854,14 @@ pub fn fire_codex_micro_pad_key(
     if micro_key_id.is_empty() {
         return serde_json::json!({ "ok": false, "reason": "invalid_key" });
     }
+    // Overlay / twin Soft Pad taps must not open 口头收听中 while recording a key.
+    if *state.recording.lock() || crate::hotkey_win::is_recording_session_active() {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "recording_blocks_soft_pad",
+            "microKeyId": micro_key_id,
+        });
+    }
     if key_down {
         crate::action_history::record_soft_pad_press(micro_key_id);
     }
@@ -1202,19 +1210,95 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "unbound" });
     };
 
-    // Soft Pad mic (pushToTalk) → on-demand 口头指令 listen, not vendor hold-to-talk.
-    if route.slot_id.eq_ignore_ascii_case("pushToTalk") {
+    // Soft Pad / hotkey: toggle global 免按键语音 (wakeOrPushToTalk ↔ pushToTalk).
+    if route
+        .slot_id
+        .eq_ignore_ascii_case("toggleVoiceKeyless")
+        || route.slot_id.eq_ignore_ascii_case("voiceKeyless")
+    {
         if !key_down {
             return serde_json::json!({
                 "ok": true,
-                "reason": "voice_command_keyup",
+                "reason": "keyless_keyup",
                 "slotId": route.slot_id,
             });
         }
-        crate::voice_command_session::toggle_session(state, &app, &route.mapping_id);
+        let next = {
+            let cfg = state.cfg.lock();
+            crate::config::normalize_voice_activation(&cfg.voice_activation) != "wakeOrPushToTalk"
+        };
+        let mode = if next {
+            "wakeOrPushToTalk"
+        } else {
+            "pushToTalk"
+        };
+        match crate::ipc::commands::voice_set_activation(
+            &app,
+            state,
+            mode,
+            "soft_pad_toggle_keyless",
+        ) {
+            Ok(payload) => {
+                crate::codex_micro_overlay::note_pad_run_status("done", micro_key_id);
+                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                return serde_json::json!({
+                    "ok": true,
+                    "reason": "voice_keyless_toggled",
+                    "slotId": route.slot_id,
+                    "on": next,
+                    "voiceActivation": mode,
+                    "payload": payload,
+                });
+            }
+            Err(err) => {
+                crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                return serde_json::json!({
+                    "ok": false,
+                    "reason": "voice_keyless_failed",
+                    "slotId": route.slot_id,
+                    "message": err,
+                });
+            }
+        }
+    }
+
+    // Soft Pad mic uses the route's explicit hold policy. Legacy routes without
+    // `is_hold` retain toggle semantics for compatibility.
+    if route.slot_id.eq_ignore_ascii_case("pushToTalk") {
+        // 「请按下快捷键」owns the wire — Soft Pad mic must not open oral listen.
+        if *state.recording.lock() || crate::hotkey_win::is_recording_session_active() {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "recording_blocks_oral",
+                "slotId": route.slot_id,
+            });
+        }
+        if !key_down {
+            if route.is_hold {
+                crate::voice_command_session::hold_session_up(state, &app, &route.mapping_id);
+                return serde_json::json!({
+                    "ok": true,
+                    "reason": "voice_command_hold_up",
+                    "slotId": route.slot_id,
+                    "armed": crate::voice_command_session::is_armed(),
+                });
+            }
+            return serde_json::json!({
+                "ok": true,
+                "reason": "voice_command_toggle_up_ignored",
+                "slotId": route.slot_id,
+                "armed": crate::voice_command_session::is_armed(),
+            });
+        }
+        if route.is_hold {
+            crate::voice_command_session::hold_session_down(state, &app, &route.mapping_id);
+        } else {
+            crate::voice_command_session::toggle_session(state, &app, &route.mapping_id);
+        }
         return serde_json::json!({
             "ok": true,
-            "reason": "voice_command_toggle",
+            "reason": if route.is_hold { "voice_command_hold_down" } else { "voice_command_toggle" },
             "slotId": route.slot_id,
             "armed": crate::voice_command_session::is_armed(),
         });
@@ -1542,15 +1626,34 @@ fn try_dispatch_agent_modifier_keyup(
     true
 }
 
-/// Dedicated oral arm key → toggle listen session (independent of 听写 triggerKey).
+/// Dedicated oral arm key. The configured activation mode, not the physical key name,
+/// decides whether a press is hold-to-talk or click-to-toggle.
 fn try_dispatch_oral_trigger(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
     event: &crate::press_gesture::PhysicalKeyEvent,
 ) -> bool {
-    if event.is_keyup {
+    // Recording session owns the wire — never arm Soft Pad oral mid-capture.
+    if *state.recording.lock() || crate::hotkey_win::is_recording_session_active() {
+        if matches!(
+            crate::config::canonical_trigger(&event.key).as_str(),
+            "XButton1" | "XButton2"
+        ) {
+            crate::app_log::log_line(
+                state,
+                "oral_arm",
+                &format!(
+                    "refuse recording key={} keyup={}",
+                    event.key, event.is_keyup
+                ),
+            );
+        }
         return false;
     }
+    let is_side = matches!(
+        crate::config::canonical_trigger(&event.key).as_str(),
+        "XButton1" | "XButton2"
+    );
     let (live_id, wrong_id) = {
         let cfg = state.cfg.lock();
         if let Some(m) = cfg.find_mapping_for_oral_event(event) {
@@ -1561,15 +1664,89 @@ fn try_dispatch_oral_trigger(
             (None, None)
         }
     };
+    let activation_mode = {
+        let cfg = state.cfg.lock();
+        let id = live_id.as_ref().or(wrong_id.as_ref());
+        id.and_then(|mapping_id| cfg.find_mapping_by_id(mapping_id))
+            .and_then(|m| m.oral_command_scheme.as_ref())
+            .map(|scheme| scheme.normalized_activation_mode())
+            .unwrap_or("hold")
+    };
+    // Side buttons are tap-and-release. Hold mode arms on down then hold_session_up
+    // on the almost-immediate up → panel vanishes ~1s later. Treat X1/X2 as toggle
+    // so「语音命令面板」stays until cancel / timeout (keyboard hold chords unchanged).
+    let toggle = activation_mode == "toggle" || is_side;
     let app = window.app_handle();
+
+    if is_side {
+        crate::app_log::log_line(
+            state,
+            "oral_arm",
+            &format!(
+                "edge key={} keyup={} mode={} live={:?} wrong_fg={:?} armed={}",
+                event.key,
+                event.is_keyup,
+                activation_mode,
+                live_id,
+                wrong_id,
+                crate::voice_command_session::is_armed()
+            ),
+        );
+    }
+
+    if event.is_keyup {
+        // Toggle mode owns only the down edge; keyup is intentionally ignored.
+        if toggle {
+            return false;
+        }
+        if let Some(ref mapping_id) = live_id {
+            crate::voice_command_session::hold_session_up(state, &app, mapping_id);
+            return true;
+        }
+        // FG may have drifted mid-hold — still release if this is the armed habit's oral key.
+        if crate::voice_command_session::is_armed() {
+            let mid = crate::voice_command_session::armed_mapping_id();
+            let key_matches = {
+                let cfg = state.cfg.lock();
+                cfg.find_mapping_by_id(&mid)
+                    .map(|m| {
+                        let oral = crate::config::canonical_trigger(m.oral_trigger_key());
+                        let ev = crate::config::canonical_trigger(&event.key);
+                        !oral.is_empty() && (oral == ev || m.oral_trigger_key() == event.key.as_str())
+                    })
+                    .unwrap_or(false)
+            };
+            if key_matches || wrong_id.as_deref() == Some(mid.as_str()) {
+                crate::voice_command_session::hold_session_up(state, &app, &mid);
+                return true;
+            }
+        }
+        return false;
+    }
+
     if let Some(mapping_id) = live_id {
-        crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        if toggle {
+            crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        } else {
+            crate::voice_command_session::hold_session_down(state, &app, &mapping_id);
+        }
         return true;
     }
     if let Some(mapping_id) = wrong_id {
-        // Not armed yet: toggle_session refuses + toasts when FG ≠ app.
-        crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        // Not armed yet: refuse + toast when FG ≠ app (hold/toggle share the gate).
+        if toggle {
+            crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        } else {
+            crate::voice_command_session::hold_session_down(state, &app, &mapping_id);
+        }
         return true;
+    }
+    if is_side {
+        crate::app_log::log_line(
+            state,
+            "oral_arm",
+            &format!("no_match key={} keyup={}", event.key, event.is_keyup),
+        );
     }
     false
 }
@@ -1715,6 +1892,9 @@ pub fn dispatch_scheme_gesture(
     match scheme {
         crate::config::GestureScheme::Off => {}
         crate::config::GestureScheme::VoiceCommand => {
+            if *state.recording.lock() || crate::hotkey_win::is_recording_session_active() {
+                return;
+            }
             let app = window.app_handle();
             crate::voice_command_session::toggle_session(state, &app, &mapping_id);
         }
@@ -1760,7 +1940,7 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
     {
         return;
     }
-    if *state.recording.lock() {
+    if *state.recording.lock() || crate::hotkey_win::is_recording_session_active() {
         return;
     }
     let event = parse_physical_event(raw);

@@ -17,6 +17,28 @@ use crate::ipc::recording::RecordMode;
 
 use super::guard::{arm_record_guard, clear_record_guard, emit_record_probe};
 
+/// Guarantees that a rejected/aborted capture cannot leave the native hook in
+/// recording mode.  Most capture paths clear this state after committing, but
+/// validation failures return early and used to leave side-button events
+/// swallowed indefinitely.
+struct RecordingExitGuard<'a> {
+    state: &'a AppState,
+}
+
+impl Drop for RecordingExitGuard<'_> {
+    fn drop(&mut self) {
+        *self.state.recording.lock() = false;
+        *self.state.recording_target.lock() = None;
+        *self.state.record_hw_pending.lock() = None;
+        *self.state.record_started_at.lock() = None;
+        clear_record_guard(self.state);
+        if let Some(ref mgr) = *self.state.hotkey_mgr.lock() {
+            mgr.stop_recording();
+        }
+        crate::hotkey_win::abort_recording_session();
+    }
+}
+
 pub(crate) fn finish_hardware_capture(
     state: &AppState,
     window: &tauri::WebviewWindow,
@@ -29,6 +51,10 @@ pub(crate) fn finish_hardware_capture(
     let Some(target) = target else {
         return;
     };
+    // ponytail: ExitGuard used to wrap the whole function — early reject/echo
+    // paths aborted RECORDING_SESSION while the FE modal stayed open, so the
+    // next Logitech side-button FE backup hit silent not_recording. Only arm
+    // the guard once validation passed and we are about to commit.
 
     let is_trigger = matches!(target.mode, RecordMode::Trigger);
     let is_oral_trigger = matches!(target.mode, RecordMode::OralTrigger);
@@ -67,7 +93,8 @@ pub(crate) fn finish_hardware_capture(
         return;
     }
 
-    if (is_trigger || is_oral_trigger)
+    // Dictation 01 only — oral arm may steal Soft Pad source_key (cleared in apply).
+    if is_trigger
         && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id)
     {
         emit_record_probe(window, "drop", &key, "softpad_occupied");
@@ -75,7 +102,7 @@ pub(crate) fn finish_hardware_capture(
             "type": "mvp_record_echo",
             "key": key,
             "mappingId": target.mapping_id,
-            "mode": if is_oral_trigger { "oralTrigger" } else { "trigger" },
+            "mode": "trigger",
             "reason": "softpad_occupied",
         });
         window.emit("to_js", &ack).ok();
@@ -138,10 +165,15 @@ pub(crate) fn finish_hardware_capture(
         emit_record_probe(window, "drop", &key, "already_idle");
         return;
     }
+    // Validation passed — now own teardown (reject paths above must keep session).
+    let _recording_exit_guard = RecordingExitGuard { state };
     *state.recording.lock() = false;
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
+    // Keep the native recording owner through persistence/rebind. This closes the
+    // window where the same side-button release or the next twin event can enter
+    // Soft Pad before the new binding is installed.
     clear_record_guard(state);
 
     if is_pad_bind {
@@ -157,6 +189,7 @@ pub(crate) fn finish_hardware_capture(
         window.emit("to_js", &ack).ok();
         emit_record_probe(window, "commit", &physical_key, "padBind");
         crate::tray::refresh_tray_visual_forced(window.app_handle());
+        crate::hotkey_win::disarm_recording_session();
         return;
     }
 
@@ -194,7 +227,20 @@ pub(crate) fn finish_hardware_capture(
         });
         window.emit("to_js", &ack).ok();
         emit_record_probe(window, "commit", &oral_key, "oralTrigger");
-        crate::tray::refresh_tray_visual_forced(window.app_handle());
+        let app = window.app_handle();
+        crate::tray::refresh_tray_visual_forced(&app);
+        // Oral commit must not leave Soft Pad / calibrate covering the monitor
+        // (录完侧键2后「整个屏幕无法点击」). recording already cleared above;
+        // ExitGuard will disarm hooks on return.
+        if let Some(arc) = app.try_state::<std::sync::Arc<AppState>>() {
+            crate::voice_command_session::force_cancel(arc.inner(), &app, "oral_trigger_commit");
+        } else {
+            crate::codex_micro_overlay::note_pad_run_status("idle", "ACT10");
+        }
+        crate::input_aim_calibrate::abort_if_open(&app);
+        crate::codex_micro_overlay::mute_overlay_for_recording(&app);
+        crate::codex_micro_overlay::push_state(&app, state);
+        crate::hotkey_win::disarm_recording_session();
         return;
     }
 
@@ -218,6 +264,7 @@ pub(crate) fn finish_hardware_capture(
                 "key": captured,
             });
             window.emit("to_js", &ack).ok();
+            crate::hotkey_win::disarm_recording_session();
             return;
         }
         let mut cfg = state.cfg.lock();
@@ -312,6 +359,7 @@ pub(crate) fn finish_hardware_capture(
         arm_record_guard(state);
     }
     crate::tray::refresh_tray_visual_forced(window.app_handle());
+    crate::hotkey_win::disarm_recording_session();
 }
 
 pub fn finish_trigger_gesture_capture(

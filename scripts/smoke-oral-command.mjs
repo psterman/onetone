@@ -122,17 +122,92 @@ assert(channelTriggerDisplayKeyStub('oral', habitA, null) === 'RShift', 'oral sh
 assert(channelTriggerDisplayKeyStub('peer', habitA, peerA) === 'F1', 'peer shows own key');
 assert(channelTriggerDisplayKeyStub('peer-empty', habitA, null) === '', 'no peer → empty 01');
 
-// cmd_save must keep oralCommandScheme.triggerKey (was dropped → UI-only side button).
+// Legacy migrate must not copy 听写→口头; equal keys heal to unset.
+function migrateLegacyOralGestureStub(m) {
+  var scheme = m.oralCommandScheme || (m.oralCommandScheme = { items: {}, triggerKey: '' });
+  var oralRaw = String(scheme.triggerKey || '').trim();
+  var habitRaw = String(m.triggerKey || '').trim();
+  var changed = false;
+  if (oralRaw && habitRaw && oralRaw === habitRaw) {
+    scheme.triggerKey = '';
+    changed = true;
+  }
+  return changed;
+}
+const polluted = { triggerKey: 'RShift', oralCommandScheme: { triggerKey: 'RShift', items: {} } };
+assert(migrateLegacyOralGestureStub(polluted) === true, 'equal oral/dictation heals');
+assert(polluted.oralCommandScheme.triggerKey === '', 'oral cleared when equal to dictation');
+assert(polluted.triggerKey === 'RShift', 'dictation key untouched');
+const separate = { triggerKey: 'RShift', oralCommandScheme: { triggerKey: 'XButton1', items: {} } };
+assert(migrateLegacyOralGestureStub(separate) === false, 'distinct oral key kept');
+assert(separate.oralCommandScheme.triggerKey === 'XButton1', 'oral stays independent');
+
+// cmd_save must keep oralCommandScheme.triggerKey + activationMode
+// (triggerKey drop → UI-only side button; activationMode drop → toggle resets to hold).
 function serializeOralCommandScheme(scheme) {
-  if (!scheme || typeof scheme !== 'object') return { items: {}, triggerKey: '' };
+  if (!scheme || typeof scheme !== 'object') {
+    return { items: {}, triggerKey: '', activationMode: 'hold' };
+  }
+  var mode = String(scheme.activationMode || '')
+    .trim()
+    .toLowerCase();
+  if (mode !== 'hold' && mode !== 'toggle') mode = 'hold';
   return {
     items: scheme.items && typeof scheme.items === 'object' ? scheme.items : {},
-    triggerKey: String(scheme.triggerKey || '').trim()
+    triggerKey: String(scheme.triggerKey || '').trim(),
+    activationMode: mode
   };
 }
-const savedOral = serializeOralCommandScheme({ triggerKey: 'XButton2', items: { 'soft:speak': { enabled: true } } });
+const savedOral = serializeOralCommandScheme({
+  triggerKey: 'XButton2',
+  activationMode: 'toggle',
+  items: { 'soft:speak': { enabled: true } }
+});
 assert(savedOral.triggerKey === 'XButton2', 'save keeps oral triggerKey');
+assert(savedOral.activationMode === 'toggle', 'save keeps activationMode toggle');
 assert(savedOral.items['soft:speak'].enabled === true, 'save keeps oral items');
 assert(serializeOralCommandScheme(null).triggerKey === '', 'empty scheme ok');
+assert(serializeOralCommandScheme(null).activationMode === 'hold', 'empty scheme defaults hold');
+assert(
+  serializeOralCommandScheme({ triggerKey: 'F13', items: {} }).activationMode === 'hold',
+  'missing activationMode defaults hold'
+);
+assert(
+  serializeOralCommandScheme({ triggerKey: 'F13', activationMode: 'weird' }).activationMode ===
+    'hold',
+  'unknown activationMode falls back to hold'
+);
+// Second save must not wipe toggle (other settings edit path).
+const again = serializeOralCommandScheme({
+  ...savedOral,
+  items: { ...savedOral.items, 'soft:cancel': { enabled: true } }
+});
+assert(again.activationMode === 'toggle', 'resave keeps toggle');
+
+// Voice settings left-rail「起点」follows intent (wake phrase vs oral arm key).
+function resolveStartKindStub(intent, oralKey) {
+  if (String(intent || '') === 'oral') return oralKey ? 'oral' : 'oral-unset';
+  return 'wake';
+}
+assert(resolveStartKindStub('ime', 'X2') === 'wake', 'ime start stays wake phrase');
+assert(resolveStartKindStub('prompt', '') === 'wake', 'prompt start stays wake phrase');
+assert(resolveStartKindStub('oral', 'X2') === 'oral', 'oral start uses arm key');
+assert(resolveStartKindStub('oral', '') === 'oral-unset', 'oral without key is unset');
+
+// Multi-phrase voice bind: any token matches (oral arm hears「保存」from「保存、另存」).
+function voiceBindPhraseMatchStub(heard, triggerBinding) {
+  const text = String(heard || '').trim();
+  const raw = String(triggerBinding || '').trim();
+  if (!text || !raw) return false;
+  if (text === raw) return true;
+  return raw
+    .split(/[、,，;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .some((p) => p === text);
+}
+assert(voiceBindPhraseMatchStub('保存', '保存、另存'), 'split voice bind matches first token');
+assert(voiceBindPhraseMatchStub('另存', '保存、另存'), 'split voice bind matches second token');
+assert(!voiceBindPhraseMatchStub('发送', '保存、另存'), 'unrelated phrase no match');
 
 console.log('smoke-oral-command: ok');

@@ -33,6 +33,8 @@
 
   function wakeOptIn(c) {
     c = c || cfg();
+    if (String(c.voiceActivation || '').trim() === 'wakeOrPushToTalk') return true;
+    if (String(c.voiceActivation || '').trim() === 'disabled') return false;
     return !!c.voiceWakeListeningOptIn;
   }
 

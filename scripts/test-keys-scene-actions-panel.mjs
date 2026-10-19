@@ -82,14 +82,27 @@ check(
     /voiceSchemeTroubleSummary/.test(html)
 );
 check(
-  'strategy + global opt-in live inside trouble body',
-  /voiceSchemeTrouble[\s\S]*voiceSummaryEngineSwitch[\s\S]*voiceWakeListeningOptInToggle/.test(html)
+  'strategy lives inside trouble details',
+  /voiceSchemeTrouble[\s\S]*voiceSummaryEngineSwitch/.test(html)
 );
 {
+  const stripOpen = html.indexOf('id="voiceSchemeStrip"');
+  const stripClose = html.indexOf('</div>', html.indexOf('id="voiceUnifiedExtras"', stripOpen));
+  const stripChunk =
+    stripOpen >= 0 && stripClose > stripOpen ? html.slice(stripOpen, stripClose) : '';
   const troubleOpen = html.indexOf('class="voice-scheme-trouble-body"');
   const troubleClose = html.indexOf('</details>', troubleOpen);
   const troubleChunk =
     troubleOpen >= 0 && troubleClose > troubleOpen ? html.slice(troubleOpen, troubleClose) : '';
+  check(
+    'keyless opt-in always visible on scheme strip (not buried in trouble)',
+    !!stripChunk &&
+      stripChunk.includes('voiceWakeListeningOptInToggle') &&
+      !!troubleChunk &&
+      !troubleChunk.includes('voiceWakeListeningOptInToggle') &&
+      stripChunk.indexOf('voiceWakeListeningOptInToggle') <
+        stripChunk.indexOf('voiceSchemeTrouble')
+  );
   check(
     'phrase edit / aliases / keys-target not in visible strip body',
     !!troubleChunk &&
@@ -244,7 +257,7 @@ check(
   /function applyCustomKeyMatchAsRecognition/.test(pickerSrc) &&
     /habit\.targetActions\s*=\s*acts/.test(pickerSrc) &&
     /habit\.imePresetId\s*=\s*''/.test(pickerSrc) &&
-    /已用「我录的键」替换听写快捷键|Applied/.test(pickerSrc)
+    /已用「自定义快捷键」替换听写快捷键|Applied/.test(pickerSrc)
 );
 check(
   'list click applies recognition without focusing match',

@@ -598,6 +598,14 @@ html[data-theme="dark"] .flow-nodes-path-base {
   border-radius: 999px;
   background: rgba(46, 125, 79, 0.12);
 }
+.settings-context-chrome__fg {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-variant, #475569);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--outline-variant, #94a3b8) 18%, transparent);
+}
 .settings-context-chrome__scope {
   flex-shrink: 0;
 }

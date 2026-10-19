@@ -1177,6 +1177,17 @@
     }
   }
 
+  function detectHomeAgentV2() {
+    try {
+      var queryValue = new URLSearchParams(location.search).get('homeAgentV2');
+      if (queryValue === '1') return true;
+      if (queryValue === '0') return false;
+      return global.localStorage && global.localStorage.getItem('onetone.homeSurface') === 'agentV2';
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Thin Agent desk (Home Focus) is the default home. Opt out with ?now=0
   // or localStorage onetone.nowHome=0. Workbench trigger channels remain via
   // ?now=0 / legacy preferences.
@@ -3042,6 +3053,11 @@
     if (mounted) return;
     root = $(ROOT_ID);
     if (!root) return;
+    if (detectHomeAgentV2() && global.OneToneHomeAgentV2) {
+      global.OneToneHomeAgentV2.mount(root);
+      mounted = true;
+      return;
+    }
     isDemo = detectDemo();
     agentDemo = detectAgentDemo();
     useLegacyNow = detectLegacyNow();
@@ -3070,6 +3086,17 @@
   function show() {
     mount();
     if (!root) return;
+    if (detectHomeAgentV2() && global.OneToneHomeAgentV2) {
+      var v2Stack = dashboardStack();
+      if (v2Stack) {
+        v2Stack.hidden = true;
+        v2Stack.setAttribute('aria-hidden', 'true');
+      }
+      setSmokeFeedbackHidden(true);
+      global.OneToneHomeAgentV2.show();
+      visible = true;
+      return;
+    }
     root.hidden = false;
     root.removeAttribute('aria-hidden');
     var stack = dashboardStack();

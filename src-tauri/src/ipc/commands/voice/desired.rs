@@ -122,3 +122,70 @@ pub async fn cmd_voice_set_listening_strategy(
     .await
     .map_err(|e| format!("set_listening_strategy join: {e}"))?
 }
+
+/// Persist voiceActivation (pushToTalk | softPad | wakeOrPushToTalk | disabled) and activate.
+pub fn voice_set_activation(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    mode: &str,
+    reason: &str,
+) -> Result<serde_json::Value, String> {
+    use std::sync::atomic::Ordering;
+
+    let label = crate::config::normalize_voice_activation(mode);
+    if label == "wakeOrPushToTalk" {
+        state.settings_asr_quiet.store(false, Ordering::SeqCst);
+    }
+    let cfg_snapshot = {
+        let mut cfg = state.cfg.lock();
+        crate::config::apply_voice_activation(&mut cfg, label);
+        cfg.normalize();
+        cfg.clone()
+    };
+    let parked = crate::voice_bootstrap::voice_settings_parked(state.as_ref());
+    let _ = std::thread::Builder::new()
+        .name("activation-save".into())
+        .spawn({
+            let snap = cfg_snapshot.clone();
+            move || {
+                crate::config::save_config(&snap);
+            }
+        });
+    crate::app_log::log_line(
+        state.as_ref(),
+        "voice",
+        &format!("set_voice_activation label={label} reason={reason}"),
+    );
+    if label == "wakeOrPushToTalk" {
+        crate::voice_bootstrap::touch_wake_activity(state.as_ref());
+    }
+    if !parked {
+        crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
+    }
+    let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
+    Ok(serde_json::json!({
+        "ok": true,
+        "voiceActivation": label,
+        "voiceWakeListeningOptIn": cfg_snapshot.voice_wake_listening_opt_in,
+        "voiceAssistEnabled": cfg_snapshot.voice_assist_enabled,
+        "strategy": cfg_snapshot.voice_listening_strategy,
+        "supervisor": supervisor,
+        "activateAsync": !parked,
+        "activateBusy": !parked,
+    }))
+}
+
+#[tauri::command]
+pub async fn cmd_voice_set_activation(
+    state: tauri::State<'_, Arc<AppState>>,
+    window: WebviewWindow,
+    mode: String,
+) -> Result<serde_json::Value, String> {
+    let app = window.app_handle().clone();
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        voice_set_activation(&app, &state, &mode, "set_voice_activation")
+    })
+    .await
+    .map_err(|e| format!("set_voice_activation join: {e}"))?
+}

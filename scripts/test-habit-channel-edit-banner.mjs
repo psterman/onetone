@@ -182,7 +182,39 @@ assert.equal(vs.aligned, true);
 Banner.syncPanelContext('voiceWake');
 assert.equal(context.OneToneState.ui.voiceEditSchemeId, 'app-cursor');
 
+// Voice panel prefers voiceEditSchemeId over stale habitScenarioReturnId.
+context.OneToneState.ui.settingsPanel = 'voiceWake';
+context.OneToneState.ui.habitScenarioReturnId = 'app-cursor';
+context.OneToneState.ui.voiceEditSchemeId = '__global__';
+context.OneToneState.state.selectedMappingId = null;
+assert.equal(Banner.resolveEditMapping(), null, 'voice global edit ignores stale returnId');
+context.OneToneState.ui.voiceEditSchemeId = 'app-cursor';
+context.OneToneState.state.selectedMappingId = 'app-cursor';
+assert.equal(Banner.resolveEditMapping().id, 'app-cursor');
+
+// FG chip when foreground identity is known
+context.__els.voiceWorkflowTabsBar = makeEl('voiceWorkflowTabsBar');
+context.__els.voiceWorkflowTabsBar.insertBefore = function (node) {
+  this._chrome = node;
+  this.innerHTML = node.innerHTML || '';
+};
+context.__els.voiceWorkflowTabsBar.querySelector = function (sel) {
+  if (sel === ':scope > .settings-context-chrome') return this._chrome || null;
+  return null;
+};
+context.__els.settingsPanelVoiceWake = makeEl('settingsPanelVoiceWake');
+context.__els.habitScenarioContextBannerVoice = makeEl('habitScenarioContextBannerVoice');
+context.__els.voiceScopeSwitch = makeEl('voiceScopeSwitch');
+context.__els.voiceScopeSwitch.querySelector = context.__els.keysScopeSwitch.querySelector;
+context.OneToneAppBehaviorRules = { appDisplayName: (id) => (id === 'cursor-chat' ? 'Cursor' : id) };
+Banner.renderAll();
+assert.match(
+  String(context.__els.voiceWorkflowTabsBar._chrome?.innerHTML || ''),
+  /前台：Cursor|FG: Cursor|settings-context-chrome__fg/
+);
+
 context.OneToneState.ui.settingsPanel = 'keys';
+context.OneToneState.ui.habitScenarioReturnId = 'app-cursor';
 context.OneToneState.ui.habitScenarioReturnPanel = null;
 Banner.renderAll();
 const panel = context.__els.settingsPanelKeys;

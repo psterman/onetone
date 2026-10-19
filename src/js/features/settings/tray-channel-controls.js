@@ -259,6 +259,12 @@
     var pm;
 
     if (ctrl.id === 'voiceMaster') return voiceAssistOn(cfg);
+    if (ctrl.id === 'voiceKeyless') {
+      var act = String((cfg && (cfg.voiceActivation || cfg.voice_activation)) || '').trim();
+      if (act === 'wakeOrPushToTalk') return true;
+      if (act === 'pushToTalk' || act === 'softPad' || act === 'disabled') return false;
+      return !!(cfg && cfg.voiceWakeListeningOptIn);
+    }
     if (ctrl.id === 'voiceEnd') {
       if (ctx.voiceEnd) return ctx.voiceEnd.enabled !== false;
       var ve = (cfg && (cfg.voiceEnd || cfg.voice_end)) || {};
@@ -314,41 +320,60 @@
     }).catch(function () {});
   }
 
-  function patchOsVoiceListening(on) {
+  function patchOsVoiceAssist(on) {
     var cfg = osCtx.config;
     if (!cfg) return;
     cfg.voiceAssistEnabled = on;
-    cfg.voiceListeningStrategy = on ? 'auto' : 'off';
+    if (!on && cfg.voiceActivation === 'wakeOrPushToTalk') {
+      // Channel off: keep activation preference but engines stop via strategy when keyless cleared.
+    }
+  }
+
+  function patchOsKeyless(on) {
+    var cfg = osCtx.config;
+    if (!cfg) return;
+    cfg.voiceActivation = on ? 'wakeOrPushToTalk' : 'pushToTalk';
+    cfg.voiceWakeListeningOptIn = !!on;
+    cfg.voiceListeningStrategy = on ? 'resourceSaver' : 'off';
     cfg.desiredEngine = on ? 'kws' : 'none';
     if (cfg.voiceKws) cfg.voiceKws.enabled = !!on;
     if (cfg.voiceVosk) cfg.voiceVosk.enabled = false;
     if (cfg.voiceSapi) cfg.voiceSapi.enabled = false;
+    if (on) cfg.voiceAssistEnabled = true;
   }
 
-  function trayActivateVoiceListening(on, ctx) {
+  /** @deprecated name kept for scene batch — now only toggles assist, not KWS. */
+  function patchOsVoiceListening(on) {
+    patchOsVoiceAssist(on);
+  }
+
+  function trayActivateKeyless(on, ctx) {
     ctx = ctx || {};
     var batch = !!ctx.batchApply;
-    if (!on) {
-      return invoke('cmd_voice_set_listening_strategy', { strategy: 'off' }).then(function () {
-        patchOsVoiceListening(false);
+    var mode = on ? 'wakeOrPushToTalk' : 'pushToTalk';
+    var run = function () {
+      return invoke('cmd_voice_set_activation', { mode: mode }).then(function () {
+        patchOsKeyless(on);
         if (batch) return;
         return refreshOsContext(ctx.global);
       }).then(function () {
         if (batch) return;
-        return invoke('cmd_tray_refresh_segments', { segments: ['channels'] }).catch(function () {});
+        return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(function () {});
       });
-    }
-    return unparkVoiceForTray().then(function () {
-      return invoke('cmd_voice_set_listening_strategy', { strategy: 'auto' });
-    }).then(function () {
-      patchOsVoiceListening(true);
-      return invoke('cmd_voice_kws_retry_start', {}).catch(function () {});
-    }).then(function () {
-      if (batch) return;
-      return refreshOsContext(ctx.global);
-    }).then(function () {
-      if (batch) return;
-      return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(function () {});
+    };
+    if (on) return unparkVoiceForTray().then(run);
+    return run();
+  }
+
+  function trayActivateVoiceListening(on, ctx) {
+    // Voice channel master: assist only — does not start/stop wake KWS (see voiceKeyless).
+    ctx = ctx || {};
+    var cfg = readConfig() || osCtx.config;
+    if (cfg) cfg.voiceAssistEnabled = !!on;
+    patchOsVoiceAssist(on);
+    if (ctx.batchApply) return Promise.resolve();
+    return saveMappingConfig('tray-voice-master').then(function () {
+      return invoke('cmd_tray_refresh_segments', { segments: ['channels'] }).catch(function () {});
     });
   }
 
@@ -356,7 +381,8 @@
     if (!snap) return;
     var cfg = osCtx.config;
     if (!cfg) return;
-    if (snap.voiceMaster !== undefined) patchOsVoiceListening(!!snap.voiceMaster);
+    if (snap.voiceMaster !== undefined) patchOsVoiceAssist(!!snap.voiceMaster);
+    if (snap.voiceKeyless !== undefined) patchOsKeyless(!!snap.voiceKeyless);
     if (snap.voiceEnd !== undefined) {
       if (!cfg.voiceEnd) cfg.voiceEnd = {};
       cfg.voiceEnd.enabled = !!snap.voiceEnd;
@@ -457,18 +483,18 @@
     var pm;
 
     if (ctrl.id === 'voiceMaster') {
-      if (global.OneToneVoiceWake && global.OneToneVoiceWake.switchListeningStrategy) {
-        return Promise.resolve(
-          global.OneToneVoiceWake.switchListeningStrategy(on ? 'auto' : 'off', { force: true })
-        ).then(function () {
-          patchOsVoiceListening(on);
-          if (cfg) cfg.voiceAssistEnabled = on;
-          return saveMappingConfig('tray-voice-master');
-        });
-      }
-      return trayActivateVoiceListening(on, ctx).then(function () {
+      if (cfg) cfg.voiceAssistEnabled = on;
+      patchOsVoiceAssist(on);
+      return saveMappingConfig('tray-voice-master').then(function () {
         if (!ctx.batchApply) {
           notifyChanged({ source: 'tray-os-voice', channel: 'voice', _fromNotify: true });
+        }
+      });
+    }
+    if (ctrl.id === 'voiceKeyless') {
+      return trayActivateKeyless(on, ctx).then(function () {
+        if (!ctx.batchApply) {
+          notifyChanged({ source: 'tray-os-keyless', channel: 'voice', _fromNotify: true });
         }
       });
     }
@@ -1049,7 +1075,7 @@
     });
   }
 
-  var CH_STATUS_NAMES = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
+  var CH_STATUS_NAMES = { voice: '语音', keys: '按键', softPad: '软键盘', camera: '手势' };
 
   function escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
