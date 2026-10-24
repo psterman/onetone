@@ -267,6 +267,8 @@ permissions = [
   "allow-cmd-tray-carry-dismiss",
   "allow-cmd-tray-collect-from-soft-pad",
   "allow-cmd-tray-collect-drain",
+  "allow-cmd-tray-inbox-write",
+  "allow-cmd-clipboard-read-image",
   "allow-cmd-soft-pad-paste-only",
   "allow-cmd-open-path",
   "allow-cmd-handoff-write-md",

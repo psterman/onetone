@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Cursor 快捷键 · 分类方案对比</title>
+  <style>
+    :root {
+      --ink: #1a2330; --muted: #5c6b7a; --faint: #8a97a5; --line: #d5dde6;
+      --panel: #fff; --wash: #eef2f5; --rail: #f4f7f9;
+      --teal: #0f6e6a; --teal-soft: #e3f3f1;
+      --key: #2a5f8f; --key-soft: #e7f0f8;
+      --pad: #5a4d8c; --pad-soft: #efeaf8;
+      --warn: #8a4b1a; --warn-soft: #f7eee4;
+      --bad: #8b2e3a; --bad-soft: #f7e8eb;
+      --ok: #1f6b3a; --ok-soft: #e6f3ea;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d5e2e4 0%, #e7ecef 48%, #dce4e8 100%);
+      color: var(--ink); font: 13px/1.45 var(--font);
+    }
+    button, summary { font: inherit; cursor: pointer; }
+    button:focus-visible, summary:focus-visible, .tab:focus-visible {
+      outline: 2px solid #16a6a0; outline-offset: 2px;
+    }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1120px, calc(100% - 28px)); margin: 20px auto 56px; }
+    .stage-head h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage-head p { margin: 6px 0 0; color: var(--muted); max-width: 760px; }
+
+    .diag {
+      margin: 16px 0 0; padding: 12px 14px; border-radius: 12px;
+      background: var(--warn-soft); border: 1px solid #e5c9a8; color: var(--warn);
+    }
+    .diag strong { color: #6a350c; }
+    .diag ul { margin: 6px 0 0; padding-left: 18px; }
+    .diag li { margin: 2px 0; }
+
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 12px;
+      padding: 4px; background: rgba(255,255,255,.55); border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .tab {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 8px 12px; border-radius: 9px; font-weight: 650; font-size: 12px;
+    }
+    .tab.is-on { background: #fff; color: var(--ink); box-shadow: 0 1px 0 rgba(20,40,50,.06); }
+    .tab .tag {
+      display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+      font-size: 10px; font-weight: 700; background: var(--wash); color: var(--faint);
+    }
+    .tab.is-on .tag.rec { background: var(--ok-soft); color: var(--ok); }
+    .tab.is-on .tag.now { background: var(--bad-soft); color: var(--bad); }
+
+    .panel { display: none; }
+    .panel.is-on { display: block; }
+
+    .score {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+      margin: 0 0 14px;
+    }
+    .score article {
+      background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    }
+    .score .k { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+    .score .v { margin-top: 2px; font-size: 15px; font-weight: 700; }
+    .score .s { margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .score .good .v { color: var(--ok); }
+    .score .bad .v { color: var(--bad); }
+    .score .mid .v { color: var(--warn); }
+
+    .grid {
+      display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+      min-height: 520px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+    .list { border-right: 1px solid var(--line); background: #fafbfc; padding: 12px; overflow: auto; }
+    .list-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 10px; }
+    .list-head strong { font-size: 13px; }
+    .list-head span { font-size: 11px; color: var(--muted); }
+
+    .acc { border: 1px solid var(--line); border-radius: 10px; background: #fff; margin: 0 0 8px; overflow: hidden; }
+    .acc > summary {
+      list-style: none; display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; user-select: none;
+    }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc-ico {
+      width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; color: #fff; background: #3d5a80;
+    }
+    .acc-ico.input { background: var(--teal); }
+    .acc-ico.session { background: #2a6f8f; }
+    .acc-ico.key { background: var(--key); }
+    .acc-ico.pad { background: var(--pad); }
+    .acc-ico.say { background: var(--teal); }
+    .acc-ico.slash { background: #6a5a40; }
+    .acc-title { font-size: 12px; font-weight: 650; flex: 1; }
+    .acc-count { font-size: 11px; color: var(--muted); }
+    .acc-body { padding: 0 8px 8px; display: grid; gap: 6px; }
+
+    .subhead {
+      margin: 4px 2px 2px; padding: 4px 6px; font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; color: var(--faint); text-transform: uppercase;
+    }
+    .subhead.warn { color: var(--warn); background: var(--warn-soft); border-radius: 4px; }
+
+    .cmd {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto;
+      gap: 2px 8px; width: 100%; text-align: left; padding: 9px 10px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff; color: inherit;
+    }
+    .cmd strong { font-size: 13px; grid-column: 1; }
+    .cmd .meta { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+    .cmd .chs { display: inline-flex; gap: 4px; grid-column: 2; grid-row: 1; justify-content: flex-end; }
+    .hcl-ch {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 6px; color: #9aa3b2; background: #eef1f5;
+    }
+    .hcl-ch.is-on.voice { color: var(--teal); background: var(--teal-soft); }
+    .hcl-ch.is-on.key { color: var(--key); background: var(--key-soft); }
+    .hcl-ch.is-on.pad { color: var(--pad); background: var(--pad-soft); }
+    .hcl-ch svg { width: 12px; height: 12px; display: block; }
+
+    .kind {
+      display: inline-block; margin-right: 6px; padding: 1px 5px; border-radius: 4px;
+      font-size: 10px; font-weight: 650; background: var(--wash); color: var(--faint);
+    }
+    .kind.native { background: var(--teal-soft); color: var(--teal); }
+    .kind.agent { background: #e8edf3; color: #3d5a80; }
+    .kind.view { background: var(--key-soft); color: var(--key); }
+    .kind.click { background: var(--pad-soft); color: var(--pad); }
+    .kind.shortcut, .kind.cursor { background: #e8f0f8; color: var(--key); }
+    .kind.say { background: var(--teal-soft); color: var(--teal); }
+    .kind.slash { background: #f3ece0; color: #6a5a40; }
+    .kind.noise { background: var(--bad-soft); color: var(--bad); }
+    .kind.fold { background: var(--wash); color: var(--muted); }
+
+    .chord {
+      display: inline-block; font-family: ui-monospace, Consolas, monospace;
+      font-size: 11px; padding: 0 4px; border-radius: 4px; background: var(--key-soft); color: var(--key);
+    }
+
+    .detail { padding: 14px 16px; background: #fff; min-width: 0; }
+    .detail .zone-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 8px;
+    }
+    .detail h2 { margin: 0 0 4px; font-size: 18px; }
+    .detail .lead { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+    .rules { display: grid; gap: 8px; margin: 0 0 14px; }
+    .rules article {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--rail);
+    }
+    .rules h3 { margin: 0 0 4px; font-size: 12px; }
+    .rules p { margin: 0; font-size: 12px; color: var(--muted); }
+    .rules code { font-size: 11px; color: var(--ink); }
+    .verdict {
+      padding: 10px 12px; border-radius: 10px; font-size: 12px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #b9dcc4;
+    }
+    .verdict.mid { background: var(--warn-soft); color: var(--warn); border-color: #e5c9a8; }
+    .verdict.bad { background: var(--bad-soft); color: var(--bad); border-color: #e4b8c0; }
+
+    .inventory {
+      margin-top: 18px; padding: 12px 14px; border-radius: 12px;
+      background: rgba(255,255,255,.72); border: 1px solid var(--line);
+    }
+    .inventory h3 { margin: 0 0 8px; font-size: 13px; }
+    .inventory table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .inventory th, .inventory td {
+      text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    .inventory th { color: var(--faint); font-weight: 650; font-size: 11px; }
+    .inventory td.mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .grid, .score { grid-template-columns: 1fr; }
+      .list { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="ico-voice" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1.5a2.2 2.2 0 0 0-2.2 2.2v3.6a2.2 2.2 0 1 0 4.4 0V3.7A2.2 2.2 0 0 0 8 1.5zm-4 6.2a.75.75 0 0 0-1.5 0 5.5 5.5 0 0 0 4.75 5.45V15H5.8a.75.75 0 0 0 0 1.5h4.4a.75.75 0 0 0 0-1.5H8.75v-1.85A5.5 5.5 0 0 0 13.5 7.7a.75.75 0 0 0-1.5 0 4 4 0 1 1-8 0z"/></symbol>
+    <symbol id="ico-key" viewBox="0 0 16 16"><path fill="currentColor" d="M2.5 4.2A1.7 1.7 0 0 1 4.2 2.5h7.6a1.7 1.7 0 0 1 1.7 1.7v7.6a1.7 1.7 0 0 1-1.7 1.7H4.2a1.7 1.7 0 0 1-1.7-1.7V4.2zm2 .8v1.6h1.6V5H4.5zm2.8 0v1.6h1.6V5H7.3zm2.8 0v1.6H12V5h-1.6zM4.5 7.8v1.6h6.9V7.8H4.5zm0 2.8v1.4h4.2v-1.4H4.5z"/></symbol>
+    <symbol id="ico-pad" viewBox="0 0 16 16"><path fill="currentColor" d="M3 3h4v4H3V3zm6 0h4v4H9V3zM3 9h4v4H3V9zm6 0h4v4H9V9z"/></symbol>
+  </svg>
+
+  <div class="proto-bar">
+    <strong>原型 · Cursor 快捷键分类</strong>
+    <em>四方案 + B′细分 · 不改产品</em>
+    <span>同一批命令 · 不同切法</span>
+    <span class="hint">prototypes/onetone-cursor-shortcut-schemes.html</span>
+  </div>
+
+  <div class="stage">
+    <div class="stage-head">
+      <h1>Cursor 快捷键 · 怎么分才科学</h1>
+      <p>当前把「做什么 / 怎么触发 / 去哪改」拧成五颗标签，所以 <code>plan</code>（Cursor 模式键）和 <code>status</code>（斜杠插入）挤进同一桶，而 <code>app.shortcut</code> 又刷出一堆「应用快捷键」。下面用<strong>同一批 Cursor 命令</strong>对比四套切法。</p>
+    </div>
+
+    <div class="diag">
+      <strong>现状诊断</strong>
+      <ul>
+        <li>轴混用：<code>native/agent/view/click/shortcut</code> 一半看 action 语义，一半看通道组合。</li>
+        <li>Cursor 真快捷键没独立身份：有默认和弦的槽（终端 / 命令面板 / Plan / 切换助手）与泛型 <code>app.shortcut</code> 混称「快捷键」。</li>
+        <li>标签过多：五类 ActionCategory × 五颗粒 kind × 通道灯 = 用户记不住。</li>
+        <li>匹配过宽：仅按键的同名行、Soft Pad 种子、Beginner 布局一起进投影再靠噪声过滤补救。</li>
+      </ul>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="分类方案">
+      <button type="button" class="tab is-on" data-tab="now" role="tab" aria-selected="true">现在<span class="tag now">问题</span></button>
+      <button type="button" class="tab" data-tab="a" role="tab" aria-selected="false">A · 改哪儿<span class="tag">3 桶</span></button>
+      <button type="button" class="tab" data-tab="b" role="tab" aria-selected="false">B · Cursor 角色<span class="tag">4 桶</span></button>
+      <button type="button" class="tab" data-tab="b2" role="tab" aria-selected="false">B′ · 键内二分<span class="tag rec">可落地</span></button>
+      <button type="button" class="tab" data-tab="c" role="tab" aria-selected="false">C · 双轴极简<span class="tag">3 标</span></button>
+      <button type="button" class="tab" data-tab="d" role="tab" aria-selected="false">D · 白名单折叠<span class="tag">键优先</span></button>
+    </div>
+
+    <!-- NOW -->
+    <section class="panel is-on" id="panel-now" data-scheme="now">
+      <div class="score">
+        <article class="bad"><div class="k">分组数</div><div class="v">5+5</div><div class="s">Category × Kind</div></article>
+        <article class="bad"><div class="k">标签种类</div><div class="v">5</div><div class="s">原生/Agent/查看/点击/快捷键</div></article>
+        <article class="bad"><div class="k">Cursor 键身份</div><div class="v">无</div><div class="s">与 app.shortcut 同名</div></article>
+        <article class="mid"><div class="k">噪声</div><div class="v">仍漏</div><div class="s">靠 isHabitListNoise</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · 命令</strong><span>混轴 · Cursor</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico input">入</span><span class="acc-title">控制输入</span><span class="acc-count">1</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>发送</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind">输入</span>发送 · ACT12</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico">A</span><span class="acc-title">控制当前 Agent</span><span class="acc-count">9</span></summary>
+            <div class="acc-body">
+              <div class="subhead">原生能力</div>
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind native">原生</span>soft:slots</span></button>
+              <div class="subhead">Agent 能力</div>
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind agent">Agent</span>继续 · AG02</span></button>
+              <div class="subhead">查看 / 指令</div>
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind view">查看</span>/status · insertOnly</span></button>
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind shortcut">快捷键</span><span class="chord">Ctrl+Alt+Shift+P</span> ← 实际是模式键，却因「仅按键」掉进快捷键</span></button>
+              <div class="subhead">点击执行</div>
+              <button type="button" class="cmd"><strong>回到当前 Agent</strong><span class="chs"><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind click">点击</span>ENC</span></button>
+              <div class="subhead">快捷键</div>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind shortcut">快捷键</span><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind shortcut">快捷键</span><span class="chord">Ctrl+Shift+P</span></span></button>
+              <div class="subhead warn">噪声（过滤前）</div>
+              <button type="button" class="cmd"><strong>应用快捷键</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind noise">app.shortcut</span>Ctrl+K</span></button>
+              <button type="button" class="cmd"><strong>应用快捷键</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind noise">app.shortcut</span>Ctrl+P</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 · 现在</div>
+          <h2>五颗粒混轴</h2>
+          <p class="lead">通道图标是对的；Agent 内再切 native/agent/view/click/shortcut 不科学——同一命令换通道组合就会换桶。</p>
+          <div class="rules">
+            <article><h3>判定</h3><p>先看 <code>soft:</code> → native；仅按键 → shortcut；再 <code>insertOnly</code> → view；再 Agent id → agent；再 Pad → click。</p></article>
+            <article><h3>失败点</h3><p><code>plan</code> 在 Cursor 是模式热键（非斜杠），却因「仅按键」成 shortcut，有口令的 <code>status</code> 又成 view——用户无法建立「这是 Cursor 快捷键」心智。</p></article>
+          </div>
+          <div class="verdict bad">不推荐保留为最终心智；通道灯可留，五颗粒应拆轴。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- A -->
+    <section class="panel" id="panel-a" data-scheme="a">
+      <div class="score">
+        <article class="good"><div class="k">分组数</div><div class="v">3</div><div class="s">改口令 / 改按键 / 改 Pad</div></article>
+        <article class="good"><div class="k">标签种类</div><div class="v">0</div><div class="s">组名即标签</div></article>
+        <article class="mid"><div class="k">Cursor 键身份</div><div class="v">弱</div><div class="s">混在「改按键」</div></article>
+        <article class="good"><div class="k">噪声</div><div class="v">可藏</div><div class="s">app.shortcut → Keys</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · 按「改哪儿」</strong><span>3 桶</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico say">说</span><span class="acc-title">可改说法</span><span class="acc-count">4</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>发送</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">发送 · 习惯页内联</span></button>
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">继续、接着写</span></button>
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">查看状态</span></button>
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">口令槽</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico key">键</span><span class="acc-title">可改按键（含 Cursor 键）</span><span class="acc-count">4</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Alt+Shift+P</span> · 深链 Keys</span></button>
+              <button type="button" class="cmd"><strong>切换助手</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Alt+.</span></span></button>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Shift+P</span></span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico pad">Pad</span><span class="acc-title">可改 Pad / 手势</span><span class="acc-count">1</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>回到当前 Agent</strong><span class="chs"><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">ENC · Soft Pad 布局</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 A</div>
+          <h2>按「改哪儿」分桶</h2>
+          <p class="lead">用户问题本质是调整路径。有口令的进「说法」；无口令但有按键的进「按键」；其余进 Pad/手势。<code>app.shortcut</code> 不进习惯列表。</p>
+          <div class="rules">
+            <article><h3>规则</h3><p><code>hasOral</code> → 说法；else <code>hasKey</code> → 按键；else Pad/手势。通道灯仍正交显示全部绑定。</p></article>
+            <article><h3>代价</h3><p>「继续」有口令也有键，进说法桶——Cursor 键身份被淹没；适合「我要改调用方式」场景，不适合教「哪些是 Cursor 自带快捷键」。</p></article>
+          </div>
+          <div class="verdict mid">适合 CTA / 深链，不适合当 Cursor 能力教材。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B -->
+    <section class="panel" id="panel-b" data-scheme="b">
+      <div class="score">
+        <article class="good"><div class="k">分组数</div><div class="v">4</div><div class="s">对话 / Cursor键 / 斜杠 / Soft Pad</div></article>
+        <article class="good"><div class="k">标签种类</div><div class="v">1</div><div class="s">组名，无五颗粒</div></article>
+        <article class="good"><div class="k">Cursor 键身份</div><div class="v">明确</div><div class="s">白名单 + 默认和弦</div></article>
+        <article class="good"><div class="k">噪声</div><div class="v">剔除</div><div class="s">app.shortcut 永不进表</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · Cursor 角色</strong><span>推荐切法</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico">对</span><span class="acc-title">对话控制</span><span class="acc-count">2</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">继续、接着写 · Agent 推进</span></button>
+              <button type="button" class="cmd"><strong>中断</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Shift+Backspace</span> · 停止生成</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico key">键</span><span class="acc-title">Cursor 快捷键</span><span class="acc-count">4</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Alt+Shift+P</span> · 模式热键</span></button>
+              <button type="button" class="cmd"><strong>切换助手</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Alt+.</span></span></button>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Shift+P</span></span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico slash">/</span><span class="acc-title">斜杠指令</span><span class="acc-count">1</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind slash">斜杠</span>插入 <code>/status</code> · 不发送</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico pad">Pad</span><span class="acc-title">Soft Pad 原生</span><span class="acc-count">2</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">口令 + 灯位同源</span></button>
+              <button type="button" class="cmd"><strong>回到当前 Agent</strong><span class="chs"><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">ENC 主键</span></button>
+            </div>
+          </details>
+          <details class="acc">
+            <summary><span class="acc-ico input">入</span><span class="acc-title">控制输入</span><span class="acc-count">1</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>发送</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">发送</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 B · 推荐</div>
+          <h2>按 Cursor 产品角色</h2>
+          <p class="lead">只回答「这能力在 Cursor 里是什么」。通道仍用图标；不再用五颗粒。Cursor 快捷键 = 命名槽 ∩（有默认和弦 或 已绑定键），与泛型 <code>app.shortcut</code> 硬切开。</p>
+          <div class="rules">
+            <article><h3>Cursor 键白名单</h3><p>来自 <code>CURSOR_DEFAULT_KEY_BY_SLOT</code> / VS Code 系共享表：<code>openTerminal</code>、<code>commandPalette</code>、<code>plan</code>、<code>switchAgent</code>、<code>quickSearch</code>、<code>undo</code>、<code>toggleSidebar</code>… 副行主显和弦。</p></article>
+            <article><h3>斜杠 vs 模式键</h3><p>真正 <code>insertOnly</code> 且<strong>无</strong> Cursor 专用 chord override → 斜杠；Cursor 把 <code>plan</code>/<code>switchAgent</code> 标成模式热键（见 Soft Pad <code>isSoftPadInsertOnlySlot</code>）→ 进 Cursor 键，不进斜杠。</p></article>
+            <article><h3>对话控制</h3><p><code>continueReply</code> / 中断 / 新建 等 Agent 推进类，不叫快捷键。</p></article>
+            <article><h3>剔除</h3><p><code>app.shortcut</code>、<code>cursorBeginner*</code>、无说法的 custom Soft Pad 种子 → 不进习惯；去 Keys / Soft Pad 管。</p></article>
+          </div>
+          <div class="verdict mid">四桶够用；白名单变长时再看 B′——只切「Cursor 快捷键」一桶。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B′ -->
+    <section class="panel" id="panel-b2" data-scheme="b2">
+      <div class="score">
+        <article class="good"><div class="k">顶层桶</div><div class="v">4</div><div class="s">同 B，不膨胀</div></article>
+        <article class="good"><div class="k">键内细分</div><div class="v">2</div><div class="s">Agent 模式 / 编辑器壳</div></article>
+        <article class="mid"><div class="k">其它桶</div><div class="v">不切</div><div class="s">对话·斜杠·Pad 保持扁</div></article>
+        <article class="good"><div class="k">上限</div><div class="v">≤6</div><div class="s">再切就回五颗粒陷阱</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · B′</strong><span>键内二分</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico">对</span><span class="acc-title">对话控制</span><span class="acc-count">3</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">推进</span></button>
+              <button type="button" class="cmd"><strong>中断</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Shift+Backspace</span></span></button>
+              <button type="button" class="cmd"><strong>新建对话</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="chord">Ctrl+N</span> · 仍算对话，不进「键」桶</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico key">键</span><span class="acc-title">Cursor 快捷键</span><span class="acc-count">6</span></summary>
+            <div class="acc-body">
+              <div class="subhead">Agent 模式键</div>
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">模式</span><span class="chord">Ctrl+Alt+Shift+P</span></span></button>
+              <button type="button" class="cmd"><strong>切换助手</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">模式</span><span class="chord">Ctrl+Alt+.</span></span></button>
+              <button type="button" class="cmd"><strong>快速聊天</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">模式</span><span class="chord">Ctrl+I</span></span></button>
+              <div class="subhead">编辑器壳</div>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">壳</span><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">壳</span><span class="chord">Ctrl+Shift+P</span></span></button>
+              <button type="button" class="cmd"><strong>快速搜索</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">壳</span><span class="chord">Ctrl+F</span></span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico slash">/</span><span class="acc-title">斜杠指令</span><span class="acc-count">1</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind slash">斜杠</span>/status · 扁列表，不必再切</span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico pad">Pad</span><span class="acc-title">Soft Pad 原生</span><span class="acc-count">2</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">口令灯位</span></button>
+              <button type="button" class="cmd"><strong>回到当前 Agent</strong><span class="chs"><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">ENC 主键 · 同桶，不另开「点击」</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 B′ · 可落地细分</div>
+          <h2>只切「Cursor 快捷键」</h2>
+          <p class="lead">四桶顶层不动。白名单变长时，仅在键桶内用<strong>子标题</strong>（不是新手风琴）分成两类——用户仍认「这是 Cursor 键」，再认「模式还是壳」。</p>
+          <div class="rules">
+            <article>
+              <h3>值得切 · Agent 模式键</h3>
+              <p>Cursor 特有 / 改 Composer·Agent 状态：<code>plan</code>、<code>switchAgent</code>、<code>quickChat</code>（Ctrl+I）。判定：在 <code>CURSOR_DEFAULT_KEY_BY_SLOT</code> 里有<strong>相对 VS Code 共享表的覆盖</strong>，或 Soft Pad 明示非 insertOnly。</p>
+            </article>
+            <article>
+              <h3>值得切 · 编辑器壳</h3>
+              <p>VS Code 系共用壳：<code>openTerminal</code>、<code>commandPalette</code>、<code>quickSearch</code>、<code>toggleSidebar</code>、<code>undo</code>、<code>nav*</code>、<code>openSettings</code>… 和弦来自 <code>VSCODE_EDITOR_KEY_BY_SLOT</code>。</p>
+            </article>
+            <article>
+              <h3>不值得切</h3>
+              <p><strong>对话控制</strong>再切推进/打断/会话 → 每桶 1～2 条，纯噪声。<strong>斜杠</strong>条目少，扁着放。<strong>Soft Pad</strong> 不拆「口令 / 点击」——那是通道，不是角色（通道灯已表达）。</p>
+            </article>
+            <article>
+              <h3>触发条件</h3>
+              <p>键桶 ≤4 条 → 用 B（无子标题）。≥5 或同时出现模式键+壳键 → 开 B′ 子标题。实现上就是 <code>cursorKeyFamily: 'agentMode' | 'editorShell'</code>，不必新 Category。</p>
+            </article>
+          </div>
+          <div class="verdict">推荐：落地 B；键桶变长时自动升 B′。不要把对话/斜杠/Pad 再切碎。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C -->
+    <section class="panel" id="panel-c" data-scheme="c">
+      <div class="score">
+        <article class="good"><div class="k">分组数</div><div class="v">2</div><div class="s">输入 / Agent（扁列表）</div></article>
+        <article class="good"><div class="k">标签种类</div><div class="v">3</div><div class="s">Cursor键 / Agent / Soft Pad</div></article>
+        <article class="good"><div class="k">Cursor 键身份</div><div class="v">行级</div><div class="s">徽章而非子手风琴</div></article>
+        <article class="mid"><div class="k">扫描成本</div><div class="v">中</div><div class="s">长列表靠徽章扫</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · 扁列表</strong><span>3 标</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico">A</span><span class="acc-title">控制当前 Agent</span><span class="acc-count">8</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind agent">Agent</span>继续、接着写</span></button>
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Alt+Shift+P</span></span></button>
+              <button type="button" class="cmd"><strong>切换助手</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Alt+.</span></span></button>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind cursor">Cursor 键</span><span class="chord">Ctrl+Shift+P</span></span></button>
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind slash">斜杠</span>/status</span></button>
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind native">Soft Pad</span></span></button>
+              <button type="button" class="cmd"><strong>回到当前 Agent</strong><span class="chs"><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta"><span class="kind native">Soft Pad</span>ENC</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 C</div>
+          <h2>双轴极简</h2>
+          <p class="lead">手风琴只留大类（输入 / Agent / …）。Agent 内<strong>不再分子标题</strong>；每行最多一枚徽章：Cursor 键 · Agent · Soft Pad · 斜杠。排序：Cursor 键优先，再 Agent，再 Soft Pad。</p>
+          <div class="rules">
+            <article><h3>规则</h3><p>白名单有默认和弦 → Cursor 键；insertOnly 且非 Cursor 模式键 → 斜杠；soft: → Soft Pad；其余 Agent。</p></article>
+            <article><h3>代价</h3><p>长列表时「Cursor 键」不成块，扫视线靠徽章颜色；实现最轻（改 kind 映射即可）。</p></article>
+          </div>
+          <div class="verdict mid">可作 B 的轻量过渡：先换徽章语义，再加分组。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- D -->
+    <section class="panel" id="panel-d" data-scheme="d">
+      <div class="score">
+        <article class="good"><div class="k">分组数</div><div class="v">3</div><div class="s">Cursor键置顶 / 可说法 / 折叠</div></article>
+        <article class="good"><div class="k">标签种类</div><div class="v">少</div><div class="s">和弦即标签</div></article>
+        <article class="good"><div class="k">Cursor 键身份</div><div class="v">最强</div><div class="s">主视觉 = chord</div></article>
+        <article class="mid"><div class="k">习惯页职责</div><div class="v">偏 Keys</div><div class="s">可能喧宾夺主</div></article>
+      </div>
+      <div class="grid">
+        <aside class="list">
+          <div class="list-head"><strong>本习惯 · 键优先</strong><span>折叠噪声</span></div>
+          <details class="acc" open>
+            <summary><span class="acc-ico key">键</span><span class="acc-title">Cursor 快捷键</span><span class="acc-count">4</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>制定计划</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Alt+Shift+P</span></span></button>
+              <button type="button" class="cmd"><strong>切换助手</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Alt+.</span></span></button>
+              <button type="button" class="cmd"><strong>打开终端</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+`</span></span></button>
+              <button type="button" class="cmd"><strong>命令菜单</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="chord">Ctrl+Shift+P</span></span></button>
+            </div>
+          </details>
+          <details class="acc" open>
+            <summary><span class="acc-ico say">说</span><span class="acc-title">可说法调用</span><span class="acc-count">4</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>继续</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">继续、接着写</span></button>
+              <button type="button" class="cmd"><strong>查看状态</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">查看状态 · /status</span></button>
+              <button type="button" class="cmd"><strong>发送</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">发送</span></button>
+              <button type="button" class="cmd"><strong>Soft Pad 灯位</strong><span class="chs"><span class="hcl-ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span><span class="hcl-ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span></span><span class="meta">口令槽</span></button>
+            </div>
+          </details>
+          <details class="acc">
+            <summary><span class="acc-ico">…</span><span class="acc-title">自定义快捷键</span><span class="acc-count">折叠</span></summary>
+            <div class="acc-body">
+              <button type="button" class="cmd"><strong>自定义快捷键</strong><span class="chs"><span class="hcl-ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span></span><span class="meta"><span class="kind fold">12 条</span>去按键页管理 · 不逐条展示</span></button>
+            </div>
+          </details>
+        </aside>
+        <div class="detail">
+          <div class="zone-tag">方案 D</div>
+          <h2>白名单置顶 + 噪声折叠</h2>
+          <p class="lead">习惯页第一眼就是 Cursor 真快捷键（和弦作主文案）。可说法的排第二。<code>app.shortcut</code> 合成一行「自定义快捷键 · N」深链 Keys，彻底消灭刷屏。</p>
+          <div class="rules">
+            <article><h3>规则</h3><p>同 B 的白名单；列表顺序强制 Cursor 键 → 可说法 → 折叠桶。</p></article>
+            <article><h3>代价</h3><p>习惯页更像「快捷键速查」；若产品定位是「多通道调用」，可能抢 Keys 页的戏。</p></article>
+          </div>
+          <div class="verdict mid">若目标是「一眼认出 Cursor 键」选 D；若目标是「习惯=调用方式」选 B。</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="inventory">
+      <h3>同一批命令 · 源数据对照（落地判定用）</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>显示名</th>
+            <th>action / slot</th>
+            <th>Cursor 默认键</th>
+            <th>真实语义</th>
+            <th>B 归桶</th>
+            <th>B′ 键内</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>继续</td>
+            <td class="mono">continueReply</td>
+            <td class="mono">—</td>
+            <td>Agent 推进</td>
+            <td>对话控制</td>
+            <td class="mono">—</td>
+          </tr>
+          <tr>
+            <td>中断</td>
+            <td class="mono">cancel</td>
+            <td class="mono">Ctrl+Shift+Backspace</td>
+            <td>停生成</td>
+            <td>对话控制</td>
+            <td class="mono">—</td>
+          </tr>
+          <tr>
+            <td>制定计划</td>
+            <td class="mono">plan</td>
+            <td class="mono">Ctrl+Alt+Shift+P</td>
+            <td>模式热键（非斜杠）</td>
+            <td>Cursor 快捷键</td>
+            <td>Agent 模式</td>
+          </tr>
+          <tr>
+            <td>切换助手</td>
+            <td class="mono">switchAgent</td>
+            <td class="mono">Ctrl+Alt+.</td>
+            <td>模式热键</td>
+            <td>Cursor 快捷键</td>
+            <td>Agent 模式</td>
+          </tr>
+          <tr>
+            <td>快速聊天</td>
+            <td class="mono">quickChat</td>
+            <td class="mono">Ctrl+I</td>
+            <td>Cursor Agent 入口</td>
+            <td>Cursor 快捷键</td>
+            <td>Agent 模式</td>
+          </tr>
+          <tr>
+            <td>打开终端</td>
+            <td class="mono">openTerminal</td>
+            <td class="mono">Ctrl+`</td>
+            <td>IDE 壳</td>
+            <td>Cursor 快捷键</td>
+            <td>编辑器壳</td>
+          </tr>
+          <tr>
+            <td>命令菜单</td>
+            <td class="mono">commandPalette</td>
+            <td class="mono">Ctrl+Shift+P</td>
+            <td>IDE 壳</td>
+            <td>Cursor 快捷键</td>
+            <td>编辑器壳</td>
+          </tr>
+          <tr>
+            <td>查看状态</td>
+            <td class="mono">status</td>
+            <td class="mono">（空）</td>
+            <td>insertOnly → /status</td>
+            <td>斜杠指令</td>
+            <td class="mono">—</td>
+          </tr>
+          <tr>
+            <td>Soft Pad 灯位</td>
+            <td class="mono">soft:*</td>
+            <td class="mono">—</td>
+            <td>产品原生</td>
+            <td>Soft Pad 原生</td>
+            <td class="mono">—</td>
+          </tr>
+          <tr>
+            <td>应用快捷键 ×N</td>
+            <td class="mono">app.shortcut</td>
+            <td class="mono">任意</td>
+            <td>多实例泛型键</td>
+            <td>不进表 / 折叠</td>
+            <td class="mono">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+      var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+      function show(id) {
+        tabs.forEach(function (t) {
+          var on = t.getAttribute('data-tab') === id;
+          t.classList.toggle('is-on', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        panels.forEach(function (p) {
+          p.classList.toggle('is-on', p.id === 'panel-' + id);
+        });
+      }
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () { show(t.getAttribute('data-tab')); });
+      });
+    })();
+  </script>
+</body>
+</html>

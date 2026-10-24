@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>识别归属 · 单页三通道 Tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8;
+  --voice:#5b4d8a; --voice-soft:#f0edf7;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --pad-shell:#1a2433; --pad-shell-2:#2a3544;
+  --key-top:#fff; --key-bot:#eef2f6;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(15,118,110,.1),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(42,156,196,.08),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit}
+button{touch-action:manipulation}
+button:focus-visible,input:focus-visible{
+  outline:2px solid rgba(42,156,196,.72);outline-offset:2px;
+}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#5eead4;font-weight:650}
+.top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.top a{
+  color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1280px,100%);margin:0 auto;padding:16px 14px 72px}
+.brief{
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:92ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:#e6f7f4;color:#0f766e;border:1px solid #5eead4;
+}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);
+}
+
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f4f8fb);
+}
+.scope-bar .brand{font-size:15px;font-weight:800}
+.scope-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.scope-pill b{color:var(--ink);font-weight:800}
+.scope-pill.edit{border-color:rgba(42,156,196,.4);background:var(--cyan-soft);color:var(--cyan-ink)}
+.scope-pill.live{border-color:#86efac;background:var(--ok-soft);color:var(--ok)}
+.scope-pill.lane{border-color:rgba(24,113,68,.3);background:var(--pad-soft);color:var(--pad)}
+.scope-bar .rule{
+  margin-left:auto;font-size:11px;font-weight:650;color:var(--faint);max-width:44ch;
+}
+
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#e6f7f4,#f3faf8);
+}
+.tabs [role="tab"]{
+  appearance:none;border:1px solid #99f6e4;background:#fff;color:#0f766e;
+  border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:750;cursor:pointer;
+}
+.tabs [role="tab"][aria-selected="true"]{
+  background:#0f766e;border-color:#0f766e;color:#fff;
+}
+.tabs .note{margin-left:auto;font-size:11px;font-weight:650;color:#0f766e}
+
+.desk{
+  display:grid;
+  grid-template-columns:minmax(200px,230px) minmax(0,1fr);
+  min-height:560px;
+}
+@media(max-width:860px){.desk{grid-template-columns:1fr}}
+
+.rail{
+  background:var(--rail);border-right:1px solid var(--line);
+  padding:10px 8px;display:flex;flex-direction:column;gap:4px;overflow:auto;
+}
+.rail .sec{
+  margin:4px 6px 6px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+}
+.cmd{
+  appearance:none;display:block;width:100%;margin:0;padding:10px 11px;
+  border:1px solid transparent;border-radius:10px;background:transparent;
+  font:inherit;text-align:left;cursor:pointer;color:var(--mute);
+}
+.cmd:hover{background:rgba(255,255,255,.55)}
+.cmd.is-on{
+  background:#fff;color:var(--ink);border-color:rgba(15,118,110,.28);
+  box-shadow:inset 3px 0 0 #0f766e;
+}
+.cmd .nm{display:block;font-size:13.5px;font-weight:800}
+.cmd .lights{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.light{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:750;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--faint);
+}
+.light.on.pad{background:var(--pad-soft);color:var(--pad);border-color:#86c9a3}
+.light.on.keys{background:var(--keys-soft);color:var(--keys);border-color:#9bc6da}
+.light.on.voice{background:var(--voice-soft);color:var(--voice);border-color:#c4b8e0}
+.light .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.rail .hint{
+  margin:10px 6px 4px;padding:10px;border-radius:10px;
+  background:#fff;border:1px dashed #99f6e4;
+  font-size:11.5px;color:var(--mute);line-height:1.45;
+}
+.rail .hint b{color:#0f766e}
+
+.mid{
+  background:var(--wash);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto;
+}
+.mid-hint{margin:0;font-size:11.5px;font-weight:550;color:var(--mute);line-height:1.4}
+.mid-hint b{color:#0f766e;font-weight:750}
+
+.hero{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.hero .ico{
+  width:48px;height:48px;border-radius:12px;
+  display:grid;place-items:center;font-weight:800;font-size:18px;
+  background:linear-gradient(180deg,#fff,#e6f7f4);
+  border:1px solid #99f6e4;color:#0f766e;
+}
+.hero .meta{flex:1;min-width:160px}
+.hero .meta h2{margin:0 0 2px;font-size:16px;font-weight:800}
+.hero .meta p{margin:0;font-size:12px;color:var(--mute)}
+.hero .ask{
+  font-size:12px;font-weight:700;color:#0f766e;
+  padding:6px 10px;border-radius:9px;background:#e6f7f4;border:1px solid #99f6e4;
+}
+
+.owner-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;font-weight:750;padding:3px 8px;border-radius:999px;
+  border:1px solid var(--line);background:var(--wash);color:var(--mute);
+}
+.owner-tag.keys{background:var(--keys-soft);color:var(--keys);border-color:#9bc6da}
+.owner-tag.voice{background:var(--voice-soft);color:var(--voice);border-color:#c4b8e0}
+.owner-tag.pad{background:var(--pad-soft);color:var(--pad);border-color:#86c9a3}
+.owner-tag .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.bind-panel{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+}
+.bind-panel h3{margin:0 0 4px;font-size:13px;font-weight:800}
+.bind-panel .sub{margin:0 0 10px;font-size:11.5px;color:var(--mute)}
+.bind-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--line);background:var(--wash);margin:0 0 6px;
+}
+.bind-row.is-on{border-color:rgba(15,118,110,.4);background:#e6f7f4;box-shadow:inset 3px 0 0 #0f766e}
+.bind-row.is-ref{background:#fff;border-style:dashed}
+.bind-row .nm{flex:1;min-width:140px;font-size:13px;font-weight:700}
+.bind-row .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--faint);margin-top:1px;font-family:var(--mono)}
+.bind-row .act{
+  appearance:none;border:1px solid #99f6e4;background:#fff;color:#0f766e;
+  border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:750;cursor:pointer;white-space:nowrap;
+}
+.bind-row .act.primary{background:#0f766e;border-color:#0f766e;color:#fff}
+.bind-row .act.ghost{border-color:var(--line);color:var(--mute);background:transparent}
+.bind-row .act.ghost:hover{border-color:#99f6e4;color:#0f766e}
+
+.editor{
+  margin-top:8px;padding:12px;border-radius:12px;border:1px solid #99f6e4;background:#f7fffd;
+}
+.editor h4{margin:0 0 8px;font-size:12.5px;font-weight:800;color:#0f766e}
+.pad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:280px}
+.keycap{
+  appearance:none;border-radius:10px;border:1px solid rgba(15,27,42,.1);
+  background:linear-gradient(180deg,var(--key-top),var(--key-bot));
+  padding:10px 6px;font-size:12px;font-weight:800;color:var(--ink);cursor:pointer;
+  box-shadow:inset 0 1px 0 #fff;
+}
+.keycap.is-on{
+  border-color:rgba(24,113,68,.45);
+  background:linear-gradient(180deg,#fff,var(--pad-soft));
+  box-shadow:0 0 0 2px rgba(24,113,68,.25),inset 0 1px 0 #fff;
+}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.field label{font-size:11px;font-weight:700;color:var(--mute)}
+.field input{
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;
+}
+.phrase-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.phrase-chips span{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 8px;border-radius:999px;background:var(--voice-soft);color:var(--voice);
+  border:1px solid #c4b8e0;font-size:12px;font-weight:700;
+}
+.phrase-chips button{
+  appearance:none;border:0;background:transparent;color:inherit;cursor:pointer;font-weight:800;padding:0;
+}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+
+.live{
+  margin-top:4px;padding:10px 12px;border-radius:10px;
+  background:#0f1820;color:#b8f5ce;font-size:12px;font-weight:650;
+}
+.live strong{color:#fff}
+
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:#1a2230;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  box-shadow:0 8px 28px rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:.2s;z-index:40;
+  max-width:min(520px,92vw);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>识别归属 · 单页三 Tab</strong>
+  <em>一份命令库 · 通道只是 tab</em>
+  <nav>
+    <a href="./compare-wanted-vs-built.html">方案对比</a>
+    <a href="./index.html">旧·三页示意</a>
+    <a href="./novice-command-card.html">小白命令卡</a>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="brief">
+    <h1>一个共享配置页</h1>
+    <p>视觉同一套壳。左栏是<strong>核心命令</strong>；顶上三个 tab 只挂各自识别方式。本 tab 可编，其它通道只读引用——不做混搭，所有者标签一眼可见。</p>
+    <div class="chips">
+      <span>单页 · 不跳设置</span>
+      <span>通道 = tab</span>
+      <span>只引用核心命令</span>
+      <span>谁拥有谁改</span>
+    </div>
+  </div>
+
+  <section class="frame" id="shell">
+    <div class="scope-bar">
+      <span class="brand">命令配置</span>
+      <span class="scope-pill edit">正在编辑 <b>Cursor · Agent</b></span>
+      <span class="scope-pill live">正在使用 <b>通用</b></span>
+      <span class="scope-pill lane">Soft Pad 车道 <b>Auto · Cursor</b></span>
+      <span class="rule">归属条全页一套 — 切 tab 不换壳</span>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="识别通道">
+      <button type="button" role="tab" id="tabPad" aria-selected="true" aria-controls="panel" data-tab="pad">软键盘</button>
+      <button type="button" role="tab" id="tabKeys" aria-selected="false" aria-controls="panel" data-tab="keys">按键识别</button>
+      <button type="button" role="tab" id="tabVoice" aria-selected="false" aria-controls="panel" data-tab="voice">语音说法</button>
+      <span class="note">同一页 · tab 切换</span>
+    </div>
+
+    <div class="desk" id="panel" role="tabpanel" aria-labelledby="tabPad">
+      <aside class="rail">
+        <div class="sec">核心命令</div>
+        <div id="cmdList"></div>
+        <div class="hint">
+          <b>怎么读：</b>灯亮 = 该通道已挂识别。点 tab 只改当前通道；其它行是只读引用。
+        </div>
+      </aside>
+      <div class="mid">
+        <p class="mid-hint" id="midHint"></p>
+        <div class="hero">
+          <div class="ico" id="heroIco">续</div>
+          <div class="meta">
+            <h2 id="heroTitle">继续回复</h2>
+            <p id="heroSub">让当前 Cursor Agent 接着完成任务。</p>
+          </div>
+          <div class="ask" id="heroAsk"></div>
+        </div>
+        <div class="bind-panel" id="bindPanel"></div>
+        <div class="live" id="liveNote" aria-live="polite"><strong>就绪</strong> · 选命令后在本 tab 编辑对应识别</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var PAD_KEYS = ['AG01', 'AG02', 'AG03', '7', '8', '9'];
+  var CMDS = [
+    {
+      id: 'continue',
+      title: '继续回复',
+      short: '续',
+      blurb: '让当前 Cursor Agent 接着完成任务。',
+      pad: 'AG02',
+      key: 'Vol-',
+      phrases: ['继续', '接着写']
+    },
+    {
+      id: 'new',
+      title: '新建对话',
+      short: '新',
+      blurb: '开一个新的 Agent 会话。',
+      pad: 'AG01',
+      key: '',
+      phrases: ['新建']
+    },
+    {
+      id: 'paste',
+      title: '粘贴发送',
+      short: '贴',
+      blurb: '粘贴剪贴板并发送给 Agent。',
+      pad: '',
+      key: 'Ctrl+V',
+      phrases: []
+    },
+    {
+      id: 'cancel',
+      title: '取消',
+      short: '消',
+      blurb: '停掉当前操作。',
+      pad: 'ESC',
+      key: 'Esc',
+      phrases: ['取消', '算了']
+    }
+  ];
+
+  var tab = 'pad';
+  var selected = 'continue';
+  var recording = false;
+  var toastTimer = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function cmd() {
+    return CMDS.find(function (c) { return c.id === selected; }) || CMDS[0];
+  }
+  function toast(msg) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+  function live(msg) {
+    $('liveNote').innerHTML = '<strong>同步</strong> · ' + msg;
+  }
+  function lightsHtml(c) {
+    return (
+      '<span class="light' + (c.pad ? ' on pad' : '') + '"><i class="dot"></i>盘</span>' +
+      '<span class="light' + (c.key ? ' on keys' : '') + '"><i class="dot"></i>键</span>' +
+      '<span class="light' + (c.phrases.length ? ' on voice' : '') + '"><i class="dot"></i>语</span>'
+    );
+  }
+  function owner(ch) {
+    var map = { pad: '软键盘', keys: '按键', voice: '语音' };
+    return '<span class="owner-tag ' + ch + '"><span class="dot"></span>' + map[ch] + '</span>';
+  }
+
+  function renderList() {
+    $('cmdList').innerHTML = CMDS.map(function (c) {
+      return (
+        '<button type="button" class="cmd' + (c.id === selected ? ' is-on' : '') + '" data-cmd="' + c.id + '">' +
+        '<span class="nm">' + c.title + '</span>' +
+        '<span class="lights">' + lightsHtml(c) + '</span>' +
+        '</button>'
+      );
+    }).join('');
+  }
+
+  function tabMeta() {
+    if (tab === 'pad') {
+      return {
+        hint: '本 tab 只编 <b>Soft Pad 盘面键位</b>。识别键与说法在其它 tab，这里只读引用。',
+        ask: '软键盘 · 权威编辑盘面'
+      };
+    }
+    if (tab === 'keys') {
+      return {
+        hint: '本 tab 只编 <b>实体识别键</b>。盘面与说法不在这里改——只读引用。',
+        ask: '按键 · 权威编辑识别键'
+      };
+    }
+    return {
+      hint: '本 tab 只编 <b>口头说法</b>。盘面与识别键不在这里改——只读引用。',
+      ask: '语音 · 权威编辑说法'
+    };
+  }
+
+  function refRow(label, detail, ch, jumpTab) {
+    return (
+      '<div class="bind-row is-ref">' +
+      '<div class="nm">' + label + '<small>' + detail + '</small></div>' +
+      owner(ch) +
+      '<button type="button" class="act ghost" data-jump="' + jumpTab + '">去该 tab →</button>' +
+      '</div>'
+    );
+  }
+
+  function editorPad(c) {
+    return (
+      '<div class="editor">' +
+      '<h4>点键帽绑定到「' + c.title + '」</h4>' +
+      '<div class="pad-grid" id="padGrid">' +
+      PAD_KEYS.map(function (k) {
+        return '<button type="button" class="keycap' + (c.pad === k ? ' is-on' : '') + '" data-pad="' + k + '">' + k + '</button>';
+      }).join('') +
+      '</div>' +
+      '<div class="actions" style="margin-top:10px">' +
+      '<button type="button" class="act ghost" data-clear="pad">清除盘面绑定</button>' +
+      '</div></div>'
+    );
+  }
+
+  function editorKeys(c) {
+    return (
+      '<div class="editor">' +
+      '<h4>录实体键 / 鼠标侧键</h4>' +
+      '<div class="field"><label for="keyInput">当前触发键</label>' +
+      '<input id="keyInput" type="text" value="' + (c.key || '') + '" placeholder="点击「开始录键」后按一下" readonly /></div>' +
+      '<div class="actions">' +
+      '<button type="button" class="act primary" id="btnRecord">' + (recording ? '等待按键…' : '开始录键') + '</button>' +
+      '<button type="button" class="act ghost" data-clear="keys">清除</button>' +
+      '</div></div>'
+    );
+  }
+
+  function editorVoice(c) {
+    var chips = c.phrases.length
+      ? c.phrases.map(function (p, i) {
+          return '<span>' + p + ' <button type="button" data-rm-phrase="' + i + '" aria-label="删除">×</button></span>';
+        }).join('')
+      : '<span style="color:var(--faint);font-weight:650;border:0;background:transparent">还没有说法</span>';
+    return (
+      '<div class="editor">' +
+      '<h4>说法（任一命中即执行本命令）</h4>' +
+      '<div class="phrase-chips" id="phraseChips">' + chips + '</div>' +
+      '<div class="field"><label for="phraseInput">新说法</label>' +
+      '<input id="phraseInput" type="text" placeholder="输入后回车添加" autocomplete="off" /></div>' +
+      '<div class="actions">' +
+      '<button type="button" class="act primary" id="btnAddPhrase">添加说法</button>' +
+      '<button type="button" class="act ghost" data-clear="voice">清空说法</button>' +
+      '</div></div>'
+    );
+  }
+
+  function renderBind() {
+    var c = cmd();
+    var html = '';
+    if (tab === 'pad') {
+      html +=
+        '<h3>盘面绑定 · 本 tab 可编</h3>' +
+        '<p class="sub">所有者 ' + owner('pad') + ' · 其它通道只读</p>' +
+        '<div class="bind-row is-on"><div class="nm">' + (c.pad || '未绑定') +
+        '<small>codexMicroPad.keys · Soft Pad</small></div>' + owner('pad') + '</div>' +
+        editorPad(c) +
+        refRow(c.key ? ('识别键 ' + c.key) : '识别键未设', '实体触发 · 只读引用', 'keys', 'keys') +
+        refRow(
+          c.phrases.length ? ('说法「' + c.phrases.join('」「') + '」') : '说法未设',
+          'voice 绑定 · 只读引用',
+          'voice',
+          'voice'
+        );
+    } else if (tab === 'keys') {
+      html +=
+        '<h3>识别键 · 本 tab 可编</h3>' +
+        '<p class="sub">所有者 ' + owner('keys') + ' · 其它通道只读</p>' +
+        '<div class="bind-row is-on"><div class="nm">' + (c.key || '未录键') +
+        '<small>captureHeroRef · 实体触发</small></div>' + owner('keys') + '</div>' +
+        editorKeys(c) +
+        refRow(c.pad ? ('盘面 ' + c.pad) : '盘面未绑', 'Soft Pad · 只读引用', 'pad', 'pad') +
+        refRow(
+          c.phrases.length ? ('说法「' + c.phrases.join('」「') + '」') : '说法未设',
+          'voice 绑定 · 只读引用',
+          'voice',
+          'voice'
+        );
+    } else {
+      html +=
+        '<h3>口头说法 · 本 tab 可编</h3>' +
+        '<p class="sub">所有者 ' + owner('voice') + ' · 其它通道只读</p>' +
+        '<div class="bind-row is-on"><div class="nm">' +
+        (c.phrases.length ? c.phrases.map(function (p) { return '「' + p + '」'; }).join(' ') : '未设说法') +
+        '<small>voice phrases · 权威</small></div>' + owner('voice') + '</div>' +
+        editorVoice(c) +
+        refRow(c.pad ? ('盘面 ' + c.pad) : '盘面未绑', 'Soft Pad · 只读引用', 'pad', 'pad') +
+        refRow(c.key ? ('识别键 ' + c.key) : '识别键未设', '实体触发 · 只读引用', 'keys', 'keys');
+    }
+    $('bindPanel').innerHTML = html;
+  }
+
+  function refresh() {
+    var c = cmd();
+    var meta = tabMeta();
+    $('midHint').innerHTML = meta.hint;
+    $('heroIco').textContent = c.short;
+    $('heroTitle').textContent = c.title;
+    $('heroSub').textContent = c.blurb;
+    $('heroAsk').textContent = meta.ask;
+    document.querySelectorAll('.tabs [role="tab"]').forEach(function (el) {
+      var on = el.getAttribute('data-tab') === tab;
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('panel').setAttribute('aria-labelledby', tab === 'pad' ? 'tabPad' : tab === 'keys' ? 'tabKeys' : 'tabVoice');
+    renderList();
+    renderBind();
+  }
+
+  function setTab(next) {
+    if (!next || next === tab) return;
+    tab = next;
+    recording = false;
+    refresh();
+    live('已切到「' + ({ pad: '软键盘', keys: '按键识别', voice: '语音说法' })[tab] + '」· 壳与命令库不变');
+  }
+
+  document.querySelector('.tabs').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tab]');
+    if (t) setTab(t.getAttribute('data-tab'));
+  });
+
+  $('cmdList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cmd]');
+    if (!b) return;
+    selected = b.getAttribute('data-cmd');
+    recording = false;
+    refresh();
+    live('选中「' + cmd().title + '」· 本 tab 只编对应识别');
+  });
+
+  $('bindPanel').addEventListener('click', function (e) {
+    var c = cmd();
+    var jump = e.target.closest('[data-jump]');
+    if (jump) {
+      setTab(jump.getAttribute('data-jump'));
+      toast('已切到所有者 tab · 仍在同一配置页');
+      return;
+    }
+    var pad = e.target.closest('[data-pad]');
+    if (pad) {
+      c.pad = pad.getAttribute('data-pad');
+      refresh();
+      live('盘面 ' + c.pad + ' → 「' + c.title + '」');
+      toast('已绑定 Soft Pad · ' + c.pad);
+      return;
+    }
+    if (e.target.closest('[data-clear="pad"]')) {
+      c.pad = '';
+      refresh();
+      live('已清除盘面绑定');
+      return;
+    }
+    if (e.target.closest('[data-clear="keys"]')) {
+      c.key = '';
+      recording = false;
+      refresh();
+      live('已清除识别键');
+      return;
+    }
+    if (e.target.closest('[data-clear="voice"]')) {
+      c.phrases = [];
+      refresh();
+      live('已清空说法');
+      return;
+    }
+    if (e.target.id === 'btnRecord') {
+      recording = !recording;
+      refresh();
+      if (recording) toast('请按一下实体键…');
+      return;
+    }
+    var rm = e.target.closest('[data-rm-phrase]');
+    if (rm) {
+      c.phrases.splice(Number(rm.getAttribute('data-rm-phrase')), 1);
+      refresh();
+      live('已删除说法');
+      return;
+    }
+    if (e.target.id === 'btnAddPhrase') {
+      var input = $('phraseInput');
+      var v = (input && input.value || '').trim();
+      if (!v) return;
+      if (c.phrases.indexOf(v) < 0) c.phrases.push(v);
+      refresh();
+      live('已添加说法「' + v + '」');
+    }
+  });
+
+  $('bindPanel').addEventListener('keydown', function (e) {
+    if (e.target.id === 'phraseInput' && e.key === 'Enter') {
+      e.preventDefault();
+      var btn = $('btnAddPhrase');
+      if (btn) btn.click();
+    }
+  });
+
+  window.addEventListener('keydown', function (e) {
+    if (!recording) return;
+    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    e.preventDefault();
+    var label = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    if (e.ctrlKey) label = 'Ctrl+' + label;
+    if (e.altKey) label = 'Alt+' + label;
+    cmd().key = label;
+    recording = false;
+    refresh();
+    live('识别键 → ' + label);
+    toast('已录键 ' + label);
+  });
+
+  var params = new URLSearchParams(location.search);
+  var t0 = params.get('tab');
+  if (t0 === 'keys' || t0 === 'voice' || t0 === 'pad') tab = t0;
+  var c0 = params.get('cmd');
+  if (c0 && CMDS.some(function (c) { return c.id === c0; })) selected = c0;
+  refresh();
+})();
+</script>
+</body>
+</html>

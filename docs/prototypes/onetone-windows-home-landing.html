@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8f5">
+  <title>OneTone · 现在</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f5;
+      --surface: #ffffff;
+      --surface-soft: #eef3f0;
+      --surface-strong: #e3ebe7;
+      --rail: #edf2ef;
+      --ink: #17231f;
+      --ink-2: #4e625b;
+      --ink-3: #5e746b;
+      --line: #d9e1dd;
+      --line-strong: #bdcbc4;
+      --accent: #08796f;
+      --accent-dark: #056158;
+      --accent-soft: #d9eee9;
+      --warning: #9b6200;
+      --warning-soft: #fff2d8;
+      --danger: #a13c37;
+      --danger-soft: #fde8e6;
+      --focus: #1d6fe8;
+      --shadow: 0 20px 50px rgba(32, 56, 47, .09), 0 2px 7px rgba(32, 56, 47, .07);
+      --radius: 14px;
+      --font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111715;
+      --surface: #1a2320;
+      --surface-soft: #202d29;
+      --surface-strong: #2a3b35;
+      --rail: #16201d;
+      --ink: #edf5f1;
+      --ink-2: #b1c2ba;
+      --ink-3: #a6bab0;
+      --line: #304139;
+      --line-strong: #466057;
+      --accent: #63c7b8;
+      --accent-dark: #9ce2d7;
+      --accent-soft: #1e4b43;
+      --warning: #f5c56b;
+      --warning-soft: #4e3b19;
+      --danger: #ff9e96;
+      --danger-soft: #542824;
+      --focus: #79b8ff;
+      --shadow: 0 24px 60px rgba(0, 0, 0, .34), 0 2px 8px rgba(0, 0, 0, .2);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 76%, transparent);
+      outline-offset: 2px;
+    }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    svg { display: block; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+      position: fixed; top: 10px; left: 10px; z-index: 100;
+      transform: translateY(-150%); padding: 9px 13px; border-radius: 8px;
+      background: var(--ink); color: var(--surface); text-decoration: none;
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+    .rail {
+      display: flex; min-height: 100vh; flex-direction: column; gap: 20px;
+      padding: 22px 14px 16px; background: var(--rail); border-inline-end: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 10px; }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); display: grid; place-items: center; color: var(--surface); font-weight: 750; letter-spacing: -.08em; }
+    .brand-name { font-size: 15px; font-weight: 740; letter-spacing: -.02em; }
+    .brand-sub { display: block; margin-top: 1px; color: var(--ink-3); font-size: 12px; }
+    .nav-group { display: grid; gap: 4px; }
+    .nav-label { margin: 6px 10px 3px; color: var(--ink-3); font-size: 12px; font-weight: 730; letter-spacing: .05em; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px;
+      padding: 8px 10px; border: 0; border-radius: 9px; background: transparent;
+      text-align: start; color: var(--ink-2); cursor: pointer; font-weight: 620;
+      transition: background-color .16s ease-out, color .16s ease-out, transform .16s ease-out;
+    }
+    .nav-item:hover { background: var(--surface-strong); color: var(--ink); }
+    .nav-item[aria-current="page"] { background: var(--accent-soft); color: var(--accent-dark); }
+    .nav-item[aria-current="page"]::after { content: ""; width: 6px; height: 6px; margin-inline-start: auto; border-radius: 50%; background: var(--accent); }
+    .nav-item svg { flex: 0 0 18px; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .rail-foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; }
+
+    .main { min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      min-height: 58px; display: flex; align-items: center; gap: 14px;
+      padding: 10px clamp(18px, 4vw, 52px); border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 90%, transparent);
+    }
+    .mobile-nav-toggle, .icon-button {
+      display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line);
+      border-radius: 9px; background: var(--surface); cursor: pointer;
+    }
+    .mobile-nav-toggle { display: none; }
+    .mobile-nav-toggle svg, .icon-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .crumb { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+    .crumb strong { font-size: 14px; font-weight: 740; }
+    .crumb span { color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+    .freshness { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 12px; }
+    .freshness i, .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .preview-badge { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-3); font-size: 12px; }
+
+    .content { flex: 1; overflow: auto; padding: clamp(22px, 5vw, 64px) clamp(18px, 7vw, 96px) 36px; }
+    .content-inner { width: min(780px, 100%); margin: 0 auto; }
+    .state-kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; color: var(--ink-2); font-size: 12px; font-weight: 700; }
+    .state-kicker .status-dot.running { background: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+    .state-kicker .status-dot.waiting { background: var(--warning); box-shadow: 0 0 0 5px var(--warning-soft); }
+    .state-kicker .status-dot.failed { background: var(--danger); box-shadow: 0 0 0 5px var(--danger-soft); }
+    .hero { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .hero h1 { max-width: 23ch; margin: 0; font-size: clamp(30px, 5vw, 48px); line-height: 1.12; letter-spacing: -.045em; text-wrap: balance; }
+    .hero-copy { max-width: 62ch; margin: 16px 0 0; color: var(--ink-2); font-size: 16px; text-wrap: pretty; }
+    .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .primary-action, .secondary-action {
+      min-height: 40px; padding: 9px 15px; border-radius: 9px; cursor: pointer; font-weight: 730;
+      transition: background-color .16s ease-out, color .16s ease-out, border-color .16s ease-out, box-shadow .16s ease-out;
+    }
+    .primary-action { border: 1px solid var(--accent); background: var(--accent); color: #fff; box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 22%, transparent); }
+    .primary-action:hover { border-color: var(--accent-dark); background: var(--accent-dark); }
+    .secondary-action { border: 1px solid transparent; background: transparent; color: var(--accent-dark); }
+    .secondary-action:hover { border-color: var(--line-strong); background: var(--surface); }
+    .context-line { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 20px; color: var(--ink-3); font-size: 12px; }
+    .context-line span { display: inline-flex; align-items: center; gap: 6px; }
+    .context-line b { color: var(--ink-2); font-weight: 650; }
+
+    .attention-strip { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .attention-strip[hidden] { display: none; }
+    .attention-symbol { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 8px; background: var(--warning-soft); color: var(--warning); }
+    .attention-symbol svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .attention-copy { min-width: 0; flex: 1; }
+    .attention-copy strong { display: block; font-size: 13px; }
+    .attention-copy span { display: block; margin-top: 2px; color: var(--ink-2); font-size: 12px; overflow-wrap: anywhere; }
+    .inline-link { border: 0; background: transparent; color: var(--accent-dark); cursor: pointer; font-weight: 720; white-space: nowrap; }
+
+    .agent-strip { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .agent-avatar { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 10px; background: var(--surface-strong); color: var(--ink-2); font-size: 11px; font-weight: 760; }
+    .agent-copy { min-width: 0; flex: 1; }
+    .agent-copy strong { display: block; font-size: 13px; }
+    .agent-copy span { display: block; color: var(--ink-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .agent-link { border: 0; background: transparent; color: var(--accent-dark); cursor: pointer; font-weight: 700; white-space: nowrap; }
+
+    .channel-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 16px 0 4px; }
+    .channel-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-2); font-size: 12px; }
+    .channel-chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .channel-chip button { border: 0; background: transparent; color: var(--accent-dark); cursor: pointer; font-weight: 700; }
+    .channel-chip[hidden] { display: none; }
+
+    .composer-wrap { margin-top: 30px; }
+    .composer-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: var(--ink-2); font-size: 12px; font-weight: 700; }
+    .composer-label span { color: var(--ink-3); font-weight: 500; }
+    .composer { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+    .composer textarea { display: block; width: 100%; min-height: 100px; max-height: 240px; resize: vertical; padding: 15px 16px; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.55; }
+    .composer textarea::placeholder { color: var(--ink-3); }
+    .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+    .composer-foot { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
+    .target-select { min-height: 32px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--ink-2); font-size: 12px; }
+    .composer-hint { color: var(--ink-3); font-size: 11px; }
+    .send-button { min-height: 34px; margin-inline-start: auto; padding: 7px 13px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; font-weight: 720; }
+    .send-button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+    .form-error { margin: 8px 0 0; color: var(--danger); font-size: 12px; }
+    .form-error[hidden] { display: none; }
+
+    .footer-status { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 18px; color: var(--ink-3); font-size: 12px; border-top: 1px solid var(--line); }
+    .footer-status .status-dot { width: 6px; height: 6px; }
+
+    .dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(10, 20, 16, .36); }
+    .dialog-backdrop[hidden] { display: none; }
+    .dialog { width: min(500px, 100%); max-height: min(640px, 90vh); overflow: auto; padding: 22px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+    .dialog h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+    .dialog-copy { margin: 9px 0 0; color: var(--ink-2); font-size: 13px; }
+    .evidence-list { display: grid; gap: 8px; margin: 18px 0; padding: 0; list-style: none; }
+    .evidence-list li { padding: 10px 12px; border-radius: 9px; background: var(--surface-soft); color: var(--ink-2); font-size: 12px; }
+    .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+    .toast { position: fixed; right: 18px; bottom: 18px; z-index: 30; max-width: min(420px, calc(100vw - 36px)); padding: 10px 13px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font-size: 12px; }
+    .toast[hidden] { display: none; }
+    .toast.error { border-color: color-mix(in srgb, var(--danger) 52%, var(--line)); color: var(--danger); }
+
+    @media (max-width: 860px) {
+      .app-shell { grid-template-columns: 72px minmax(0, 1fr); }
+      .rail { padding-inline: 10px; }
+      .brand { justify-content: center; padding-inline: 0; }
+      .brand-copy, .nav-label, .nav-item span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+      .nav-item { justify-content: center; padding-inline: 0; }
+      .nav-item[aria-current="page"]::after { display: none; }
+      .rail-foot .nav-item { justify-content: center; }
+    }
+    @media (max-width: 680px) {
+      .app-shell { display: block; }
+      .rail { position: fixed; inset: 0 auto 0 0; z-index: 15; width: 232px; transform: translateX(-105%); transition: transform .18s ease-out; box-shadow: var(--shadow); }
+      body.nav-open .rail { transform: translateX(0); }
+      .brand { justify-content: flex-start; padding-inline: 10px; }
+      .brand-copy, .nav-label, .nav-item span { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+      .nav-item { justify-content: flex-start; padding-inline: 10px; }
+      .nav-item[aria-current="page"]::after { display: block; }
+      .mobile-nav-toggle { display: grid; }
+      .topbar { padding-inline: 14px; }
+      .crumb span { display: none; }
+      .freshness { display: none; }
+      .content { padding: 28px 18px 26px; }
+      .hero h1 { font-size: clamp(29px, 9vw, 40px); }
+      .hero-copy { font-size: 15px; }
+      .composer-foot { flex-wrap: wrap; }
+      .composer-hint { order: 3; width: 100%; }
+      .send-button { margin-inline-start: auto; }
+    }
+    @media (max-width: 400px) {
+      .preview-badge { display: none; }
+      .hero-actions { align-items: stretch; flex-direction: column; }
+      .primary-action, .secondary-action { width: 100%; }
+      .context-line { display: grid; }
+    }
+    @media (pointer: coarse) {
+      .nav-item, .primary-action, .secondary-action, .send-button, .mobile-nav-toggle, .icon-button { min-height: 44px; }
+    }
+    @media (forced-colors: active) {
+      *, *::before, *::after { forced-color-adjust: auto; }
+      .primary-action, .send-button, .nav-item[aria-current="page"] { border: 2px solid ButtonText; }
+      .status-dot, .chip-dot { background: CanvasText; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">跳到主要内容</a>
+  <div class="app-shell">
+    <aside class="rail" id="appRail" aria-label="主导航">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">一声</div>
+        <div class="brand-copy"><div class="brand-name">OneTone</div><span class="brand-sub">言出即行，万象成形</span></div>
+      </div>
+      <nav class="nav-group" aria-label="主要工作">
+        <button class="nav-item" type="button" aria-current="page" aria-label="现在"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5v7H4z"/><path d="M9.5 18.5v-4h5v4"/></svg><span>现在</span></button>
+        <button class="nav-item" type="button" aria-label="Agent"><svg viewBox="0 0 24 24"><path d="M7 8h10M7 12h7M7 16h5"/><rect x="3" y="4" width="18" height="16" rx="3"/></svg><span>Agent</span></button>
+      </nav>
+      <div class="nav-label">个人能力</div>
+      <nav class="nav-group" aria-label="个人能力">
+        <button class="nav-item" type="button" aria-label="我的习惯"><svg viewBox="0 0 24 24"><path d="M5 7h14M8 12h8M10 17h4"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="12" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>我的习惯</span></button>
+        <button class="nav-item" type="button" aria-label="按键与语音"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span>按键与语音</span></button>
+      </nav>
+      <div class="rail-foot"><button class="nav-item" type="button" aria-label="设置"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z"/></svg><span>设置</span></button></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="打开主导航" aria-controls="appRail" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="crumb"><strong>现在</strong><span id="crumbContext">· 当前情境</span></div>
+        <div class="top-actions">
+          <span class="freshness"><i aria-hidden="true"></i><span id="freshnessText">正在读取状态…</span></span>
+          <span class="preview-badge" id="previewBadge" hidden>预览数据 · ?state=start</span>
+          <button class="icon-button" id="themeToggle" type="button" aria-label="切换深色模式"><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5z"/></svg></button>
+        </div>
+      </header>
+
+      <main class="content" id="mainContent" tabindex="-1">
+        <div class="content-inner">
+          <section class="hero" aria-labelledby="heroTitle">
+            <div class="state-kicker"><i class="status-dot" id="stateDot" aria-hidden="true"></i><span id="stateLabel">准备开始</span><span aria-hidden="true">·</span><span id="stateMeta">当前工作</span></div>
+            <h1 id="heroTitle">把下一句话交给 Agent。</h1>
+            <p class="hero-copy" id="heroCopy">说出想法、贴入材料，OneTone 会把它交给当前编码目标。复杂任务可以稍后整理，不需要先填一张表。</p>
+            <div class="hero-actions">
+              <button class="primary-action" id="primaryAction" type="button">交给 Agent</button>
+              <button class="secondary-action" id="secondaryAction" type="button">先整理方案</button>
+            </div>
+            <div class="context-line" aria-label="当前上下文">
+              <span><b>前台</b><span id="foregroundValue">Cursor</span></span>
+              <span><b>项目</b><span id="projectValue">voice-pilot · 已确认</span></span>
+              <span><b>目标</b><span id="targetValue">Cursor</span></span>
+            </div>
+          </section>
+
+          <section class="attention-strip" id="attentionStrip" aria-labelledby="attentionTitle" hidden>
+            <div class="attention-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><path d="M10.3 3.8 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/></svg></div>
+            <div class="attention-copy"><strong id="attentionTitle">需要你作出决定</strong><span id="attentionCopy">有一个 Agent 事项正在等待你的下一步。</span></div>
+            <button class="inline-link" id="attentionAction" type="button">查看并决定</button>
+          </section>
+
+          <section class="agent-strip" aria-label="当前 Agent">
+            <div class="agent-avatar" id="agentAvatar" aria-hidden="true">—</div>
+            <div class="agent-copy"><strong id="agentName">当前 Agent</strong><span id="agentDetail">等待读取实时状态</span></div>
+            <button class="agent-link" id="agentLink" type="button">Agent 总览</button>
+          </section>
+
+          <section class="channel-row" aria-label="核心通道">
+            <span class="channel-chip"><i class="chip-dot" aria-hidden="true"></i>语音 · 就绪</span>
+            <span class="channel-chip"><i class="chip-dot" aria-hidden="true"></i>按键 · <kbd>Ctrl + Space</kbd></span>
+            <span class="channel-chip" data-capability="soft-pad" hidden><i class="chip-dot" aria-hidden="true"></i>Soft Pad · 已发现<button type="button" data-channel="soft-pad">探索</button></span>
+            <span class="channel-chip" data-capability="camera" hidden><i class="chip-dot" aria-hidden="true"></i>摄像头 · 可用<button type="button" data-channel="camera">探索</button></span>
+          </section>
+
+          <section class="composer-wrap" aria-labelledby="composerLabel">
+            <div class="composer-label"><label id="composerLabel" for="homePrompt">想说什么？</label><span>默认发送到 <strong id="composerTarget">当前 Agent</strong></span></div>
+            <form class="composer" id="promptForm">
+              <textarea id="homePrompt" name="prompt" autocomplete="off" maxlength="12000" placeholder="例如：先看一下这个页面的布局问题…" aria-describedby="formError composerHint"></textarea>
+              <div class="composer-foot">
+                <select class="target-select" id="targetSelect" name="target" aria-label="选择投递目标"><option value="current">当前 Agent</option><option value="codex">Codex</option><option value="claude">Claude</option><option value="cursor">Cursor</option></select>
+                <span class="composer-hint" id="composerHint">Enter 换行 · Ctrl + Enter 发送</span>
+                <button class="send-button" id="sendButton" type="submit">发送</button>
+              </div>
+            </form>
+            <p class="form-error" id="formError" role="alert" hidden></p>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer-status" role="status"><i class="status-dot" aria-hidden="true"></i><span id="footerStatus">OneTone 正在跟随前台 · 按住 Ctrl + Space 开始听写</span></footer>
+    </div>
+  </div>
+
+  <div class="dialog-backdrop" id="detailDialog" role="dialog" aria-modal="true" aria-labelledby="detailDialogTitle" hidden>
+    <section class="dialog" role="document">
+      <h2 id="detailDialogTitle">判断依据</h2>
+      <p class="dialog-copy" id="detailDialogCopy">这些信息来自 OneTone 当前快照。</p>
+      <ul class="evidence-list" id="evidenceList"></ul>
+      <div class="dialog-foot"><button class="secondary-action" id="dialogClose" type="button">关闭</button></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const COMMANDS = Object.freeze({
+        focus: 'cmd_home_focus_snapshot',
+        home: 'cmd_agent_home_snapshot',
+        center: 'cmd_agent_center_snapshot',
+        action: 'cmd_agent_center_action',
+        minimize: 'cmd_window_minimize',
+        maximize: 'cmd_window_maximize',
+        close: 'cmd_window_close'
+      });
+
+      const FIXTURES = {
+        start: { state: 'start', label: '准备开始', meta: '轻量开场', title: '把下一句话交给 Agent。', copy: '说出想法、贴入材料，OneTone 会把它交给当前编码目标。复杂任务可以稍后整理，不需要先填一张表。', primary: '交给 Agent', secondary: '先整理方案', fg: 'Cursor', project: 'voice-pilot · 已确认', target: 'Cursor', agent: 'Cursor', agentId: 'cursor', actionId: 'agent.focus', agentDetail: '已连接 · 最近一次活动刚刚更新', footer: 'OneTone 正在跟随前台 · 按住 Ctrl + Space 开始听写' },
+        resume: { state: 'resume', label: '回到工作', meta: '有一项工作可以继续', title: '继续上次停下的地方。', copy: 'OneTone 找到一个可恢复的工作点。确认后会回到原来的项目和 Agent。', primary: '继续上次工作', secondary: '开始新任务', fg: 'Cursor', project: 'voice-pilot · 已确认', target: 'Cursor', agent: 'Cursor', agentId: 'cursor', actionId: 'session.resume', agentDetail: '上次停在首页情境整理 · 12 分钟前', footer: '已找到可恢复工作 · 内容来自本地会话记录' },
+        running: { state: 'running', label: '正在工作', meta: 'Agent 正在处理', title: 'Cursor 正在处理首页结构。', copy: '最近活动来自当前会话。你可以继续补充要求，或打开 Agent 查看实时记录。', primary: '查看 Agent', secondary: '发起另一项任务', fg: 'Cursor', project: 'voice-pilot · 已确认', target: 'Cursor', agent: 'Cursor', agentId: 'cursor', actionId: 'agent.focus', agentDetail: '运行中 · 最近活动 2 秒前', footer: 'Agent 正在工作 · 可以继续补充要求' },
+        attention: { state: 'attention', label: '需要你处理', meta: '等待一个决定', title: 'Agent 正在等你确认。', copy: '有一个动作需要你作出决定。OneTone 不会替你批准或跳过这一步。', primary: '查看并决定', secondary: '查看判断依据', fg: 'Claude Code', project: 'voice-pilot · 已确认', target: 'Claude', agent: 'Claude Code', agentId: 'claude', actionId: 'agent.focus', agentDetail: '等待确认 · 请求修改 3 个文件', footer: '有事项等待处理 · 其他动作保持不变' },
+        failed: { state: 'failed', label: '暂时无法确认', meta: '状态来源不可用', title: '还不能确认 Agent 的最新状态。', copy: '本地状态读取失败或数据已过期。你可以重试读取，或查看最近一次已保存的记录。', primary: '重试读取', secondary: '查看最近记录', fg: '—', project: '项目未确认', target: '—', agent: 'Agent 状态未知', agentId: '', actionId: 'agent.focus', agentDetail: '没有足够的新鲜证据，不显示推测中的进度', footer: '状态读取失败 · 不会把未知数据当成成功' }
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const preview = !window.__TAURI_INTERNALS__ || !window.__TAURI_INTERNALS__.invoke;
+      const requested = params.get('state') || location.hash.replace(/^#/, '');
+      const requestedState = FIXTURES[requested] ? requested : 'start';
+      let model = { ...FIXTURES[requestedState], preview };
+      let lastFocus = null;
+
+      const invoke = (command, args = {}) => {
+        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+          return window.__TAURI_INTERNALS__.invoke(command, args);
+        }
+        return Promise.reject(new Error('preview_mode'));
+      };
+
+      const showToast = (message, error = false) => {
+        const toast = $('toast');
+        toast.textContent = message;
+        toast.classList.toggle('error', error);
+        toast.hidden = false;
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => { toast.hidden = true; }, 4200);
+        $('liveRegion').textContent = message;
+      };
+
+      const announce = (message) => { $('liveRegion').textContent = message; };
+
+      function initials(name) {
+        return String(name || '—').trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '—';
+      }
+
+      function fromSnapshots(focus, home, center) {
+        const work = focus?.work || {};
+        const project = focus?.project || home?.project || {};
+        const fg = focus?.foreground || {};
+        const agents = center?.agents || [];
+        const waitingAgentId = center?.groups?.needsAttention?.[0];
+        const selected = agents.find((agent) => agent.agentId === waitingAgentId) || agents.find((agent) => agent.status === 'running') || agents[0];
+        const selectedName = selected?.displayName || focus?.provider?.id || '当前 Agent';
+        const status = String(work.status || '').toLowerCase();
+        let state = 'start';
+        if (center?.attentionState === 'needs_attention' || waitingAgentId || status === 'waiting') state = 'attention';
+        else if (status === 'error' || status === 'failed') state = 'failed';
+        else if (status === 'running') state = 'running';
+        else if (status === 'resumable' || home?.checkpoint) state = 'resume';
+        const base = { ...FIXTURES[state], preview: false };
+        return {
+          ...base,
+          fg: fg.appName || fg.appId || base.fg,
+          project: project.name ? `${project.name}${project.confirmed === false ? ' · 待确认' : ' · 已确认'}` : base.project,
+          target: selectedName,
+          agent: selectedName,
+          agentId: selected?.agentId || '',
+          actionId: selected?.actions?.find((action) => action.enabled && (action.id === 'session.resume' || action.id === 'agent.focus'))?.id || 'agent.focus',
+          agentDetail: work.title || selected?.status || base.agentDetail,
+          title: work.title || base.title,
+          copy: work.description || base.copy,
+          evidence: [
+            fg.appName ? `前台应用：${fg.appName}` : '前台应用：未确认',
+            project.name ? `工作区：${project.name}` : '工作区：未确认',
+            focus?.source?.freshness ? `依据新鲜度：${focus.source.freshness}` : '依据新鲜度：未知'
+          ]
+        };
+      }
+
+      function render(nextModel) {
+        model = nextModel;
+        document.documentElement.dataset.state = model.state;
+        $('stateDot').className = `status-dot ${model.state === 'attention' ? 'waiting' : model.state === 'failed' ? 'failed' : model.state === 'running' ? 'running' : ''}`;
+        $('stateLabel').textContent = model.label;
+        $('stateMeta').textContent = model.meta;
+        $('heroTitle').textContent = model.title;
+        $('heroCopy').textContent = model.copy;
+        $('primaryAction').textContent = model.primary;
+        $('secondaryAction').textContent = model.secondary;
+        $('foregroundValue').textContent = model.fg;
+        $('projectValue').textContent = model.project;
+        $('targetValue').textContent = model.target;
+        $('composerTarget').textContent = model.target === '—' ? '当前 Agent' : model.target;
+        $('agentAvatar').textContent = initials(model.agent);
+        $('agentName').textContent = model.agent;
+        $('agentDetail').textContent = model.agentDetail;
+        $('footerStatus').textContent = model.footer;
+        $('freshnessText').textContent = model.preview ? '预览状态 · 本地 fixture' : '状态已读取';
+        $('previewBadge').hidden = !model.preview;
+        $('attentionStrip').hidden = model.state !== 'attention';
+        if (model.state === 'attention') {
+          $('attentionCopy').textContent = model.agentDetail;
+        }
+        if (model.preview) $('previewBadge').textContent = `预览数据 · ?state=${model.state}`;
+        const primary = $('primaryAction');
+        primary.dataset.action = model.state === 'resume' ? 'resume' : model.state === 'running' ? 'agent' : model.state === 'attention' ? 'attention' : model.state === 'failed' ? 'retry' : 'send';
+        $('targetSelect').value = ['Codex', 'Claude', 'Cursor'].includes(model.target) ? model.target.toLowerCase() : 'current';
+        announce(`${model.label}：${model.title}`);
+      }
+
+      async function loadRealSnapshots() {
+        try {
+          const [focus, home, center] = await Promise.all([
+            invoke(COMMANDS.focus),
+            invoke(COMMANDS.home),
+            invoke(COMMANDS.center, { args: {} })
+          ]);
+          render(fromSnapshots(focus, home, center));
+        } catch (error) {
+          render({ ...FIXTURES.failed, preview: false });
+          showToast('无法读取首页状态。可以重试，或查看最近记录。', true);
+        }
+      }
+
+      async function runAction(action) {
+        const button = $('primaryAction');
+        button.disabled = true;
+        const original = button.textContent;
+        button.textContent = '处理中…';
+        try {
+          if (model.preview) {
+            showToast(`预览模式：已演示“${original}”，不会修改真实 Agent。`);
+            return;
+          }
+          if (action === 'retry') {
+            await loadRealSnapshots();
+            showToast('已重新读取首页状态。');
+            return;
+          }
+          const agentId = model.agentId || '';
+          const actionId = action === 'resume' ? 'session.resume' : model.actionId || 'agent.focus';
+          const result = await invoke(COMMANDS.action, { args: { agentId, actionId, attemptId: `home-${Date.now()}` } });
+          if (!result || result.outcome === 'failed' || result.ok === false) throw new Error(result?.error || 'action_failed');
+          showToast(result.verified ? '操作已验证。' : '操作已发起，等待 Agent 回报。');
+          await loadRealSnapshots();
+        } catch (error) {
+          showToast('操作没有完成。请查看 Agent 页面中的原因并重试。', true);
+        } finally {
+          button.disabled = false;
+          button.textContent = original;
+        }
+      }
+
+      async function submitPrompt() {
+        const prompt = $('homePrompt').value.trim();
+        const error = $('formError');
+        if (!prompt) {
+          error.textContent = '先写一句想法，再发送。';
+          error.hidden = false;
+          $('homePrompt').focus();
+          return;
+        }
+        error.hidden = true;
+        const send = $('sendButton');
+        send.disabled = true;
+        send.textContent = '投递中…';
+        try {
+          if (model.preview) {
+            showToast('预览模式不会投递到真实 Agent。');
+            return;
+          }
+          await navigator.clipboard.writeText(prompt);
+          const selected = $('targetSelect').value;
+          const agentId = selected === 'current' ? (model.agentId || '') : selected;
+          const result = await invoke(COMMANDS.action, { args: { agentId, actionId: 'agent.focus', pasteClipboard: true, attemptId: `prompt-${Date.now()}` } });
+          if (!result || result.outcome === 'failed' || result.ok === false) throw new Error(result?.error || 'dispatch_failed');
+          $('homePrompt').value = '';
+          showToast(result.verified ? '已投递并验证。' : '已投递，等待目标窗口回报。');
+          await loadRealSnapshots();
+        } catch (e) {
+          error.textContent = e.message === 'preview_mode' ? '当前为预览模式。' : '投递没有完成：请确认剪贴板和目标 Agent 可用。';
+          error.hidden = false;
+        } finally {
+          send.disabled = false;
+          send.textContent = '发送';
+        }
+      }
+
+      function openDialog(title, copy, evidence = []) {
+        lastFocus = document.activeElement;
+        $('detailDialogTitle').textContent = title;
+        $('detailDialogCopy').textContent = copy;
+        const list = $('evidenceList');
+        list.replaceChildren(...(evidence.length ? evidence : ['当前没有可展开的判断依据。']).map((item) => { const li = document.createElement('li'); li.textContent = item; return li; }));
+        $('detailDialog').hidden = false;
+        $('dialogClose').focus();
+      }
+      function closeDialog() {
+        $('detailDialog').hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }
+
+      $('primaryAction').addEventListener('click', () => runAction($('primaryAction').dataset.action));
+      $('secondaryAction').addEventListener('click', () => openDialog('整理方案', '方案台是复杂任务的次级出口，首页不会把它当成默认主路径。', ['当前首页保留原始意图，不强制归类。', '整理方案后可以选择目标 Agent，再查看预算与版本。']));
+      $('attentionAction').addEventListener('click', () => runAction('attention'));
+      $('agentLink').addEventListener('click', () => openDialog('Agent 总览', '完整 Agent 名册、历史记录和诊断信息保留在 Agent 页面。', ['首页只展示当前情境相关的 Agent。', '进入 Agent 页面后可查看最近工作、恢复点和操作结果。']));
+      $('promptForm').addEventListener('submit', (event) => { event.preventDefault(); submitPrompt(); });
+      $('homePrompt').addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); submitPrompt(); }
+      });
+      $('dialogClose').addEventListener('click', closeDialog);
+      $('detailDialog').addEventListener('click', (event) => { if (event.target === $('detailDialog')) closeDialog(); });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (!$('detailDialog').hidden) closeDialog();
+          if (document.body.classList.contains('nav-open')) toggleNav(false);
+        }
+      });
+
+      function toggleNav(open) {
+        document.body.classList.toggle('nav-open', open);
+        $('mobileNavToggle').setAttribute('aria-expanded', String(open));
+        $('mobileNavToggle').setAttribute('aria-label', open ? '关闭主导航' : '打开主导航');
+      }
+      $('mobileNavToggle').addEventListener('click', () => toggleNav(!document.body.classList.contains('nav-open')));
+      $('themeToggle').addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('onetone-theme', next);
+        document.querySelector('meta[name="theme-color"]').content = next === 'dark' ? '#111715' : '#f6f8f5';
+      });
+      const savedTheme = localStorage.getItem('onetone-theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.dataset.theme = savedTheme;
+
+      document.querySelectorAll('[data-channel]').forEach((button) => button.addEventListener('click', () => openDialog(`${button.dataset.channel === 'camera' ? '摄像头' : 'Soft Pad'} 设置`, '此入口只在检测到能力或用户主动探索时出现。', ['当前入口是探索入口，不代表能力已经完成配置。', '配置结果会回到首页的通道状态。'])));
+      document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => { if (window.innerWidth <= 680) toggleNav(false); }));
+
+      window.OneToneWindowsHome = { COMMANDS, FIXTURES, fromSnapshots, render, loadRealSnapshots };
+      render(model);
+      if (preview) {
+        $('previewBadge').hidden = false;
+        $('previewBadge').textContent = `预览数据 · ?state=${model.state}`;
+      } else {
+        loadRealSnapshots();
+      }
+    })();
+  </script>
+</body>
+</html>

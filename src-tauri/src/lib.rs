@@ -55,6 +55,8 @@ mod gemini_hook_setup;
 mod gesture_timing;
 mod habit_profile;
 mod capture;
+#[cfg(windows)]
+mod clipboard_image;
 mod home_tray_snapshot;
 mod input_aim_calibrate;
 mod input_ext;
@@ -1246,6 +1248,7 @@ pub fn run() {
             ipc::cmd_tray_carry_dismiss,
             ipc::cmd_tray_collect_from_soft_pad,
             ipc::cmd_tray_inbox_write,
+            ipc::cmd_clipboard_read_image,
             ipc::cmd_tray_collect_drain,
             ipc::cmd_soft_pad_paste_only,
             ipc::cmd_soft_pad_set_follow,

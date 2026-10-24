@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone Mac · 首页预览（WorkbenchHomeView）</title>
+<style>
+  :root {
+    color-scheme: light;
+    /* 浅色：中性灰白 + OneTone 蓝；绿仅作 --ok（运行/成功） */
+    --bg: #e9edf3;
+    --win: #f6f8fb;
+    --side: #edf1f6;
+    --paper: #ffffff;
+    --ink: #16202a;
+    --ink2: #586778;
+    --ink3: #667482;
+    --line: rgba(15, 27, 42, 0.12);
+    --line2: rgba(15, 27, 42, 0.065);
+    --accent: #2a9cc4;
+    --accent-soft: rgba(42, 156, 196, 0.12);
+    --ok: #1a9b5f;
+    --warn: #c27803;
+    --fail: #c53d4a;
+    --idle: #9ba6b2;
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font: 13px/1.45 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 10% -8%, rgba(42, 156, 196, 0.12), transparent 55%),
+      radial-gradient(700px 360px at 96% 0%, rgba(42, 156, 196, 0.05), transparent 50%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    padding: 24px 20px 40px;
+  }
+  button, textarea { font: inherit; color: inherit; }
+  button { border: 0; background: none; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  .page {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+  }
+  .note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .note h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .note p {
+    font-size: 12px;
+    color: var(--ink2);
+    max-width: 62ch;
+  }
+  .scenes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .scenes button {
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--ink2);
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid var(--line);
+  }
+  .scenes button:hover { color: var(--ink); }
+  .scenes button.on {
+    background: var(--ink);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .window {
+    height: min(720px, calc(100vh - 120px));
+    display: flex;
+    flex-direction: column;
+    background: var(--win);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 24px 64px -20px rgba(20, 30, 50, 0.28);
+    overflow: hidden;
+  }
+  .titlebar {
+    flex-shrink: 0;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #f7f7f8, #efeff1);
+  }
+  .traffic { display: flex; gap: 7px; }
+  .traffic i {
+    width: 11px; height: 11px; border-radius: 50%; display: block;
+  }
+  .traffic .r { background: #ff5f57; }
+  .traffic .y { background: #febc2e; }
+  .traffic .g { background: #28c840; }
+  .titlebar .name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink2);
+  }
+  .titlebar .tag {
+    margin-left: auto;
+    font: 600 10.5px/1 var(--mono);
+    color: var(--ink3);
+  }
+
+  .shell {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 168px 1fr;
+  }
+  .side {
+    background: var(--side);
+    border-right: 1px solid var(--line);
+    padding: 12px 10px;
+    overflow: auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .brand i {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .nav {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 550;
+    color: var(--ink2);
+    margin-bottom: 2px;
+  }
+  .nav.on {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--ink);
+    font-weight: 650;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .nav.sec {
+    margin-top: 12px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink3);
+    letter-spacing: 0.03em;
+    pointer-events: none;
+  }
+
+  .main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--win);
+  }
+  .scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px 16px 10px;
+  }
+
+  .perm {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 14px;
+    border-radius: 10px;
+    background: #fff4e5;
+    border: 1px solid rgba(255, 149, 0, 0.35);
+    color: #9a5a00;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  body[data-scene="permission"] .perm { display: flex; }
+  .perm button {
+    margin-left: auto;
+    padding: 5px 10px;
+    border-radius: 7px;
+    background: var(--warn);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .ctx {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--ink2);
+  }
+  .ctx .habit {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    font-weight: 650;
+  }
+  .ctx .habit b { color: var(--ink); }
+
+  .task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .task .kicker {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .task h2 {
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+  .task .sub {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--ink2);
+  }
+  .task .menu {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--ink2);
+  }
+
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .pill .lbl { color: var(--ink2); }
+  .pill .val { font-weight: 650; }
+  .pill i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .pill.warn i { background: var(--warn); }
+  .pill.ok i { background: var(--ok); }
+
+  .pulse {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .pulse .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    background: var(--paper);
+    border: 1px solid var(--line2);
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--ink2);
+  }
+  .pulse .chip .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--idle);
+  }
+  .pulse .chip[data-st="running"] .dot {
+    background: var(--ok);
+    box-shadow: 0 0 0 3px rgba(26, 155, 95, 0.18);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  .pulse .chip[data-st="needs"] .dot { background: var(--warn); }
+  .pulse .chip[data-st="done"] .dot { background: var(--ok); }
+  .pulse .chip[data-st="idle"] { opacity: 0.72; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  .approve {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background: #fff8ef;
+    border: 1px solid rgba(255, 149, 0, 0.4);
+  }
+  body[data-scene="confirm"] .approve { display: flex; }
+  .approve .copy { flex: 1; min-width: 0; }
+  .approve .copy b {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .approve .copy span {
+    font-size: 12px;
+    color: var(--ink2);
+  }
+  .approve .acts { display: flex; gap: 6px; }
+  .btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink2);
+  }
+  .btn.pri {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+  }
+  .btn.warn {
+    background: var(--warn);
+    border-color: transparent;
+    color: #fff;
+  }
+  .btn.ghost { background: transparent; }
+
+  .block-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 4px 0 10px;
+  }
+  .block-head h3 {
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .block-head span {
+    font-size: 11px;
+    color: var(--ink3);
+    font-weight: 600;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line2);
+    text-align: left;
+    width: 100%;
+    transition: background 0.15s var(--ease);
+  }
+  .row:first-child { border-top: 0; }
+  .row:hover { background: rgba(42, 156, 196, 0.04); }
+  .row.on {
+    background: var(--accent-soft);
+    box-shadow: inset 1px 0 0 var(--accent);
+  }
+  .ico {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .ico.codex { background: linear-gradient(145deg, #1f6feb, #0d3b7a); }
+  .ico.claude { background: linear-gradient(145deg, #c65f3e, #8f3822); }
+  .ico.cursor { background: linear-gradient(145deg, #4b5563, #1f2937); }
+  .meta .name {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tag {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #eef2f5;
+    color: var(--ink2);
+  }
+  .tag.run { background: rgba(26, 155, 95, 0.12); color: var(--ok); }
+  .tag.wait { background: #fff1e0; color: #9a5a00; }
+  .tag.done { background: rgba(26, 155, 95, 0.12); color: var(--ok); }
+  .meta .line {
+    font-size: 12px;
+    color: var(--ink2);
+    margin-top: 1px;
+  }
+  .meta .when {
+    font-size: 11px;
+    color: var(--ink3);
+  }
+  .row .go {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 5px 10px;
+    border-radius: 7px;
+  }
+  .row .go:hover { background: var(--accent-soft); }
+
+  .empty {
+    display: none;
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--ink2);
+    background: var(--paper);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    margin-bottom: 14px;
+  }
+  body[data-scene="empty"] .rows { display: none; }
+  body[data-scene="empty"] .empty { display: block; }
+  .empty b {
+    display: block;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .receipt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background: var(--paper);
+    border: 1px solid rgba(26, 155, 95, 0.28);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .receipt .link {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* Prompt dock — 对齐 homePromptDock：目标行 / 草稿 / 能力开关（无四通道卡） */
+  .dock {
+    flex-shrink: 0;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+    padding: 10px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dock-target {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+  }
+  .dock-target .dest {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: #f4f5f7;
+    border: 1px solid var(--line2);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .dock-target .dest:hover { border-color: var(--line); }
+  .dock-target .aim {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--ink2);
+    background: #f4f5f7;
+  }
+  .dock-target .aim.ok {
+    color: #1a7a3a;
+    background: #e8f8ee;
+  }
+  .dock-target .link {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .dock-target .keys-on {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .dock-target .saved {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ok);
+  }
+
+  .compose {
+    position: relative;
+  }
+  .compose textarea {
+    width: 100%;
+    min-height: 56px;
+    max-height: 100px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+    background: var(--paper);
+    padding: 10px 12px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  }
+  .compose textarea:focus {
+    border-color: rgba(42, 156, 196, 0.55);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .compose textarea::placeholder { color: var(--ink3); }
+
+  .dock-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .dock-plus {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ink2);
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--line2);
+  }
+  .dock-plus:hover { background: rgba(0, 0, 0, 0.09); }
+  .dock-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--line);
+    margin: 0 2px;
+  }
+  .cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink2);
+    background: #f4f5f7;
+    border: 1px solid transparent;
+  }
+  .cap:hover { border-color: var(--line); }
+  .cap .kbd {
+    font: 600 10px/1 var(--mono);
+    color: var(--ink3);
+  }
+  .cap.on-pad {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .cap.on-voice {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .cap.on-cam {
+    color: #b45309;
+    background: rgba(194, 120, 3, 0.14);
+  }
+  .cap-panel {
+    display: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink2);
+    background: #f7f8fa;
+    border: 1px solid var(--line2);
+  }
+  .cap-panel.show { display: block; }
+  .quick {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .quick .q {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .quick .q.codex { background: linear-gradient(145deg, #1f6feb, #0d3b7a); }
+  .quick .q.claude { background: linear-gradient(145deg, #d97757, #a34a2e); }
+  .quick .q.cursor { background: linear-gradient(145deg, #4b5563, #1f2937); }
+  .quick .q.on { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .send {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .send:hover { filter: brightness(1.05); }
+  .send:disabled {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--ink3);
+    filter: none;
+    cursor: default;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(10px);
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 650;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+    z-index: 20;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 780px) {
+    .shell { grid-template-columns: 1fr; }
+    .side { display: none; }
+    .quick { margin-left: 0; }
+    .window { height: auto; min-height: 640px; }
+  }
+
+  /* Refinement layer: surface polish only — tokens live in :root / body[data-theme]. */
+  .scenes button { background: rgba(255, 255, 255, 0.82); }
+  .scenes button.on { background: var(--accent); color: #fff; }
+  .window {
+    position: relative;
+    border-color: rgba(15, 27, 42, 0.10);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82) inset, 0 28px 80px -22px rgba(43, 57, 76, 0.28);
+  }
+  .window::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(42, 156, 196, 0.55), transparent);
+    opacity: 0.72;
+    pointer-events: none;
+  }
+  .titlebar { background: rgba(251, 252, 254, 0.96); }
+  .titlebar .name { color: var(--ink2); }
+  .titlebar .tag { color: #5f7082; }
+  .brand i { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .nav.on { background: var(--accent-soft); color: #1a7a9c; box-shadow: inset 1px 0 0 var(--accent), 0 1px 0 var(--line); }
+  .ctx .habit,
+  .task .menu,
+  .pill,
+  .pulse .chip { background: rgba(255, 255, 255, 0.9); }
+  .task h2 { font-size: clamp(22px, 2.6vw, 29px); }
+  .approve { background: #fff7e9; border-color: rgba(190, 124, 16, 0.35); }
+  .rows { background: #ffffff; }
+  .row { transition: background 0.18s var(--ease), transform 0.18s var(--ease); animation: row-in 0.46s var(--ease) both; }
+  .row:nth-child(2) { animation-delay: 40ms; }
+  .row:nth-child(3) { animation-delay: 80ms; }
+  .row:hover { background: rgba(42, 156, 196, 0.055); transform: translateX(2px); }
+  .row.on { box-shadow: inset 1px 0 0 var(--accent); }
+  .empty { background: #ffffff; }
+  .receipt { background: #effaf4; border-color: rgba(26, 155, 95, 0.28); }
+  .dock { background: rgba(255, 255, 255, 0.96); }
+  .dock-target .dest,
+  .dock-target .aim { background: #f5f8fb; }
+  .dock-target .aim.ok { color: #137347; background: #eaf8f0; }
+  .compose textarea { background: #fbfcfe; caret-color: var(--accent); transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s var(--ease); }
+  .compose textarea:focus { border-color: rgba(42, 156, 196, 0.62); box-shadow: 0 0 0 2px var(--accent-soft), 0 0 22px rgba(42, 156, 196, 0.08); background: #ffffff; }
+  .dock-plus { background: rgba(15, 27, 42, 0.06); }
+  .cap { background: #f4f7fa; }
+  .cap-panel { background: #fbfcfe; }
+  .send:disabled { background: rgba(15, 27, 42, 0.09); }
+  .toast { background: #16202a; color: #fff; }
+  .titlebar .tag,
+  .task .sub,
+  .meta .when,
+  .dock-target .keys-on,
+  .dock-target .saved,
+  .cap .kbd { font-family: var(--mono); letter-spacing: -0.02em; }
+  .task h2::after { content: "▌"; display: inline-block; margin-left: 5px; color: var(--accent); font: 0.75em/1 var(--mono); transform: translateY(-1px); animation: caret 1.05s steps(1, end) infinite; }
+  body[data-scene="empty"] .task h2::after,
+  body[data-scene="permission"] .task h2::after { display: none; }
+  .pulse .chip[data-st="running"] { color: var(--ok); border-color: rgba(26, 155, 95, 0.28); }
+  .pulse .chip[data-st="needs"] { color: #8a5a0c; border-color: rgba(190, 124, 16, 0.26); }
+  .send:not(:disabled) { animation: send-ready 2.2s ease-out infinite; }
+  .scene-shift .task,
+  .scene-shift .pulse,
+  .scene-shift .approve,
+  .scene-shift .receipt { animation: state-in 0.42s var(--ease) both; }
+  ::selection { background: rgba(42, 156, 196, 0.20); color: var(--ink); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: rgba(15, 27, 42, 0.18); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(42, 156, 196, 0.38); background-clip: padding-box; }
+  @keyframes row-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes state-in { from { opacity: 0.35; transform: translateY(5px); filter: blur(2px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+  @keyframes caret { 50% { opacity: 0; } }
+  @keyframes send-ready { 0%, 65%, 100% { transform: translateY(0); } 72% { transform: translateY(-1px); } }
+  .tag { background: #eef2f5; color: var(--ink2); }
+  .tag.run { background: rgba(26, 155, 95, 0.12); color: var(--ok); }
+  .tag.wait { background: #fff1e0; color: #8a5a0c; }
+  .tag.done { background: rgba(26, 155, 95, 0.12); color: var(--ok); }
+  .nav.sec { color: #526474; }
+  .ico.claude { background: linear-gradient(145deg, #c65f3e, #8f3822); }
+  .titlebar .tag { font-size: 11px; }
+  .dock-target .saved, .cap .kbd { font-size: 11px; }
+  .quick .q { font-size: 11px; }
+  .theme-toggle {
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink2);
+    font-size: 11px;
+    font-weight: 700;
+    transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease), transform 0.2s var(--ease);
+  }
+  .theme-toggle:hover { transform: translateY(-1px); border-color: var(--accent); color: var(--accent); }
+  .theme-swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  body[data-theme="dark"] {
+    --bg: #0f141b;
+    --win: #171d26;
+    --side: #121821;
+    --paper: #1d2630;
+    --ink: #edf2f7;
+    --ink2: #a6b3c2;
+    --ink3: #778595;
+    --line: rgba(237, 242, 247, 0.13);
+    --line2: rgba(237, 242, 247, 0.075);
+    --accent: #4eb6d9;
+    --accent-soft: rgba(78, 182, 217, 0.16);
+    --ok: #52d273;
+    --warn: #ffb15c;
+    --fail: #ff6f7d;
+    --idle: #647383;
+    color-scheme: dark;
+    background:
+      radial-gradient(900px 420px at 10% -8%, rgba(78, 182, 217, 0.14), transparent 55%),
+      radial-gradient(700px 360px at 96% 0%, rgba(78, 182, 217, 0.05), transparent 50%),
+      var(--bg);
+  }
+  body[data-theme="dark"] .scenes button { background: rgba(29, 38, 48, 0.86); }
+  body[data-theme="dark"] .window { border-color: rgba(237, 242, 247, 0.13); box-shadow: 0 1px 0 rgba(237, 242, 247, 0.08) inset, 0 28px 80px -22px rgba(0, 0, 0, 0.72); }
+  body[data-theme="dark"] .window::before { background: linear-gradient(90deg, transparent, rgba(78, 182, 217, 0.66), transparent); }
+  body[data-theme="dark"] .titlebar { background: rgba(18, 24, 33, 0.95); }
+  body[data-theme="dark"] .titlebar .name { color: #dfe8ef; }
+  body[data-theme="dark"] .titlebar .tag { color: #8293a4; }
+  body[data-theme="dark"] .theme-toggle { background: rgba(29, 38, 48, 0.88); }
+  body[data-theme="dark"] .ctx .habit,
+  body[data-theme="dark"] .task .menu,
+  body[data-theme="dark"] .pill,
+  body[data-theme="dark"] .pulse .chip { background: rgba(29, 38, 48, 0.9); }
+  body[data-theme="dark"] .approve { background: rgba(82, 55, 28, 0.42); border-color: rgba(255, 177, 92, 0.42); }
+  body[data-theme="dark"] .rows { background: #1d2630; }
+  body[data-theme="dark"] .row:hover { background: rgba(78, 182, 217, 0.09); }
+  body[data-theme="dark"] .empty { background: #1d2630; }
+  body[data-theme="dark"] .receipt { background: rgba(37, 86, 57, 0.42); border-color: rgba(82, 210, 115, 0.3); }
+  body[data-theme="dark"] .dock { background: rgba(18, 24, 33, 0.97); }
+  body[data-theme="dark"] .dock-target .dest,
+  body[data-theme="dark"] .dock-target .aim { background: rgba(29, 38, 48, 0.92); }
+  body[data-theme="dark"] .dock-target .aim.ok { color: #78df93; background: rgba(82, 210, 115, 0.14); }
+  body[data-theme="dark"] .compose textarea { background: #101720; }
+  body[data-theme="dark"] .compose textarea:focus { border-color: rgba(78, 182, 217, 0.7); box-shadow: 0 0 0 2px var(--accent-soft), 0 0 22px rgba(78, 182, 217, 0.1); background: #121c27; }
+  body[data-theme="dark"] .dock-plus { background: rgba(237, 242, 247, 0.09); }
+  body[data-theme="dark"] .cap { background: rgba(237, 242, 247, 0.08); }
+  body[data-theme="dark"] .cap-panel { background: #1d2630; }
+  body[data-theme="dark"] .send:disabled { background: rgba(237, 242, 247, 0.1); }
+  body[data-theme="dark"] .toast { background: #edf2f7; color: #17212b; }
+  body[data-theme="dark"] .tag { background: rgba(237, 242, 247, 0.1); color: var(--ink2); }
+  body[data-theme="dark"] .tag.run { background: rgba(82, 210, 115, 0.16); color: #8ee9a4; }
+  body[data-theme="dark"] .tag.wait { background: rgba(255, 177, 92, 0.16); color: #ffc989; }
+  body[data-theme="dark"] .tag.done { background: rgba(82, 210, 115, 0.16); color: #8ee9a4; }
+  body[data-theme="dark"] .nav.sec { color: #8494a4; }
+  body[data-theme="dark"] .pulse .chip[data-st="running"] { color: #8ee9a4; border-color: rgba(82, 210, 115, 0.28); }
+  body[data-theme="dark"] .pulse .chip[data-st="needs"] { color: #ffc989; border-color: rgba(255, 177, 92, 0.28); }
+  body[data-theme="dark"] .ico.claude { background: linear-gradient(145deg, #c65f3e, #8f3822); }
+  body[data-theme="dark"] ::selection { background: rgba(78, 182, 217, 0.28); color: var(--ink); }
+  body[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(237, 242, 247, 0.18); background-clip: padding-box; }
+  body[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(78, 182, 217, 0.46); background-clip: padding-box; }
+  body,
+  .window,
+  .titlebar,
+  .side,
+  .main,
+  .dock,
+  .rows,
+  .row,
+  .ctx .habit,
+  .task .menu,
+  .pill,
+  .pulse .chip,
+  .compose textarea,
+  .cap,
+  .cap-panel,
+  .theme-toggle { transition: background-color 0.22s var(--ease), border-color 0.22s var(--ease), color 0.22s var(--ease), box-shadow 0.22s var(--ease); }
+  @media (max-width: 780px) {
+    .scroll { padding: 14px 12px 10px; }
+    .dock { padding-left: 12px; padding-right: 12px; }
+  }
+</style>
+</head>
+<body data-scene="working" data-theme="light">
+  <div class="page">
+    <div class="note">
+      <div>
+        <h1>OneTone Mac · 首页预览</h1>
+        <p>对照 <code>WorkbenchHomeView</code>：Agent 工作区 → 任务/脉冲 → 底栏 Prompt（目标行 + 草稿 + Soft&nbsp;Pad/语音/摄像头开关）。无四通道状态卡。</p>
+      </div>
+    </div>
+
+    <div class="scenes" role="tablist" aria-label="场景">
+      <button type="button" class="on" data-scene="working">工作中</button>
+      <button type="button" data-scene="confirm">等确认</button>
+      <button type="button" data-scene="empty">空态引导</button>
+      <button type="button" data-scene="permission">缺权限</button>
+    </div>
+
+    <div class="window" role="application" aria-label="OneTone Workbench 首页">
+      <div class="titlebar">
+        <div class="traffic" aria-hidden="true"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+        <span class="name">OneTone</span>
+        <span class="tag">WorkbenchHomeView</span>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="切换主题" aria-pressed="false" title="切换到暗色">
+          <span class="theme-swatch" aria-hidden="true"></span><span class="theme-label">暗色</span>
+        </button>
+      </div>
+
+      <div class="shell">
+        <aside class="side" aria-label="App 目录">
+          <div class="brand"><i></i> OneTone</div>
+          <button type="button" class="nav on">首页</button>
+          <button type="button" class="nav">按键</button>
+          <button type="button" class="nav">语音</button>
+          <button type="button" class="nav">Soft Pad</button>
+          <button type="button" class="nav">摄像头</button>
+          <div class="nav sec">更多</div>
+          <button type="button" class="nav">Agent</button>
+          <button type="button" class="nav">设置</button>
+          <button type="button" class="nav">帮助</button>
+        </aside>
+
+        <div class="main">
+          <div class="scroll">
+            <div class="perm">
+              <span>需要辅助功能权限才能向 Agent 投递文本</span>
+              <button type="button" id="fixPerm">打开系统设置</button>
+            </div>
+
+            <div class="ctx">
+              <span>前台 · Cursor</span>
+              <span class="habit">习惯 · <b>Cursor Soft Pad</b></span>
+            </div>
+
+            <header class="task">
+              <div>
+                <div class="kicker">当前任务</div>
+                <h2 id="taskTitle">正在修改首页布局</h2>
+                <p class="sub" id="taskSub">onetone-mac · Codex · 2 秒前</p>
+              </div>
+              <button type="button" class="menu" id="taskTargetMenu">发送目标 ▾</button>
+            </header>
+
+            <div class="pills" id="pills">
+              <span class="pill"><i></i><span class="lbl">发送到</span><span class="val">Codex</span></span>
+              <span class="pill ok"><i></i><span class="lbl">投递</span><span class="val">已发送 · keys</span></span>
+            </div>
+
+            <div class="pulse" id="pulse" aria-label="Agent 脉冲">
+              <span class="chip" data-st="running"><span class="dot"></span>Codex 执行中</span>
+              <span class="chip" data-st="idle"><span class="dot"></span>Claude 空闲</span>
+              <span class="chip" data-st="idle"><span class="dot"></span>Cursor 空闲</span>
+            </div>
+
+            <div class="approve" id="approve">
+              <div class="copy">
+                <b>Claude 等待权限确认</b>
+                <span>修改 3 个文件 · Soft Pad Y 批准 / N 拒绝</span>
+              </div>
+              <div class="acts">
+                <button type="button" class="btn warn" data-act="approve">批准</button>
+                <button type="button" class="btn ghost" data-act="deny">拒绝</button>
+              </div>
+            </div>
+
+            <div class="receipt" id="receipt">
+              <span aria-hidden="true">✓</span>
+              <span>上次完成 · 布局拆分已合并</span>
+              <button type="button" class="link" data-act="receipt">查看回执</button>
+            </div>
+
+            <div class="block-head">
+              <h3>Agent 任务与会话</h3>
+              <span>会话 · 任务 · 发送 · 进 Agent 看全量</span>
+            </div>
+
+            <div class="rows" id="rows"></div>
+            <div class="empty" id="empty">
+              <b>还没有可展示的 Agent 任务</b>
+              打开 Cursor / Codex / Claude，或用底栏草稿发起第一次投递。
+            </div>
+          </div>
+
+          <div class="dock" aria-label="Prompt 底栏">
+            <div class="dock-target">
+              <button type="button" class="dest" id="dockTargetMenu">Codex ▾</button>
+              <span class="aim ok">已对准输入框</span>
+              <button type="button" class="link" data-act="aim">编辑对准</button>
+              <span class="keys-on">⌨ 键盘常开</span>
+              <span class="saved" id="savedHint" hidden>已存</span>
+            </div>
+            <div class="compose">
+              <textarea id="draft" placeholder="写给 Codex…" rows="2"></textarea>
+            </div>
+            <div class="cap-panel" id="capPanel"></div>
+            <div class="dock-bar">
+              <button type="button" class="dock-plus" id="plus" title="加入上下文">+</button>
+              <span class="dock-sep" aria-hidden="true"></span>
+              <button type="button" class="cap" data-cap="pad" aria-pressed="false">Soft Pad <span class="kbd">⌃⌥P</span></button>
+              <button type="button" class="cap" data-cap="voice" aria-pressed="false">语音 <span class="kbd">⌃⌥V</span></button>
+              <button type="button" class="cap" data-cap="cam" aria-pressed="false">摄像头 <span class="kbd">⌃⌥C</span></button>
+              <div class="quick" aria-label="快捷目标">
+                <button type="button" class="q codex on" data-q="codex" title="Codex">Co</button>
+                <button type="button" class="q claude" data-q="claude" title="Claude">Cl</button>
+                <button type="button" class="q cursor" data-q="cursor" title="Cursor">Cu</button>
+              </div>
+              <button type="button" class="send" id="send" title="键盘投递" disabled>↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    var agents = [
+      { id: 'codex', name: 'Codex', tag: '执行中', tagClass: 'run', line: '正在修改首页布局 · onetone-mac', when: '2 秒前', on: true },
+      { id: 'claude', name: 'Claude Code', tag: '空闲', tagClass: '', line: 'voice-pilot · 上次会话可恢复', when: '18 分钟前', on: false },
+      { id: 'cursor', name: 'Cursor', tag: '空闲', tagClass: '', line: '可观察 · 无远程中断', when: '1 分钟前', on: false }
+    ];
+
+    var toastEl = document.getElementById('toast');
+    var toastTimer = 0;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 1600);
+    }
+
+    function renderRows() {
+      var host = document.getElementById('rows');
+      host.innerHTML = agents.map(function (a) {
+        return (
+          '<button type="button" class="row' + (a.on ? ' on' : '') + '" data-id="' + a.id + '">' +
+            '<div class="ico ' + a.id + '" aria-hidden="true">' + a.name.slice(0, 2) + '</div>' +
+            '<div class="meta">' +
+              '<div class="name">' + a.name +
+                (a.tag ? '<span class="tag ' + a.tagClass + '">' + a.tag + '</span>' : '') +
+              '</div>' +
+              '<div class="line">' + a.line + '</div>' +
+              '<div class="when">' + a.when + '</div>' +
+            '</div>' +
+            '<span class="go">发送到此</span>' +
+          '</button>'
+        );
+      }).join('');
+    }
+
+    function applyScene(scene) {
+      var windowEl = document.querySelector('.window');
+      windowEl.classList.remove('scene-shift');
+      void windowEl.offsetWidth;
+      windowEl.classList.add('scene-shift');
+      setTimeout(function () { windowEl.classList.remove('scene-shift'); }, 520);
+      document.body.setAttribute('data-scene', scene);
+      document.querySelectorAll('.scenes button').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-scene') === scene);
+      });
+
+      var title = document.getElementById('taskTitle');
+      var sub = document.getElementById('taskSub');
+      var pulse = document.getElementById('pulse');
+      var receipt = document.getElementById('receipt');
+      var pills = document.getElementById('pills');
+
+      if (scene === 'working') {
+        title.textContent = '正在修改首页布局';
+        sub.textContent = 'onetone-mac · Codex · 2 秒前';
+        agents[0].tag = '执行中'; agents[0].tagClass = 'run'; agents[0].on = true;
+        agents[1].tag = '空闲'; agents[1].tagClass = ''; agents[1].on = false;
+        pulse.innerHTML =
+          '<span class="chip" data-st="running"><span class="dot"></span>Codex 执行中</span>' +
+          '<span class="chip" data-st="idle"><span class="dot"></span>Claude 空闲</span>' +
+          '<span class="chip" data-st="idle"><span class="dot"></span>Cursor 空闲</span>';
+        receipt.style.display = 'flex';
+        pills.innerHTML =
+          '<span class="pill"><i></i><span class="lbl">发送到</span><span class="val">Codex</span></span>' +
+          '<span class="pill ok"><i></i><span class="lbl">投递</span><span class="val">已发送 · keys</span></span>';
+      } else if (scene === 'confirm') {
+        title.textContent = 'Claude 需要你确认后才能继续';
+        sub.textContent = 'voice-pilot · Claude · 刚到';
+        agents[0].tag = '空闲'; agents[0].tagClass = ''; agents[0].on = false;
+        agents[1].tag = '等确认'; agents[1].tagClass = 'wait'; agents[1].on = true;
+        pulse.innerHTML =
+          '<span class="chip" data-st="needs"><span class="dot"></span>Claude 等确认</span>' +
+          '<span class="chip" data-st="idle"><span class="dot"></span>Codex 空闲</span>' +
+          '<span class="chip" data-st="idle"><span class="dot"></span>Cursor 空闲</span>';
+        receipt.style.display = 'none';
+        pills.innerHTML =
+          '<span class="pill warn"><i></i><span class="lbl">焦点</span><span class="val">Claude · 待批准</span></span>';
+      } else if (scene === 'empty') {
+        title.textContent = '当前任务';
+        sub.textContent = '尚无 Agent 信号 · 草稿仍可写';
+        pulse.innerHTML = '';
+        receipt.style.display = 'none';
+        pills.innerHTML = '';
+      } else if (scene === 'permission') {
+        title.textContent = '权限就绪前无法投递';
+        sub.textContent = '辅助功能未授信 · 其他浏览可用';
+        pulse.innerHTML = '';
+        receipt.style.display = 'none';
+      }
+      if (scene !== 'empty') renderRows();
+    }
+
+    document.querySelectorAll('.scenes button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyScene(btn.getAttribute('data-scene'));
+      });
+    });
+
+    document.getElementById('rows').addEventListener('click', function (ev) {
+      var row = ev.target.closest('.row');
+      if (!row) return;
+      var id = row.getAttribute('data-id');
+      agents.forEach(function (a) { a.on = a.id === id; });
+      renderRows();
+      toast('发送目标 → ' + (agents.find(function (a) { return a.id === id; }) || {}).name);
+    });
+
+    var draft = document.getElementById('draft');
+    var send = document.getElementById('send');
+    var savedHint = document.getElementById('savedHint');
+    var capPanel = document.getElementById('capPanel');
+    var destLabel = { codex: 'Codex', claude: 'Claude', cursor: 'Cursor' };
+    var dest = 'codex';
+
+    var themeToggle = document.getElementById('themeToggle');
+    var themeLabel = themeToggle.querySelector('.theme-label');
+    var storedTheme = null;
+    try { storedTheme = window.localStorage.getItem('onetone-home-theme'); } catch (e) {}
+    function applyTheme(theme) {
+      var isDark = theme === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      themeToggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+      themeToggle.setAttribute('title', isDark ? '切换到浅色' : '切换到暗色');
+      themeLabel.textContent = isDark ? '浅色' : '暗色';
+    }
+    applyTheme(storedTheme === 'dark' ? 'dark' : 'light');
+    themeToggle.addEventListener('click', function () {
+      var next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { window.localStorage.setItem('onetone-home-theme', next); } catch (e) {}
+      toast(next === 'dark' ? '已切换到暗色主题' : '已切换到浅色主题');
+    });
+
+    function syncSend() {
+      var t = draft.value.trim();
+      send.disabled = !t;
+      savedHint.hidden = !t;
+      draft.placeholder = '写给 ' + destLabel[dest] + '…';
+    }
+
+    draft.addEventListener('input', syncSend);
+
+    send.addEventListener('click', function () {
+      var t = draft.value.trim();
+      if (!t) return;
+      toast('投递 → ' + destLabel[dest] + '（via=keys · 示意）');
+    });
+
+    document.getElementById('taskTargetMenu').addEventListener('click', function () {
+      toast('选择投递目标（示意）');
+    });
+    document.getElementById('dockTargetMenu').addEventListener('click', function () {
+      toast('选择投递目标（示意）');
+    });
+    document.getElementById('fixPerm').addEventListener('click', function () {
+      toast('打开系统设置 · 辅助功能');
+    });
+    document.querySelector('[data-act="approve"]').addEventListener('click', function () {
+      toast('批准 · 携带 eventId（示意）');
+      applyScene('working');
+    });
+    document.querySelector('[data-act="deny"]').addEventListener('click', function () {
+      toast('已拒绝');
+    });
+    document.querySelector('[data-act="receipt"]').addEventListener('click', function () {
+      toast('打开完成回执（≠ 投递回执）');
+    });
+    document.querySelector('[data-act="aim"]').addEventListener('click', function () {
+      toast('编辑对准（HomeAim 校准 · 示意）');
+    });
+    document.getElementById('plus').addEventListener('click', function () {
+      toast('加入上下文（截图 / 附件 · 示意）');
+    });
+
+    document.querySelectorAll('.cap').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var kind = btn.getAttribute('data-cap');
+        var on = btn.getAttribute('aria-pressed') === 'true';
+        on = !on;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('on-pad', kind === 'pad' && on);
+        btn.classList.toggle('on-voice', kind === 'voice' && on);
+        btn.classList.toggle('on-cam', kind === 'cam' && on);
+        var labels = { pad: 'Soft Pad', voice: '语音', cam: '摄像头' };
+        if (on) {
+          capPanel.classList.add('show');
+          capPanel.textContent = labels[kind] + ' 已开 · 轻量状态条（非整页 Stage）';
+          toast(labels[kind] + ' 开');
+        } else {
+          var any = Array.prototype.some.call(document.querySelectorAll('.cap'), function (el) {
+            return el.getAttribute('aria-pressed') === 'true';
+          });
+          if (!any) {
+            capPanel.classList.remove('show');
+            capPanel.textContent = '';
+          }
+          toast(labels[kind] + ' 关');
+        }
+      });
+    });
+
+    document.querySelectorAll('.quick .q').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        dest = btn.getAttribute('data-q');
+        document.querySelectorAll('.quick .q').forEach(function (el) {
+          el.classList.toggle('on', el === btn);
+        });
+        document.getElementById('dockTargetMenu').textContent = destLabel[dest] + ' ▾';
+        syncSend();
+        toast('发送目标 → ' + destLabel[dest]);
+      });
+    });
+
+    syncSend();
+    renderRows();
+  </script>
+</body>
+</html>

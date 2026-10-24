@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 四通道打通方案 A/B/C</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink: #0f1b2a;
+  --mute: #5a6c80;
+  --faint: #8191a3;
+  --line: rgba(26, 45, 74, .13);
+  --paper: #fff;
+  --wash: #f3f7fa;
+  --bg: #e4ebf1;
+  --rail: #eef3f7;
+  --cyan: #2a9cc4;
+  --cyan-ink: #0f5f7a;
+  --cyan-soft: #e8f6fb;
+  --cyan-bd: #9bc6da;
+  --green: #187144;
+  --green-soft: #e8f5ee;
+  --blue: #1d6f9a;
+  --blue-soft: #e5f2f8;
+  --violet: #5b4d8a;
+  --violet-soft: #f0edf7;
+  --orange: #a9540f;
+  --orange-soft: #fff3e7;
+  --ok: #15803d;
+  --ok-soft: #e8f7ee;
+  --shadow: 0 16px 40px rgba(15, 27, 42, .09);
+  --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+  --display: "Iowan Old Style", "Songti SC", "STSong", Georgia, serif;
+  --mono: "Cascadia Code", "IBM Plex Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(900px 360px at 8% -8%, rgba(42, 156, 196, .12), transparent 58%),
+    var(--bg);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button { touch-action: manipulation; }
+button:focus-visible, input:focus-visible {
+  outline: 2px solid rgba(42, 156, 196, .72);
+  outline-offset: 2px;
+}
+.shell { min-height: 100vh; padding-bottom: 86px; }
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 18px;
+  color: #c9d4df;
+  background: #0f1820;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset;
+}
+.appbar strong { color: #fff; font-size: 14px; }
+.appbar .crumb { color: #7dd3fc; font-weight: 700; }
+.appbar .scene {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid rgba(134, 239, 172, .32);
+  border-radius: 9px;
+  color: #b8f5ce;
+  background: rgba(21, 128, 61, .12);
+  font-weight: 700;
+}
+.appbar .scene::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, .13);
+}
+.appbar .keys { color: #8293a5; font-size: 11px; }
+#stage { width: 100%; }
+.proto-view {
+  width: min(1260px, calc(100% - 28px));
+  margin: 16px auto 0;
+  animation: view-in 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 15px 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .95);
+}
+.intro-copy { flex: 1; min-width: 0; }
+.intro h1 {
+  margin: 0 0 5px;
+  font-family: var(--display);
+  font-size: clamp(21px, 2.3vw, 29px);
+  line-height: 1.16;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+.intro p { max-width: 82ch; margin: 0; color: var(--mute); font-size: 13px; }
+.strategy {
+  flex: 0 0 264px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  color: var(--cyan-ink);
+  background: var(--cyan-soft);
+  border: 1px solid var(--cyan-bd);
+  font-size: 11.5px;
+}
+.strategy b { display: block; margin-bottom: 2px; }
+.frame {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+.frame-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(#fbfdfe, #f5f8fa);
+}
+.frame-head strong { font-size: 14px; }
+.scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--green);
+  background: var(--green-soft);
+  border: 1px solid #a6d4b9;
+  font-size: 11px;
+  font-weight: 750;
+}
+.head-note { margin-left: auto; color: var(--faint); font-size: 11px; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mute);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pill.pad { color: var(--green); background: var(--green-soft); }
+.pill.key { color: var(--blue); background: var(--blue-soft); }
+.pill.voice { color: var(--violet); background: var(--violet-soft); }
+.pill.camera { color: var(--orange); background: var(--orange-soft); }
+.pill.off { color: #8494a6; background: #f2f5f7; }
+.btn {
+  appearance: none;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--cyan-bd); color: var(--cyan-ink); }
+.btn.primary { color: #fff; border-color: var(--cyan); background: var(--cyan); }
+.btn.quiet { color: var(--mute); background: transparent; }
+.live-note {
+  min-height: 36px;
+  padding: 9px 12px;
+  border: 1px solid #91d4aa;
+  border-radius: 10px;
+  color: var(--ok);
+  background: var(--ok-soft);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* A: aggregate index */
+.a-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 590px; }
+.a-aside {
+  padding: 15px 13px;
+  border-right: 1px solid var(--line);
+  background: var(--rail);
+}
+.a-aside h2 { margin: 0 0 4px; font-size: 15px; }
+.a-aside > p { margin: 0 0 14px; color: var(--mute); font-size: 11.5px; }
+.metric {
+  margin-bottom: 8px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+}
+.metric b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.metric span { color: var(--faint); font-size: 10.5px; }
+.a-cost {
+  margin-top: 16px;
+  padding: 11px;
+  border-left: 3px solid var(--orange);
+  color: #7c4315;
+  background: var(--orange-soft);
+  font-size: 11.5px;
+}
+.a-main { min-width: 0; padding: 14px; background: var(--wash); }
+.a-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.a-flow .source {
+  padding: 9px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  text-align: center;
+  font-weight: 750;
+}
+.a-flow .arrow { color: var(--faint); font-weight: 900; }
+.matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
+.matrix { width: 100%; min-width: 790px; border-collapse: collapse; }
+.matrix th, .matrix td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.matrix th { color: var(--faint); background: #f8fafb; font-size: 10.5px; font-weight: 750; }
+.matrix tr:last-child td { border-bottom: 0; }
+.matrix tr:hover td { background: #fbfdfe; }
+.matrix .cmd-name b { display: block; font-size: 13px; }
+.matrix .cmd-name small { color: var(--faint); font-family: var(--mono); font-size: 9.5px; }
+.cell-stack { display: flex; align-items: center; gap: 5px; }
+.cell-stack .btn { min-height: 27px; padding: 4px 7px; }
+.a-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 11px; }
+.a-foot .live-note:last-child { border-color: var(--line); color: var(--mute); background: #fff; }
+
+/* B: command hub */
+.b-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 620px; }
+.command-rail { padding: 12px 8px; border-right: 1px solid var(--line); background: var(--rail); scrollbar-width: none; }
+.command-rail::-webkit-scrollbar { display: none; }
+.rail-title { padding: 4px 8px 9px; color: var(--faint); font-size: 10.5px; font-weight: 750; }
+.command-row {
+  width: 100%;
+  margin: 1px 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.command-row:hover { background: rgba(255, 255, 255, .62); }
+.command-row.is-selected { border-color: var(--cyan-bd); background: #fff; box-shadow: inset 3px 0 0 var(--cyan); }
+.command-row b { display: block; font-size: 12.5px; }
+.command-row small { color: var(--faint); font-size: 10px; }
+.command-dots { display: flex; gap: 4px; margin-top: 6px; }
+.command-dots i { width: 7px; height: 7px; border-radius: 50%; background: #cbd5df; }
+.command-dots i.on:nth-child(1) { background: var(--green); }
+.command-dots i.on:nth-child(2) { background: var(--blue); }
+.command-dots i.on:nth-child(3) { background: var(--violet); }
+.command-dots i.on:nth-child(4) { background: var(--orange); }
+.b-main { padding: 13px; background: var(--wash); }
+.command-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+.command-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(42, 156, 196, .4);
+  border-radius: 12px;
+  color: var(--cyan-ink);
+  background: var(--cyan-soft);
+  font-weight: 850;
+}
+.command-hero h2 { margin: 0 0 2px; font-size: 16px; }
+.command-hero p { margin: 0; color: var(--mute); font-size: 11.5px; }
+.command-hero .btn { margin-left: auto; }
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #afd4e3;
+  border-radius: 11px;
+  color: var(--cyan-ink);
+  background: var(--cyan-soft);
+  font-size: 11px;
+  font-weight: 750;
+}
+.pipeline .pipe-arrow { opacity: .55; }
+.channel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.channel-card {
+  min-height: 178px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: inset 3px 0 0 var(--channel);
+}
+.channel-card.pad { --channel: var(--green); }
+.channel-card.key { --channel: var(--blue); }
+.channel-card.voice { --channel: var(--violet); }
+.channel-card.camera { --channel: var(--orange); }
+.channel-head { display: flex; align-items: center; gap: 7px; }
+.channel-head h3 { margin: 0; font-size: 13px; }
+.toggle {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5df;
+  cursor: pointer;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 160ms ease-out;
+}
+.toggle[aria-pressed="true"] { background: var(--channel); }
+.toggle[aria-pressed="true"]::after { transform: translateX(16px); }
+.channel-value { margin: 13px 0 4px; font-size: 15px; font-weight: 800; }
+.channel-sub { min-height: 34px; margin: 0; color: var(--mute); font-size: 11px; }
+.channel-actions { display: flex; gap: 6px; margin-top: 10px; }
+.b-test {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.trace { color: var(--mute); font-family: var(--mono); font-size: 10.5px; }
+.trace strong { color: var(--ok); font-family: var(--font); }
+
+/* C: unified workbench */
+.c-body { min-height: 620px; background: #f5f8fa; }
+.c-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.c-stat { padding: 10px 13px; border-right: 1px solid var(--line); }
+.c-stat:last-child { border-right: 0; }
+.c-stat b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.c-stat span { color: var(--faint); font-size: 10px; }
+.workbench { display: grid; grid-template-columns: 220px minmax(420px, 1fr) 268px; min-height: 545px; }
+.library { padding: 11px 8px; border-right: 1px solid var(--line); background: #edf2f5; }
+.work-label { margin: 3px 7px 8px; color: var(--faint); font-size: 10px; font-weight: 750; }
+.lib-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.lib-item:hover, .lib-item.is-selected { border-color: var(--line); background: #fff; }
+.lib-item.is-selected { box-shadow: inset 3px 0 0 var(--cyan); }
+.lib-code { color: var(--cyan-ink); font-family: var(--mono); font-size: 9px; }
+.canvas { position: relative; padding: 16px; overflow: hidden; }
+.canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .28;
+  background-image: radial-gradient(circle, #9aaabd 1px, transparent 1px);
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+.canvas > * { position: relative; }
+.canvas h2 { margin: 0 0 3px; font-size: 15px; }
+.canvas > p { margin: 0 0 14px; color: var(--mute); font-size: 11px; }
+.graph {
+  display: grid;
+  grid-template-columns: 1fr 38px 1.2fr 38px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.source-nodes { display: grid; gap: 7px; }
+.node {
+  min-height: 50px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .96);
+  text-align: left;
+  cursor: pointer;
+}
+.node:hover, .node.is-active { border-color: var(--cyan-bd); box-shadow: 0 0 0 2px rgba(42, 156, 196, .12); }
+.node b { display: block; font-size: 11.5px; }
+.node small { color: var(--faint); font-size: 9.5px; }
+.graph-arrow { color: #7b91a7; text-align: center; font-size: 18px; font-weight: 900; }
+.core-node {
+  padding: 14px;
+  border: 2px solid rgba(42, 156, 196, .44);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(42, 156, 196, .12);
+}
+.core-node .core-id { color: var(--cyan-ink); font-family: var(--mono); font-size: 9px; }
+.core-node h3 { margin: 4px 0; font-size: 16px; }
+.core-node p { margin: 0 0 10px; color: var(--mute); font-size: 10.5px; }
+.router {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #17222d;
+  color: #d6e1eb;
+}
+.router b { display: block; color: #7dd3fc; font-size: 11px; }
+.router small { color: #91a2b2; font-size: 9.5px; }
+.inspector { padding: 12px; border-left: 1px solid var(--line); background: #fff; }
+.inspector h3 { margin: 0 0 4px; font-size: 14px; }
+.inspector > p { margin: 0 0 13px; color: var(--mute); font-size: 10.5px; }
+.field { margin-bottom: 10px; }
+.field label { display: block; margin-bottom: 4px; color: var(--faint); font-size: 9.5px; font-weight: 750; }
+.field input {
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--wash);
+  font-size: 11px;
+}
+.migration {
+  margin-top: 13px;
+  padding: 10px;
+  border: 1px solid #f1c697;
+  border-radius: 10px;
+  color: #7a451a;
+  background: var(--orange-soft);
+  font-size: 10.5px;
+}
+.migration b { display: block; margin-bottom: 4px; }
+.progress { height: 6px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(169, 84, 15, .14); }
+.progress i { display: block; width: 68%; height: 100%; background: var(--orange); }
+
+@media (max-width: 920px) {
+  .intro { flex-direction: column; }
+  .strategy { flex-basis: auto; width: 100%; }
+  .a-layout, .b-layout { grid-template-columns: 1fr; }
+  .a-aside, .command-rail { border-right: 0; border-bottom: 1px solid var(--line); }
+  .command-rail { display: flex; gap: 5px; overflow-x: auto; }
+  .rail-title { display: none; }
+  .command-row { min-width: 160px; }
+  .workbench { grid-template-columns: 180px minmax(430px, 1fr); overflow-x: auto; }
+  .inspector { grid-column: 1 / -1; border-top: 1px solid var(--line); border-left: 0; }
+}
+@media (max-width: 680px) {
+  .appbar .keys { display: none; }
+  .proto-view { width: min(100% - 16px, 1260px); margin-top: 8px; }
+  .channel-grid, .a-foot { grid-template-columns: 1fr; }
+  .a-flow { grid-template-columns: 1fr 1fr; }
+  .a-flow .arrow { display: none; }
+  .c-stats { grid-template-columns: 1fr 1fr; }
+  .c-stat:nth-child(2) { border-right: 0; }
+  .workbench { grid-template-columns: 1fr; min-width: 0; }
+  .library { border-right: 0; border-bottom: 1px solid var(--line); }
+  .graph { grid-template-columns: 1fr; }
+  .graph-arrow { transform: rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .proto-view { animation: none; }
+  .toggle::after { transition: none; }
+}
+
+/* Fixed prototype picker — intentionally independent from product chrome. */
+.proto-picker {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.82);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.proto-picker-highlight {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  will-change: transform;
+}
+.proto-picker[data-ready] .proto-picker-highlight {
+  transition:
+    transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+    width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
+}
+.proto-picker-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="appbar">
+    <strong>OneTone</strong>
+    <span class="crumb">四通道打通方案</span>
+    <span class="scene">已识别 Cursor · Agent</span>
+    <span class="keys">按 1–3 或 ← → 切换</span>
+  </header>
+  <main id="stage" aria-live="polite"></main>
+</div>
+
+<template id="variantA">
+  <section class="proto-view">
+    <header class="intro">
+      <div class="intro-copy">
+        <h1>聚合索引：先把分散配置看清楚</h1>
+        <p>把现有 SoftPad、实体按键、语音和摄像头绑定投影成一张矩阵。用户能看见全局状态，但修改仍由各通道原生设置负责。</p>
+      </div>
+      <div class="strategy"><b>适合：快速落地、风险最低</b>不迁移存储，不改运行时；代价是用户仍会发生页面跳转。</div>
+    </header>
+    <div class="frame">
+      <div class="frame-head">
+        <strong>场景命令总览</strong>
+        <span class="scope">Cursor · Agent</span>
+        <span class="head-note">ActionBindingView 只读聚合</span>
+      </div>
+      <div class="a-layout">
+        <aside class="a-aside">
+          <h2>配置健康度</h2>
+          <p>聚合已有存储，不改变所有权。</p>
+          <div class="metric"><b>4</b><span>本场景命令</span></div>
+          <div class="metric"><b>11 / 16</b><span>触发器已配置</span></div>
+          <div class="metric"><b>0</b><span>运行冲突</span></div>
+          <div class="a-cost"><b>限制</b><br />“更改”会带用户去相应通道设置，无法在此直接完成四通道配置。</div>
+        </aside>
+        <section class="a-main">
+          <div class="a-flow">
+            <div class="source">SoftPad</div>
+            <div class="source">实体按键</div>
+            <div class="source">语音</div>
+            <div class="source">摄像头</div>
+            <div class="arrow">→ 同一语义动作</div>
+          </div>
+          <div class="matrix-wrap">
+            <table class="matrix">
+              <thead><tr><th>命令</th><th>SoftPad</th><th>实体按键</th><th>语音</th><th>摄像头</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="cmd-name"><b>继续回复</b><small>agent.continue</small></td>
+                  <td><div class="cell-stack"><span class="pill pad">AG02</span><button class="btn" data-demo="打开 SoftPad 设置 · 已保留“继续回复”上下文">更改</button></div></td>
+                  <td><div class="cell-stack"><span class="pill key">Vol-</span><button class="btn" data-demo="打开实体按键设置 · 聚焦 Vol-">更改</button></div></td>
+                  <td><div class="cell-stack"><span class="pill voice">“继续”</span><button class="btn" data-demo="打开语音设置 · 聚焦说法“继续”">更改</button></div></td>
+                  <td><div class="cell-stack"><span class="pill camera">OK</span><button class="btn" data-demo="打开摄像头设置 · 聚焦 OK 手势">更改</button></div></td>
+                </tr>
+                <tr>
+                  <td class="cmd-name"><b>新建对话</b><small>agent.new</small></td>
+                  <td><span class="pill pad">AG01</span></td><td><span class="pill off">未配置</span></td>
+                  <td><span class="pill voice">“新建”</span></td><td><span class="pill off">未配置</span></td>
+                </tr>
+                <tr>
+                  <td class="cmd-name"><b>粘贴发送</b><small>input.send</small></td>
+                  <td><span class="pill off">未配置</span></td><td><span class="pill key">Ctrl+Enter</span></td>
+                  <td><span class="pill off">未配置</span></td><td><span class="pill camera">张开手掌</span></td>
+                </tr>
+                <tr>
+                  <td class="cmd-name"><b>取消</b><small>input.cancel</small></td>
+                  <td><span class="pill pad">ESC</span></td><td><span class="pill key">Esc</span></td>
+                  <td><span class="pill voice">“取消”</span></td><td><span class="pill camera">摇头</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="a-foot">
+            <div class="live-note" data-live-note>选择任一“更改”，会带着命令上下文跳到原生设置。</div>
+            <div class="live-note">运行链路：现有触发器 → route_semantic_action → Agent Adapter</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+</template>
+
+<template id="variantB">
+  <section class="proto-view">
+    <header class="intro">
+      <div class="intro-copy">
+        <h1>命令中枢：一条命令，同屏配置四种触发</h1>
+        <p>以“继续回复”为中心，SoftPad、实体按键、语音和摄像头只是四种调用方式。统一 Facade 校验后写回现有通道存储。</p>
+      </div>
+      <div class="strategy"><b>适合：面向普通用户的正式方案</b>真正减少跳页，同时保留现有通道执行器与安全策略。</div>
+    </header>
+    <div class="frame">
+      <div class="frame-head">
+        <strong>我的命令</strong>
+        <span class="scope">Cursor · Agent</span>
+        <span class="head-note">统一编辑 · 通道原生存储</span>
+      </div>
+      <div class="b-layout">
+        <aside class="command-rail">
+          <div class="rail-title">场景命令</div>
+          <button class="command-row is-selected" data-command="继续回复"><b>继续回复</b><small>4 种触发已启用</small><span class="command-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></button>
+          <button class="command-row" data-command="新建对话"><b>新建对话</b><small>2 种触发已启用</small><span class="command-dots"><i class="on"></i><i></i><i class="on"></i><i></i></span></button>
+          <button class="command-row" data-command="粘贴发送"><b>粘贴发送</b><small>2 种触发已启用</small><span class="command-dots"><i></i><i class="on"></i><i></i><i class="on"></i></span></button>
+          <button class="command-row" data-command="取消"><b>取消</b><small>4 种触发已启用</small><span class="command-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></button>
+        </aside>
+        <section class="b-main">
+          <div class="command-hero">
+            <div class="command-icon">续</div>
+            <div><h2 data-command-title>继续回复</h2><p>让当前 Cursor Agent 接着完成任务。</p></div>
+            <button class="btn quiet" data-demo="已复制命令配置，可用于同场景的新命令">复制命令</button>
+          </div>
+          <div class="pipeline"><span>任意触发</span><span class="pipe-arrow">→</span><span>command:continue</span><span class="pipe-arrow">→</span><span>route_semantic_action</span><span class="pipe-arrow">→</span><span>Cursor Adapter</span></div>
+          <div class="channel-grid">
+            <article class="channel-card pad">
+              <div class="channel-head"><span class="pill pad">SoftPad</span><h3>屏幕按钮</h3><button class="toggle" aria-label="启用 SoftPad 触发" aria-pressed="true" data-channel-toggle></button></div>
+              <div class="channel-value">AG02</div><p class="channel-sub">点击屏幕键 AG02 调用本命令。</p>
+              <div class="channel-actions"><button class="btn" data-demo="SoftPad 选择器已打开：当前 AG02">选择键位</button><button class="btn quiet" data-demo="已定位 SoftPad 盘面布局">看盘面</button></div>
+            </article>
+            <article class="channel-card key">
+              <div class="channel-head"><span class="pill key">实体按键</span><h3>硬件触发</h3><button class="toggle" aria-label="启用实体按键触发" aria-pressed="true" data-channel-toggle></button></div>
+              <div class="channel-value">Vol-</div><p class="channel-sub">按下音量减；检测到系统占用时在这里提示冲突。</p>
+              <div class="channel-actions"><button class="btn" data-demo="正在录键：请按一个实体按键">重新录制</button><button class="btn quiet" data-demo="Vol- 当前无绑定冲突">检查冲突</button></div>
+            </article>
+            <article class="channel-card voice">
+              <div class="channel-head"><span class="pill voice">语音</span><h3>口头说法</h3><button class="toggle" aria-label="启用语音触发" aria-pressed="true" data-channel-toggle></button></div>
+              <div class="channel-value">“继续” · “接着写”</div><p class="channel-sub">任一说法命中后调用同一个 commandId。</p>
+              <div class="channel-actions"><button class="btn" data-demo="说法编辑器已打开，可新增同义说法">编辑说法</button><button class="btn quiet" data-demo="请说“继续”，正在等待测试输入">试说一次</button></div>
+            </article>
+            <article class="channel-card camera">
+              <div class="channel-head"><span class="pill camera">摄像头</span><h3>手势触发</h3><button class="toggle" aria-label="启用摄像头触发" aria-pressed="true" data-channel-toggle></button></div>
+              <div class="channel-value">OK 手势</div><p class="channel-sub">置信度 85% · 持续 400 ms；高风险动作仍进入二次确认。</p>
+              <div class="channel-actions"><button class="btn" data-demo="手势选择器已打开：当前 OK">更换手势</button><button class="btn quiet" data-demo="摄像头预览已启动，等待 OK 手势">试一下</button></div>
+            </article>
+          </div>
+          <div class="b-test">
+            <button class="btn primary" data-run-test>测试这条命令</button>
+            <div class="trace" data-trace>等待测试 · 最近一次：实体按键 Vol- → <strong>执行成功</strong></div>
+          </div>
+          <div class="live-note" data-live-note style="margin-top:9px">所有修改通过统一 Facade 校验，并同步写回通道原生存储。</div>
+        </section>
+      </div>
+    </div>
+  </section>
+</template>
+
+<template id="variantC">
+  <section class="proto-view">
+    <header class="intro">
+      <div class="intro-copy">
+        <h1>统一工作台：命令、触发器和路由全部平台化</h1>
+        <p>建立正式 Command Registry，四种通道只保存 trigger → commandId。适合长期扩展自动化、组合命令和跨设备同步。</p>
+      </div>
+      <div class="strategy"><b>适合：长期平台能力</b>模型最干净，但需要配置迁移、兼容层和更高的交付成本。</div>
+    </header>
+    <div class="frame">
+      <div class="frame-head">
+        <strong>Command Registry</strong>
+        <span class="scope">Cursor · Agent</span>
+        <span class="head-note">统一存储 · 统一路由 · 统一审计</span>
+      </div>
+      <div class="c-body">
+        <div class="c-stats">
+          <div class="c-stat"><b>4</b><span>场景命令</span></div>
+          <div class="c-stat"><b>11</b><span>Trigger bindings</span></div>
+          <div class="c-stat"><b>4 / 4</b><span>通道在线</span></div>
+          <div class="c-stat"><b>68%</b><span>旧配置已迁移</span></div>
+        </div>
+        <div class="workbench">
+          <aside class="library">
+            <div class="work-label">命令库</div>
+            <button class="lib-item is-selected" data-inspect-title="继续回复" data-inspect-id="cmd.cursor.continue" data-inspect-action="agent.continue"><span>续</span><span><b>继续回复</b><br /><span class="lib-code">agent.continue</span></span></button>
+            <button class="lib-item" data-inspect-title="新建对话" data-inspect-id="cmd.cursor.new" data-inspect-action="agent.new"><span>新</span><span><b>新建对话</b><br /><span class="lib-code">agent.new</span></span></button>
+            <button class="lib-item" data-inspect-title="粘贴发送" data-inspect-id="cmd.cursor.send" data-inspect-action="input.send"><span>发</span><span><b>粘贴发送</b><br /><span class="lib-code">input.send</span></span></button>
+            <button class="lib-item" data-inspect-title="取消" data-inspect-id="cmd.cursor.cancel" data-inspect-action="input.cancel"><span>停</span><span><b>取消</b><br /><span class="lib-code">input.cancel</span></span></button>
+          </aside>
+          <section class="canvas">
+            <h2>继续回复 · 路由图</h2>
+            <p>点击任意节点，在右侧检查它的统一身份和存储状态。</p>
+            <div class="graph">
+              <div class="source-nodes">
+                <button class="node" data-node-name="SoftPad · AG02" data-node-detail="trigger.softPad.AG02"><b>SoftPad · AG02</b><small>trigger binding</small></button>
+                <button class="node" data-node-name="实体按键 · Vol-" data-node-detail="trigger.key.volumeDown"><b>实体按键 · Vol-</b><small>trigger binding</small></button>
+                <button class="node" data-node-name="语音 · 继续" data-node-detail="trigger.voice.continue"><b>语音 · “继续”</b><small>trigger binding</small></button>
+                <button class="node" data-node-name="摄像头 · OK" data-node-detail="trigger.camera.okHand"><b>摄像头 · OK</b><small>trigger binding</small></button>
+              </div>
+              <div class="graph-arrow">→</div>
+              <div class="core-node">
+                <span class="core-id">cmd.cursor.continue</span>
+                <h3>继续回复</h3>
+                <p>一个命令实体，四个触发引用；参数和风险策略只维护一次。</p>
+                <span class="pill pad">4 triggers</span>
+              </div>
+              <div class="graph-arrow">→</div>
+              <div class="router">
+                <b>Semantic Router</b>
+                <small>context → capability → risk → execute</small>
+                <hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:9px 0" />
+                <b style="color:#b8f5ce">Cursor Adapter</b>
+                <small>agent.continue</small>
+              </div>
+            </div>
+            <div class="live-note" data-live-note style="margin-top:16px">选择节点查看详情；所有运行结果进入统一 Action History。</div>
+          </section>
+          <aside class="inspector">
+            <h3 data-inspector-title>继续回复</h3>
+            <p data-inspector-detail>统一命令实体</p>
+            <div class="field"><label for="commandId">Command ID</label><input id="commandId" value="cmd.cursor.continue" readonly /></div>
+            <div class="field"><label for="actionId">Action ID</label><input id="actionId" value="agent.continue" readonly /></div>
+            <div class="field"><label for="risk">风险策略</label><input id="risk" value="按 sourceChannel 动态判断" readonly /></div>
+            <button class="btn primary" data-demo="统一命令已保存；所有 trigger 引用保持有效">保存命令</button>
+            <div class="migration">
+              <b>旧配置迁移</b>
+              agentBindings、cameraOverride 和 codexMicroPad 正在转换为统一 TriggerBinding。
+              <div class="progress"><i></i></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true" aria-label="方案 A：聚合索引">A</button>
+  <button class="proto-picker-item" aria-label="方案 B：命令中枢">B</button>
+  <button class="proto-picker-item" aria-label="方案 C：统一工作台">C</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+const templates = [
+  document.getElementById('variantA'),
+  document.getElementById('variantB'),
+  document.getElementById('variantC')
+];
+const variants = templates.map((template) => () => template.innerHTML);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = 'translateX(' + el.offsetLeft + 'px)';
+}
+
+function mount(i) {
+  stage.innerHTML = '';
+  requestAnimationFrame(() => { stage.innerHTML = variants[i](); });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+
+stage.addEventListener('click', (event) => {
+  const demo = event.target.closest('[data-demo]');
+  if (demo) {
+    const live = stage.querySelector('[data-live-note]');
+    if (live) live.textContent = demo.getAttribute('data-demo');
+  }
+
+  const toggle = event.target.closest('[data-channel-toggle]');
+  if (toggle) {
+    const next = toggle.getAttribute('aria-pressed') !== 'true';
+    toggle.setAttribute('aria-pressed', String(next));
+    const card = toggle.closest('.channel-card');
+    const live = stage.querySelector('[data-live-note]');
+    if (live && card) {
+      const name = card.querySelector('h3').textContent;
+      live.textContent = name + (next ? '触发已启用，并同步到本场景命令。' : '触发已关闭；其它通道仍可调用这条命令。');
+    }
+  }
+
+  const command = event.target.closest('[data-command]');
+  if (command) {
+    stage.querySelectorAll('[data-command]').forEach((el) => el.classList.remove('is-selected'));
+    command.classList.add('is-selected');
+    const title = stage.querySelector('[data-command-title]');
+    if (title) title.textContent = command.getAttribute('data-command');
+  }
+
+  const test = event.target.closest('[data-run-test]');
+  if (test) {
+    const trace = stage.querySelector('[data-trace]');
+    if (trace) trace.textContent = 'SoftPad AG02 → command:continue → 正在路由…';
+    window.setTimeout(() => {
+      if (trace && trace.isConnected) trace.innerHTML = 'SoftPad AG02 → command:continue → Cursor Adapter → <strong>执行成功</strong>';
+    }, 520);
+  }
+
+  const libraryItem = event.target.closest('[data-inspect-title]');
+  if (libraryItem) {
+    stage.querySelectorAll('[data-inspect-title]').forEach((el) => el.classList.remove('is-selected'));
+    libraryItem.classList.add('is-selected');
+    stage.querySelector('[data-inspector-title]').textContent = libraryItem.getAttribute('data-inspect-title');
+    document.getElementById('commandId').value = libraryItem.getAttribute('data-inspect-id');
+    document.getElementById('actionId').value = libraryItem.getAttribute('data-inspect-action');
+  }
+
+  const node = event.target.closest('[data-node-name]');
+  if (node) {
+    stage.querySelectorAll('[data-node-name]').forEach((el) => el.classList.remove('is-active'));
+    node.classList.add('is-active');
+    stage.querySelector('[data-inspector-title]').textContent = node.getAttribute('data-node-name');
+    stage.querySelector('[data-inspector-detail]').textContent = node.getAttribute('data-node-detail');
+  }
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>

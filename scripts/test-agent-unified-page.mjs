@@ -16,11 +16,12 @@ const checks=[
  ['响应式与减弱动效',/@media\(max-width:\s*800px\)[\s\S]*prefers-reduced-motion/],
 ];let fail=0;for(const[n,r]of checks){const ok=r.test(html);console.log(`${ok?'ok  ':'FAIL'} ${n}`);if(!ok)fail++}
 const prodChecks=[
- ['生产页五标签',/data-sub="overview"[\s\S]*data-sub="data"[\s\S]*data-sub="float"[\s\S]*data-sub="mini"[\s\S]*data-sub="softPad"/],
+ ['生产页含时间胶囊标签',/data-sub="overview"[\s\S]*data-sub="data"[\s\S]*data-sub="capsule"[\s\S]*data-sub="float"[\s\S]*data-sub="mini"[\s\S]*data-sub="softPad"/],
  ['生产默认总览',/setSub\(allowedDeep\[deepSub\]\?deepSub:'overview'\)/],
  ['生产挂载总览',/ensureOverviewMounted/],
- ['生产五标签单行',/\.subtabs\{[^}]*grid-template-columns:repeat\(5,/],
+ ['生产六标签单行',/\.subtabs\{[^}]*grid-template-columns:repeat\(6,/],
  ['生产总览单列铺满',/\.workspace\.is-overview\{grid-template-columns:1fr\}/],
+ ['生产胶囊宿主',/id="capsuleHost"[\s\S]*id="agentCapsuleDesk"/],
 ];
 for(const[n,r]of prodChecks){const ok=r.test(prodPage);console.log(`${ok?'ok  ':'FAIL'} ${n}`);if(!ok)fail++}
 if(fail)process.exit(1);console.log('\nAll unified Agent page checks passed');

@@ -25,8 +25,9 @@
         mappingId: mappingId,
         channel: channel,
         itemId: '',
-        mode: ui.habitExperienceMode || 'quick'
+        mode: 'locator'
       };
+      ui.habitExperienceMode = 'locator';
       ui.habitScenarioReturnId = mappingId;
       ui.habitScenarioReturnPanel = channel;
       ui.habitScenarioReturnHub = true;

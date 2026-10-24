@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="css/codex-smoke-feedback.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
   <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
+  <link rel="stylesheet" href="css/keys2-command-card.css" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
   <link rel="stylesheet" href="css/camera2-workbench.css" />
@@ -143,6 +144,10 @@
               <button type="button" class="wb-nav-item" data-wb-nav="triggers" id="wbNavTriggers">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                 <span data-i18n="homeWbNavTriggers">按键设置</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="keys2" id="wbNavKeys2" title="习惯通道调用总览 · 示意">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/><path d="M12 3v3"/></svg>
+                <span id="wbNavKeys2Label" data-i18n="homeWbNavKeys2">习惯 · 通道</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="softPad" id="wbNavSoftPad">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
@@ -574,6 +579,10 @@
                 <button type="button" class="settings-nav-item" data-panel="keys" id="settingsNavKeys">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                   <span id="settingsNavKeysLabel">按键</span>
+                </button>
+                <button type="button" class="settings-nav-item" data-panel="keys2" id="settingsNavKeys2" title="习惯通道调用总览 · 示意">
+                  <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/><path d="M12 3v3"/></svg>
+                  <span id="settingsNavKeys2Label" data-i18n="homeWbNavKeys2">习惯 · 通道</span>
                 </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavSoftPadGroup">
@@ -1291,6 +1300,13 @@
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
           </div>
         </section>
+        <section class="settings-panel drawer-section keys2-page" id="settingsPanelKeys2" hidden>
+          <header class="pref-page-head keys2-page-head">
+            <h3 class="pref-page-title" id="settingsPanelKeys2Title">习惯 · 通道</h3>
+            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelKeys2Desc">命令怎么被各通道调用与管理 · 示意 · 不写配置</p>
+          </header>
+          <div id="keys2CommandCardRoot" class="keys2-root"></div>
+        </section>
         <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerSoftPad" hidden role="status" aria-live="polite"></div>
           <!-- Thin chrome: brand only. Summaries / bind / actions live under right preview hint. -->
@@ -1351,6 +1367,9 @@
                       <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="show" aria-selected="false" id="softPadPadTabShow" data-i18n="softPadPadTabShow">何时显示</button>
                       <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="skin" aria-selected="false" id="softPadPadTabSkin" data-i18n="softPadPadTabSkin">皮肤</button>
                     </div>
+                    <button type="button" class="soft-pad-habit-match-link" id="btnSoftPadHabitMatch" data-soft-pad-habit-match="1" hidden>
+                      跨通道匹配（说法 / 键 / 手势）→ 习惯
+                    </button>
                     <div class="soft-pad-work-tag" id="softPadWorkTag" hidden aria-hidden="true">
                       <span class="soft-pad-work-tag__lbl" id="softPadWorkTagLbl">设置</span>
                       <span class="soft-pad-work-tag__ch" id="softPadWorkChannelPill">软键盘</span>
@@ -5534,6 +5553,7 @@
   <script src="js/core/habit-profile.js"></script>
   <script src="js/core/config-persist.js?v=aim-default-none-3"></script>
   <script src="js/core/app-text-utils.js"></script>
+  <script src="js/core/project-path.js"></script>
   <script src="js/core/app-autostart.js"></script>
   <script src="js/core/app-start-minimized.js"></script>
   <script src="js/core/app-coach-hud.js"></script>
@@ -5616,6 +5636,7 @@
   <script src="js/features/settings/settings-debug-hooks.js"></script>
   <script src="js/features/settings/basic-panel-ui.js"></script>
   <script src="js/features/settings/workspace-layout-ui.js"></script>
+  <script src="js/features/agent/agent-capsule-mount.js"></script>
   <script src="js/features/settings/settings-drawer.js?v=20260809-stall9"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
@@ -5682,6 +5703,7 @@
   <script src="js/features/settings/tray-channel-controls.js"></script>
   <script src="js/features/settings/channel-config-compact.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
+  <script src="js/features/settings/keys2-command-card.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/agent/agent-actions.js"></script>
   <script src="js/features/agent/semantic-action-store.js"></script>
@@ -5710,7 +5732,8 @@
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-shared.js"></script>
   <script src="js/features/mapping/habit-card-utils.js"></script>
-  <script src="js/features/mapping/habit-novice-mode.js"></script>
+  <script src="js/features/mapping/habit-channel-snapshot.js"></script>
+  <script src="js/features/mapping/habit-command-link.js"></script>
   <script src="js/features/mapping/habit-action-stats.js"></script>
   <script src="js/features/mapping/habit-usage-sheet.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
@@ -5760,6 +5783,7 @@
   <script src="js/features/now/home-focus-store.js"></script>
   <script src="js/features/now/home-focus-adapter.js"></script>
   <script src="js/features/now/home-action-policy.js"></script>
+  <script src="js/features/now/home-focus-triad.js"></script>
   <script src="js/features/now/home-focus-view.js"></script>
   <script src="js/features/now/home-agent-status-strip.js"></script>
   <script src="js/features/capture/smart-capture.js"></script>

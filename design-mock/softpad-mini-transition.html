@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SoftPad · 形态切换演示</title>
+  <style>
+    :root{color-scheme:light;--ink:#263548;--muted:#7b8999;--blue:#3087da;--stroke:#d5e0eb;font-family:"Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 50% 48%,#dce4ec 0,#cfd7df 48%,#c6ced7 100%);color:var(--ink)}
+    .demo{width:min(100%,650px);display:flex;flex-direction:column;align-items:center;gap:24px}
+    .copy{text-align:center;max-width:530px}
+    .copy h1{font-size:25px;line-height:1.2;letter-spacing:-.035em;margin:0;font-weight:680}
+    .copy p{color:#68788a;font-size:13px;line-height:1.65;margin:9px 0 0}
+    .device-wrap{height:530px;width:432px;max-width:100%;display:flex;align-items:flex-start;justify-content:center;position:relative}
+    .device{width:432px;height:500px;max-width:100%;position:relative;transition:height 300ms cubic-bezier(.2,.8,.2,1)}
+    .device.is-mini{height:52px}
+    .shell{position:absolute;inset:0 0 72px;border-radius:48px;background:linear-gradient(145deg,#e8f7fc 0%,#dcecf6 18%,#77a5f3 20%,#798bf1 83%,#c2e7f3 86%);padding:12px;box-shadow:0 16px 28px rgba(38,54,72,.22),inset 0 2px 2px rgba(255,255,255,.95),inset 0 -2px 5px rgba(38,69,119,.24);transition:inset 300ms cubic-bezier(.2,.8,.2,1),border-radius 300ms ease,opacity 180ms ease,transform 300ms ease;overflow:hidden}
+    .face{height:100%;border-radius:34px;padding:17px 22px 18px;background:linear-gradient(150deg,rgba(247,251,255,.96),rgba(218,229,242,.94));border:1px solid rgba(255,255,255,.92);box-shadow:inset 0 1px 0 white,inset 0 -7px 15px rgba(106,130,163,.13);position:relative;overflow:hidden}
+    .face::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.56);border-radius:29px;pointer-events:none}
+    .agents{height:43px;border-radius:15px;display:flex;align-items:center;gap:7px;padding:5px 7px;margin-bottom:10px;background:rgba(213,224,237,.6);border:1px solid rgba(194,207,223,.66);position:relative;z-index:1}
+    .agent{width:31px;height:31px;border-radius:9px;background:linear-gradient(#fff,#e9eef4);border:1px solid #dfe6ed;display:grid;place-items:center;color:#8da0b5;position:relative;box-shadow:0 2px 3px rgba(56,76,99,.08)}
+    .agent svg{width:18px;height:18px}.agent.active{border:2px solid #66a9d3;color:#25384c;box-shadow:0 0 0 2px rgba(89,170,159,.23),0 2px 4px #bbc9d6}.agent.active::after{content:"";position:absolute;width:7px;height:7px;right:3px;top:3px;border-radius:50%;background:#40b972;border:1px solid white}.agent.more{font-size:9px;font-weight:700;border-radius:50%;width:27px;height:27px;margin-left:auto}
+    .keypad{height:calc(100% - 53px);display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(5,1fr);gap:7px;position:relative;z-index:1}
+    .key{min-width:0;border-radius:12px;border:1px solid rgba(255,255,255,.88);background:linear-gradient(150deg,#fbfdff 0%,#eef3f8 56%,#e3eaf1 100%);box-shadow:0 5px 9px rgba(71,91,113,.12),inset 0 1px 0 white;color:#647487;display:grid;place-items:center;position:relative}
+    .key svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
+    .key.dark{color:#26374a}.key.soft{color:#a3aeb9}.key.blue{border-color:#91d5f5;color:#26374a;box-shadow:0 5px 9px rgba(71,91,113,.1),0 0 0 1px rgba(105,203,242,.16)}.key.orange{outline:2px solid #efb329;outline-offset:0;color:#34465a}
+    .key.power{color:#cb742d}.key.tall{grid-row:span 2}.key.wide{grid-column:span 2}.key:nth-child(1){grid-column:1;grid-row:1}.key:nth-child(2){grid-column:2;grid-row:1}.key:nth-child(3){grid-column:3;grid-row:1}.key:nth-child(4){grid-column:4;grid-row:1}.key:nth-child(5){grid-column:1;grid-row:2}.key:nth-child(6){grid-column:2;grid-row:2}.key:nth-child(7){grid-column:3;grid-row:2}.key:nth-child(8){grid-column:4;grid-row:2 / span 2}.key:nth-child(9){grid-column:1;grid-row:3}.key:nth-child(10){grid-column:2;grid-row:3}.key:nth-child(11){grid-column:3;grid-row:3}.key:nth-child(12){grid-column:1;grid-row:4}.key:nth-child(13){grid-column:2;grid-row:4}.key:nth-child(14){grid-column:3;grid-row:4}.key:nth-child(15){grid-column:4;grid-row:4 / span 2}.key:nth-child(16){grid-column:1;grid-row:5}.key:nth-child(17){grid-column:2 / span 2;grid-row:5}
+    .materials{position:absolute;right:-8px;top:193px;width:27px;height:73px;background:#fbfdff;border:1px solid #d9e1ea;border-radius:10px;box-shadow:0 4px 10px rgba(36,54,75,.17);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;z-index:3;color:#30435a;font-size:10px;font-weight:750;writing-mode:vertical-rl}
+    .materials i{font-style:normal;border-radius:50%;width:16px;height:16px;background:#559de0;color:white;display:grid;place-items:center;writing-mode:horizontal-tb;font-size:9px}
+    .caption{position:absolute;left:0;right:0;bottom:41px;height:28px;border-radius:9px;background:linear-gradient(#fff,#f8fafc);border:1px solid rgba(255,255,255,.96);box-shadow:0 3px 8px rgba(42,57,73,.11);transition:bottom 260ms ease,height 260ms ease,opacity 160ms ease}
+    .toggle{position:absolute;right:16px;top:14px;z-index:6;width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(197,213,230,.88);border-radius:10px;background:rgba(255,255,255,.86);color:#56718b;box-shadow:0 2px 6px rgba(44,65,88,.1);cursor:pointer;transition:transform 160ms ease,background 160ms ease,color 160ms ease,opacity 160ms ease}
+    .toggle:hover{background:#fff;color:#2778bc;transform:translateY(-1px)}.toggle:focus-visible{outline:3px solid rgba(48,135,218,.28);outline-offset:2px}.toggle svg{width:16px;height:16px}
+    .device.is-mini .shell{inset:0;height:52px;border-radius:18px;padding:4px;background:linear-gradient(105deg,#e3f3fb,#7899ec 25%,#7187ef 77%,#d9edf7);box-shadow:0 7px 20px rgba(38,54,72,.2),inset 0 1px white}
+    .device.is-mini .face{border-radius:13px;padding:0 55px 0 13px;display:flex;align-items:center;background:linear-gradient(100deg,#f7fbff,#e7eff7);overflow:hidden}
+    .device.is-mini .agents{height:36px;width:100%;margin:0;padding:2px 0;border:0;background:transparent;gap:6px}
+    .device.is-mini .agent{width:27px;height:27px;border-radius:8px}.device.is-mini .agent:nth-child(n+7){display:none}.device.is-mini .agent.more{display:grid}
+    .device.is-mini .keypad{opacity:0;transform:translateY(8px);pointer-events:none}
+    .device.is-mini .materials{display:none}
+    .device.is-mini .caption{bottom:-20px;height:17px;opacity:.96;border-radius:6px}
+    .device.is-mini .toggle{right:11px;top:9px;width:32px;height:32px}
+    .label{font-size:11px;color:#657589;display:flex;align-items:center;gap:8px}
+    .label-dot{width:7px;height:7px;border-radius:50%;background:#48b582;box-shadow:0 0 0 4px rgba(72,181,130,.12)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:520px){body{padding:18px}.device-wrap{height:470px;width:min(100%,390px)}.device{transform:scale(.9);transform-origin:top center}.copy h1{font-size:22px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <header class="copy">
+      <h1>同一块 SoftPad，自然收起</h1>
+      <p>保留真实设备的外壳、键盘体量和底部显示条。点右上角，在完整 SoftPad 与迷你栏之间切换。</p>
+    </header>
+    <div class="device-wrap">
+      <section class="device" id="device" aria-label="SoftPad 展示">
+        <div class="shell">
+          <div class="face">
+            <div class="agents" aria-label="应用状态">
+              <span class="agent active" title="Codex"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 20 7.8v8.4l-8 4.6-8-4.6V7.8l8-4.6Zm0 3.1L7 9.1v5.8l5 2.9 5-2.9V9.1l-5-2.8Z"/><circle cx="16.5" cy="7.5" r="2.5" fill="#35b972"/></svg></span>
+              <span class="agent" title="Claude"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="8" r="4" opacity=".55"/><circle cx="15.7" cy="9.4" r="5" opacity=".75"/><circle cx="12" cy="16" r="4.2" opacity=".45"/></svg></span>
+              <span class="agent" title="Cursor"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4" stroke="currentColor" stroke-width="2" opacity=".55"/></svg></span>
+              <span class="agent" title="WorkBuddy"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 7h14v12H5z" opacity=".45"/><path d="M8 7V5h8v2M8 11h8m-8 3h5" stroke="currentColor" stroke-width="1.7" fill="none"/></svg></span>
+              <span class="agent" title="Plan"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.4 6.2L21 10l-6.6 1.8L12 18l-2.4-6.2L3 10l6.6-1.8L12 2Z" opacity=".6"/><path d="m18.5 16 .9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></svg></span>
+              <span class="agent" title="应用"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="13" rx="2" fill="currentColor" opacity=".25"/><path d="M7 15h3l2-3 2 2 2-4 2 5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+              <span class="agent more">+8</span>
+            </div>
+            <div class="keypad" id="keys" aria-label="SoftPad 快捷按键">
+              <div class="key power"><svg viewBox="0 0 24 24"><path d="M12 3v8M6.2 6.8a8 8 0 1 0 11.6 0"/></svg></div>
+              <div class="key soft"><svg viewBox="0 0 24 24"><path d="m13 2-8 12h6l-1 8 9-12h-6l1-8Z"/></svg></div>
+              <div class="key dark"><svg viewBox="0 0 24 24"><path d="M8 4v16M16 4v16M4 8h16M4 16h16"/></svg></div>
+              <div class="key orange"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6m0-6-6 6"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="m5 11 7-7 7 7M12 4v16"/></svg></div>
+              <div class="key soft"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6m-6 4h6"/></svg></div>
+              <div class="key blue"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M12 8v8m-4-4h8"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5 5 5-5 5"/><path d="M4 5v14" opacity=".35"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="m5 9 7-7 7 7M12 2v14"/><path d="M5 17h14"/></svg></div>
+              <div class="key dark"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m9 9-3 3 3 3m4 0h4"/></svg></div>
+              <div class="key soft"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5 5 5-5 5"/></svg></div>
+              <div class="key dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6m0-6-6 6"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M9 7h6v10H9zM9 9h6"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/><path d="M4 5v14" opacity=".3"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="M5 11 12 4l7 7M12 4v16"/></svg></div>
+              <div class="key blue"><svg viewBox="0 0 24 24"><path d="M7 5h11v15H7z"/><path d="M7 8H4v13h11v-1M10 10l5 5m0-5-5 5"/></svg></div>
+              <div class="key soft"><svg viewBox="0 0 24 24"><path d="M8 8H4V4M4.5 8a8 8 0 1 1-.2 7"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/><path d="M4 5v14" opacity=".3"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/><path d="M4 5v14" opacity=".3"/></svg></div>
+              <div class="key wide dark"><svg viewBox="0 0 24 24"><path d="M8 4h11v16H8zM8 7H5v14h11v-1M11 9l5 5m0-5-5 5"/></svg></div>
+              <div class="key"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg></div>
+            </div>
+          </div>
+          <div class="materials"><span>材料</span><i>1</i></div>
+        </div>
+        <button class="toggle" id="toggle" type="button" aria-expanded="true" aria-label="收起 SoftPad" title="收起 SoftPad">
+          <svg id="toggleIcon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8.2 10 12l4-3.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="caption" aria-label="状态显示条"></div>
+      </section>
+    </div>
+    <div class="label"><i class="label-dot"></i><span id="state">完整 SoftPad · 约 432 × 500</span></div>
+  </main>
+  <script>
+    (function(){var device=document.getElementById('device'),button=document.getElementById('toggle'),icon=document.getElementById('toggleIcon'),state=document.getElementById('state'),mini=false;button.addEventListener('click',function(){mini=!mini;device.classList.toggle('is-mini',mini);button.setAttribute('aria-expanded',String(!mini));button.setAttribute('aria-label',mini?'展开 SoftPad':'收起 SoftPad');button.title=mini?'展开 SoftPad':'收起 SoftPad';icon.innerHTML=mini?'<path d="m6 11.8 4-3.8 4 3.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>':'<path d="M6 8.2 10 12l4-3.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>';state.textContent=mini?'迷你栏 · 约 400 × 48':'完整 SoftPad · 约 432 × 500';});})();
+  </script>
+</body>
+</html>

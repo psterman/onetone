@@ -73,6 +73,7 @@ for (const f of [
   'home-focus-store.js',
   'home-focus-adapter.js',
   'home-action-policy.js',
+  'home-focus-triad.js',
   'home-focus-view.js',
   'home-agent-status-strip.js',
   'cursor-work-view.js',
@@ -312,7 +313,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
         status: 'resumable',
         title: '首页 Agent 原型设计',
         description: '继续整理',
-        updatedAt: 1
+        updatedAt: Date.now() - 60_000
       },
       nextAction: { title: '继续上次工作', kind: 'resume', executable: true },
       source: { freshness: 'live', reason: 't' }
@@ -1668,8 +1669,18 @@ if (/dto\s*&&\s*dto\.asOf|asOf\s*:/.test(fetchFn[0])) {
 if (!/projectHintForHome/.test(nowHomeSrc)) {
   throw new Error('fetchAgentHomeSnapshot must use projectHintForHome for real roots');
 }
-if (!/indexOf\('\/'\)|indexOf\('\\\\'\)|indexOf\(':'\)/.test(nowHomeSrc)) {
-  throw new Error('projectHintForHome must reject non-path display names');
+if (!/OneToneProjectPath/.test(nowHomeSrc) || !/normalizeAbsolutePath/.test(nowHomeSrc)) {
+  throw new Error('projectHintForHome must use shared OneToneProjectPath.normalizeAbsolutePath');
+}
+const projectPathSrc = fs.readFileSync(
+  path.join(root, 'src/js/core/project-path.js'),
+  'utf8'
+);
+if (!/normalizeAbsolutePath/.test(projectPathSrc)) {
+  throw new Error('project-path.js missing normalizeAbsolutePath');
+}
+if (!/\$\^[A-Za-z]:|UNC|relative|display/.test(projectPathSrc)) {
+  throw new Error('project-path.js must reject non-absolute / display-name paths');
 }
 if (!/Do NOT key on asOf/.test(fetchFn[0])) {
   throw new Error('fetchAgentHomeSnapshot should document asOf flicker guard');

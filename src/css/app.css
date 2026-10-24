@@ -3441,18 +3441,22 @@
     #settingsPanelHabits #habitWizardView[hidden],
     #settingsPanelHabits #habitDetailView[hidden],
     #settingsPanelHabits [hidden]{display:none!important}
-    .habit-hub-shell{display:grid;gap:14px}
-    .habit-hub-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .habit-hub-shell{display:grid;gap:10px}
+    .habit-hub-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
     .habit-hub-head-text{flex:1;min-width:0}
     .habit-hub-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .habit-hub-head .pref-page-title{margin:0 0 4px}
-    .habit-hub-head .settings-panel-desc{margin:0}
+    .habit-hub-head .pref-page-title{margin:0 0 2px;font-size:18px;line-height:1.2}
+    .habit-hub-head .settings-panel-desc{
+      margin:0;font-size:12px;line-height:1.35;
+      display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden
+    }
     .habit-hub-hint{
-      margin:8px 0 0;padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.45;
+      display:none;
+      margin:6px 0 0;padding:6px 8px;border-radius:8px;font-size:11px;line-height:1.4;
       color:var(--on-surface-muted);background:var(--surface-soft);border:1px solid var(--outline-variant);
     }
     .habit-hub-new-btn{
-      flex-shrink:0;height:34px;padding:0 14px;border-radius:10px;border:0;
+      flex-shrink:0;height:30px;padding:0 12px;border-radius:9px;border:0;
       background:var(--primary);color:var(--on-primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;
     }
     .habit-hub-new-btn.is-secondary,

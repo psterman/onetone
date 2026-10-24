@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 习惯命令手风琴</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5c6b7a;
+      --faint: #8a97a5;
+      --line: #d5dde6;
+      --panel: #fff;
+      --wash: #eef2f5;
+      --rail: #f7f9fb;
+      --teal: #0f6e6a;
+      --teal-soft: #e3f3f1;
+      --key: #2a5f8f;
+      --key-soft: #e7f0f8;
+      --pad: #5a4d8c;
+      --pad-soft: #efeaf8;
+      --cam: #8a5a28;
+      --cam-soft: #f8efe4;
+      --warn: #9a6118;
+      --warn-soft: #fff4df;
+      --voice: #0f6e6a;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d8e4e6 0%, #e8ecef 48%, #dfe6ea 100%);
+      color: var(--ink);
+      font: 13px/1.45 var(--font);
+    }
+    button, input, summary { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, summary:focus-visible { outline: 2px solid #16a6a0; outline-offset: 2px; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1180px, calc(100% - 28px)); margin: 20px auto 48px; }
+    .stage-head { margin: 0 2px 14px; }
+    .stage-head h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage-head p { margin: 6px 0 0; color: var(--muted); max-width: 720px; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 640px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+
+    .apps {
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      padding: 14px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .apps h3 { margin: 0 4px 4px; font-size: 12px; color: var(--faint); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .apps input {
+      width: 100%; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; background: #fff;
+    }
+    .app {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; text-align: left; border: 1px solid transparent;
+      background: transparent; border-radius: 10px; padding: 9px 10px; color: inherit;
+    }
+    .app:hover { background: #fff; }
+    .app.is-on { background: #fff; border-color: var(--line); box-shadow: 0 1px 0 rgba(0,0,0,.03); }
+    .app .ico {
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      background: #dde7ea; font-weight: 700; font-size: 12px;
+    }
+    .app .ico.cursor { background: #1e1e1e; color: #fff; }
+    .app strong { display: block; font-size: 13px; }
+    .app small { color: var(--muted); font-size: 11px; }
+    .live { width: 8px; height: 8px; border-radius: 50%; background: #2a9b6a; margin-left: auto; }
+
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .truth {
+      display: grid; grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+    }
+    .truth > div, .truth > button {
+      background: var(--wash); padding: 10px 14px; border: 0; text-align: left;
+    }
+    .truth label { display: block; font-size: 11px; color: var(--faint); }
+    .truth strong { font-size: 13px; }
+    .truth .warn { background: var(--warn-soft); }
+    .truth button { color: var(--teal); font-weight: 600; cursor: pointer; }
+
+    .hub {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .entry {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fbfcfd, #f3f6f8);
+    }
+    .zone-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 8px;
+    }
+    .zone-tag i {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+    }
+    .entry-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .entry-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .entry-card .row { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .entry-card strong { font-size: 13px; }
+    .entry-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge.ro { background: #e8edf1; color: #4a5a68; }
+    .badge.bound { background: var(--teal-soft); color: var(--teal); }
+    .badge.empty { background: #f0f2f4; color: var(--faint); }
+    .badge.dl { background: var(--key-soft); color: var(--key); }
+    .linkish {
+      align-self: start; border: 0; background: transparent;
+      color: var(--teal); padding: 0; font-size: 12px; font-weight: 600;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: minmax(280px, 300px) 1fr;
+      min-height: 420px;
+    }
+
+    .cmds {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 0; overflow: auto;
+    }
+    .cmds-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0 4px 4px;
+    }
+    .cmds-head strong { font-size: 13px; }
+    .cmds-head span { color: var(--faint); font-size: 11px; }
+    .add-ways {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px 6px;
+    }
+    .add-ways button {
+      border: 1px dashed var(--line); background: var(--rail);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; color: var(--muted);
+    }
+
+    .acc {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .acc > summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #f7f9fb;
+      user-select: none;
+    }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc > summary::before {
+      content: "▸"; color: var(--faint); font-size: 11px; width: 12px;
+      transition: transform .12s ease;
+    }
+    .acc[open] > summary::before { transform: rotate(90deg); }
+    .acc-ico {
+      width: 20px; height: 20px; border-radius: 6px;
+      display: grid; place-items: center; font-size: 10px; font-weight: 700; flex: none;
+    }
+    .acc-ico.input { background: #e8f0fa; color: var(--key); }
+    .acc-ico.agent { background: #e3f3f1; color: var(--teal); }
+    .acc-ico.decision { background: var(--cam-soft); color: var(--cam); }
+    .acc-ico.session { background: #e7f5ec; color: #2f7a4e; }
+    .acc-ico.system { background: #eef1f3; color: var(--muted); }
+    .acc-title { flex: 1; font-weight: 650; font-size: 12px; }
+    .acc-count {
+      font-size: 11px; color: var(--faint);
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 999px; padding: 1px 7px;
+    }
+    .acc-body { padding: 4px 4px 6px; border-top: 1px solid var(--line); }
+
+    .cmd {
+      width: 100%; text-align: left; border: 1px solid transparent;
+      background: transparent; border-radius: 10px; padding: 8px 10px; color: inherit;
+    }
+    .cmd:hover { background: var(--rail); }
+    .cmd.is-on { background: var(--teal-soft); border-color: #b7ddd8; }
+    .cmd strong { display: block; font-size: 13px; }
+    .cmd small { color: var(--muted); font-size: 11px; display: block; margin-top: 2px; }
+    .lights { display: flex; gap: 5px; margin-top: 7px; }
+    .lights span {
+      width: 8px; height: 8px; border-radius: 50%; background: #d5dde4;
+    }
+    .lights .voice.on { background: var(--voice); }
+    .lights .key.on { background: var(--key); }
+    .lights .pad.on { background: var(--pad); }
+    .lights .cam.on { background: var(--cam); }
+    .note-no-new {
+      margin-top: auto; padding: 8px 10px; border-radius: 10px;
+      background: var(--wash); color: var(--muted); font-size: 11px;
+    }
+
+    .detail { padding: 14px 16px 18px; background: #fff; min-width: 0; overflow: auto; }
+    .detail-head {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .mark {
+      width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+      background: var(--teal); color: #fff; font-weight: 700; font-size: 16px;
+    }
+    .detail-head h2 { margin: 0; font-size: 18px; }
+    .detail-head p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .detail-head .status {
+      margin-left: auto; background: var(--teal-soft); color: var(--teal);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700;
+    }
+
+    .sec { margin-bottom: 16px; }
+    .sec-h {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .sec-h h3 { margin: 0; font-size: 13px; }
+    .sec-h span { color: var(--faint); font-size: 11px; }
+    .effect {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--rail);
+    }
+    .effect strong { display: block; margin-bottom: 4px; }
+    .effect p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+      background: #fff; display: flex; flex-direction: column; gap: 8px; min-height: 128px;
+    }
+    .card.voice { border-top: 3px solid var(--teal); }
+    .card.key { border-top: 3px solid var(--key); }
+    .card.pad { border-top: 3px solid var(--pad); }
+    .card.cam { border-top: 3px solid var(--cam); }
+    .card-h { display: flex; justify-content: space-between; align-items: center; }
+    .card-h .lab { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+    .card-h .ico {
+      width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+    }
+    .card.voice .ico { background: var(--teal); }
+    .card.key .ico { background: var(--key); }
+    .card.pad .ico { background: var(--pad); }
+    .card.cam .ico { background: var(--cam); }
+    .card .val { margin: 0; font-size: 13px; line-height: 1.4; flex: 1; }
+    .card .val .dim { color: var(--faint); font-size: 11px; display: block; margin-top: 4px; }
+    .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .acts button {
+      border: 1px solid var(--line); background: var(--rail);
+      border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
+    }
+    .acts button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .acts button.secondary { background: #fff; color: var(--pad); border-color: #d4cce8; }
+    .acts button.deep { background: var(--key-soft); border-color: #c5d8ea; color: var(--key); }
+
+    .card.is-clickable { cursor: pointer; }
+    .card.is-clickable:hover { border-color: #b7ddd8; background: #fbfefe; }
+    .effect.is-editable { cursor: text; }
+    .effect.is-editable:focus-within { border-color: #9fd0cb; box-shadow: 0 0 0 3px rgba(15,110,106,.12); }
+    .effect textarea {
+      width: 100%; min-height: 52px; margin: 6px 0 0; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 8px; resize: vertical;
+      font: inherit; color: var(--ink); background: #fff;
+    }
+    .effect .edit-hint { margin: 6px 0 0; font-size: 11px; color: var(--teal); font-weight: 650; }
+
+    .inline-binding-editor {
+      display: none; margin-top: 10px; padding: 12px;
+      border: 1px solid #b7ddd8; border-radius: 12px; background: var(--teal-soft);
+    }
+    .inline-binding-editor.is-open { display: block; }
+    .inline-binding-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .inline-binding-head strong { color: var(--teal); font-size: 12px; }
+    .inline-binding-head button {
+      padding: 0; border: 0; background: transparent; color: var(--muted);
+      cursor: pointer; font-size: 18px; line-height: 1;
+    }
+    .inline-binding-form { display: flex; align-items: end; gap: 8px; margin-top: 9px; }
+    .inline-binding-form label { flex: 1; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .inline-binding-form input,
+    .inline-binding-form select {
+      width: 100%; margin-top: 4px; padding: 7px 8px;
+      border: 1px solid #b7d9d6; border-radius: 8px; background: #fff; font: inherit;
+    }
+    .inline-binding-form > button {
+      padding: 7px 12px; border: 0; border-radius: 8px;
+      background: var(--teal); color: #fff; font-weight: 700; white-space: nowrap;
+    }
+
+    .legend {
+      margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+      background: var(--wash); border: 1px dashed var(--line);
+      display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 11px; color: var(--muted);
+    }
+    .legend b { color: var(--ink); }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .apps { border-right: 0; border-bottom: 1px solid var(--line); }
+      .body { grid-template-columns: 1fr; }
+      .cmds { border-right: 0; border-bottom: 1px solid var(--line); max-height: 420px; }
+      .entry-grid, .grid, .truth { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型 · 手风琴定稿</strong>
+    <em>区 2 按 ActionCategory 折叠</em>
+    <span>右列保持怎么调用 · 无来源商店 Tab</span>
+    <span>已落地 → habit-command-link（五类手风琴 + 内联说法/Pad/手势；按键深链）</span>
+    <span class="hint">prototypes/onetone-habit-cmd-accordion.html</span>
+  </div>
+
+  <div class="stage">
+    <div class="stage-head">
+      <h1>习惯命令 · 手风琴列表</h1>
+      <p>已落地现网：区 2 按 ActionCategory 五类折叠；区 3 点卡内联改说法/Pad/手势，按键深链；不做来源商店。</p>
+    </div>
+
+    <div class="shell" aria-label="习惯命令手风琴">
+      <aside class="apps" aria-label="应用习惯">
+        <h3>应用习惯</h3>
+        <input type="search" placeholder="筛选应用或习惯" aria-label="筛选" />
+        <button type="button" class="app"><span class="ico">∞</span><span><strong>基础</strong><small>通用默认 · 可继承</small></span></button>
+        <button type="button" class="app is-on"><span class="ico cursor">C</span><span><strong>Cursor · 工作</strong><small>正在编辑</small></span><i class="live" title="正在使用"></i></button>
+        <button type="button" class="app"><span class="ico">O</span><span><strong>Codex · 审查</strong><small>2 条命令</small></span></button>
+      </aside>
+
+      <div class="main">
+        <div class="truth" aria-label="范围">
+          <div><label>前台应用</label><strong>Cursor</strong></div>
+          <div><label>正在使用</label><strong>Cursor · 工作</strong></div>
+          <div class="warn"><label>正在编辑</label><strong>Cursor · 工作</strong>（≠ 自动切换运行）</div>
+          <button type="button">对准前台</button>
+        </div>
+
+        <div class="hub">
+          <section class="entry" aria-label="习惯入口">
+            <div class="zone-tag"><i></i>区 1 · 习惯入口</div>
+            <div class="entry-grid">
+              <div class="entry-card">
+                <div class="row">
+                  <strong>启动键</strong>
+                  <span class="badge ro">readonly · 按键页</span>
+                </div>
+                <p>音量 − · 按住说话</p>
+                <button type="button" class="linkish">查看 / 修改 → 按键页</button>
+              </div>
+              <div class="entry-card">
+                <div class="row">
+                  <strong>唤醒方式</strong>
+                  <span class="badge ro">readonly · 语音页</span>
+                </div>
+                <p>免按键开 · 「小一小一」</p>
+                <button type="button" class="linkish">查看 / 修改 → 语音页</button>
+              </div>
+              <div class="entry-card">
+                <div class="row">
+                  <strong>识别引擎</strong>
+                  <span class="badge ro">readonly · 语音页</span>
+                </div>
+                <p>本地离线 · 中文模型</p>
+                <button type="button" class="linkish">查看 / 修改 → 语音页</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="body">
+            <aside class="cmds" aria-label="命令列表">
+              <div class="zone-tag"><i></i>区 2 · 命令列表</div>
+              <div class="cmds-head">
+                <strong>本习惯 · 命令</strong>
+                <span>12 条 · category</span>
+              </div>
+              <div class="add-ways" aria-label="添加来源">
+                <button type="button">从动作库添加</button>
+                <button type="button">从已有键位添加</button>
+                <button type="button">从已有口令添加</button>
+              </div>
+
+              <details class="acc" open data-cat="input">
+                <summary>
+                  <span class="acc-ico input">入</span>
+                  <span class="acc-title">控制输入</span>
+                  <span class="acc-count">2</span>
+                </summary>
+                <div class="acc-body">
+                  <button type="button" class="cmd" data-cmd="send">
+                    <strong>发送</strong>
+                    <small>input.send</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key"></span><span class="pad"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                  <button type="button" class="cmd" data-cmd="dictation">
+                    <strong>开始说话</strong>
+                    <small>startDictation</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice"></span><span class="key"></span><span class="pad on"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                </div>
+              </details>
+
+              <details class="acc" open data-cat="agent">
+                <summary>
+                  <span class="acc-ico agent">A</span>
+                  <span class="acc-title">控制当前 Agent</span>
+                  <span class="acc-count">3</span>
+                </summary>
+                <div class="acc-body">
+                  <button type="button" class="cmd is-on" data-cmd="status">
+                    <strong>查看状态</strong>
+                    <small>status</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key"></span><span class="pad"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                  <button type="button" class="cmd" data-cmd="continue">
+                    <strong>继续回复</strong>
+                    <small>continueReply</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key on"></span><span class="pad on"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                  <button type="button" class="cmd" data-cmd="plan">
+                    <strong>制定计划</strong>
+                    <small>plan</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice"></span><span class="key on"></span><span class="pad on"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                </div>
+              </details>
+
+              <details class="acc" data-cat="decision">
+                <summary>
+                  <span class="acc-ico decision">决</span>
+                  <span class="acc-title">确认或拒绝</span>
+                  <span class="acc-count">1</span>
+                </summary>
+                <div class="acc-body">
+                  <button type="button" class="cmd" data-cmd="permissions">
+                    <strong>权限</strong>
+                    <small>permissions</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice"></span><span class="key"></span><span class="pad on"></span><span class="cam on"></span>
+                    </div>
+                  </button>
+                </div>
+              </details>
+
+              <details class="acc" data-cat="session">
+                <summary>
+                  <span class="acc-ico session">会</span>
+                  <span class="acc-title">会话与状态</span>
+                  <span class="acc-count">1</span>
+                </summary>
+                <div class="acc-body">
+                  <button type="button" class="cmd" data-cmd="new">
+                    <strong>新建对话</strong>
+                    <small>newThread</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key on"></span><span class="pad on"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                </div>
+              </details>
+
+              <details class="acc" open data-cat="system">
+                <summary>
+                  <span class="acc-ico system">界</span>
+                  <span class="acc-title">应用与界面</span>
+                  <span class="acc-count">3</span>
+                </summary>
+                <div class="acc-body">
+                  <button type="button" class="cmd" data-cmd="undo">
+                    <strong>撤销</strong>
+                    <small>undo</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key on"></span><span class="pad"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                  <button type="button" class="cmd" data-cmd="term">
+                    <strong>打开终端</strong>
+                    <small>openTerminal</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key on"></span><span class="pad on"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                  <button type="button" class="cmd" data-cmd="settings">
+                    <strong>打开设置</strong>
+                    <small>openSettings</small>
+                    <div class="lights" aria-hidden="true">
+                      <span class="voice on"></span><span class="key on"></span><span class="pad"></span><span class="cam"></span>
+                    </div>
+                  </button>
+                </div>
+              </details>
+
+              <p class="note-no-new">灯序：口头 · 键 · 屏幕 · 摄像。无空白新建；身份 = actionId + actionInstanceId。</p>
+            </aside>
+
+            <article class="detail" aria-label="怎么调用">
+              <div class="zone-tag"><i></i>区 3 · 怎么调用</div>
+              <div class="detail-head">
+                <div class="mark">状</div>
+                <div>
+                  <h2>查看状态</h2>
+                  <p id="detailBlurb">读出当前 Agent / 场景状态</p>
+                </div>
+                <span class="status">已启用</span>
+              </div>
+
+              <section class="sec">
+                <div class="sec-h"><h3>做什么</h3><span>命令内容的唯一编辑位置</span></div>
+                <div class="effect is-editable" id="effectBlock">
+                  <strong id="effectId">status</strong>
+                  <textarea id="effectBody" aria-label="命令说明">读出当前 Agent / 场景状态。在此改命令含义；通道页只管入口。</textarea>
+                  <p class="edit-hint">对齐 IA v2：习惯页改「做什么」，不是只读说明。</p>
+                </div>
+              </section>
+
+              <section class="sec">
+                <div class="sec-h"><h3>怎么调用</h3><span>每个通道在此内联配置入口</span></div>
+                <div class="grid">
+                  <div class="card voice is-clickable" data-inline-channel="voice">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">声</span>语音</span>
+                      <span class="badge bound">bound · habit</span>
+                    </div>
+                    <p class="val" data-bind-val>「查看状态」「status」</p>
+                    <div class="acts">
+                      <button type="button" class="primary" data-inline-open="voice">改说法</button>
+                    </div>
+                  </div>
+                  <div class="card key is-clickable" data-inline-channel="key">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">键</span>执行按键</span>
+                      <span class="badge empty">empty · habit</span>
+                    </div>
+                    <p class="val" data-bind-val>未录制<span class="dim">习惯内录制；冲突诊断仍在按键页</span></p>
+                    <div class="acts">
+                      <button type="button" class="primary" data-inline-open="key">录按键</button>
+                    </div>
+                  </div>
+                  <div class="card pad is-clickable" data-inline-channel="pad">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">P</span>Soft Pad</span>
+                      <span class="badge empty">empty · habit</span>
+                    </div>
+                    <p class="val" data-bind-val>未配 Pad 键<span class="dim">习惯内绑命令 ↔ 键</span></p>
+                    <div class="acts">
+                      <button type="button" class="primary" data-inline-open="pad">选 Pad 键</button>
+                      <button type="button" class="secondary" data-pad-layout>改布局 / 外观 → Pad 页</button>
+                    </div>
+                  </div>
+                  <div class="card cam is-clickable" data-inline-channel="camera">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">视</span>摄像头</span>
+                      <span class="badge empty">empty · habit</span>
+                    </div>
+                    <p class="val" data-bind-val>未绑定本习惯手势<span class="dim">阈值与校准仍在摄像头页</span></p>
+                    <div class="acts">
+                      <button type="button" class="primary" data-inline-open="camera">选手势</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="inline-binding-editor" id="inlineBindingEditor" aria-live="polite">
+                  <div class="inline-binding-head">
+                    <strong id="inlineBindingTitle">在当前习惯内编辑语音说法</strong>
+                    <button type="button" id="inlineBindingClose" aria-label="关闭内联编辑">×</button>
+                  </div>
+                  <div class="inline-binding-form" id="inlineBindingForm">
+                    <label id="inlineBindingLabel">说法<input id="inlineBindingInput" value="查看状态，status" /></label>
+                    <button type="button" id="inlineBindingSave">保存绑定</button>
+                  </div>
+                </div>
+              </section>
+
+              <div class="legend" aria-label="状态图例">
+                <span><b>内联</b> 说法 / 执行键 / Pad 键 / 手势在此改</span>
+                <span><b>通道页</b> 只留布局、阈值、冲突诊断</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var currentCmd = 'status';
+      var detail = {
+        status: {
+          mark: '状', title: '查看状态', id: 'status', blurb: '读出当前 Agent / 场景状态',
+          effect: '读出当前 Agent / 场景状态。在此改命令含义；通道页只管入口。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「查看状态」「status」', say: '查看状态，status' },
+          key: { badge: 'empty · habit', badgeCls: 'empty', val: '未录制', dim: '习惯内录制；冲突诊断仍在按键页', chord: '' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配 Pad 键', dim: '习惯内绑命令 ↔ 键', micro: '' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定本习惯手势', dim: '阈值与校准仍在摄像头页', gesture: '' }
+        },
+        continue: {
+          mark: '继', title: '继续回复', id: 'continueReply', blurb: '让 Agent 接着当前上下文工作',
+          effect: '保留当前约束，检查已有结果，然后直接推进下一步。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「继续」「接着写」', say: '继续，接着写' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+Enter', dim: '≠ 上方启动键', chord: 'Ctrl+Enter' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG02', dim: '工作习惯专用', micro: 'AG02' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        plan: {
+          mark: '计', title: '制定计划', id: 'plan', blurb: '让 Agent 进入计划模式',
+          effect: '让 Agent 进入计划模式。',
+          voice: { badge: 'empty · habit', badgeCls: 'empty', val: '未配说法', say: '' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+Alt+P', chord: 'Ctrl+Alt+P' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG08', micro: 'AG08' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        send: {
+          mark: '发', title: '发送', id: 'input.send', blurb: '完成本轮并发送',
+          effect: '完成本轮并发送到当前目标。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「发送」', say: '发送' },
+          key: { badge: 'empty · habit', badgeCls: 'empty', val: '未录制', chord: '' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配', micro: '' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        dictation: {
+          mark: '说', title: '开始说话', id: 'startDictation', blurb: '开始听写',
+          effect: '开始听写。',
+          voice: { badge: 'empty · habit', badgeCls: 'empty', val: '未配说法', say: '' },
+          key: { badge: 'empty · habit', badgeCls: 'empty', val: '未录制', chord: '' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG01', micro: 'AG01' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        permissions: {
+          mark: '权', title: '权限', id: 'permissions', blurb: '权限确认相关入口',
+          effect: '打开权限确认相关入口。',
+          voice: { badge: 'empty · habit', badgeCls: 'empty', val: '未配说法', say: '' },
+          key: { badge: 'empty · habit', badgeCls: 'empty', val: '未录制', chord: '' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG11', micro: 'AG11' },
+          cam: { badge: 'bound · habit', badgeCls: 'bound', val: '点头 = 批准', gesture: '点头' }
+        },
+        new: {
+          mark: '新', title: '新建对话', id: 'newThread', blurb: '开一条新会话',
+          effect: '开一条新会话。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「新建对话」', say: '新建对话' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+N', chord: 'Ctrl+N' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG03', micro: 'AG03' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        undo: {
+          mark: '撤', title: '撤销', id: 'undo', blurb: '撤销上一步编辑',
+          effect: '撤销上一步编辑。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「撤销」', say: '撤销' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+Z', chord: 'Ctrl+Z' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配', micro: '' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        term: {
+          mark: '终', title: '打开终端', id: 'openTerminal', blurb: '打开终端面板',
+          effect: '打开终端面板。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「打开终端」', say: '打开终端' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+`', chord: 'Ctrl+`' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG07', micro: 'AG07' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        },
+        settings: {
+          mark: '设', title: '打开设置', id: 'openSettings', blurb: '打开应用设置',
+          effect: '打开应用设置。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「打开设置」', say: '打开设置' },
+          key: { badge: 'bound · habit', badgeCls: 'bound', val: 'Ctrl+,', chord: 'Ctrl+,' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配', micro: '' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', gesture: '' }
+        }
+      };
+
+      var inlineMeta = {
+        voice: { title: '在当前习惯内编辑语音说法', label: '说法', field: 'say', placeholder: '例如：继续 / 接着写' },
+        key: { title: '在当前习惯内录制按键', label: '执行快捷键', field: 'chord', placeholder: '按下组合键' },
+        pad: { title: '在当前习惯内选择 Soft Pad 按键', label: 'Pad 按键', field: 'micro', kind: 'select', options: ['AG01', 'AG02', 'AG03', 'AG07', 'AG08', 'AG11', '未绑定'] },
+        camera: { title: '在当前习惯内选择手势', label: '手势', field: 'gesture', kind: 'select', options: ['OK 手势', '点头', '挥手', '眨眼', '未绑定'] }
+      };
+
+      var root = document.querySelector('.detail');
+      var editor = document.getElementById('inlineBindingEditor');
+      var inlineTitle = document.getElementById('inlineBindingTitle');
+      var inlineLabel = document.getElementById('inlineBindingLabel');
+      var inlineInput = document.getElementById('inlineBindingInput');
+      var effectBody = document.getElementById('effectBody');
+
+      function cardKey(ch) { return ch === 'camera' ? 'cam' : ch; }
+
+      function paint(id) {
+        var d = detail[id];
+        if (!d) return;
+        currentCmd = id;
+        root.querySelector('.mark').textContent = d.mark;
+        root.querySelector('h2').textContent = d.title;
+        document.getElementById('detailBlurb').textContent = d.blurb;
+        document.getElementById('effectId').textContent = d.id;
+        effectBody.value = d.effect;
+        ['voice', 'key', 'pad', 'cam'].forEach(function (ch) {
+          var card = root.querySelector('.card.' + ch);
+          var meta = d[ch];
+          var badge = card.querySelector('.badge');
+          badge.className = 'badge ' + meta.badgeCls;
+          badge.textContent = meta.badge;
+          var val = card.querySelector('[data-bind-val]');
+          val.innerHTML = meta.val + (meta.dim ? '<span class="dim">' + meta.dim + '</span>' : '');
+        });
+        editor.classList.remove('is-open');
+      }
+
+      function openInline(channel) {
+        var d = detail[currentCmd];
+        var meta = inlineMeta[channel];
+        if (!d || !meta) return;
+        var row = d[cardKey(channel)];
+        editor.dataset.channel = channel;
+        inlineTitle.textContent = meta.title;
+        var value = row[meta.field] || '';
+        if (meta.kind === 'select') {
+          var opts = meta.options.map(function (o) {
+            var sel = (value && o === value) || (!value && o === '未绑定') ? ' selected' : '';
+            return '<option' + sel + '>' + o + '</option>';
+          }).join('');
+          inlineLabel.innerHTML = meta.label + '<select id="inlineBindingInput">' + opts + '</select>';
+        } else {
+          inlineLabel.innerHTML = meta.label + '<input id="inlineBindingInput" value="' + String(value).replace(/"/g, '&quot;') + '" placeholder="' + meta.placeholder + '" />';
+        }
+        inlineInput = document.getElementById('inlineBindingInput');
+        editor.classList.add('is-open');
+        inlineInput.focus();
+      }
+
+      function saveInline() {
+        var channel = editor.dataset.channel || 'voice';
+        var meta = inlineMeta[channel];
+        var d = detail[currentCmd];
+        if (!meta || !d) return;
+        inlineInput = document.getElementById('inlineBindingInput');
+        var value = String(inlineInput.value || '').trim();
+        if (value === '未绑定') value = '';
+        var row = d[cardKey(channel)];
+        row[meta.field] = value;
+        if (channel === 'voice') {
+          row.val = value ? '「' + value.split(/[，,]/).join('」「') + '」' : '未配说法';
+          row.badgeCls = value ? 'bound' : 'empty';
+          row.badge = value ? 'bound · habit' : 'empty · habit';
+        } else if (channel === 'key') {
+          row.val = value || '未录制';
+          row.dim = value ? '习惯内录制' : '习惯内录制；冲突诊断仍在按键页';
+          row.badgeCls = value ? 'bound' : 'empty';
+          row.badge = value ? 'bound · habit' : 'empty · habit';
+        } else if (channel === 'pad') {
+          row.val = value || '未配 Pad 键';
+          row.badgeCls = value ? 'bound' : 'empty';
+          row.badge = value ? 'bound · habit' : 'empty · habit';
+        } else {
+          row.val = value || '未绑定本习惯手势';
+          row.badgeCls = value ? 'bound' : 'empty';
+          row.badge = value ? 'bound · habit' : 'empty · habit';
+        }
+        paint(currentCmd);
+      }
+
+      effectBody.addEventListener('change', function () {
+        if (detail[currentCmd]) detail[currentCmd].effect = effectBody.value;
+      });
+
+      document.querySelectorAll('.cmd').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.cmd').forEach(function (b) { b.classList.remove('is-on'); });
+          btn.classList.add('is-on');
+          paint(btn.getAttribute('data-cmd'));
+        });
+      });
+
+      document.querySelectorAll('[data-inline-channel]').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          if (e.target.closest('[data-pad-layout]')) return;
+          openInline(card.getAttribute('data-inline-channel'));
+        });
+      });
+      document.getElementById('inlineBindingClose').addEventListener('click', function () {
+        editor.classList.remove('is-open');
+      });
+      document.getElementById('inlineBindingSave').addEventListener('click', saveInline);
+    })();
+  </script>
+</body>
+</html>

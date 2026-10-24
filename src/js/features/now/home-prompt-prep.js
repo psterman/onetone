@@ -285,14 +285,23 @@
 
   function materialRefOf(row) {
     if (!row) return null;
-    return {
+    var kind = row.kind || 'text';
+    var ref = {
       id: row.id,
-      kind: row.kind || 'text',
+      kind: kind,
       name: row.name || '未命名素材',
       included: row.included !== false,
       needsManualUpload: !!row.needsManualUpload,
-      previewDataUrl: row.previewDataUrl || ''
+      previewDataUrl: row.previewDataUrl || '',
+      source: row.source || '',
+      path: row.path || '',
+      description: row.description || ''
     };
+    // Text paste must be editable on the home dock cards.
+    if (kind === 'text' || kind === 'url') {
+      ref.content = row.content || '';
+    }
+    return ref;
   }
 
   function getMaterialSummary() {
@@ -829,6 +838,50 @@
           model.phase = 'COLLECTING';
         }
         syncUiAfterMutation();
+      }
+      return m;
+    }
+    return null;
+  }
+
+  /** Edit pasted text / rename card — used by home dock material cards. */
+  function updateMaterialContent(id, patch, opts) {
+    patch = patch || {};
+    opts = opts || {};
+    var mid = String(id || '');
+    if (derivePhase() === 'HANDING_OFF') return null;
+    for (var i = 0; i < model.materials.length; i++) {
+      var m = model.materials[i];
+      if (!m || m.id !== mid) continue;
+      var changed = false;
+      if (patch.content != null) {
+        var next = String(patch.content);
+        if (m.content !== next) {
+          m.content = next;
+          m.description = truncateSummary(next.replace(/\s+/g, ' ').trim(), 80);
+          if (m.kind === 'text') {
+            m.name =
+              truncateSummary(next.replace(/\s+/g, ' ').trim(), 28) || m.name || '文字';
+          }
+          changed = true;
+        }
+      }
+      if (patch.name != null) {
+        var nm = String(patch.name);
+        if (m.name !== nm) {
+          m.name = nm;
+          changed = true;
+        }
+      }
+      if (changed) {
+        bumpContentRevision();
+        clearAssemblyAndHandoff();
+        if (model.phase === 'ASSEMBLED' || model.phase === 'CHANNEL_SELECTED') {
+          model.phase = 'COLLECTING';
+        }
+        // skipSync: typing in dock card — keep focus, persist only.
+        if (opts.skipSync) saveModel();
+        else syncUiAfterMutation();
       }
       return m;
     }
@@ -2379,6 +2432,7 @@
     setDraftBody: setDraftBody,
     setDraftTitle: setDraftTitle,
     updateMaterialFlags: updateMaterialFlags,
+    updateMaterialContent: updateMaterialContent,
     addMaterial: addMaterial,
     beginMaterialCollection: beginMaterialCollection,
     collectMaterial: collectMaterial,

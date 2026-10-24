@@ -5,8 +5,8 @@ use tauri::AppHandle;
 
 use crate::home_tray_snapshot::{
     dismiss_carry, drain_pending_collect, get_snapshot, publish_snapshot, request_collect,
-    write_inbox_base64, TrayCarryDismissResult, TrayCollectArgs, TrayCollectResult,
-    TrayPublishResult,
+    write_inbox_base64, write_inbox_bytes, TrayCarryDismissResult, TrayCollectArgs,
+    TrayCollectResult, TrayPublishResult,
 };
 
 #[tauri::command]
@@ -71,4 +71,19 @@ pub fn cmd_tray_inbox_write(
     bytes_base64: String,
 ) -> Result<String, String> {
     write_inbox_base64(name, &bytes_base64)
+}
+
+/// Read Windows clipboard image (PNG / CF_DIB) → inbox path for home paste cards.
+/// WebView clipboard.read() often cannot see screenshots; this is the reliable path.
+#[tauri::command]
+pub fn cmd_clipboard_read_image() -> Result<String, String> {
+    #[cfg(windows)]
+    {
+        let png = crate::clipboard_image::read_clipboard_image_png()?;
+        write_inbox_bytes(Some("clipboard.png".into()), &png)
+    }
+    #[cfg(not(windows))]
+    {
+        Err("unsupported".into())
+    }
 }

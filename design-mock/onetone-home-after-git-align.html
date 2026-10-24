@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 修 Git 对齐后的首页</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #e6ebe8;
+    --win: #f4f7f5;
+    --side: #e8eee9;
+    --paper: #ffffff;
+    --ink: #15231c;
+    --ink2: #5a6b62;
+    --line: rgba(21, 35, 28, 0.12);
+    --accent: #1f6f5a;
+    --ok: #1a7a4c;
+    --warn: #9a6a12;
+    --idle: #8a9690;
+    --mac: #2a5a8a;
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font: 13px/1.45 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(900px 480px at 8% -10%, rgba(31, 111, 90, 0.14), transparent 55%),
+      radial-gradient(700px 400px at 100% 0%, rgba(42, 90, 138, 0.08), transparent 50%),
+      var(--bg);
+    padding: 22px 16px 48px;
+  }
+  button, textarea { font: inherit; color: inherit; }
+  button { border: 0; background: none; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .page { width: min(1220px, 100%); margin: 0 auto; }
+  .nav-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .nav-links a {
+    font-size: 12px; color: var(--accent); text-decoration: none;
+    padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.65);
+    border: 1px solid var(--line);
+  }
+  .nav-links a:hover { background: #fff; }
+  h1 { font-size: 20px; font-weight: 750; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .lede { color: var(--ink2); max-width: 72ch; margin-bottom: 16px; font-size: 12.5px; }
+  .lede code { font-family: var(--mono); font-size: 11px; background: rgba(255,255,255,.7); padding: 1px 5px; border-radius: 4px; }
+
+  .rules {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+  }
+  @media (max-width: 800px) { .rules { grid-template-columns: 1fr; } }
+  .rule {
+    background: rgba(255,255,255,.72); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; font-size: 12px;
+  }
+  .rule b { display: block; margin-bottom: 3px; font-size: 12.5px; }
+  .rule span { color: var(--ink2); }
+  .rule.ban b { color: #a33a3a; }
+  .rule.ok b { color: var(--ok); }
+
+  .scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .scenes button {
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.55); color: var(--ink2); font-size: 12px;
+  }
+  .scenes button.on { background: var(--ink); color: #fff; border-color: transparent; }
+
+  .layout {
+    display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; align-items: start;
+  }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+  .window {
+    background: var(--win); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; box-shadow: 0 18px 40px rgba(21,35,28,.08);
+  }
+  .titlebar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: #eef3f0; border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--ink2);
+  }
+  .traffic { display: flex; gap: 5px; }
+  .traffic i { width: 9px; height: 9px; border-radius: 50%; background: #c5cfc8; display: block; }
+  .body { display: grid; grid-template-columns: 72px 1fr; min-height: 520px; }
+  .nav { background: var(--side); padding: 10px 6px; border-right: 1px solid var(--line); }
+  .nav .n {
+    padding: 8px 6px; border-radius: 8px; font-size: 11px; color: var(--ink2); text-align: center;
+  }
+  .nav .n.on { background: #fff; color: var(--ink); font-weight: 650; }
+  .main { display: flex; flex-direction: column; min-height: 520px; }
+  .scroll { flex: 1; padding: 14px 16px 10px; overflow: auto; }
+  .ctx {
+    display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink2); margin-bottom: 10px;
+  }
+  .ctx b { color: var(--ink); font-weight: 650; }
+  .task h2 { font-size: 18px; font-weight: 750; letter-spacing: -0.02em; margin: 2px 0 4px; }
+  .task .kicker { font-size: 11px; font-weight: 650; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; }
+  .task .sub { font-size: 12px; color: var(--ink2); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 10px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line);
+    font-size: 11.5px;
+  }
+  .pill .lbl { color: var(--ink2); }
+  .pill.ok { border-color: rgba(26,122,76,.28); background: rgba(26,122,76,.06); }
+  .pulse { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; min-height: 28px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 999px; background: #fff; border: 1px solid var(--line);
+    font-size: 11.5px;
+  }
+  .chip .d { width: 7px; height: 7px; border-radius: 50%; background: var(--idle); }
+  .chip[data-st="running"] .d { background: var(--ok); }
+  .chip[data-st="needs"] .d { background: var(--warn); }
+  .chip.on { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(31,111,90,.2); }
+
+  .block-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    margin: 8px 0 8px; font-size: 11px; color: var(--ink2);
+  }
+  .block-head h3 { font-size: 12.5px; color: var(--ink); font-weight: 700; }
+
+  .row {
+    display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center;
+    width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 8px;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  }
+  .row.on { border-color: rgba(31,111,90,.45); background: rgba(31,111,90,.05); }
+  .ico {
+    width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center;
+    font-size: 11px; font-weight: 750; color: #fff;
+  }
+  .ico.codex { background: #5b4fcf; }
+  .ico.claude { background: #c2642a; }
+  .ico.cursor { background: #2a5a8a; }
+  .row .name { font-weight: 700; font-size: 12.5px; }
+  .row .tag {
+    display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 999px; background: #eef3f0; color: var(--ink2);
+  }
+  .row .tag.run { background: rgba(26,122,76,.14); color: var(--ok); }
+  .row .tag.wait { background: rgba(154,106,18,.16); color: var(--warn); }
+  .row .line { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+  .row .go { font-size: 11.5px; color: var(--accent); font-weight: 650; white-space: nowrap; }
+
+  .empty {
+    padding: 18px 14px; border-radius: 12px; border: 1px dashed var(--line);
+    background: rgba(255,255,255,.55); color: var(--ink2); font-size: 12.5px;
+  }
+  .empty b { display: block; color: var(--ink); margin-bottom: 4px; font-size: 13px; }
+
+  .git-ban {
+    margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(163,58,58,.06); border: 1px solid rgba(163,58,58,.18);
+    font-size: 11.5px; color: #7a3030;
+  }
+  .git-ban s { opacity: .75; }
+
+  .dock {
+    border-top: 1px solid var(--line); background: #eef3f0; padding: 10px 12px 12px;
+  }
+  .dock-target { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink2); margin-bottom: 8px; }
+  .dest {
+    padding: 5px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line);
+    font-weight: 650; color: var(--ink);
+  }
+  .compose textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    resize: vertical; min-height: 64px; background: #fff;
+  }
+  .dock-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .cap, .q, .send {
+    padding: 6px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line);
+    font-size: 11.5px;
+  }
+  .cap.tm {
+    border-color: rgba(42,90,138,.35); color: var(--mac); font-weight: 650;
+    background: rgba(42,90,138,.06);
+  }
+  .q.on { border-color: var(--accent); background: rgba(31,111,90,.08); font-weight: 700; }
+  .send { margin-left: auto; background: var(--accent); color: #fff; border-color: transparent; font-weight: 700; padding: 6px 14px; }
+  .dock-anno { margin-top: 8px; font-size: 11px; color: var(--ink2); }
+
+  .side {
+    background: rgba(255,255,255,.78); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px 16px; position: sticky; top: 12px;
+  }
+  .side h2 { font-size: 14px; margin-bottom: 6px; }
+  .side p { font-size: 12px; color: var(--ink2); margin-bottom: 10px; }
+  .pad {
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #f7f9f7;
+  }
+  .pad-h {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 11px; background: #e8eef4; border-bottom: 1px solid var(--line);
+    font-size: 12px; font-weight: 700; color: var(--mac);
+  }
+  .pad-b { padding: 10px 11px; font-size: 12px; }
+  .pad-b .meta { color: var(--ink2); font-size: 11.5px; margin-bottom: 8px; }
+  .now-box {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px; margin-bottom: 10px;
+  }
+  .now-box h4 { font-size: 11px; font-weight: 700; color: var(--ink2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .stat {
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    background: #eef3f0; color: var(--ink2); font-variant-numeric: tabular-nums;
+  }
+  .stat.m { background: rgba(42,90,138,.12); color: var(--mac); }
+  .stat.a { background: rgba(26,122,76,.12); color: var(--ok); }
+  .stat.d { background: rgba(163,58,58,.12); color: #a33a3a; }
+  .files { list-style: none; font-family: var(--mono); font-size: 11px; max-height: 140px; overflow: auto; }
+  .files li {
+    display: grid; grid-template-columns: 16px 1fr; gap: 6px;
+    padding: 3px 0; border-top: 1px solid rgba(21,35,28,.06); color: var(--ink);
+  }
+  .files li:first-child { border-top: 0; }
+  .files .st { font-weight: 800; }
+  .files .st.M { color: var(--mac); }
+  .files .st.A { color: var(--ok); }
+  .files .st.D { color: #a33a3a; }
+  .ref-box {
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink2);
+    background: #eef3f0; border-radius: 8px; padding: 8px 9px; margin-bottom: 10px;
+    line-height: 1.55; word-break: break-all;
+  }
+  .ref-box b { color: var(--ink); font-weight: 650; }
+  .op {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 8px;
+    padding: 9px 0; border-top: 1px solid var(--line); font-size: 12px;
+    cursor: pointer; text-align: left; width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  }
+  .op:first-of-type { border-top: 0; }
+  .op.on { background: rgba(42,90,138,.06); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
+  .op .when { color: var(--ink2); font-size: 11px; grid-column: 1 / -1; }
+  .op .stats { font-family: var(--mono); font-size: 10.5px; color: var(--ink2); grid-column: 1 / -1; }
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 6px; background: rgba(26,122,76,.14); color: var(--ok); align-self: start;
+  }
+  .badge.warn { background: rgba(154,106,18,.16); color: var(--warn); }
+  .scene-note { margin-top: 12px; font-size: 12px; color: var(--ink2); padding-top: 10px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="nav-links">
+      <a href="onetone-time-capsule-git-align.html">← Git 对齐度矩阵</a>
+      <a href="onetone-home-workspace-capability-preview.html">工作区能力预览</a>
+    </div>
+    <h1>修 Git 对齐后的首页</h1>
+    <p class="lede">
+      对齐 Mac：<b>首页只管 Agent 任务与投递</b>；Git / 时间胶囊只活在 Soft Pad。
+      同时落地近期首页整改：不默认未打开的 Codex、empty 说清谁已打开、首屏不等 inventory。
+    </p>
+
+    <div class="rules">
+      <div class="rule ok"><b>首页有</b><span>真句工作行 · Soft Pad 等待 · Pulse 实况 · Dock 发送</span></div>
+      <div class="rule ban"><b>首页没有</b><span>分支 / dirty / tip /「上次进度」假行 / 默认闭着的 Codex</span></div>
+      <div class="rule ok"><b>Git 在哪</b><span>Dock「时间胶囊」→ Soft Pad · refs/onetone… 与 Mac 对齐</span></div>
+    </div>
+
+    <div class="scenes" role="tablist" aria-label="场景">
+      <button type="button" class="on" data-scene="quiet">安静 · 已发现未开</button>
+      <button type="button" data-scene="live">Cursor 真句在跑</button>
+      <button type="button" data-scene="wait">Claude 等确认</button>
+    </div>
+
+    <div class="layout">
+      <div class="window" aria-label="修齐后首页">
+        <div class="titlebar">
+          <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+          <span>OneTone · 首页（Git 对齐后）</span>
+        </div>
+        <div class="body">
+          <aside class="nav" aria-hidden="true">
+            <div class="n on">首页</div>
+            <div class="n">Agent</div>
+            <div class="n">设置</div>
+          </aside>
+          <div class="main">
+            <div class="scroll">
+              <div class="ctx">
+                <span>前台 · <b id="ctxFg">Cursor</b></span>
+                <span>习惯 · <b>Cursor Soft Pad</b></span>
+              </div>
+              <header class="task">
+                <div class="kicker" id="taskKicker">现在</div>
+                <h2 id="taskTitle">现在没有正在推进的事</h2>
+                <p class="sub" id="taskSub">Cursor、Codex 已发现 · 打开后才会出现任务行</p>
+              </header>
+              <div class="pills" id="pills"></div>
+              <div class="pulse" id="pulse" aria-label="Agent 脉冲"></div>
+              <div class="approve" id="approve" hidden></div>
+              <div class="block-head">
+                <h3>Agent 任务与会话</h3>
+                <span>仅 eligible · Git 不进此列表</span>
+              </div>
+              <div id="rows"></div>
+              <div class="empty" id="empty"></div>
+              <div class="git-ban">
+                首页<strong>禁止</strong>出现：
+                <s>main · dirty +12</s> ·
+                <s>refs/onetone/tip</s> ·
+                <s>Codex 上次进度 / 可恢复（未打开）</s>
+              </div>
+            </div>
+            <div class="dock">
+              <div class="dock-target">
+                <button type="button" class="dest" id="dockDest">选择 Agent ▾</button>
+                <span id="dockAim">先选目标再投递</span>
+              </div>
+              <div class="compose">
+                <textarea id="draft" rows="3" placeholder="先选 Agent，再写…"></textarea>
+              </div>
+              <div class="dock-bar">
+                <button type="button" class="cap">Soft Pad</button>
+                <button type="button" class="cap tm" id="tmBtn" title="项目时间胶囊">时间胶囊</button>
+                <button type="button" class="cap">语音</button>
+                <button type="button" class="q" data-q="cursor">Cu</button>
+                <button type="button" class="q" data-q="codex">Co</button>
+                <button type="button" class="q" data-q="claude">Cl</button>
+                <button type="button" class="send">↑</button>
+              </div>
+              <div class="dock-anno" id="dockAnno">
+                Git 检查点从「时间胶囊」进 Soft Pad，不占工作区行。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <h2>Soft Pad · 项目时间胶囊</h2>
+        <p>这里才展示 <b>Git 改动数据</b>（name-status / tip / op commit）。首页工作区刻意不画这些。</p>
+        <div class="pad" id="pad">
+          <div class="pad-h">
+            <span>E:\voice-pilot</span>
+            <span class="badge" id="padGate">可保护</span>
+          </div>
+          <div class="pad-b">
+            <div class="ref-box" id="padRefs"></div>
+            <div class="now-box">
+              <h4 id="nowTitle">现在 · 相对 tip 的工作区</h4>
+              <div class="stat-row" id="nowStats"></div>
+              <ul class="files" id="nowFiles" aria-label="git name-status"></ul>
+            </div>
+            <div class="now-box" id="opDetail" hidden>
+              <h4 id="opDetailTitle">选中检查点 · 相对上一 tip</h4>
+              <div class="stat-row" id="opStats"></div>
+              <ul class="files" id="opFiles"></ul>
+            </div>
+            <div id="opList"></div>
+          </div>
+        </div>
+        <p class="scene-note" id="sceneNote"></p>
+      </aside>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var HASH = 'a3f8c2e1';
+  var OPS = {
+    scheduled: {
+      id: 'op-7c2a91',
+      kind: 'scheduled',
+      label: '自动存档',
+      when: '刚刚',
+      tip: true,
+      commit: 'c8e41b2f9a0d',
+      parent: 'b1a90e3d7c22',
+      baseHead: '9f2e1a88c011',
+      stats: { m: 2, a: 1, d: 0 },
+      files: [
+        { st: 'M', path: 'src/js/features/now/home-agent-v2-store.js' },
+        { st: 'M', path: 'src/js/features/now/home-agent-v2.js' },
+        { st: 'A', path: 'design-mock/onetone-home-after-git-align.html' }
+      ]
+    },
+    checkpoint: {
+      id: 'op-3e91bb',
+      kind: 'checkpoint',
+      label: '手动检查点',
+      when: '1 小时前',
+      tip: false,
+      commit: 'b1a90e3d7c22',
+      parent: '88c0aa11fe20',
+      baseHead: '9f2e1a88c011',
+      stats: { m: 4, a: 0, d: 1 },
+      files: [
+        { st: 'M', path: 'src-tauri/src/time_machine/git_ops.rs' },
+        { st: 'M', path: 'src-tauri/src/time_machine/oplog.rs' },
+        { st: 'M', path: 'src/js/features/agent/soft-pad-time-machine-ui.js' },
+        { st: 'M', path: 'scripts/test-home-agent-v2.mjs' },
+        { st: 'D', path: 'docs/tmp-tm-scratch.md' }
+      ]
+    },
+    presend: {
+      id: 'op-presend',
+      kind: 'preSend',
+      label: '发送前安全点',
+      when: '— · P2 未落地',
+      tip: false,
+      pending: true,
+      commit: null,
+      stats: { m: 0, a: 0, d: 0 },
+      files: []
+    }
+  };
+
+  var NOW = {
+    quiet: {
+      dirty: false,
+      stats: { m: 0, a: 0, d: 0 },
+      files: [],
+      note: '工作区与 tip 一致 · dirty_fingerprint 空'
+    },
+    live: {
+      dirty: true,
+      stats: { m: 3, a: 1, d: 0 },
+      files: [
+        { st: 'M', path: 'src/js/features/agent/soft-pad-hub-ui.js' },
+        { st: 'M', path: 'src/css/home-agent-v2.css' },
+        { st: 'M', path: 'src-tauri/src/time_machine/mod.rs' },
+        { st: 'A', path: 'design-mock/onetone-time-capsule-git-align.html' }
+      ],
+      note: '相对 tip c8e41b2 · git diff --name-status tip（示意）'
+    },
+    wait: {
+      dirty: true,
+      stats: { m: 2, a: 0, d: 1 },
+      files: [
+        { st: 'M', path: 'src/js/features/now/home-focus-adapter.js' },
+        { st: 'M', path: 'src/js/features/agent/codex-micro-pad-ui.js' },
+        { st: 'D', path: 'tmp/claude-scratch.diff' }
+      ],
+      note: 'Claude 改文件中 · 胶囊仍可读 diff；冲突门禁未触发'
+    }
+  };
+
+  var selectedOp = 'scheduled';
+
+  function pills(html) { document.getElementById('pills').innerHTML = html; }
+  function pulse(chips) {
+    document.getElementById('pulse').innerHTML = chips.map(function (c) {
+      return '<span class="chip' + (c.on ? ' on' : '') + '" data-st="' + c.st + '"><i class="d"></i>' + c.label + '</span>';
+    }).join('');
+  }
+  function approve(html) {
+    var el = document.getElementById('approve');
+    if (!html) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.innerHTML = html;
+    el.style.cssText = 'display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:rgba(154,106,18,.08);border:1px solid rgba(154,106,18,.25);font-size:12px;';
+  }
+
+  function fileList(files) {
+    if (!files.length) {
+      return '<li><span class="st">·</span><span style="color:var(--ink2)">无改动文件</span></li>';
+    }
+    return files.map(function (f) {
+      return '<li><span class="st ' + f.st + '">' + f.st + '</span><span>' + f.path + '</span></li>';
+    }).join('');
+  }
+
+  function statsHtml(s) {
+    return (
+      '<span class="stat m">M ' + s.m + '</span>' +
+      '<span class="stat a">A ' + s.a + '</span>' +
+      '<span class="stat d">D ' + s.d + '</span>' +
+      '<span class="stat">Σ ' + (s.m + s.a + s.d) + '</span>'
+    );
+  }
+
+  function renderGit(scene) {
+    var tip = OPS.scheduled;
+    var now = NOW[scene];
+    document.getElementById('padRefs').innerHTML =
+      '<div><b>tip</b> refs/onetone/' + HASH + '/tip → <b>' + tip.commit + '</b></div>' +
+      '<div><b>op</b> refs/onetone/' + HASH + '/op/' + tip.id + '</div>' +
+      '<div><b>HEAD</b> ' + tip.baseHead + ' <span style="opacity:.7">(用户分支，胶囊不碰)</span></div>' +
+      '<div><b>gate</b> ok · sparse=false · conflict=false</div>';
+
+    document.getElementById('nowTitle').textContent = now.dirty
+      ? '现在 · 相对 tip 的工作区（dirty）'
+      : '现在 · 相对 tip 的工作区（clean）';
+    document.getElementById('nowStats').innerHTML = statsHtml(now.stats);
+    document.getElementById('nowFiles').innerHTML = fileList(now.files);
+
+    var order = ['scheduled', 'checkpoint', 'presend'];
+    document.getElementById('opList').innerHTML = order.map(function (key) {
+      var o = OPS[key];
+      var badge = o.pending
+        ? '<span class="badge warn">preSend · 待做</span>'
+        : '<span class="badge">' + o.kind + '</span>';
+      var st = o.pending
+        ? '尚无 commit · 对齐矩阵 P2'
+        : 'commit ' + o.commit + ' · M' + o.stats.m + ' A' + o.stats.a + ' D' + o.stats.d;
+      return (
+        '<button type="button" class="op' + (selectedOp === key ? ' on' : '') + '" data-op="' + key + '">' +
+          '<b>' + o.label + (o.tip ? ' · tip' : '') + '</b>' + badge +
+          '<div class="when">' + o.when + ' · ' + o.id + '</div>' +
+          '<div class="stats">' + st + '</div>' +
+        '</button>'
+      );
+    }).join('');
+
+    renderOpDetail(selectedOp);
+    document.getElementById('padGate').textContent = now.dirty ? '可保护 · dirty' : '可保护 · clean';
+    document.getElementById('padGate').className = now.dirty ? 'badge warn' : 'badge';
+  }
+
+  function renderOpDetail(key) {
+    selectedOp = key;
+    var o = OPS[key];
+    var box = document.getElementById('opDetail');
+    document.querySelectorAll('.op[data-op]').forEach(function (btn) {
+      btn.classList.toggle('on', btn.getAttribute('data-op') === key);
+    });
+    if (o.pending || !o.files.length) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    document.getElementById('opDetailTitle').textContent =
+      o.label + ' · git diff ' + (o.parent || '∅') + '..' + o.commit;
+    document.getElementById('opStats').innerHTML = statsHtml(o.stats);
+    document.getElementById('opFiles').innerHTML = fileList(o.files);
+  }
+
+  var scenes = {
+    quiet: function () {
+      document.getElementById('ctxFg').textContent = 'Finder';
+      document.getElementById('taskKicker').textContent = '现在';
+      document.getElementById('taskTitle').textContent = '现在没有正在推进的事';
+      document.getElementById('taskSub').textContent = 'Cursor、Codex 已发现 · 打开后才会出现任务行';
+      pills(
+        '<span class="pill"><span class="lbl">发送到</span><span class="val">选择 Agent</span></span>' +
+        '<span class="pill"><span class="lbl">投递</span><span class="val">尚未投递</span></span>'
+      );
+      pulse([
+        { st: 'idle', label: 'Cursor · 已发现' },
+        { st: 'idle', label: 'Codex · 已发现（未打开）' }
+      ]);
+      approve('');
+      document.getElementById('rows').innerHTML = '';
+      document.getElementById('empty').hidden = false;
+      document.getElementById('empty').innerHTML =
+        '<b>还没有可展示的 Agent 任务</b>' +
+        '已发现 Cursor、Codex，尚未打开或无会话。打开后会出现任务；也可先在底栏选目标投递。';
+      document.getElementById('dockDest').textContent = '选择 Agent ▾';
+      document.getElementById('dockAim').textContent = '先选目标再投递';
+      document.getElementById('draft').placeholder = '先选 Agent，再写…';
+      document.querySelectorAll('.q').forEach(function (q) { q.classList.remove('on'); });
+      selectedOp = 'scheduled';
+      renderGit('quiet');
+      document.getElementById('sceneNote').innerHTML =
+        '右侧可见 tip/op SHA 与 <b>M/A/D 文件表</b>；左侧首页不出现任何 git path。' +
+        ' clean 时「现在」Σ=0。';
+    },
+    live: function () {
+      document.getElementById('ctxFg').textContent = 'Cursor';
+      document.getElementById('taskKicker').textContent = '正在处理';
+      document.getElementById('taskTitle').textContent = '正在改 Soft Pad 投递收据';
+      document.getElementById('taskSub').textContent = 'voice-pilot · Cursor · 刚刚';
+      pills(
+        '<span class="pill"><span class="lbl">发送到</span><span class="val">Cursor</span></span>' +
+        '<span class="pill ok"><span class="lbl">投递</span><span class="val">已发送 · Soft Pad</span></span>'
+      );
+      pulse([
+        { st: 'running', label: 'Cursor · 执行中', on: true },
+        { st: 'idle', label: 'Codex · 已发现' }
+      ]);
+      approve('');
+      document.getElementById('empty').hidden = true;
+      document.getElementById('rows').innerHTML =
+        '<button type="button" class="row on">' +
+          '<div class="ico cursor">Cu</div>' +
+          '<div><div class="name">Cursor <span class="tag run">执行中</span></div>' +
+          '<div class="line">正在改 Soft Pad 投递收据 · voice-pilot</div></div>' +
+          '<span class="go">发送到此</span></button>';
+      document.getElementById('dockDest').textContent = 'Cursor ▾';
+      document.getElementById('dockAim').textContent = '已对准输入框';
+      document.getElementById('draft').placeholder = '写给 Cursor…';
+      document.querySelectorAll('.q').forEach(function (q) {
+        q.classList.toggle('on', q.getAttribute('data-q') === 'cursor');
+      });
+      selectedOp = 'scheduled';
+      renderGit('live');
+      document.getElementById('sceneNote').innerHTML =
+        'Agent 在跑 → 工作区 dirty：右侧列出 <b>name-status</b> 路径。' +
+        ' 点检查点可看该 op 相对 parent 的 M/A/D。';
+    },
+    wait: function () {
+      document.getElementById('ctxFg').textContent = 'Claude';
+      document.getElementById('taskKicker').textContent = '需要你确认';
+      document.getElementById('taskTitle').textContent = 'Claude 需要你确认后才能继续';
+      document.getElementById('taskSub').textContent = 'voice-pilot · Claude · 刚到';
+      pills(
+        '<span class="pill"><span class="lbl">发送到</span><span class="val">Claude</span></span>' +
+        '<span class="pill"><span class="lbl">投递</span><span class="val">等待批准</span></span>'
+      );
+      pulse([
+        { st: 'needs', label: 'Claude · 等确认', on: true },
+        { st: 'idle', label: 'Cursor · 已打开' }
+      ]);
+      approve(
+        '<div><b>Claude 等待权限确认</b><br /><span style="color:var(--ink2)">修改 3 个文件 · Soft Pad Y / N</span></div>' +
+        '<div style="display:flex;gap:6px"><button type="button" class="cap" style="background:var(--warn);color:#fff;border:0">批准</button><button type="button" class="cap">拒绝</button></div>'
+      );
+      document.getElementById('empty').hidden = true;
+      document.getElementById('rows').innerHTML =
+        '<button type="button" class="row on">' +
+          '<div class="ico claude">Cl</div>' +
+          '<div><div class="name">Claude <span class="tag wait">等确认</span></div>' +
+          '<div class="line">修改 3 个文件 · 等待批准</div></div>' +
+          '<span class="go">批准</span></button>';
+      document.getElementById('dockDest').textContent = 'Claude ▾';
+      document.getElementById('dockAim').textContent = '已对准输入框';
+      document.getElementById('draft').placeholder = '写给 Claude…';
+      document.querySelectorAll('.q').forEach(function (q) {
+        q.classList.toggle('on', q.getAttribute('data-q') === 'claude');
+      });
+      selectedOp = 'checkpoint';
+      renderGit('wait');
+      document.getElementById('sceneNote').innerHTML =
+        '等确认 ≠ Git 冲突。右侧仍显示 diff；若 MERGE_HEAD 存在，gate 会变红并禁止 restore。';
+    }
+  };
+
+  function apply(name) {
+    document.querySelectorAll('.scenes button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-scene') === name);
+    });
+    scenes[name]();
+  }
+
+  document.querySelectorAll('.scenes button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      apply(btn.getAttribute('data-scene'));
+    });
+  });
+
+  document.getElementById('opList').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.op[data-op]');
+    if (!btn) return;
+    renderOpDetail(btn.getAttribute('data-op'));
+  });
+
+  document.getElementById('tmBtn').addEventListener('click', function () {
+    document.getElementById('pad').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('pad').style.outline = '2px solid var(--mac)';
+    setTimeout(function () { document.getElementById('pad').style.outline = ''; }, 900);
+  });
+
+  document.querySelectorAll('.q').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-q');
+      var names = { cursor: 'Cursor', codex: 'Codex', claude: 'Claude' };
+      document.querySelectorAll('.q').forEach(function (q) {
+        q.classList.toggle('on', q === btn);
+      });
+      document.getElementById('dockDest').textContent = names[id] + ' ▾';
+      document.getElementById('draft').placeholder = '写给 ' + names[id] + '…';
+      document.getElementById('dockAim').textContent = '已选手动目标';
+    });
+  });
+
+  apply('live');
+})();
+</script>
+</body>
+</html>

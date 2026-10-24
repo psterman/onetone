@@ -7917,10 +7917,23 @@
       return;
     }
     panel.innerHTML = autoCreateBarHtml();
+    function prependHabitMatchLink(host, channel) {
+      if (!host) return;
+      var bar = document.createElement('button');
+      bar.type = 'button';
+      bar.className = 'keys-scene-actions__habit-link';
+      bar.setAttribute('data-habit-command-match', channel || 'key');
+      bar.textContent = t(
+        'keysHabitCommandMatchCta',
+        '跨通道匹配（说法 / Pad / 手势）→ 在习惯中编辑'
+      );
+      host.appendChild(bar);
+    }
     if (activeTab === 'cursor') {
       var wrap = document.createElement('div');
       wrap.className = 'keys-channel-section';
       panel.appendChild(wrap);
+      prependHabitMatchLink(wrap, 'key');
       renderCursorCommandsPanel(wrap);
       syncCatalogHeroToPick('cursor');
       return;
@@ -7930,8 +7943,11 @@
       syncSoftPadTargetChrome(false);
       var camWrap = document.createElement('div');
       camWrap.className = 'keys-channel-section';
-      camWrap.innerHTML = renderCameraPickHtml();
       panel.appendChild(camWrap);
+      prependHabitMatchLink(camWrap, 'camera');
+      var camInner = document.createElement('div');
+      camInner.innerHTML = renderCameraPickHtml();
+      camWrap.appendChild(camInner);
       syncCatalogHeroToPick('camera');
       return;
     }
@@ -7939,7 +7955,10 @@
       var padWrap = document.createElement('div');
       padWrap.className = 'keys-channel-section';
       panel.appendChild(padWrap);
-      renderSoftPadKeyboardPanel(padWrap);
+      prependHabitMatchLink(padWrap, 'softPad');
+      var padInner = document.createElement('div');
+      padWrap.appendChild(padInner);
+      renderSoftPadKeyboardPanel(padInner);
       return;
     }
     if (panel.classList) panel.classList.remove('is-softpad-pick');
@@ -7947,7 +7966,9 @@
     var listWrap = document.createElement('div');
     listWrap.className = 'keys-channel-section';
     panel.appendChild(listWrap);
+    prependHabitMatchLink(listWrap, 'voice');
     // Keys oral = arm trigger + load scheme summary; edit says in Voice · 口头命令.
+    // Cross-channel phrase/pad match → Habits (phase-2 seal).
     if (global.OneToneOralCommandUi && global.OneToneOralCommandUi.mountLoader) {
       global.OneToneOralCommandUi.mountLoader(listWrap, { mappingId: selectedMappingId() });
     } else {
@@ -8793,6 +8814,32 @@
     }
     if (panel) {
       panel.addEventListener('click', function (ev) {
+        var habitMatch =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-habit-command-match]')
+            : null;
+        if (habitMatch && panel.contains(habitMatch)) {
+          ev.preventDefault();
+          var ch = String(habitMatch.getAttribute('data-habit-command-match') || 'key').trim();
+          var Link = global.OneToneHabitCommandLink;
+          if (Link && typeof Link.openHabitsMatch === 'function') {
+            Link.openHabitsMatch({
+              mappingId: selectedMappingId(),
+              matchChannel: ch,
+              openMatchEditor: true,
+              returnPanel: 'keys'
+            });
+          } else if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.open) {
+            global.OneToneSettingsDrawer.open({
+              panel: 'habits',
+              mappingId: selectedMappingId(),
+              matchChannel: ch,
+              openMatchEditor: true,
+              returnPanel: 'keys'
+            });
+          }
+          return;
+        }
         var autoBtn =
           ev.target && ev.target.closest ? ev.target.closest('[data-auto-create]') : null;
         if (autoBtn && panel.contains(autoBtn)) {

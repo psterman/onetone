@@ -366,6 +366,22 @@
       return (b && b.triggerBinding) || '';
     },
     openEditor: function (mappingId, actionId, bindingRef) {
+      // L3 match editor lives on Habits — Soft Pad page keeps layout/skin (P-class).
+      var Link = global.OneToneHabitCommandLink;
+      var cmd =
+        (actionId ? 'action:' + canonical(actionId) : '') ||
+        String(bindingRef || '').trim();
+      if (Link && typeof Link.openHabitsMatch === 'function') {
+        Link.openHabitsMatch({
+          mappingId: mappingId,
+          matchChannel: 'softPad',
+          matchCommand: cmd,
+          commandRef: cmd,
+          openMatchEditor: true,
+          returnPanel: 'softPad'
+        });
+        return;
+      }
       if (global.OneToneActionNav) {
         global.OneToneActionNav.openChannelEditor({
           mappingId: mappingId,

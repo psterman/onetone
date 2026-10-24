@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 软键盘 · 能力保留 / 匹配回习惯</title>
+  <style>
+    :root {
+      --ink: #1a2430; --muted: #6b7a88; --faint: #95a3ae; --line: #e2e8ec;
+      --wash: #eef2f4; --panel: #fff;
+      --green: #187144; --green-soft: #e8f5ee; --green-bd: #9dceb0;
+      --teal: #117c79; --teal-soft: #e5f5f3; --teal-dark: #0b5d5b;
+      --ok: #1f8a55; --ok-soft: #e8f6ee;
+      --amber: #9a6118; --amber-soft: #fff4df;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+      --shadow: 0 14px 36px rgba(20, 40, 55, .08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { background: #d8e0e4; color: var(--ink); font: 13px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+    button { font: inherit; }
+    button:focus-visible { outline: 2px solid rgba(24, 113, 68, .5); outline-offset: 2px; }
+
+    .bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      min-height: 42px; padding: 8px 16px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .bar strong { color: #fff; }
+    .bar em { font-style: normal; color: #8fd4a8; font-weight: 650; }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+    .bar a {
+      color: #7dd3fc; font-weight: 700; text-decoration: none;
+      border: 1px solid rgba(125, 211, 252, .35); border-radius: 6px; padding: 5px 10px;
+    }
+    .bar a.is-here { background: rgba(125, 211, 252, .12); }
+
+    .wrap { width: min(1120px, calc(100% - 24px)); margin: 18px auto 48px; }
+    .brief {
+      margin-bottom: 12px; padding: 14px 16px;
+      border: 1px solid rgba(22, 45, 53, .12); border-radius: 10px; background: rgba(255,255,255,.92);
+    }
+    .brief h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: -.02em; }
+    .brief p { margin: 0; color: var(--muted); max-width: 78ch; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip {
+      padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 11px; font-weight: 700;
+    }
+    .chip.keep { background: var(--ok-soft); color: var(--ok); border-color: #9ad4b4; }
+    .chip.move { background: var(--amber-soft); color: var(--amber); border-color: #f0c988; }
+
+    .shell {
+      display: grid; grid-template-columns: 176px minmax(0, 1fr); min-height: 620px;
+      overflow: hidden; border: 1px solid rgba(22, 45, 53, .14); border-radius: 12px;
+      background: var(--panel); box-shadow: var(--shadow);
+    }
+    .rail {
+      padding: 14px 10px; background: var(--wash); border-right: 1px solid var(--line);
+    }
+    .rail-lbl {
+      margin: 0 2px 8px; color: var(--faint); font-size: 10px; font-weight: 800; letter-spacing: .04em;
+    }
+    .rail-lbl + .rail-lbl { margin-top: 16px; }
+    .rail-item {
+      width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      padding: 9px 10px; border: 0; border-radius: 8px; background: transparent;
+      color: #4d5d6a; cursor: pointer; text-align: left; font-size: 12.5px; font-weight: 700;
+    }
+    .rail-item:hover { background: rgba(255,255,255,.7); color: var(--ink); }
+    .rail-item.is-active { background: #fff; color: var(--green); box-shadow: 0 1px 0 rgba(31,68,74,.06); }
+    .mark {
+      padding: 1px 5px; border-radius: 4px; font-size: 9.5px; font-weight: 800;
+    }
+    .mark.keep { background: var(--ok-soft); color: var(--ok); }
+    .mark.habit { background: var(--teal-soft); color: var(--teal-dark); }
+    .mark.gone {
+      background: #edf2f5; color: var(--faint); text-decoration: line-through;
+    }
+
+    .main { min-width: 0; padding: 18px 22px 24px; background: #fbfcfd; }
+    .panel[hidden] { display: none; }
+    .panel-head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px;
+    }
+    .panel-head h2 { margin: 0; font-size: 16px; }
+    .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .own { color: var(--faint); font-size: 10.5px; font-weight: 750; white-space: nowrap; }
+
+    .status {
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;
+      padding: 5px 8px; border: 1px solid var(--green-bd); border-radius: 6px;
+      background: var(--green-soft); color: var(--green); font-size: 10.5px; font-weight: 800;
+    }
+    .status i { width: 7px; height: 7px; border-radius: 50%; background: #2da66f; }
+
+    .card {
+      padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    }
+    .card + .card { margin-top: 12px; }
+    .card.accent { border-top: 3px solid var(--green); }
+    .card h3 { margin: 0 0 4px; font-size: 13.5px; }
+    .card .sub { margin: 0 0 12px; color: var(--muted); font-size: 11.5px; }
+
+    .pad-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+    }
+    .pad-cell {
+      min-height: 72px; padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+      background: #f7faf8; text-align: left; cursor: pointer;
+    }
+    .pad-cell:hover { border-color: var(--green-bd); background: var(--green-soft); }
+    .pad-cell strong { display: block; font-size: 11px; color: var(--faint); }
+    .pad-cell span { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 750; }
+    .pad-cell small { display: block; margin-top: 4px; color: var(--muted); font-size: 10.5px; }
+    .pad-cell.is-empty { border-style: dashed; background: #fff; }
+    .pad-cell.is-empty span { color: var(--faint); font-weight: 650; }
+
+    .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+    .seg button {
+      padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+      background: #fff; color: var(--muted); cursor: pointer; font-size: 11.5px; font-weight: 750;
+    }
+    .seg button.is-active {
+      border-color: var(--green-bd); background: var(--green-soft); color: var(--green);
+    }
+
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fafcfc; }
+    .field label { display: block; color: var(--faint); font-size: 10px; font-weight: 800; }
+    .field strong { display: block; margin-top: 3px; font-size: 12.5px; }
+    .field small { display: block; margin-top: 3px; color: var(--muted); font-size: 10.5px; }
+
+    .habit-banner {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+      margin-bottom: 12px; padding: 12px 14px; border: 1px solid #a8dcd7; border-radius: 10px; background: var(--teal-soft);
+    }
+    .habit-banner strong { display: block; color: var(--teal-dark); font-size: 13px; }
+    .habit-banner p { margin: 4px 0 0; color: var(--muted); font-size: 11.5px; max-width: 52ch; }
+    .btn-habit {
+      flex: 0 0 auto; display: inline-flex; align-items: center; padding: 9px 12px;
+      border: 0; border-radius: 7px; background: var(--teal); color: #fff;
+      cursor: pointer; font-weight: 800; font-size: 12px; text-decoration: none; white-space: nowrap;
+    }
+    .btn-habit:hover { background: var(--teal-dark); }
+
+    .keep-note {
+      margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #f3f6f7;
+      color: var(--muted); font-size: 11px;
+    }
+    .keep-note b { color: var(--ink); }
+
+    .gone-box {
+      padding: 12px; border: 1px dashed #e0b070; border-radius: 10px; background: var(--amber-soft);
+      color: #8a5614; font-size: 11.5px;
+    }
+    .gone-box strong { display: block; margin-bottom: 4px; }
+    .gone-box ul { margin: 6px 0 0; padding-left: 18px; }
+
+    @media (max-width: 820px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+      .pad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field-grid { grid-template-columns: 1fr; }
+      .habit-banner { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <strong>OneTone</strong>
+    <em>软键盘 · L1 能力</em>
+    <nav>
+      <a href="./onetone-keys-capability-v2.html">按键</a>
+      <a href="./onetone-voice-capability-v2.html">语音</a>
+      <a class="is-here" href="./onetone-softpad-capability-v2.html">软键盘</a>
+      <a href="./onetone-ia-left-nav-v2.html">习惯（匹配）</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <div class="brief">
+      <h1>软键盘页：布局与车道留在这，键位匹配回习惯</h1>
+      <p>
+        本页保留设备、布局、皮肤、purpose、何时显示与 Auto 车道。
+        网格可预览 AG0x → 命令名；点键位跳习惯页内联绑定。不再在本页开六通道命令工作室。
+      </p>
+      <div class="chips">
+        <span class="chip keep">KEEP · 布局 / 皮肤 / purpose / 车道</span>
+        <span class="chip move">互通 · 键位↔命令 → 习惯页</span>
+      </div>
+    </div>
+
+    <section class="shell" aria-label="软键盘设置">
+      <aside class="rail" aria-label="软键盘目录">
+        <p class="rail-lbl">Soft Pad 能力</p>
+        <button type="button" class="rail-item is-active" data-panel="layout">布局预览 <span class="mark keep">能力</span></button>
+        <button type="button" class="rail-item" data-panel="appear">外观与时机 <span class="mark keep">能力</span></button>
+        <button type="button" class="rail-item" data-panel="lane">用途与车道 <span class="mark keep">能力</span></button>
+        <p class="rail-lbl">识别（已收口）</p>
+        <button type="button" class="rail-item" data-panel="bind">键位绑定 <span class="mark habit">习惯</span></button>
+        <button type="button" class="rail-item" data-panel="studio" disabled title="已抽走">
+          六通道工作室 <span class="mark gone">抽走</span>
+        </button>
+      </aside>
+
+      <div class="main">
+        <div class="panel" data-view="layout">
+          <span class="status"><i></i> Pad 已连接</span>
+          <div class="panel-head">
+            <div>
+              <h2>布局预览</h2>
+              <p>键位长什么样、是否已绑 — 本页可看。改「绑哪条命令」点格子去习惯页。</p>
+            </div>
+            <span class="own">KEEP · 预览</span>
+          </div>
+          <div class="card accent">
+            <h3>工作习惯 · 当前布局</h3>
+            <p class="sub">点击已绑/空位 → 习惯页内联（演示跳转）</p>
+            <div class="pad-grid" id="padGrid">
+              <button type="button" class="pad-cell" data-slot="AG01"><strong>AG01</strong><span>新建对话</span><small>已绑定 · 点改→习惯</small></button>
+              <button type="button" class="pad-cell" data-slot="AG02"><strong>AG02</strong><span>继续回复</span><small>已绑定 · 点改→习惯</small></button>
+              <button type="button" class="pad-cell" data-slot="AG03"><strong>AG03</strong><span>修复这个问题</span><small>已绑定 · 点改→习惯</small></button>
+              <button type="button" class="pad-cell is-empty" data-slot="AG04"><strong>AG04</strong><span>空位</span><small>点此去习惯绑定</small></button>
+              <button type="button" class="pad-cell is-empty" data-slot="AG05"><strong>AG05</strong><span>空位</span><small>点此去习惯绑定</small></button>
+              <button type="button" class="pad-cell is-empty" data-slot="AG06"><strong>AG06</strong><span>空位</span><small>点此去习惯绑定</small></button>
+              <button type="button" class="pad-cell" data-slot="AG07"><strong>AG07</strong><span>总结修改</span><small>已绑定 · 点改→习惯</small></button>
+              <button type="button" class="pad-cell is-empty" data-slot="AG08"><strong>AG08</strong><span>空位</span><small>点此去习惯绑定</small></button>
+            </div>
+          </div>
+          <p class="keep-note"><b>保留：</b>恢复默认布局、拖拽改位（能力）。<b>不在此：</b>打开语音/按键/手势挑源工作室。</p>
+        </div>
+
+        <div class="panel" data-view="appear" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>外观与时机</h2>
+              <p>皮肤、何时弹出 — Soft Pad 页权威。</p>
+            </div>
+            <span class="own">KEEP</span>
+          </div>
+          <div class="card accent">
+            <h3>皮肤</h3>
+            <p class="sub">外观不影响命令匹配</p>
+            <div class="seg" id="skinSeg">
+              <button type="button" class="is-active">默认</button>
+              <button type="button">深色</button>
+              <button type="button">高对比</button>
+            </div>
+            <div class="field-grid" style="margin-top:14px">
+              <div class="field"><label>何时显示</label><strong>需要输入时</strong><small>可改始终 / 手动</small></div>
+              <div class="field"><label>透明度</label><strong>92%</strong><small>本页调节</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-view="lane" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>用途与车道</h2>
+              <p>purpose 与 Auto 车道 — 与习惯「正在使用」解耦，契约保留。</p>
+            </div>
+            <span class="own">KEEP</span>
+          </div>
+          <div class="card accent">
+            <h3>工作台模式</h3>
+            <div class="seg" id="purposeSeg" style="margin-top:8px">
+              <button type="button" class="is-active">快捷键台</button>
+              <button type="button">会话台</button>
+            </div>
+            <div class="field-grid" style="margin-top:14px">
+              <div class="field"><label>车道</label><strong>Auto</strong><small>waiting → foreground → fallback</small></div>
+              <div class="field"><label>编辑 mapping</label><strong>selectedMappingId</strong><small>不因改布局而 activate</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-view="bind" hidden>
+          <div class="habit-banner">
+            <div>
+              <strong>键位 ↔ 命令 在习惯页匹配</strong>
+              <p>把 AG02 挂到「继续回复」、清空空位 — 习惯页「怎么调用 · Soft Pad」内联。本页只预览。</p>
+            </div>
+            <a class="btn-habit" href="./onetone-ia-left-nav-v2.html">打开习惯 · 选 Pad 键</a>
+          </div>
+          <div class="card">
+            <h3>与现网 Soft Pad 识别栏的关系</h3>
+            <p class="sub">现网左侧还有输入法/口头/手势等 tab — 那些是互通工作室，落地后应收口。</p>
+            <div class="gone-box">
+              <strong>本页不再提供（EXTRACT）</strong>
+              <ul>
+                <li>复用按键六通道 bind list「改按钮」</li>
+                <li>在 Soft Pad 页编辑命令正文 / 说法</li>
+                <li>「加载到识别键」跨通道 retarget</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-view="studio" hidden>
+          <div class="gone-box">
+            <strong>六通道工作室已抽走</strong>
+            <p style="margin:6px 0 0">请从「布局预览」点键位，或打开习惯页完成匹配。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.rail-item[data-panel]:not([disabled])');
+      var panels = document.querySelectorAll('.panel[data-view]');
+      function show(id) {
+        tabs.forEach(function (t) {
+          t.classList.toggle('is-active', t.getAttribute('data-panel') === id);
+        });
+        panels.forEach(function (p) {
+          p.hidden = p.getAttribute('data-view') !== id;
+        });
+      }
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () { show(t.getAttribute('data-panel')); });
+      });
+      document.querySelectorAll('#padGrid .pad-cell').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+          location.href = './onetone-ia-left-nav-v2.html';
+        });
+      });
+      document.querySelectorAll('.seg').forEach(function (g) {
+        g.querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            g.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-active'); });
+            b.classList.add('is-active');
+          });
+        });
+      });
+    }());
+  </script>
+</body>
+</html>

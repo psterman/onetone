@@ -23,6 +23,7 @@
       {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitWizard:true},
       {id:'model', labelKey:'homeWbQuickSwitchModel', hintKey:'homeWbCmdkHintSettings', panel:'voiceWake'},
       {id:'triggers', labelKey:'homeWbNavTriggers', hintKey:'homeWbCmdkHintSettings', panel:'keys'},
+      {id:'keys2', labelKey:'homeWbNavKeys2', hintKey:'homeWbCmdkHintSettings', panel:'keys2'},
       {id:'softPad', labelKey:'homeWbNavSoftPad', hintKey:'homeWbCmdkHintSettings', panel:'softPad', focus:'softPadLayout'},
       {id:'agent', labelKey:'homeWbNavAgent', hintKey:'homeWbCmdkHintSettings', panel:'agent'},
       {id:'agentData', labelKey:'homeWbNavAgentData', hintKey:'homeWbCmdkHintSettings', panel:'agent', agentSub:'data'},

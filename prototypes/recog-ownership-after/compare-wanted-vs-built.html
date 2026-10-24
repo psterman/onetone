@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>识别归属 · 你要的 vs 我改的</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --want:#0f766e; --want-soft:#e6f7f4; --want-bd:#5eead4;
+  --built:#1d4ed8; --built-soft:#eef2ff; --built-bd:#93c5fd;
+  --warn:#b45309; --warn-soft:#fff7ed; --warn-bd:#fdba74;
+  --ok:#15803d; --gap:#be123c;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.5;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(15,118,110,.1),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(29,78,216,.08),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  padding:12px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:14px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.top a{
+  margin-left:auto;color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1280px,100%);margin:0 auto;padding:18px 14px 72px}
+
+.verdict{
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:16px;
+  padding:18px 20px;margin-bottom:14px;
+  box-shadow:0 12px 28px rgba(19,32,44,.06);
+}
+.verdict h1{
+  margin:0 0 8px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em;
+}
+.verdict p{margin:0;color:var(--mute);font-size:14px;max-width:92ch}
+.verdict .gap{
+  margin-top:12px;padding:10px 12px;border-radius:12px;
+  background:var(--warn-soft);border:1px solid var(--warn-bd);color:#9a3412;
+  font-size:13px;font-weight:650;
+}
+.verdict .gap b{color:var(--gap)}
+
+.matrix{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;
+}
+@media(max-width:900px){.matrix{grid-template-columns:1fr}}
+
+.card{
+  border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;
+  box-shadow:0 14px 32px rgba(19,32,44,.07);
+}
+.card .hd{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 14px;border-bottom:1px solid var(--line);
+}
+.card.want .hd{background:linear-gradient(180deg,#f7fffd,var(--want-soft))}
+.card.built .hd{background:linear-gradient(180deg,#f8faff,var(--built-soft))}
+.badge{
+  font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;letter-spacing:.02em;
+}
+.want .badge{background:var(--want);color:#fff}
+.built .badge{background:var(--built);color:#fff}
+.card .hd h2{margin:0;font-size:15px;font-weight:800}
+.card .hd .src{font-size:11px;color:var(--faint);margin-left:auto;font-family:var(--mono)}
+.card .bd{padding:14px}
+.card .one-liner{
+  margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:650;
+}
+.want .one-liner{background:var(--want-soft);color:var(--want);border:1px solid var(--want-bd)}
+.built .one-liner{background:var(--built-soft);color:var(--built);border:1px solid var(--built-bd)}
+.card ul{margin:0;padding-left:18px}
+.card li{margin:6px 0;color:var(--mute)}
+.card li b{color:var(--ink)}
+
+/* mini mocks */
+.mock-shell{
+  margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--wash);
+}
+.mock-bar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:8px 10px;background:#fff;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;
+}
+.pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--mute);
+  font-size:10.5px;font-weight:700;
+}
+.pill.on{background:var(--cyan-soft);color:var(--cyan-ink);border-color:var(--cyan-bd)}
+.pill.own{background:#ecfdf5;color:#047857;border-color:#86efac}
+.mock-body{display:grid;grid-template-columns:120px 1fr;min-height:168px}
+@media(max-width:520px){.mock-body{grid-template-columns:1fr}}
+.mock-rail{background:#eef3f7;border-right:1px solid var(--line);padding:8px}
+.mock-rail .sec{font-size:9.5px;font-weight:750;color:var(--faint);letter-spacing:.04em;margin:4px 0}
+.mock-rail .it{
+  display:block;width:100%;text-align:left;border:0;border-radius:7px;padding:6px 8px;margin:2px 0;
+  background:transparent;font:inherit;font-size:11px;font-weight:650;color:var(--mute);cursor:default;
+}
+.mock-rail .it.on{background:#fff;color:var(--cyan-ink);box-shadow:inset 2px 0 0 var(--cyan)}
+.mock-rail .it.ghost{opacity:.55}
+.mock-mid{padding:10px;display:flex;flex-direction:column;gap:6px}
+.row{
+  display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;
+  background:#fff;border:1px solid var(--line);font-size:11.5px;font-weight:650;
+}
+.row.ref{border-style:dashed;opacity:.95}
+.row .tag{
+  margin-left:auto;font-size:10px;font-weight:750;padding:2px 6px;border-radius:6px;
+  background:var(--wash);color:var(--mute);white-space:nowrap;
+}
+.row .tag.pad{background:#e8f5ee;color:#187144}
+.row .tag.keys{background:#e5f2f8;color:#1d6f9a}
+.row .tag.voice{background:#f0edf7;color:#5b4d8a}
+.note{margin:0;font-size:11px;color:var(--faint)}
+
+.diff{
+  background:#0f1820;color:#c5d0de;border-radius:16px;padding:16px;margin-bottom:14px;
+}
+.diff h2{margin:0 0 10px;font-size:13px;font-weight:800;color:#7dd3fc;letter-spacing:.04em;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-top:1px solid rgba(255,255,255,.08)}
+th{color:#7dd3fc;font-size:11px;font-weight:750;letter-spacing:.03em;text-transform:uppercase;border-top:0}
+td.dim{color:#8494a6}
+.yes{color:#86efac;font-weight:700}
+.no{color:#fda4af;font-weight:700}
+.mid{color:#fcd34d;font-weight:700}
+
+.actions{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+}
+.actions p{margin:0;flex:1;min-width:220px;color:var(--mute);font-size:13px}
+.actions a,.actions button{
+  appearance:none;border:0;border-radius:10px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:750;
+  cursor:pointer;text-decoration:none;color:#fff;
+}
+.actions a.primary{background:var(--want)}
+.actions a.secondary{background:var(--built)}
+.actions button.ghost{
+  background:#fff;color:var(--ink);border:1px solid var(--line);
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>识别归属 · 方案对比</strong>
+  <em>你要的已落地 · 三页示意保留对照</em>
+  <a href="./unified-tabs.html">单页三 Tab →</a>
+  <a href="./novice-command-card.html">小白命令卡 →</a>
+  <a href="./index.html">三页示意 →</a>
+</header>
+
+<main class="page">
+  <div class="verdict">
+    <h1>你要的「一页共享壳」已做成可点示意</h1>
+    <p>
+      原话：<b>「所有配置都共享一个配置页面，视觉相同，只做引用核心命令，不做混搭，标签清晰，归属准确」</b>。
+      按此落地：
+      <a href="./unified-tabs.html" style="color:var(--want);font-weight:750">unified-tabs.html</a>
+      （单页 + 三通道 tab）。此前误做成的三页跳转仍留在
+      <a href="./index.html" style="color:var(--cyan-ink);font-weight:750">index.html</a>
+      作对照。
+    </p>
+    <div class="gap" style="background:var(--ok-soft);border-color:#86efac;color:var(--ok)">
+      <b>已对齐：</b>入口是 1 个配置页；通道是 tab；本 tab 可编、其它通道只读引用 + 所有者标签。
+      三页示意仅作「旧路径」对照，不再当作你要的方案。
+    </div>
+  </div>
+
+  <div class="matrix">
+    <!-- 你要的 -->
+    <article class="card want">
+      <div class="hd">
+        <span class="badge">你要的</span>
+        <h2>一个共享配置页</h2>
+        <span class="src">user · 3:52</span>
+      </div>
+      <div class="bd">
+        <p class="one-liner">三通道共用同一视觉壳；通道是 tab，不是三套设置页。</p>
+        <ul>
+          <li><b>一页</b>：进入「命令 / 识别配置」就一个壳，按键·语音·软键盘只是同页 tab</li>
+          <li><b>视觉相同</b>：顶栏、列表、所有者标签全页一套，不靠三页各自长成不同样</li>
+          <li><b>只引用核心命令</b>：动作库是一份；各通道挂自己的识别方式（键帽 / 说法 / 盘面）</li>
+          <li><b>不做混搭</b>：不在语音页再编识别键，也不在软键盘伪装六条识别通道</li>
+          <li><b>标签清晰 · 归属准确</b>：每行所有者一眼可见；改哪一块只在对应 tab</li>
+        </ul>
+
+        <div class="mock-shell" aria-label="你要的示意">
+          <div class="mock-bar">
+            <span style="font-weight:800">命令配置</span>
+            <span class="pill">正在编辑 · Cursor</span>
+            <span class="pill">正在使用 · 通用</span>
+            <span class="pill own">车道 · Auto Cursor</span>
+          </div>
+          <div class="mock-bar" style="background:var(--want-soft);border-color:var(--want-bd)">
+            <span class="pill on">软键盘</span>
+            <span class="pill">按键识别</span>
+            <span class="pill">语音说法</span>
+            <span class="note" style="margin-left:auto">同一页 · tab 切换</span>
+          </div>
+          <div class="mock-body">
+            <div class="mock-rail">
+              <div class="sec">核心命令</div>
+              <button type="button" class="it on">继续回复</button>
+              <button type="button" class="it">新建对话</button>
+              <button type="button" class="it">粘贴发送</button>
+            </div>
+            <div class="mock-mid">
+              <p class="note">选中「继续回复」→ 本 tab 只编盘面键位；其它识别方式只读引用</p>
+              <div class="row">AG02 盘面<small style="color:var(--faint);font-weight:600"> · 本 tab 可编</small><span class="tag pad">软键盘</span></div>
+              <div class="row ref">Vol- 识别键 · 只读<span class="tag keys">按键</span></div>
+              <div class="row ref">说法「继续」· 只读<span class="tag voice">语音</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 我改的 -->
+    <article class="card built">
+      <div class="hd">
+        <span class="badge">我改的</span>
+        <h2>三权威面 + 统一壳</h2>
+        <span class="src">index.html</span>
+      </div>
+      <div class="bd">
+        <p class="one-liner">仍是三页设置；顶栏同形；每页一个权威；跨页只读 + 跳转。</p>
+        <ul>
+          <li><b>三页</b>：软键盘 / 按键设置 / 语音设置 —— 顶栏切页（不是同页 tab）</li>
+          <li><b>壳同形</b>：三页都有「正在编辑 / 正在使用 / Soft Pad 车道」</li>
+          <li><b>一动作一权威面</b>：盘面只在软键盘改；识别键只在按键改；说法只在语音改</li>
+          <li><b>跨通道只读引用</b>：非权威页显示所有者标签 +「去权威页」</li>
+          <li><b>Soft Pad 左轨诚实</b>：去掉伪六条识别 tab，只留屏幕按钮 + 只读入口</li>
+        </ul>
+
+        <div class="mock-shell" aria-label="我改的示意">
+          <div class="mock-bar" style="background:#0f1820;color:#a8b6c6">
+            <span style="color:#fff;font-weight:800">识别归属 · 修改后</span>
+            <span class="pill on" style="background:var(--cyan);color:#fff;border:0">软键盘</span>
+            <span class="pill" style="background:transparent;color:#c5d0de;border-color:rgba(255,255,255,.14)">按键设置</span>
+            <span class="pill" style="background:transparent;color:#c5d0de;border-color:rgba(255,255,255,.14)">语音设置</span>
+            <span class="note" style="margin-left:auto;color:#7dd3fc">三页跳转</span>
+          </div>
+          <div class="mock-bar">
+            <span style="font-weight:800">软键盘</span>
+            <span class="pill on">正在编辑 · Cursor</span>
+            <span class="pill">正在使用 · 通用</span>
+            <span class="pill own">车道 · Auto Cursor</span>
+          </div>
+          <div class="mock-body">
+            <div class="mock-rail">
+              <div class="sec">本页可编辑</div>
+              <button type="button" class="it on">屏幕按钮</button>
+              <div class="sec">其它通道</div>
+              <button type="button" class="it ghost">口头 / 听写 →</button>
+              <button type="button" class="it ghost">说法与引擎 →</button>
+            </div>
+            <div class="mock-mid">
+              <p class="note">本页权威 = 盘面；改识别键 / 说法必须离开本页</p>
+              <div class="row">AG02 盘面绑定<span class="tag pad">权威</span></div>
+              <div class="row ref">实体键触发 · 去按键页 →<span class="tag keys">引用</span></div>
+              <div class="row ref">口头说法 · 去语音页 →<span class="tag voice">引用</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <section class="diff">
+    <h2>逐项对照</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">维度</th>
+          <th style="width:39%">你要的</th>
+          <th style="width:39%">我改的（现示意）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>入口数量</td>
+          <td class="yes">1 个配置页</td>
+          <td class="no">3 个设置页（顶栏切）</td>
+        </tr>
+        <tr>
+          <td>通道怎么出现</td>
+          <td class="yes">同页 tab</td>
+          <td class="mid">独立页面 + 同形顶栏</td>
+        </tr>
+        <tr>
+          <td>视觉壳</td>
+          <td class="yes">天然同一套</td>
+          <td class="yes">刻意做成同形（接近）</td>
+        </tr>
+        <tr>
+          <td>核心命令</td>
+          <td class="yes">一份动作库，各 tab 挂识别</td>
+          <td class="mid">动作可互见，但权威面拆开</td>
+        </tr>
+        <tr>
+          <td>不做混搭</td>
+          <td class="yes">非本 tab 只读引用</td>
+          <td class="yes">非本页只读 + 跳转</td>
+        </tr>
+        <tr>
+          <td>所有者标签</td>
+          <td class="yes">要</td>
+          <td class="yes">做了</td>
+        </tr>
+        <tr>
+          <td>归属准确</td>
+          <td class="yes">谁拥有谁改</td>
+          <td class="yes">一动作一权威面</td>
+        </tr>
+        <tr>
+          <td>用户路径</td>
+          <td class="yes">不离开页 · 切 tab</td>
+          <td class="no">要记住「去软键盘 / 去按键 / 去语音」</td>
+        </tr>
+        <tr>
+          <td>和现状距离</td>
+          <td class="mid">更大改：合并 IA</td>
+          <td class="yes">更贴现状：三页还在，诚实化边界</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="actions">
+    <p>
+      主示意已是「单页 + 三 tab」。三页跳转版仅作对照；标签 / 只读引用 / 归属条已搬到同页 tab。
+    </p>
+    <a class="primary" href="./unified-tabs.html">打开单页三 Tab</a>
+    <a class="ghost" href="./index.html" style="text-decoration:none;display:inline-flex;align-items:center">对照·三页示意</a>
+    <button type="button" class="ghost" id="btnCopy">复制方案摘要</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  document.getElementById('btnCopy').addEventListener('click', function () {
+    var t =
+      '你要的（已落地 unified-tabs.html）：一个共享配置页，三通道是 tab；视觉相同；只引用核心命令；不做混搭；标签清晰；归属准确。\n' +
+      '旧对照（index.html）：三个权威面 + 统一壳 + 跨页跳转。\n' +
+      '共识：标签清晰、只引用、不混搭、归属准确；入口以单页三 tab 为准。';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () {
+        var b = document.getElementById('btnCopy');
+        b.textContent = '已复制';
+        setTimeout(function () { b.textContent = '复制方案摘要'; }, 1600);
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>

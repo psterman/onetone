@@ -68,4 +68,9 @@ assert.equal(opens[0].agentTarget.provider, 'Cursor');
 assert.equal(Nav.open({ view: 'data' }), true);
 assert.equal(opens[1].agentSub, 'data');
 
+assert.equal(Nav.open({ view: 'capsule', workspace: 'E:/voice-pilot' }), true);
+assert.equal(opens[2].agentSub, 'capsule');
+assert.equal(opens[2].tmWorkspace, 'E:/voice-pilot');
+assert.equal(opens[2].agentTarget.view, 'capsule');
+
 console.log('ok agent-nav-target');

@@ -219,27 +219,29 @@
       '</div>';
   }
 
-  /** Compact head for novice page. */
+  /** Quiet bottom-right status tags for habit locator hero. */
   function headKpiHtml(mappingId) {
     var id = String(mappingId || '').trim();
     var row = rowFor(id);
     var count = row && row.count ? row.count : 0;
     var last = row && row.lastTsMs ? row.lastTsMs : 0;
     var lastCh = row && row.lastChannel ? row.lastChannel : '';
-    return '<div class="habit-novice-usage">' +
-      '<div class="habit-novice-usage-story" aria-label="' + esc(t('habitUsageSection', '最近使用')) + '">' +
-      '<p class="habit-novice-usage-primary">' + esc(formatWindowCount(count, CACHE.hours)) + '</p>' +
-      (count > 0
-        ? '<p class="habit-novice-usage-secondary">' + esc(formatLastLine(last, lastCh)) + '</p>'
-        : '') +
-      '</div>' +
+    var emptyHint = t('habitUsageNeverHint', '真正触发过按键 / 语音后，次数会出现在这里');
+    var statusLabel = count > 0
+      ? formatWindowCount(count, CACHE.hours)
+      : t('habitUsageNeverShort', '还没用过');
+    var statusTip = count > 0 ? formatLastLine(last, lastCh) : emptyHint;
+    var peekTip = t('habitUsageViewLogTip', '打开本习惯的触发时间线（近 7 天等）');
+    var exportTip = t('habitUsageExportTip', '导出 Markdown 使用文档，便于自己用笔记 / ChatGPT 分析');
+    var section = t('habitUsageSection', '最近使用');
+    return '<div class="habit-locator-usage" role="group" aria-label="' + esc(section) + '"' +
+      (id ? ' data-kpi="' + esc(id) + '"' : '') + '>' +
+      '<span class="habit-locator-status-tag" title="' + esc(statusTip) + '">' + esc(statusLabel) + '</span>' +
       (id
-        ? '<div class="habit-novice-usage-actions">' +
-          '<button type="button" class="habit-novice-usage-link" data-habit-usage-peek="' + esc(id) + '">' +
-          esc(t('habitUsageViewLog', '看看记录')) + '</button>' +
-          '<button type="button" class="habit-novice-usage-link" data-habit-usage-export="' + esc(id) + '">' +
-          esc(t('habitUsageExport', '导出文档')) + '</button>' +
-          '</div>'
+        ? '<button type="button" class="habit-locator-status-tag is-action" data-habit-usage-peek="' + esc(id) + '" title="' + esc(peekTip) + '">' +
+          esc(t('habitUsageViewLog', '查看记录')) + '</button>' +
+          '<button type="button" class="habit-locator-status-tag is-action" data-habit-usage-export="' + esc(id) + '" title="' + esc(exportTip) + '">' +
+          esc(t('habitUsageExport', '导出文档')) + '</button>'
         : '') +
       '</div>';
   }

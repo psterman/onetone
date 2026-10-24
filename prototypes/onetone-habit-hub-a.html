@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 习惯通道目标稿（路线 A）</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5c6b7a;
+      --faint: #8a97a5;
+      --line: #d5dde6;
+      --panel: #fff;
+      --wash: #eef2f5;
+      --rail: #f7f9fb;
+      --teal: #0f6e6a;
+      --teal-soft: #e3f3f1;
+      --key: #2a5f8f;
+      --key-soft: #e7f0f8;
+      --pad: #5a4d8c;
+      --pad-soft: #efeaf8;
+      --cam: #8a5a28;
+      --cam-soft: #f8efe4;
+      --warn: #9a6118;
+      --warn-soft: #fff4df;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d8e4e6 0%, #e8ecef 48%, #dfe6ea 100%);
+      color: var(--ink);
+      font: 13px/1.45 var(--font);
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible { outline: 2px solid #16a6a0; outline-offset: 2px; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1180px, calc(100% - 28px)); margin: 20px auto 48px; }
+    .stage-head { margin: 0 2px 14px; }
+    .stage-head h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage-head p { margin: 6px 0 0; color: var(--muted); max-width: 720px; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 640px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+
+    .apps {
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      padding: 14px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .apps h3 { margin: 0 4px 4px; font-size: 12px; color: var(--faint); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .apps input {
+      width: 100%; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; background: #fff;
+    }
+    .app {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; text-align: left; border: 1px solid transparent;
+      background: transparent; border-radius: 10px; padding: 9px 10px; color: inherit;
+    }
+    .app:hover { background: #fff; }
+    .app.is-on { background: #fff; border-color: var(--line); box-shadow: 0 1px 0 rgba(0,0,0,.03); }
+    .app .ico {
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      background: #dde7ea; font-weight: 700; font-size: 12px;
+    }
+    .app .ico.cursor { background: #1e1e1e; color: #fff; }
+    .app strong { display: block; font-size: 13px; }
+    .app small { color: var(--muted); font-size: 11px; }
+    .live { width: 8px; height: 8px; border-radius: 50%; background: #2a9b6a; margin-left: auto; }
+
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .truth {
+      display: grid; grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+    }
+    .truth > div, .truth > button {
+      background: var(--wash); padding: 10px 14px; border: 0; text-align: left;
+    }
+    .truth label { display: block; font-size: 11px; color: var(--faint); }
+    .truth strong { font-size: 13px; }
+    .truth .warn { background: var(--warn-soft); }
+    .truth button { color: var(--teal); font-weight: 600; cursor: pointer; }
+
+    .hub {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Zone 1: habit entry */
+    .entry {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fbfcfd, #f3f6f8);
+    }
+    .zone-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 8px;
+    }
+    .zone-tag i {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+    }
+    .entry-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .entry-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .entry-card .row { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .entry-card strong { font-size: 13px; }
+    .entry-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge.ro { background: #e8edf1; color: #4a5a68; }
+    .badge.bound { background: var(--teal-soft); color: var(--teal); }
+    .badge.empty { background: #f0f2f4; color: var(--faint); }
+    .badge.dl { background: var(--key-soft); color: var(--key); }
+    .badge.inh { background: var(--warn-soft); color: var(--warn); }
+    .linkish {
+      align-self: start; border: 0; background: transparent;
+      color: var(--teal); padding: 0; font-size: 12px; font-weight: 600;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 420px;
+    }
+
+    /* Zone 2: command list */
+    .cmds {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .cmds-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0 4px 4px;
+    }
+    .cmds-head strong { font-size: 13px; }
+    .cmds-head span { color: var(--faint); font-size: 11px; }
+    .add-ways {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px 6px;
+    }
+    .add-ways button {
+      border: 1px dashed var(--line); background: var(--rail);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; color: var(--muted);
+    }
+    .cmd {
+      width: 100%; text-align: left; border: 1px solid transparent;
+      background: transparent; border-radius: 12px; padding: 10px 12px; color: inherit;
+    }
+    .cmd:hover { background: var(--rail); }
+    .cmd.is-on { background: var(--teal-soft); border-color: #b7ddd8; }
+    .cmd strong { display: block; font-size: 13px; }
+    .cmd small { color: var(--muted); font-size: 11px; display: block; margin-top: 2px; }
+    .lights { display: flex; gap: 5px; margin-top: 8px; }
+    .lights span {
+      width: 8px; height: 8px; border-radius: 50%; background: #d5dde4;
+      title: '';
+    }
+    .lights .voice.on { background: var(--teal); }
+    .lights .key.on { background: var(--key); }
+    .lights .pad.on { background: var(--pad); }
+    .lights .cam.on { background: var(--cam); }
+    .note-no-new {
+      margin-top: auto; padding: 8px 10px; border-radius: 10px;
+      background: var(--wash); color: var(--muted); font-size: 11px;
+    }
+
+    /* Zone 3: how to invoke */
+    .detail { padding: 14px 16px 18px; background: #fff; min-width: 0; }
+    .detail-head {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .mark {
+      width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+      background: var(--teal); color: #fff; font-weight: 700; font-size: 16px;
+    }
+    .detail-head h2 { margin: 0; font-size: 18px; }
+    .detail-head p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .detail-head .status {
+      margin-left: auto; background: var(--teal-soft); color: var(--teal);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700;
+    }
+
+    .sec { margin-bottom: 16px; }
+    .sec-h {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .sec-h h3 { margin: 0; font-size: 13px; }
+    .sec-h span { color: var(--faint); font-size: 11px; }
+    .effect {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--rail);
+    }
+    .effect strong { display: block; margin-bottom: 4px; }
+    .effect p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+      background: #fff; display: flex; flex-direction: column; gap: 8px; min-height: 128px;
+    }
+    .card.voice { border-top: 3px solid var(--teal); }
+    .card.key { border-top: 3px solid var(--key); }
+    .card.pad { border-top: 3px solid var(--pad); }
+    .card.cam { border-top: 3px solid var(--cam); }
+    .card-h { display: flex; justify-content: space-between; align-items: center; }
+    .card-h .lab { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+    .card-h .ico {
+      width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+    }
+    .card.voice .ico { background: var(--teal); }
+    .card.key .ico { background: var(--key); }
+    .card.pad .ico { background: var(--pad); }
+    .card.cam .ico { background: var(--cam); }
+    .card .val { margin: 0; font-size: 13px; line-height: 1.4; flex: 1; }
+    .card .val .dim { color: var(--faint); font-size: 11px; display: block; margin-top: 4px; }
+    .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .acts button {
+      border: 1px solid var(--line); background: var(--rail);
+      border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
+    }
+    .acts button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .acts button.secondary { background: #fff; color: var(--pad); border-color: #d4cce8; }
+    .acts button.deep { background: var(--key-soft); border-color: #c5d8ea; color: var(--key); }
+    .acts button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .legend {
+      margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+      background: var(--wash); border: 1px dashed var(--line);
+      display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 11px; color: var(--muted);
+    }
+    .legend b { color: var(--ink); }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .apps { border-right: 0; border-bottom: 1px solid var(--line); }
+      .body { grid-template-columns: 1fr; }
+      .cmds { border-right: 0; border-bottom: 1px solid var(--line); }
+      .entry-grid, .grid, .truth { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>目标稿 · 路线 A</strong>
+    <em>投影中枢 + 通道所有权</em>
+    <span>非现网 · 对齐产品模型，非整页抄原型壳</span>
+    <span class="hint">file:///E:/voice-pilot/prototypes/onetone-habit-hub-a.html</span>
+  </div>
+
+  <div class="stage">
+    <div class="stage-head">
+      <div>
+        <h1>习惯通道 · 修改后</h1>
+        <p>习惯管命令身份与匹配；启动键 / 录键 / Pad 布局 / 引擎仍归各通道页。四卡按钮由 state · owner · action 驱动，禁止把 readonly / deep-link 画成普通「编辑」。</p>
+      </div>
+    </div>
+
+    <div class="shell" aria-label="习惯通道目标布局">
+      <aside class="apps" aria-label="应用习惯">
+        <h3>应用习惯</h3>
+        <input type="search" placeholder="筛选应用或习惯" aria-label="筛选" />
+        <button type="button" class="app"><span class="ico">∞</span><span><strong>基础</strong><small>通用默认 · 可继承</small></span></button>
+        <button type="button" class="app is-on"><span class="ico cursor">C</span><span><strong>Cursor · 工作</strong><small>正在使用</small></span><i class="live" title="正在使用"></i></button>
+        <button type="button" class="app"><span class="ico">O</span><span><strong>Codex · 审查</strong><small>2 条命令</small></span></button>
+      </aside>
+
+      <div class="main">
+        <div class="truth" aria-label="范围">
+          <div><label>前台应用</label><strong>Cursor</strong></div>
+          <div><label>正在使用</label><strong>Cursor · 工作</strong></div>
+          <div class="warn"><label>正在编辑</label><strong>Cursor · 工作</strong>（≠ 自动切换运行）</div>
+          <button type="button">对准前台</button>
+        </div>
+
+        <div class="hub">
+          <!-- Zone 1 -->
+          <section class="entry" aria-label="习惯入口">
+            <div class="zone-tag"><i></i>区 1 · 习惯入口</div>
+            <div class="entry-grid">
+              <div class="entry-card">
+                <div class="row">
+                  <strong>启动键</strong>
+                  <span class="badge ro">readonly · 按键页</span>
+                </div>
+                <p>音量 − · 按住说话</p>
+                <button type="button" class="linkish">查看 / 修改 → 按键页</button>
+              </div>
+              <div class="entry-card">
+                <div class="row">
+                  <strong>唤醒方式</strong>
+                  <span class="badge ro">readonly · 语音页</span>
+                </div>
+                <p>免按键开 · 「小一小一」</p>
+                <button type="button" class="linkish">查看 / 修改 → 语音页</button>
+              </div>
+              <div class="entry-card">
+                <div class="row">
+                  <strong>识别引擎</strong>
+                  <span class="badge ro">readonly · 语音页</span>
+                </div>
+                <p>本地离线 · 中文模型</p>
+                <button type="button" class="linkish">查看 / 修改 → 语音页</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="body">
+            <!-- Zone 2 -->
+            <aside class="cmds" aria-label="命令列表">
+              <div class="zone-tag"><i></i>区 2 · 命令列表</div>
+              <div class="cmds-head">
+                <strong>工作习惯 · 命令</strong>
+                <span>commandIdentity</span>
+              </div>
+              <div class="add-ways" aria-label="添加来源">
+                <button type="button">从动作库添加</button>
+                <button type="button">从已有键位添加</button>
+                <button type="button">从已有口令添加</button>
+              </div>
+
+              <button type="button" class="cmd is-on" data-cmd="continue">
+                <strong>继续回复</strong>
+                <small>action:continueReply</small>
+                <div class="lights" aria-hidden="true">
+                  <span class="voice on" title="语音 bound"></span>
+                  <span class="key on" title="按键 deep-link"></span>
+                  <span class="pad on" title="Pad bound"></span>
+                  <span class="cam" title="摄像 empty"></span>
+                </div>
+              </button>
+              <button type="button" class="cmd" data-cmd="fix">
+                <strong>修复这个问题</strong>
+                <small>action:fixThis</small>
+                <div class="lights" aria-hidden="true">
+                  <span class="voice on"></span>
+                  <span class="key on"></span>
+                  <span class="pad"></span>
+                  <span class="cam"></span>
+                </div>
+              </button>
+              <button type="button" class="cmd" data-cmd="shortcut">
+                <strong>粘贴发送</strong>
+                <small>action:app.shortcut#inst-a</small>
+                <div class="lights" aria-hidden="true">
+                  <span class="voice"></span>
+                  <span class="key on"></span>
+                  <span class="pad on"></span>
+                  <span class="cam"></span>
+                </div>
+              </button>
+              <button type="button" class="cmd" data-cmd="shortcut2">
+                <strong>打开终端</strong>
+                <small>action:app.shortcut#inst-b · 多实例不合并</small>
+                <div class="lights" aria-hidden="true">
+                  <span class="voice"></span>
+                  <span class="key on"></span>
+                  <span class="pad"></span>
+                  <span class="cam"></span>
+                </div>
+              </button>
+
+              <p class="note-no-new">不提供「新建命令」。列表由 buildModel 投影；身份 = actionId + actionInstanceId → slot fallback。</p>
+            </aside>
+
+            <!-- Zone 3 -->
+            <article class="detail" aria-label="怎么调用">
+              <div class="zone-tag"><i></i>区 3 · 怎么调用</div>
+              <div class="detail-head">
+                <div class="mark">继</div>
+                <div>
+                  <h2>继续回复</h2>
+                  <p>做什么 · 只读 Agent 元数据</p>
+                </div>
+                <span class="status">已启用</span>
+              </div>
+
+              <section class="sec">
+                <div class="sec-h"><h3>做什么</h3><span>只读 · 非正文编辑器</span></div>
+                <div class="effect">
+                  <strong>continueReply</strong>
+                  <p>让 Agent 接着当前上下文工作。内容权威在动作表，习惯页不改 prompt。</p>
+                </div>
+              </section>
+
+              <section class="sec">
+                <div class="sec-h"><h3>怎么调用</h3><span>每通道带 state · owner · action</span></div>
+                <div class="grid">
+                  <div class="card voice">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">声</span>语音</span>
+                      <span class="badge bound">bound · habit</span>
+                    </div>
+                    <p class="val">「继续」「接着写」</p>
+                    <div class="acts">
+                      <button type="button" class="primary">编辑说法</button>
+                    </div>
+                  </div>
+
+                  <div class="card key">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">键</span>执行按键</span>
+                      <span class="badge dl">deep-link · keys</span>
+                    </div>
+                    <p class="val">
+                      Ctrl+Enter
+                      <span class="dim">≠ 上方启动键 · 录制与冲突在按键页</span>
+                    </p>
+                    <div class="acts">
+                      <button type="button" class="deep">去按键页录制</button>
+                    </div>
+                  </div>
+
+                  <div class="card pad">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">P</span>Soft Pad</span>
+                      <span class="badge bound">bound · habit</span>
+                    </div>
+                    <p class="val">
+                      AG02
+                      <span class="dim">习惯内改「命令 ↔ 键」；布局另走</span>
+                    </p>
+                    <div class="acts">
+                      <button type="button" class="primary">选 / 换 Pad 键</button>
+                      <button type="button" class="secondary">改布局 / 外观 → Pad 页</button>
+                    </div>
+                  </div>
+
+                  <div class="card cam">
+                    <div class="card-h">
+                      <span class="lab"><span class="ico">视</span>摄像头</span>
+                      <span class="badge empty">empty · habit</span>
+                    </div>
+                    <p class="val">
+                      未绑定本习惯手势
+                      <span class="dim">阈值与校准仍在摄像头页</span>
+                    </p>
+                    <div class="acts">
+                      <button type="button" class="primary">编辑本习惯手势</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="legend" aria-label="状态图例">
+                <span><b>bound</b> 已绑定可写</span>
+                <span><b>empty</b> 未绑定</span>
+                <span><b>inherited</b> 继承通用</span>
+                <span><b>readonly</b> 有值但不在此写</span>
+                <span><b>deep-link</b> 可改，入口在他页</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var detail = {
+        continue: {
+          mark: '继', title: '继续回复', id: 'action:continueReply',
+          effect: '让 Agent 接着当前上下文工作。内容权威在动作表，习惯页不改 prompt。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「继续」「接着写」', btn: '编辑说法', btnCls: 'primary' },
+          key: { badge: 'deep-link · keys', badgeCls: 'dl', val: 'Ctrl+Enter', dim: '≠ 上方启动键 · 录制与冲突在按键页', btn: '去按键页录制', btnCls: 'deep' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG02', dim: '习惯内改「命令 ↔ 键」；布局另走', btn: '选 / 换 Pad 键', btnCls: 'primary', btn2: '改布局 / 外观 → Pad 页' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定本习惯手势', dim: '阈值与校准仍在摄像头页', btn: '编辑本习惯手势', btnCls: 'primary' }
+        },
+        fix: {
+          mark: '修', title: '修复这个问题', id: 'action:fixThis',
+          effect: '保留当前约束，修改最少。',
+          voice: { badge: 'bound · habit', badgeCls: 'bound', val: '「修一下」「fix this」', btn: '编辑说法', btnCls: 'primary' },
+          key: { badge: 'deep-link · keys', badgeCls: 'dl', val: 'Alt+F', dim: '去按键页录制 / 看冲突', btn: '去按键页录制', btnCls: 'deep' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配 Pad 键', dim: '可在此绑定 microKey', btn: '选 / 换 Pad 键', btnCls: 'primary', btn2: '改布局 / 外观 → Pad 页' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', dim: '', btn: '编辑本习惯手势', btnCls: 'primary' }
+        },
+        shortcut: {
+          mark: '粘', title: '粘贴发送', id: 'action:app.shortcut#inst-a',
+          effect: '多实例示例 A · identity 含 actionInstanceId。',
+          voice: { badge: 'empty · habit', badgeCls: 'empty', val: '未配说法', btn: '编辑说法', btnCls: 'primary' },
+          key: { badge: 'deep-link · keys', badgeCls: 'dl', val: 'Ctrl+Shift+V', dim: 'deep-link', btn: '去按键页录制', btnCls: 'deep' },
+          pad: { badge: 'bound · habit', badgeCls: 'bound', val: 'AG05', dim: '', btn: '选 / 换 Pad 键', btnCls: 'primary', btn2: '改布局 / 外观 → Pad 页' },
+          cam: { badge: 'readonly · camera', badgeCls: 'ro', val: '全局眨眼（本页不写阈值）', dim: 'readonly', btn: '查看 → 摄像头页', btnCls: 'deep' }
+        },
+        shortcut2: {
+          mark: '终', title: '打开终端', id: 'action:app.shortcut#inst-b',
+          effect: '多实例示例 B · 与 inst-a 不得合并成一行。',
+          voice: { badge: 'empty · habit', badgeCls: 'empty', val: '未配说法', btn: '编辑说法', btnCls: 'primary' },
+          key: { badge: 'deep-link · keys', badgeCls: 'dl', val: 'Ctrl+`', dim: '', btn: '去按键页录制', btnCls: 'deep' },
+          pad: { badge: 'empty · habit', badgeCls: 'empty', val: '未配', btn: '选 / 换 Pad 键', btnCls: 'primary', btn2: '改布局 / 外观 → Pad 页' },
+          cam: { badge: 'empty · habit', badgeCls: 'empty', val: '未绑定', btn: '编辑本习惯手势', btnCls: 'primary' }
+        }
+      };
+
+      function paint(id) {
+        var d = detail[id];
+        if (!d) return;
+        var root = document.querySelector('.detail');
+        root.querySelector('.mark').textContent = d.mark;
+        root.querySelector('h2').textContent = d.title;
+        root.querySelector('.effect strong').textContent = d.id;
+        root.querySelector('.effect p').textContent = d.effect;
+        ['voice', 'key', 'pad', 'cam'].forEach(function (ch) {
+          var card = root.querySelector('.card.' + ch);
+          var meta = d[ch];
+          var badge = card.querySelector('.badge');
+          badge.className = 'badge ' + meta.badgeCls;
+          badge.textContent = meta.badge;
+          var val = card.querySelector('.val');
+          val.innerHTML = meta.val + (meta.dim ? '<span class="dim">' + meta.dim + '</span>' : '');
+          var acts = card.querySelector('.acts');
+          var html = '<button type="button" class="' + meta.btnCls + '">' + meta.btn + '</button>';
+          if (meta.btn2) html += '<button type="button" class="secondary">' + meta.btn2 + '</button>';
+          acts.innerHTML = html;
+        });
+      }
+
+      document.querySelectorAll('.cmd').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.cmd').forEach(function (b) { b.classList.remove('is-on'); });
+          btn.classList.add('is-on');
+          paint(btn.getAttribute('data-cmd'));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -188,18 +188,36 @@
     };
   }
   function globalCamera(){
+    var d=diff();
+    if(d&&d.globalPresenceActions) return d.globalPresenceActions(cfg());
     var cp=cfg().cameraPrefs||cfg().camera_prefs||{};
     return cp.presenceActions||cp.presence_actions||{};
   }
   function effectiveCamera(m,item){
+    var d=diff();
+    var presence=d&&d.getEffectiveCameraPresence
+      ?d.getEffectiveCameraPresence(m,cfg())
+      :null;
+    if(presence){
+      var trigger=!!presence.triggers[item.trigger];
+      var action=presence.actions[item.action]!=null?presence.actions[item.action]:'none';
+      var overridden=!presence.inheritedTriggers[item.trigger]
+        ||!presence.inheritedActions[item.action];
+      return {
+        enabled:!!(presence.enabled&&trigger&&m.enabled!==false),
+        trigger:trigger,
+        action:action||'none',
+        source:overridden?'overridden':'inherited'
+      };
+    }
     var base=globalCamera();
     var ov=m.cameraOverride&&typeof m.cameraOverride==='object'?m.cameraOverride:{};
     var otr=ov.triggers&&typeof ov.triggers==='object'?ov.triggers:{};
     var btr=base.triggers&&typeof base.triggers==='object'?base.triggers:{};
-    var trigger=otr[item.trigger]!==undefined?!!otr[item.trigger]:!!btr[item.trigger];
-    var action=ov[item.action]!=null&&String(ov[item.action]).trim()!==''?ov[item.action]:base[item.action];
-    var overridden=otr[item.trigger]!==undefined||(ov[item.action]!=null&&String(ov[item.action]).trim()!=='');
-    return {enabled:!!(base.enabled&&trigger&&m.enabled!==false),trigger:trigger,action:action||'none',source:overridden?'overridden':'inherited'};
+    var trig=otr[item.trigger]!==undefined?!!otr[item.trigger]:!!btr[item.trigger];
+    var act=ov[item.action]!=null&&String(ov[item.action]).trim()!==''?ov[item.action]:base[item.action];
+    var over=otr[item.trigger]!==undefined||(ov[item.action]!=null&&String(ov[item.action]).trim()!=='');
+    return {enabled:!!(base.enabled&&trig&&m.enabled!==false),trigger:trig,action:act||'none',source:over?'overridden':'inherited'};
   }
   function cameraItem(id){ return CAMERA_ITEMS.find(function(item){ return item.id===id; })||CAMERA_ITEMS[0]; }
 
@@ -722,37 +740,108 @@
     var variant=opts.variant||'ws';
     var asideClass=variant==='novice'?'habit-novice-apps habit-ws-apps':'habit-ws-apps';
     var query=String(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'').trim().toLowerCase();
-    var list=arr(model&&model.mappings).filter(function(m){
-      return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0;
-    });
-    var baseline=diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):null;
-    var baselineId=baseline&&baseline.id?String(baseline.id):'';
-    if(baselineId){
-      list=list.slice().sort(function(a,b){
-        var ab=String(a&&a.id||'')===baselineId?0:1;
-        var bb=String(b&&b.id||'')===baselineId?0:1;
-        return ab-bb;
-      });
-    }
+    var snapApi=global.OneToneHabitChannelSnapshot;
     var selectedId=model&&model.mapping?model.mapping.id:null;
+    var activeId=String(cfg().activeSceneId||'');
     var batchOn=wsBatchMode();
     var batchBtn='<button type="button" class="habit-ws-batch-toggle'+(batchOn?' is-active':'')+'" data-habit-batch-toggle aria-pressed="'+(batchOn?'true':'false')+'">'+esc(batchOn?t('habitHubBatchDone','完成批量'):t('habitHubBatchManage','批量管理'))+'</button>';
-    var listHtml=list.map(function(m){
-      var selected=m.id===selectedId;
-      var checked=wsIsSelected(m.id);
-      var checkHtml='';
-      if(batchOn){
-        checkHtml='<label class="habit-ws-app-check"><input type="checkbox" data-habit-select="'+esc(m.id)+'"'+(checked?' checked':'')+' /><span class="sr-only">'+esc(t('habitHubSelectScenario','选择此场景'))+'</span></label>';
+    var flatCount=arr(model&&model.mappings).length;
+    var listHtml='';
+
+    if(snapApi&&snapApi.habitLocatorGroups&&!batchOn){
+      var groups=snapApi.habitLocatorGroups(arr(model&&model.mappings),cfg(),lang());
+      groups=groups.filter(function(g){
+        if(!query) return true;
+        var name=String(g.name||g.scope||'').toLowerCase();
+        if(name.indexOf(query)>=0) return true;
+        return (g.schemes||[]).some(function(s){
+          return (appName(s)+' '+sceneName(s)).toLowerCase().indexOf(query)>=0;
+        });
+      });
+      var focusScope=model&&model.mapping&&snapApi.scopeIdForMapping
+        ?snapApi.scopeIdForMapping(model.mapping,cfg())
+        :null;
+      var confirmingDelId=String(ui().habitHubConfirmDelId||'');
+      listHtml=groups.map(function(g){
+        var primary=snapApi.pickSchemeInGroup(g.schemes,activeId,selectedId)||g.schemes[0];
+        var focusM=(g.schemes||[]).find(function(s){ return s&&s.id===selectedId; })||primary;
+        var snap=primary?snapApi.make(primary,cfg(),lang()):null;
+        var on=g.scope===focusScope;
+        var isActiveScope=(g.schemes||[]).some(function(s){ return s&&s.id===activeId; });
+        var isBaseline=focusM&&diff().isGlobalBaselineMapping
+          ?diff().isGlobalBaselineMapping(focusM,cfg(),global.OneToneMappingCore)
+          :g.scope==='global';
+        var sub=g.scope==='global'
+          ?(lang()==='en'?'Fallback':'回落')
+          :(snapApi.listSubtitle?snapApi.listSubtitle(primary,snap,lang()):'');
+        var iconM=focusM||primary||(g.schemes&&g.schemes[0]);
+        var delId=focusM&&focusM.id?String(focusM.id):'';
+        var confirming=on&&confirmingDelId&&confirmingDelId===delId;
+        var enOn=!(focusM&&focusM.enabled===false);
+        var enableTip=t('habitScenarioEnableLbl','启用')+' — '+(enOn
+          ?(lang()==='en'?'This habit can run when selected as in use.':'这套习惯可在「正在使用」时生效。')
+          :(lang()==='en'?'Off — will not run even if selected.':'已关闭 — 即使选中也不会执行。'));
+        var toolsHtml='';
+        if(on&&delId){
+          if(confirming&&!isBaseline){
+            toolsHtml='<span class="habit-ws-row-del-confirm">'
+              +'<button type="button" class="habit-ws-row-del-yes" data-habit-del-confirm="'+esc(delId)+'">'+esc(t('habitHubDeleteDo','确认删除'))+'</button>'
+              +'<button type="button" class="habit-ws-row-del-no" data-habit-del-cancel>'+esc(t('habitScenarioCancel','取消'))+'</button>'
+              +'</span>';
+          }else{
+            toolsHtml='<span class="habit-ws-row-tools">'
+              +'<button type="button" class="toggle-switch habit-hub-enable-toggle habit-ws-row-enable'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(delId)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(enableTip)+'" aria-label="'+esc(t('habitScenarioEnableLbl','启用'))+'"></button>'
+              +(!isBaseline
+                ?('<button type="button" class="habit-ws-row-del" data-habit-del="'+esc(delId)+'" title="'+esc(t('habitHubActDelete','删除'))+'" aria-label="'+esc(t('habitHubActDelete','删除'))+'">×</button>')
+                :'')
+              +'</span>';
+          }
+        }
+        return '<div class="habit-ws-app-row'+(on?' is-selected':'')+(confirming?' is-confirm-del':'')+'">'
+          +'<button type="button" class="habit-ws-app'+(on?' is-selected':'')+'" data-habit-scope="'+esc(g.scope)+'" role="option" aria-selected="'+(on?'true':'false')+'" title="'+esc(sub)+'">'
+          +(iconM?appIconHtml(iconM):'<span class="habit-ws-app-icon">?</span>')
+          +'<span class="habit-ws-app-copy"><strong>'+esc(g.name||g.scope)+'</strong><small>'+esc(sub)+'</small></span>'
+          +'<span class="habit-ws-app-badges">'
+          +(isActiveScope?'<span class="habit-ws-pill-cur" role="img" aria-label="'+esc(t('habitActiveLabel','正在使用'))+'" title="'+esc(t('habitActiveLabel','正在使用'))+'"></span>':'')
+          +(g.attention?'<span class="habit-ws-att-dot" title="'+(lang()==='en'?'Needs setup':'有待补')+'"></span>':'')
+          +'<span class="habit-ws-cnt" title="'+(lang()==='en'?'Configured actions':'已配置动作')+'">'+esc(String(g.badge||0))+'</span>'
+          +'</span></button>'
+          +toolsHtml
+          +'</div>';
+      }).join('');
+      if(!listHtml) listHtml='<div class="habit-ws-empty-list">'+(lang()==='en'?'No matches':'无匹配应用')+'</div>';
+    }else{
+      var list=arr(model&&model.mappings).filter(function(m){
+        return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0;
+      });
+      var baseline=diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):null;
+      var baselineId=baseline&&baseline.id?String(baseline.id):'';
+      if(baselineId){
+        list=list.slice().sort(function(a,b){
+          var ab=String(a&&a.id||'')===baselineId?0:1;
+          var bb=String(b&&b.id||'')===baselineId?0:1;
+          return ab-bb;
+        });
       }
-      var stateHtml=batchOn?'':('<span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span>');
-      var rowCls='habit-ws-app'+(selected&&!batchOn?' is-selected':'')+(checked?' is-batch-selected':'')+(batchOn?' is-batch-mode':'');
-      var inner=appIconHtml(m)+'<span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span>'+stateHtml;
-      if(batchOn){
-        return '<div class="habit-ws-app-row is-batch-mode">'+checkHtml+'<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected&&!batchOn?'true':'false')+'">'+inner+'</button></div>';
-      }
-      return '<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+inner+'</button>';
-    }).join('');
-    return '<aside class="'+esc(asideClass)+'"><div class="habit-ws-sidebar-head"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label>'+batchBtn+'</div>'+wsSelectionBar(list.length)+'<div class="habit-ws-app-list" role="listbox">'+listHtml+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
+      flatCount=list.length;
+      listHtml=list.map(function(m){
+        var selected=m.id===selectedId;
+        var checked=wsIsSelected(m.id);
+        var checkHtml='';
+        if(batchOn){
+          checkHtml='<label class="habit-ws-app-check"><input type="checkbox" data-habit-select="'+esc(m.id)+'"'+(checked?' checked':'')+' /><span class="sr-only">'+esc(t('habitHubSelectScenario','选择此场景'))+'</span></label>';
+        }
+        var stateHtml=batchOn?'':('<span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span>');
+        var rowCls='habit-ws-app'+(selected&&!batchOn?' is-selected':'')+(checked?' is-batch-selected':'')+(batchOn?' is-batch-mode':'');
+        var inner=appIconHtml(m)+'<span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span>'+stateHtml;
+        if(batchOn){
+          return '<div class="habit-ws-app-row is-batch-mode">'+checkHtml+'<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected&&!batchOn?'true':'false')+'">'+inner+'</button></div>';
+        }
+        return '<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+inner+'</button>';
+      }).join('');
+    }
+
+    return '<aside class="'+esc(asideClass)+'"><div class="habit-ws-sidebar-head"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label>'+batchBtn+'</div>'+wsSelectionBar(flatCount)+'<div class="habit-ws-app-list" role="listbox">'+listHtml+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
   }
 
   function forgetActionHistory(mappingIds){

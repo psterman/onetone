@@ -292,6 +292,7 @@
 
   function projectHintForHome() {
     // Prefer Home Focus confirmed/exact root — never pass display-name tokens as PathBuf.
+    // Absolute-path rules live in OneToneProjectPath (shared with HA2).
     try {
       var p =
         (homeFocusCache && homeFocusCache.project) ||
@@ -300,16 +301,11 @@
           global.OneToneHomeFocusStore.get() &&
           global.OneToneHomeFocusStore.get().project);
       var root = p && (p.root || p.workspacePath || p.workspace_path);
-      if (!root || typeof root !== 'string') return null;
-      root = String(root).trim();
-      // Windows canonicalize often prefixes \\?\ — strip for PathBuf round-trip.
-      if (root.indexOf('\\\\?\\') === 0) root = root.slice(4);
-      else if (root.indexOf('//?/') === 0) root = root.slice(4);
-      if (root.length < 2) return null;
-      if (root.indexOf('/') < 0 && root.indexOf('\\') < 0 && root.indexOf(':') < 0) {
-        return null;
+      var PP = global.OneToneProjectPath;
+      if (PP && typeof PP.normalizeAbsolutePath === 'function') {
+        return PP.normalizeAbsolutePath(root);
       }
-      return root;
+      return null;
     } catch (_) {
       return null;
     }
@@ -1182,15 +1178,20 @@
       var queryValue = new URLSearchParams(location.search).get('homeAgentV2');
       if (queryValue === '1') return true;
       if (queryValue === '0') return false;
-      return global.localStorage && global.localStorage.getItem('onetone.homeSurface') === 'agentV2';
+      var ls =
+        global.localStorage && global.localStorage.getItem('onetone.homeSurface');
+      // Rollback: focus | classic → Home Focus. Default after P2 gate: agentV2.
+      if (ls === 'focus' || ls === 'classic') return false;
+      if (ls === 'agentV2') return true;
+      return true;
     } catch (_) {
-      return false;
+      return true;
     }
   }
 
-  // Thin Agent desk (Home Focus) is the default home. Opt out with ?now=0
-  // or localStorage onetone.nowHome=0. Workbench trigger channels remain via
-  // ?now=0 / legacy preferences.
+  // Default home surface is home-agent-v2 (see detectHomeAgentV2).
+  // Rollback: ?homeAgentV2=0 or localStorage onetone.homeSurface=focus|classic.
+  // Opt out of Now host entirely with ?now=0 / onetone.nowHome=0.
   function isEnabled() {
     try {
       var q = new URLSearchParams(location.search);
@@ -3182,6 +3183,7 @@
     },
     paint: paint,
     syncVoice: syncVoiceStrip,
+    openHabitHub: openHabitHub,
     lastAgentSessionId: function () {
       try {
         return (

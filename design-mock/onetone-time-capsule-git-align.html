@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · Time Capsule ↔ Time Machine Git 对齐度</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #e6ebe8;
+    --paper: #f7f9f7;
+    --ink: #15231c;
+    --ink2: #5a6b62;
+    --line: rgba(21, 35, 28, 0.12);
+    --ok: #1a7a4c;
+    --mid: #9a6a12;
+    --gap: #a33a3a;
+    --skip: #6a7580;
+    --accent: #1f6f5a;
+    --mac: #2a5a8a;
+    --win: #1f6f5a;
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font: 13.5px/1.45 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(900px 480px at 8% -10%, rgba(31, 111, 90, 0.14), transparent 55%),
+      radial-gradient(700px 400px at 100% 0%, rgba(42, 90, 138, 0.10), transparent 50%),
+      var(--bg);
+    padding: 28px 18px 56px;
+  }
+  .page { width: min(1080px, 100%); margin: 0 auto; }
+  .nav-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .nav-links a {
+    font-size: 12px; color: var(--accent); text-decoration: none;
+    padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.65);
+    border: 1px solid var(--line);
+  }
+  .nav-links a:hover { background: #fff; }
+  h1 { font-size: 22px; font-weight: 750; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .lede { color: var(--ink2); max-width: 68ch; margin-bottom: 22px; }
+  .lede code { font-family: var(--mono); font-size: 11.5px; background: rgba(255,255,255,.65); padding: 1px 5px; border-radius: 4px; }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 22px;
+    align-items: center;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.7) inset;
+  }
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  }
+
+  .ring {
+    --p: 68;
+    width: 168px; height: 168px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ok) calc(var(--p) * 1%), #d5ddd8 0);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .ring::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border-radius: 50%;
+    background: var(--paper);
+  }
+  .ring-inner { position: relative; text-align: center; }
+  .ring-inner b { display: block; font-size: 36px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .ring-inner span { font-size: 11px; color: var(--ink2); }
+
+  .hero-copy h2 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .hero-copy p { color: var(--ink2); font-size: 12.5px; margin-bottom: 12px; }
+  .bars { display: grid; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; }
+  .bar-row em { font-style: normal; color: var(--ink2); }
+  .bar-track { height: 8px; background: #d8e0db; border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .bar-fill.ok { background: var(--ok); }
+  .bar-fill.mid { background: var(--mid); }
+  .bar-fill.gap { background: var(--gap); }
+  .bar-row strong { font-variant-numeric: tabular-nums; text-align: right; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.7); border: 1px solid var(--line);
+    font-size: 11.5px; color: var(--ink2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.ok { background: var(--ok); }
+  .dot.mid { background: var(--mid); }
+  .dot.gap { background: var(--gap); }
+  .dot.skip { background: var(--skip); }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .filters button {
+    border: 1px solid var(--line); background: rgba(255,255,255,.55);
+    padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; color: var(--ink2);
+  }
+  .filters button.on { background: var(--ink); color: #fff; border-color: transparent; }
+
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  }
+  th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink2); background: #eef3f0; }
+  tr:last-child td { border-bottom: 0; }
+  tr[hidden] { display: none; }
+  .tag {
+    display: inline-block; font-size: 10.5px; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px; margin-right: 6px; vertical-align: 1px;
+  }
+  .tag.ok { background: rgba(26,122,76,.14); color: var(--ok); }
+  .tag.mid { background: rgba(154,106,18,.16); color: var(--mid); }
+  .tag.gap { background: rgba(163,58,58,.14); color: var(--gap); }
+  .tag.skip { background: rgba(106,117,128,.16); color: var(--skip); }
+  .mac { color: var(--mac); font-family: var(--mono); font-size: 11px; }
+  .win { color: var(--win); font-family: var(--mono); font-size: 11px; }
+  .name { font-weight: 650; margin-bottom: 3px; }
+  .note { color: var(--ink2); font-size: 12px; }
+
+  .callouts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;
+  }
+  @media (max-width: 720px) { .callouts { grid-template-columns: 1fr; } }
+  .callout {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+  }
+  .callout h3 { font-size: 13px; margin-bottom: 6px; }
+  .callout p, .callout li { font-size: 12.5px; color: var(--ink2); }
+  .callout ul { padding-left: 1.1em; margin-top: 6px; }
+  .callout li { margin: 3px 0; }
+  footer { margin-top: 18px; font-size: 11.5px; color: var(--ink2); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="nav-links">
+      <a href="onetone-home-after-git-align.html">修对齐后的首页预览 →</a>
+    </div>
+    <h1>Mac Time Capsule ↔ Win Time Machine</h1>
+    <p class="lede">
+      对照 <code>psterman/onetone-mac</code> 的 <code>TimeCapsuleGit</code>
+      与 Win <code>src-tauri/src/time_machine/</code>。
+      <b>不是从零迁移</b>——核心 Git 已经同思路；要对齐的是 ref 命名、门禁与 Soft Pad 体验。
+      首页故意不嵌 Git（两边一致）。
+    </p>
+
+    <section class="hero" aria-label="对齐总览">
+      <div class="ring" style="--p:68" aria-hidden="true">
+        <div class="ring-inner">
+          <b>68%</b>
+          <span>加权对齐</span>
+        </div>
+      </div>
+      <div class="hero-copy">
+        <h2>能对齐多少？核心引擎高，跨仓互通与 Agent Round 偏低</h2>
+        <p>加权：Git 语义 40% · 门禁/安全 20% · Ref/存储互通 15% · Soft Pad 产品面 15% · Agent Round 10%。</p>
+        <div class="bars">
+          <div class="bar-row"><em>Git 语义</em><div class="bar-track"><div class="bar-fill ok" style="width:85%"></div></div><strong>85%</strong></div>
+          <div class="bar-row"><em>门禁/安全</em><div class="bar-track"><div class="bar-fill mid" style="width:70%"></div></div><strong>70%</strong></div>
+          <div class="bar-row"><em>Ref 互通</em><div class="bar-track"><div class="bar-fill gap" style="width:40%"></div></div><strong>40%</strong></div>
+          <div class="bar-row"><em>产品 UI</em><div class="bar-track"><div class="bar-fill mid" style="width:55%"></div></div><strong>55%</strong></div>
+          <div class="bar-row"><em>Agent Round</em><div class="bar-track"><div class="bar-fill gap" style="width:10%"></div></div><strong>10%</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="legend">
+      <span class="chip"><i class="dot ok"></i>已对齐 ≈ 同行为</span>
+      <span class="chip"><i class="dot mid"></i>可对齐 · 差一小截</span>
+      <span class="chip"><i class="dot gap"></i>未对齐 · 要改</span>
+      <span class="chip"><i class="dot skip"></i>刻意不对齐 / 非目标</span>
+    </div>
+
+    <div class="filters" role="tablist" aria-label="筛选">
+      <button type="button" class="on" data-f="all">全部</button>
+      <button type="button" data-f="ok">已对齐</button>
+      <button type="button" data-f="mid">可补齐</button>
+      <button type="button" data-f="gap">缺口</button>
+      <button type="button" data-f="skip">非目标</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28%">能力</th>
+          <th style="width:34%">Mac</th>
+          <th style="width:38%">Win · 对齐态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>私有 commit 检查点</div>
+            <div class="note">不动用户 HEAD / index</div>
+          </td>
+          <td><span class="mac">commit-tree → update-ref</span></td>
+          <td><span class="win">同左 · git_ops.rs</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>临时索引快照</div>
+            <div class="note">GIT_INDEX_FILE + read-tree + add -u + write-tree</div>
+          </td>
+          <td><span class="mac">currentTrackedTreeOid</span></td>
+          <td><span class="win">snapshot_worktree_tree</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>无变化跳过</div>
+          </td>
+          <td><span class="mac">skipIfUnchanged</span></td>
+          <td><span class="win">Skipped("unchanged")</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>冲突门禁</div>
+            <div class="note">MERGE / REBASE / CHERRY_PICK / REVERT</div>
+          </td>
+          <td><span class="mac">probeGate → conflict</span></td>
+          <td><span class="win">conflict_block_reason</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>恢复前 safety 点</div>
+          </td>
+          <td><span class="mac">safety_before_restore</span></td>
+          <td><span class="win">同 trigger · undo_restore</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>worktree restore</div>
+            <div class="note">restore --worktree，不改 HEAD</div>
+          </td>
+          <td><span class="mac">restoreWorktree</span></td>
+          <td><span class="win">apply_restore</span></td>
+        </tr>
+        <tr data-s="ok">
+          <td>
+            <div class="name"><span class="tag ok">已对齐</span>Autosave</div>
+          </td>
+          <td><span class="mac">TimeCapsuleService</span></td>
+          <td><span class="win">run_autosave / cmd_tm_*</span></td>
+        </tr>
+        <tr data-s="mid">
+          <td>
+            <div class="name"><span class="tag mid">可补齐</span>未跟踪文件</div>
+            <div class="note">快照范围略不同</div>
+          </td>
+          <td><span class="mac">基本仅 tracked（add -u）</span></td>
+          <td><span class="win">tracked + 轻量 untracked（跳过 target/node_modules）</span></td>
+        </tr>
+        <tr data-s="mid">
+          <td>
+            <div class="name"><span class="tag mid">可补齐</span>Sparse checkout 门禁</div>
+          </td>
+          <td><span class="mac">probeGate → sparseCheckout</span></td>
+          <td><span class="win">未拦 · 建议补</span></td>
+        </tr>
+        <tr data-s="mid">
+          <td>
+            <div class="name"><span class="tag mid">可补齐</span>无 HEAD 仓库</div>
+          </td>
+          <td><span class="mac">noHead · 手动受限</span></td>
+          <td><span class="win">文案要求已有版本记录 · 细则可统一</span></td>
+        </tr>
+        <tr data-s="mid">
+          <td>
+            <div class="name"><span class="tag mid">可补齐</span>产品壳</div>
+            <div class="note">独立入口，非首页</div>
+          </td>
+          <td><span class="mac">TimeCapsuleDeskView</span></td>
+          <td><span class="win">Soft Pad 时间胶囊 · 文案/门禁提示可对齐</span></td>
+        </tr>
+        <tr data-s="gap">
+          <td>
+            <div class="name"><span class="tag gap">缺口</span>Ref 命名空间</div>
+            <div class="note">同仓双端互读的关键</div>
+          </td>
+          <td><span class="mac">refs/onetone/&lt;hash&gt;/tip<br>refs/onetone/&lt;hash&gt;/op/&lt;id&gt;</span></td>
+          <td><span class="win">refs/onetone/tip<br>refs/onetone/op/&lt;id&gt;<br>扁平 · 多项目共 .git 会抢 tip</span></td>
+        </tr>
+        <tr data-s="gap">
+          <td>
+            <div class="name"><span class="tag gap">缺口</span>元数据落盘</div>
+          </td>
+          <td><span class="mac">按 workspaceHash 分目录</span></td>
+          <td><span class="win">sidecar 跟 workspace path · 路径不同则不互通</span></td>
+        </tr>
+        <tr data-s="gap">
+          <td>
+            <div class="name"><span class="tag gap">缺口</span>Agent Round / preSend</div>
+            <div class="note">发送前自动点 + 回合 diff</div>
+          </td>
+          <td><span class="mac">TimeCapsuleAgentRound</span></td>
+          <td><span class="win">Time Machine 无对等 · Soft Pad 发送未绑检查点</span></td>
+        </tr>
+        <tr data-s="skip">
+          <td>
+            <div class="name"><span class="tag skip">非目标</span>首页展示 Git</div>
+          </td>
+          <td><span class="mac">WorkbenchHome 不嵌 Capsule</span></td>
+          <td><span class="win">home-agent-v2 不嵌 · 保持一致</span></td>
+        </tr>
+        <tr data-s="skip">
+          <td>
+            <div class="name"><span class="tag skip">非目标</span>agent_memory checkpoint</div>
+            <div class="note">SQLite 会话记忆，不是 Git</div>
+          </td>
+          <td><span class="mac">—</span></td>
+          <td><span class="win">勿与 Time Machine 合并</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callouts">
+      <div class="callout">
+        <h3>建议落地顺序（对齐，不重写）</h3>
+        <ul>
+          <li><b>P0</b> 补 sparse 门禁；统一「无 HEAD」文案</li>
+          <li><b>P1</b> tip/op 改成 <code>&lt;hash&gt;</code> 命名（或文档约定一仓一项目）</li>
+          <li><b>P1</b> Soft Pad 时间胶囊门禁/空态对齐 Mac Capsule</li>
+          <li><b>P2</b> Agent Round / preSend（要产品确认才做）</li>
+        </ul>
+      </div>
+      <div class="callout">
+        <h3>一句话</h3>
+        <p>
+          <b>Git 层已可宣称「对齐大半」</b>（约 85% 语义）。
+          若目标是「双端同仓读同一套 tip」或「发送前自动点」，才需要动 ref 布局与 Agent Round——那是产品增量，不是迁移阻塞。
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      源：Mac <code>OneTone/Core/TimeCapsule/TimeCapsuleGit.swift</code> ·
+      Win <code>src-tauri/src/time_machine/{git_ops,oplog,mod}.rs</code> ·
+      Soft Pad <code>soft-pad-time-machine-ui.js</code>
+      · 首页形态见 <a href="onetone-home-after-git-align.html">修对齐后的首页</a>
+    </footer>
+  </div>
+
+<script>
+(function () {
+  var buttons = document.querySelectorAll('.filters button');
+  var rows = document.querySelectorAll('tbody tr');
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var f = btn.getAttribute('data-f');
+      buttons.forEach(function (b) { b.classList.toggle('on', b === btn); });
+      rows.forEach(function (row) {
+        var s = row.getAttribute('data-s');
+        row.hidden = !(f === 'all' || s === f);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

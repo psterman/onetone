@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 语音设置 · 布局架构原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee; --ok-bd:#86efac;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8;
+  --voice:#5b4d8a; --voice-soft:#f0edf7; --voice-deep:#3d3460; --voice-bd:#c4b5e0;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --cam:#a9540f; --cam-soft:#fff3e7;
+  --warn:#b45309; --warn-soft:#fff7ed; --warn-bd:#fdba74;
+  --danger:#b91c1c; --danger-soft:#fef2f2;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --shadow:0 16px 36px rgba(19,32,44,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(91,77,138,.14),transparent 55%),
+    radial-gradient(700px 280px at 94% 0%,rgba(42,156,196,.06),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit}
+button{touch-action:manipulation;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid rgba(91,77,138,.55);outline-offset:2px;
+}
+a{color:var(--cyan-ink)}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#c4b5e0;font-weight:650}
+.top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.top a{
+  color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1320px,100%);margin:0 auto;padding:16px 14px 96px}
+
+.brief{
+  background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin-bottom:14px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:96ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--voice-soft);color:var(--voice);border:1px solid var(--voice-bd);
+}
+.brief .chips span.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-bd)}
+.brief .chips span.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-bd)}
+
+.sec-title{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin:20px 0 10px;
+}
+.sec-title h2{margin:0;font-family:var(--display);font-size:18px;font-weight:700}
+.sec-title p{margin:0;color:var(--faint);font-size:12px}
+
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:860px){.split2{grid-template-columns:1fr}}
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;
+  box-shadow:0 10px 24px rgba(19,32,44,.05);
+}
+.card h3{margin:0 0 8px;font-size:14px}
+.card.bad{border-color:var(--warn-bd);background:linear-gradient(180deg,#fff,var(--warn-soft))}
+.card.good{border-color:var(--ok-bd);background:linear-gradient(180deg,#fff,var(--ok-soft))}
+.card ul{margin:0;padding-left:17px;color:var(--mute);font-size:12.5px}
+.card li{margin:4px 0}
+.card .tag{
+  display:inline-block;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+  margin-bottom:6px;
+}
+.card.bad .tag{background:var(--warn-soft);color:var(--warn)}
+.card.good .tag{background:var(--ok-soft);color:var(--ok)}
+
+.arch{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+  box-shadow:var(--shadow);
+}
+@media(max-width:900px){.arch{grid-template-columns:1fr 1fr}}
+.arch-cell{
+  border:1px dashed var(--line);border-radius:11px;padding:11px;background:var(--wash);
+}
+.arch-cell.own{border-style:solid;border-color:var(--voice-bd);background:var(--voice-soft)}
+.arch-cell .k{font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+.arch-cell h4{margin:4px 0 4px;font-size:13px}
+.arch-cell p{margin:0;font-size:11.5px;color:var(--mute)}
+
+.plan-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.plan-nav button{
+  appearance:none;border:1px solid var(--line);background:#fff;color:var(--mute);
+  border-radius:10px;padding:8px 13px;font-size:12px;font-weight:700;
+}
+.plan-nav button.on{background:var(--voice);border-color:transparent;color:#fff}
+.plan-nav button.alt.on{background:#0f1820}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:var(--shadow);
+}
+.banner{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:9px 12px;border-bottom:1px solid var(--line);background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.banner .back{
+  appearance:none;border:1px solid rgba(255,255,255,.18);background:transparent;color:#c5d0de;
+  border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;
+}
+.banner .back:hover{background:rgba(255,255,255,.08);color:#fff}
+.banner .pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#c5d0de;
+}
+.banner .pill b{color:#fff}
+.banner .pill.edit{border-color:rgba(196,181,224,.5);background:rgba(91,77,138,.28);color:#c4b5e0}
+.banner .note{margin-left:auto;font-size:11px;color:#8293a5}
+
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f4f1f8);
+}
+.scope-bar .brand{font-size:14.5px;font-weight:800;color:var(--voice-deep)}
+.scope-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.scope-pill b{color:var(--ink)}
+.scope-pill.live{border-color:var(--ok-bd);background:var(--ok-soft);color:var(--ok)}
+.scope-bar .rule{margin-left:auto;font-size:11px;font-weight:650;color:var(--faint);max-width:42ch}
+
+.desk{
+  display:grid;
+  grid-template-columns:minmax(200px,220px) minmax(0,1fr) minmax(250px,280px);
+  min-height:560px;
+}
+@media(max-width:1000px){.desk{grid-template-columns:1fr}}
+
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:10px 8px;overflow:auto}
+.rail .sec{margin:10px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+.rail .item{
+  appearance:none;display:flex;align-items:flex-start;gap:8px;width:100%;margin:2px 0;
+  padding:9px 10px;border:0;border-radius:10px;background:transparent;
+  font:inherit;font-size:12.5px;font-weight:650;color:var(--mute);text-align:left;
+}
+.rail .item:hover{background:rgba(255,255,255,.55)}
+.rail .item.is-on{background:#fff;color:var(--voice-deep);box-shadow:0 1px 0 var(--line)}
+.rail .item .t{display:block;font-weight:750}
+.rail .item .s{display:block;font-size:11px;font-weight:600;color:var(--faint);margin-top:1px}
+.rail .item.ghost{color:var(--faint)}
+.rail .own{
+  flex:0 0 auto;margin-top:2px;font-size:9.5px;font-weight:750;padding:2px 6px;border-radius:999px;
+}
+.own.voice{background:var(--voice-soft);color:var(--voice)}
+.own.keys{background:var(--keys-soft);color:var(--keys)}
+.own.pad{background:var(--pad-soft);color:var(--pad)}
+.own.cam{background:var(--cam-soft);color:var(--cam)}
+.own.l2{background:#eef2f7;color:#64748b}
+
+.mid{padding:14px 16px;overflow:auto;background:#fff}
+
+.hero-wake{
+  display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+  padding:14px;border:1px solid var(--voice-bd);border-radius:14px;
+  background:linear-gradient(180deg,#fff,var(--voice-soft));
+  margin-bottom:12px;
+}
+.phrase-hero{
+  font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em;
+  color:var(--voice-deep);line-height:1.2;
+}
+.phrase-hero .muted{color:var(--faint);font-size:13px;font-weight:650;font-family:var(--font);margin-top:4px}
+.mic-live{
+  display:flex;align-items:center;gap:8px;margin-top:10px;
+}
+.mic-bars{display:flex;align-items:flex-end;gap:2px;height:18px}
+.mic-bars i{
+  width:3px;border-radius:2px;background:var(--voice);opacity:.45;
+  animation:bar 1s ease-in-out infinite;
+}
+.mic-bars i:nth-child(1){height:6px;animation-delay:0s}
+.mic-bars i:nth-child(2){height:12px;animation-delay:.1s}
+.mic-bars i:nth-child(3){height:8px;animation-delay:.2s}
+.mic-bars i:nth-child(4){height:16px;animation-delay:.15s}
+.mic-bars i:nth-child(5){height:10px;animation-delay:.25s}
+.mic-bars.off i{animation:none;opacity:.25;height:4px!important}
+@keyframes bar{50%{transform:scaleY(.55)}}
+.mic-live span{font-size:11.5px;font-weight:700;color:var(--mute)}
+.mic-live span.on{color:var(--ok)}
+
+.toggle-row{
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:140px;
+}
+.toggle{
+  appearance:none;width:44px;height:26px;border-radius:999px;border:0;
+  background:#cbd5e1;position:relative;transition:.15s;
+}
+.toggle::after{
+  content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.15s;
+}
+.toggle.is-on{background:var(--voice)}
+.toggle.is-on::after{left:21px}
+.toggle-lbl{font-size:11px;font-weight:700;color:var(--mute);text-align:right;max-width:140px}
+
+.btn{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:7px 11px;font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap;
+}
+.btn:hover{border-color:var(--voice-bd);color:var(--voice)}
+.btn.primary{background:var(--voice);border-color:transparent;color:#fff}
+.btn.primary:hover{background:var(--voice-deep);color:#fff}
+.btn.ghost{background:transparent}
+.btn.danger{background:var(--danger-soft);border-color:#fecaca;color:var(--danger)}
+
+.section-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin:4px 0 8px;
+}
+.section-head h4{margin:0;font-size:13px}
+
+.phrase-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{
+  appearance:none;display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--wash);border-radius:999px;
+  padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--ink);
+}
+.chip:hover{border-color:var(--voice-bd);background:#fff}
+.chip.is-on{background:var(--voice-soft);border-color:var(--voice-bd);color:var(--voice-deep)}
+.chip .x{
+  width:16px;height:16px;border-radius:50%;border:0;background:rgba(91,77,138,.12);
+  color:var(--voice);font-size:11px;line-height:1;font-weight:800;cursor:pointer;
+}
+.add-row{display:flex;gap:8px;margin-bottom:14px}
+.add-row input{
+  flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 11px;
+  background:#fff;outline:none;
+}
+.add-row input:focus{border-color:var(--voice-bd);box-shadow:0 0 0 3px rgba(91,77,138,.12)}
+
+.cmd-list{display:flex;flex-direction:column;gap:7px}
+.cmd-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--wash);
+  text-align:left;width:100%;
+}
+.cmd-row:hover{border-color:var(--voice-bd);background:#fff}
+.cmd-row.is-on{border-color:var(--voice-bd);background:var(--voice-soft);box-shadow:0 0 0 1px rgba(91,77,138,.1)}
+.cmd-row .name{font-size:13px;font-weight:750}
+.cmd-row .meta{font-size:11.5px;color:var(--mute);margin-top:2px}
+.cmd-row .phrases{
+  font-size:11.5px;font-weight:700;padding:5px 9px;border-radius:8px;
+  background:#fff;border:1px solid var(--line);color:var(--voice-deep);max-width:160px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.end-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.end-grid{grid-template-columns:1fr}}
+.end-card{
+  border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--wash);
+}
+.end-card h5{margin:0 0 6px;font-size:12.5px}
+.end-card p{margin:0 0 8px;font-size:11.5px;color:var(--mute)}
+
+.engine-panel{
+  border:1px solid var(--line);border-radius:12px;padding:12px;background:linear-gradient(180deg,#fff,#f1f5f9);
+}
+.engine-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.engine-tabs button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--mute);
+}
+.engine-tabs button.on{background:#0f1820;border-color:transparent;color:#fff}
+.engine-panel .note{font-size:12px;color:var(--mute);margin:0}
+
+.aside{border-left:1px solid var(--line);background:rgba(250,252,253,.92);padding:14px;overflow:auto}
+.aside h4{margin:0 0 4px;font-size:13px}
+.aside .sub{margin:0 0 12px;color:var(--mute);font-size:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--faint);margin-bottom:4px}
+.field .box{
+  border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;font-size:12.5px;
+}
+.aside .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rule-box{
+  margin-top:14px;padding:10px;border-radius:10px;background:var(--voice-soft);
+  border:1px solid var(--voice-bd);font-size:11.5px;color:var(--voice-deep);
+}
+.rule-box b{display:block;margin-bottom:3px}
+
+.foot-strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 14px;border-top:1px solid var(--line);background:#f8f7fb;font-size:12px;
+}
+.foot-strip .lbl{font-weight:750;color:var(--faint);font-size:11px}
+.foot-chip{
+  appearance:none;display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--mute);
+}
+.foot-chip:hover{border-color:var(--voice-bd);color:var(--voice)}
+.foot-chip .dot{width:7px;height:7px;border-radius:50%}
+.foot-chip .dot.pad{background:var(--pad)}
+.foot-chip .dot.keys{background:var(--keys)}
+.foot-chip .dot.cam{background:var(--cam)}
+.foot-chip .dot.off{background:#d5dde5}
+
+.old-desk{display:grid;grid-template-columns:1fr 240px;min-height:480px}
+@media(max-width:900px){.old-desk{grid-template-columns:1fr}}
+.old-main{padding:14px;background:#faf8fc}
+.old-flow{
+  display:flex;gap:10px;margin-bottom:12px;
+}
+.old-flow .node{
+  flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:center;
+}
+.old-flow .node.on{border-color:var(--voice-bd);background:var(--voice-soft)}
+.old-flow .node b{display:block;font-size:12px}
+.old-flow .node span{font-size:11px;color:var(--mute)}
+.old-fake{
+  border:1px dashed var(--voice-bd);border-radius:12px;padding:16px;color:var(--mute);
+  background:#fff;min-height:220px;
+}
+.old-aside{border-left:1px solid var(--line);padding:12px;background:#f7f5fa}
+.strike{text-decoration:line-through;opacity:.55}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);
+  background:#0f1820;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  font-weight:650;opacity:0;pointer-events:none;transition:.2s ease;z-index:80;
+  max-width:min(90vw,420px);text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.legend{
+  margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.9);
+  border:1px solid var(--line);font-size:12px;color:var(--mute);
+}
+.legend b{color:var(--ink)}
+.foot-nav{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.foot-nav a{
+  text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:8px 12px;font-size:12px;font-weight:700;color:var(--cyan-ink);
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>语音设置 · 布局架构</strong>
+  <em>L1 权威面 · 只编说法与收尾 · 引擎下钻 L2</em>
+  <nav>
+    <a href="./keys-page-layout.html">按键页布局</a>
+    <a href="./four-channel-ia.html">四通道规划</a>
+    <a href="./abc-channel-bridge.html">A/B/C</a>
+  </nav>
+</header>
+
+<main class="page">
+  <section class="brief">
+    <h1>语音设置页：重新布局</h1>
+    <p>
+      现状以「唤醒 / 收尾」双节点堆叠，引擎、结束语、取消语和意图轨缠在同一长滚动里。
+      重构目标：<b>本页只做口头通道权威</b>——唤醒口令、命令说法、结束/取消语；麦克风与引擎放 L2；
+      按键 / Soft Pad / 摄像头只读跳转。日常四通道绑定回命令中枢。
+    </p>
+    <div class="chips">
+      <span class="ok">本页权威 = 说法</span>
+      <span>唤醒口令置顶</span>
+      <span>命令说法绑到动作</span>
+      <span class="warn">引擎不进主画布</span>
+      <span>跨通道只读 + 回中枢</span>
+    </div>
+  </section>
+
+  <div class="sec-title">
+    <h2>1. 改什么 · 不改什么</h2>
+    <p>对照现网 voiceWake 双步骤长页</p>
+  </div>
+  <div class="split2">
+    <article class="card bad">
+      <span class="tag">现状问题</span>
+      <h3>唤醒 / 收尾长滚动缠在一起</h3>
+      <ul>
+        <li>口令、引擎、结束语、取消语同一竖流，主次不清</li>
+        <li>「免按键语音」开关与口令英雄区关系弱</li>
+        <li>意图轨 / 场景动作与说法编辑抢注意力</li>
+        <li>容易在语音页顺手改非语音通道</li>
+      </ul>
+    </article>
+    <article class="card good">
+      <span class="tag">新架构原则</span>
+      <h3>口令英雄 · 说法列表 · 引擎下钻</h3>
+      <ul>
+        <li><b>上</b>：主唤醒口令 + 免按键听开关 + 电平</li>
+        <li><b>左</b>：唤醒口令 / 命令说法 / 结束与取消 · 引擎 L2</li>
+        <li><b>中</b>：当前类目的说法工作台</li>
+        <li><b>右</b>：选中说法 / 命令检查器</li>
+        <li><b>底</b>：其它通道只读芯片 → 中枢</li>
+      </ul>
+    </article>
+  </div>
+
+  <div class="sec-title">
+    <h2>2. 本页信息架构（四块）</h2>
+    <p>紫底 = 本页权威写权限；引擎是 L2</p>
+  </div>
+  <div class="arch" aria-label="语音页 IA">
+    <div class="arch-cell own">
+      <div class="k">A · Hero</div>
+      <h4>唤醒口令</h4>
+      <p>主说法、同义说法、免按键听、麦克风电平</p>
+    </div>
+    <div class="arch-cell own">
+      <div class="k">B · 说法列表</div>
+      <h4>命令说法</h4>
+      <p>「继续」「取消」等 → 绑到场景命令</p>
+    </div>
+    <div class="arch-cell own">
+      <div class="k">C · 收尾</div>
+      <h4>结束 / 取消语</h4>
+      <p>听写结束、取消生成；自动发送规则摘要</p>
+    </div>
+    <div class="arch-cell">
+      <div class="k">D · L2 / 只读</div>
+      <h4>引擎 · 跨通道</h4>
+      <p>Vosk / SAPI / 模型；按键 Pad 摄像只读</p>
+    </div>
+  </div>
+
+  <div class="sec-title">
+    <h2>3. 可点线框</h2>
+    <p>示意交互 · 不写真实配置</p>
+  </div>
+  <div class="plan-nav" role="tablist" aria-label="布局方案">
+    <button type="button" class="on" data-plan="new" role="tab" aria-selected="true">方案 · 新布局（推荐）</button>
+    <button type="button" class="alt" data-plan="old" role="tab" aria-selected="false">对照 · 现状骨架</button>
+  </div>
+
+  <div class="frame" id="stage" aria-live="polite"></div>
+
+  <p class="legend">
+    <b>读图：</b>左轨「本页可编辑」三项是口头家族；「识别引擎」是 L2，不占主画布。
+    底部芯片可模拟跳中枢 / 其它深页。试说会闪电平条。
+  </p>
+
+  <div class="foot-nav">
+    <a href="./keys-page-layout.html">← 按键页布局</a>
+    <a href="./four-channel-ia.html">四通道总规划</a>
+    <a href="./abc-channel-bridge.html">命令中枢方案 B →</a>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var plan = 'new';
+  var rail = 'wake';
+  var selectedCmd = 'continue';
+  var listening = true;
+  var engine = 'vosk';
+  var primaryWake = '开始输入';
+  var wakeAliases = ['你好助手', '开始听写'];
+  var endPhrases = ['发送', '结束'];
+  var cancelPhrases = ['取消', '算了'];
+  var draft = '';
+
+  var CMDS = {
+    continue: { name: '继续回复', action: 'agent.continue', phrases: ['继续', '接着写'] },
+    cancel: { name: '取消', action: 'input.cancel', phrases: ['取消', '停'] },
+    newchat: { name: '新建对话', action: 'agent.new', phrases: ['新建'] },
+    send: { name: '粘贴发送', action: 'input.send', phrases: [] }
+  };
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  function banner(label) {
+    return '<div class="banner">'
+      + '<button type="button" class="back" data-act="hub">← 命令中枢</button>'
+      + '<span class="pill edit">' + esc(label || 'L1 · 语音权威面') + '</span>'
+      + '<span class="pill">场景 <b>工作</b></span>'
+      + '<span class="note">示意布局 · 不写配置</span>'
+      + '</div>';
+  }
+
+  function scopeBar() {
+    return '<div class="scope-bar">'
+      + '<span class="brand">语音设置</span>'
+      + '<span class="scope-pill">正在编辑 · <b>Cursor · Agent</b></span>'
+      + '<span class="scope-pill live">正在使用 · <b>通用</b></span>'
+      + '<span class="rule">L1 权威：口头说法 · 引擎在 L2</span>'
+      + '</div>';
+  }
+
+  function chipsHtml(list, kind) {
+    return list.map(function (p, i) {
+      return '<span class="chip is-on">' + esc(p)
+        + '<button type="button" class="x" data-rm="' + kind + '" data-i="' + i + '" aria-label="删除">×</button></span>';
+    }).join('');
+  }
+
+  function midWake() {
+    return '<div class="section-head"><h4>同义唤醒说法</h4>'
+      + '<button type="button" class="btn" data-act="try-wake">试说一次</button></div>'
+      + '<div class="phrase-list">' + chipsHtml(wakeAliases, 'wake') + '</div>'
+      + '<div class="add-row">'
+      + '<input id="draftInput" type="text" placeholder="输入新说法，回车添加" value="' + esc(draft) + '" />'
+      + '<button type="button" class="btn primary" data-act="add-wake">添加</button>'
+      + '</div>'
+      + '<p style="margin:0;font-size:12px;color:var(--mute)">主口令在上方英雄区点改。同义说法命中同一唤醒意图。</p>';
+  }
+
+  function midCmds() {
+    var rows = Object.keys(CMDS).map(function (id) {
+      var c = CMDS[id];
+      var ph = c.phrases.length ? c.phrases.join(' · ') : '尚未配置';
+      return '<button type="button" class="cmd-row' + (selectedCmd === id ? ' is-on' : '') + '" data-cmd="' + id + '">'
+        + '<span><span class="name">' + esc(c.name) + '</span>'
+        + '<span class="meta">' + esc(c.action) + '</span></span>'
+        + '<span class="phrases">' + esc(ph) + '</span></button>';
+    }).join('');
+    return '<div class="section-head"><h4>命令说法 · 绑到动作</h4>'
+      + '<button type="button" class="btn" data-act="add-cmd">＋ 新命令说法</button></div>'
+      + '<div class="cmd-list">' + rows + '</div>';
+  }
+
+  function midEnd() {
+    return '<div class="end-grid">'
+      + '<div class="end-card"><h5>结束语 · 提交听写</h5>'
+      + '<p>说完这些词 → 结束并发送</p>'
+      + '<div class="phrase-list">' + chipsHtml(endPhrases, 'end') + '</div>'
+      + '<button type="button" class="btn" data-act="add-end">添加结束语</button></div>'
+      + '<div class="end-card"><h5>取消语</h5>'
+      + '<p>说完这些词 → 丢弃当前听写</p>'
+      + '<div class="phrase-list">' + chipsHtml(cancelPhrases, 'cancel') + '</div>'
+      + '<button type="button" class="btn" data-act="add-cancel">添加取消语</button></div>'
+      + '</div>'
+      + '<p style="margin:12px 0 0;font-size:12px;color:var(--mute)">自动发送延迟等细则可开高级；中枢只关心「有没有结束说法」。</p>';
+  }
+
+  function midEngine() {
+    return '<div class="engine-panel">'
+      + '<div class="engine-tabs">'
+      + '<button type="button"' + (engine === 'vosk' ? ' class="on"' : '') + ' data-engine="vosk">Vosk</button>'
+      + '<button type="button"' + (engine === 'sapi' ? ' class="on"' : '') + ' data-engine="sapi">系统语音</button>'
+      + '<button type="button"' + (engine === 'kws' ? ' class="on"' : '') + ' data-engine="kws">关键词</button>'
+      + '</div>'
+      + '<p class="note">L2：选取引擎与模型资源。切换可能短暂暂停听写（现网 park 逻辑）。日常改说法不必进这里。</p>'
+      + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button type="button" class="btn primary" data-act="engine-apply">应用引擎</button>'
+      + '<button type="button" class="btn ghost" data-act="engine-res">模型资源</button>'
+      + '</div></div>';
+  }
+
+  function asideFor() {
+    if (rail === 'engine') {
+      return '<h4>识别引擎</h4>'
+        + '<p class="sub">高级能力 · 不进中枢主画布</p>'
+        + '<div class="field"><label>当前</label><div class="box">' + esc(({ vosk: 'Vosk · 中文轻量', sapi: '系统语音', kws: '关键词引擎' })[engine]) + '</div></div>'
+        + '<div class="field"><label>麦克风</label><div class="box">系统默认</div></div>'
+        + '<div class="acts"><button type="button" class="btn" data-act="mic">换麦克风</button></div>'
+        + '<div class="rule-box"><b>L2</b>改引擎不影响命令内容；说法仍在本页 A/B/C 编辑。</div>';
+    }
+    if (rail === 'cmds') {
+      var c = CMDS[selectedCmd];
+      return '<h4>' + esc(c.name) + '</h4>'
+        + '<p class="sub">口头触发 → 同一命令</p>'
+        + '<div class="field"><label>说法</label><div class="box">' + esc(c.phrases.join(' · ') || '尚未配置') + '</div></div>'
+        + '<div class="field"><label>命令</label><div class="box">' + esc(c.action) + '</div></div>'
+        + '<div class="add-row" style="margin-top:8px">'
+        + '<input id="cmdPhraseInput" type="text" placeholder="新说法" />'
+        + '<button type="button" class="btn primary" data-act="add-cmd-phrase">加</button></div>'
+        + '<div class="acts">'
+        + '<button type="button" class="btn" data-act="try-cmd">试说</button>'
+        + '<button type="button" class="btn danger" data-act="clear-cmd">清空说法</button></div>'
+        + '<div class="rule-box"><b>归属</b>命令做什么在中枢；本页只挂口头叫法。</div>';
+    }
+    if (rail === 'end') {
+      return '<h4>结束与取消</h4>'
+        + '<p class="sub">听写收尾规则</p>'
+        + '<div class="field"><label>结束语</label><div class="box">' + esc(endPhrases.join(' · ')) + '</div></div>'
+        + '<div class="field"><label>取消语</label><div class="box">' + esc(cancelPhrases.join(' · ')) + '</div></div>'
+        + '<div class="field"><label>摘要</label><div class="box">说「发送」结束并提交</div></div>'
+        + '<div class="rule-box"><b>本页权威</b>收尾说法只在语音深页维护。</div>';
+    }
+    return '<h4>唤醒口令</h4>'
+      + '<p class="sub">免按键听的起点</p>'
+      + '<div class="field"><label>主口令</label><div class="box">' + esc(primaryWake) + '</div></div>'
+      + '<div class="field"><label>同义</label><div class="box">' + esc(wakeAliases.join(' · ') || '无') + '</div></div>'
+      + '<div class="field"><label>免按键听</label><div class="box">' + (listening ? '开' : '关') + '</div></div>'
+      + '<div class="acts">'
+      + '<button type="button" class="btn primary" data-act="edit-primary">改主口令</button>'
+      + '<button type="button" class="btn" data-act="try-wake">试说</button></div>'
+      + '<div class="rule-box"><b>归属</b>不在此页录实体键或选手势。</div>';
+  }
+
+  function midBody() {
+    if (rail === 'cmds') return midCmds();
+    if (rail === 'end') return midEnd();
+    if (rail === 'engine') return midEngine();
+    return midWake();
+  }
+
+  function renderNew() {
+    return banner() + scopeBar()
+      + '<div class="desk">'
+      + '<aside class="rail">'
+      + '<div class="sec">本页可编辑</div>'
+      + '<button type="button" class="item' + (rail === 'wake' ? ' is-on' : '') + '" data-rail="wake">'
+      + '<span class="own voice">语</span><span><span class="t">唤醒口令</span><span class="s">主说法 · 同义</span></span></button>'
+      + '<button type="button" class="item' + (rail === 'cmds' ? ' is-on' : '') + '" data-rail="cmds">'
+      + '<span class="own voice">语</span><span><span class="t">命令说法</span><span class="s">口头 → 场景命令</span></span></button>'
+      + '<button type="button" class="item' + (rail === 'end' ? ' is-on' : '') + '" data-rail="end">'
+      + '<span class="own voice">语</span><span><span class="t">结束与取消</span><span class="s">听写收尾</span></span></button>'
+      + '<div class="sec">高级 · L2</div>'
+      + '<button type="button" class="item' + (rail === 'engine' ? ' is-on' : '') + '" data-rail="engine">'
+      + '<span class="own l2">L2</span><span><span class="t">识别引擎</span><span class="s">Vosk · 系统 · 模型</span></span></button>'
+      + '<div class="sec">其它通道（只读）</div>'
+      + '<button type="button" class="item ghost" data-act="keys"><span class="own keys">键</span><span><span class="t">实体按键</span><span class="s">去按键深页 →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="pad"><span class="own pad">Pad</span><span><span class="t">Soft Pad</span><span class="s">去 Soft Pad →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="cam"><span class="own cam">摄</span><span><span class="t">手势</span><span class="s">去摄像头 →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="hub"><span class="own voice">中枢</span><span><span class="t">四通道同屏</span><span class="s">回命令中枢 →</span></span></button>'
+      + '</aside>'
+
+      + '<section class="mid">'
+      + '<div class="hero-wake">'
+      + '<div>'
+      + '<div class="phrase-hero" data-act="edit-primary" title="点改主口令">' + esc(primaryWake)
+      + '<div class="muted">主唤醒口令 · 点此修改</div></div>'
+      + '<div class="mic-live">'
+      + '<div class="mic-bars' + (listening ? '' : ' off') + '" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>'
+      + '<span class="' + (listening ? 'on' : '') + '">' + (listening ? '后台在听 · 免按键' : '免按键已关 · 仅按键/Pad 说话') + '</span>'
+      + '</div></div>'
+      + '<div class="toggle-row">'
+      + '<button type="button" class="toggle' + (listening ? ' is-on' : '') + '" data-act="toggle-listen" role="switch" aria-checked="' + (listening ? 'true' : 'false') + '" aria-label="免按键语音"></button>'
+      + '<div class="toggle-lbl">免按键语音<br/>开=听唤醒词</div>'
+      + '</div></div>'
+      + midBody()
+      + '</section>'
+
+      + '<aside class="aside">' + asideFor() + '</aside></div>'
+
+      + '<div class="foot-strip">'
+      + '<span class="lbl">同命令其它叫法</span>'
+      + '<button type="button" class="foot-chip" data-act="keys"><i class="dot keys"></i>实体键 · Vol-</button>'
+      + '<button type="button" class="foot-chip" data-act="pad"><i class="dot pad"></i>Soft Pad · AG02</button>'
+      + '<button type="button" class="foot-chip" data-act="cam"><i class="dot cam"></i>摄像 · OK</button>'
+      + '<button type="button" class="foot-chip" data-act="hub"><i class="dot off"></i>在中枢同屏看 →</button>'
+      + '</div>';
+  }
+
+  function renderOld() {
+    return banner('对照 · 现网骨架')
+      + '<div class="scope-bar"><span class="brand">语音</span>'
+      + '<span class="scope-pill">唤醒 / 收尾双节点</span>'
+      + '<span class="rule">长滚动 · 引擎与口令缠在一起</span></div>'
+      + '<div class="old-desk">'
+      + '<section class="old-main">'
+      + '<div class="old-flow">'
+      + '<div class="node on"><b>01 唤醒</b><span>口令英雄 + 同义</span></div>'
+      + '<div class="node"><b>02 收尾</b><span>引擎 · 结束 · 取消</span></div>'
+      + '</div>'
+      + '<div class="old-fake">'
+      + '<b style="color:var(--ink)">主栏长滚动</b><br/><br/>'
+      + '口令卡 → 同义 tags → 高级折叠 → 切到收尾后再看引擎 tab / 结束语 / 取消语 / 自动发送……<br/><br/>'
+      + '<span style="color:var(--warn);font-weight:700">重构时：口令英雄固定顶栏；引擎降 L2；命令说法独立成左轨一项。</span><br/><br/>'
+      + '<span class="strike">在语音页编识别键</span> · <span class="strike">在语音页编盘面</span> · <span class="strike">在语音页选手势</span>'
+      + '</div></section>'
+      + '<aside class="old-aside">'
+      + '<div style="font-size:11px;font-weight:750;color:var(--faint);margin-bottom:8px">本场景动作 / 意图轨</div>'
+      + '<div style="padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line);margin-bottom:6px;font-size:12px">继续回复</div>'
+      + '<div style="padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line);font-size:12px">一词注入…</div>'
+      + '</aside></div>';
+  }
+
+  function render() {
+    document.getElementById('stage').innerHTML = plan === 'old' ? renderOld() : renderNew();
+    document.querySelectorAll('.plan-nav button').forEach(function (btn) {
+      var on = btn.getAttribute('data-plan') === plan;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    var input = document.getElementById('draftInput');
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          draft = input.value;
+          addWake();
+        }
+      });
+    }
+  }
+
+  function addWake() {
+    var input = document.getElementById('draftInput');
+    var v = String((input && input.value) || draft || '').trim();
+    if (!v) { toast('先输入说法'); return; }
+    if (wakeAliases.indexOf(v) >= 0 || v === primaryWake) { toast('已有相同说法'); return; }
+    wakeAliases.push(v);
+    draft = '';
+    toast('已添加同义 · ' + v);
+    render();
+  }
+
+  document.querySelector('.plan-nav').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-plan]');
+    if (!btn) return;
+    plan = btn.getAttribute('data-plan');
+    render();
+  });
+
+  document.getElementById('stage').addEventListener('click', function (e) {
+    var railBtn = e.target.closest('[data-rail]');
+    if (railBtn && plan === 'new') {
+      rail = railBtn.getAttribute('data-rail');
+      render();
+      return;
+    }
+    var cmd = e.target.closest('[data-cmd]');
+    if (cmd) {
+      selectedCmd = cmd.getAttribute('data-cmd');
+      rail = 'cmds';
+      render();
+      return;
+    }
+    var eng = e.target.closest('[data-engine]');
+    if (eng) {
+      engine = eng.getAttribute('data-engine');
+      toast('引擎 → ' + engine);
+      render();
+      return;
+    }
+    var rm = e.target.closest('[data-rm]');
+    if (rm) {
+      var kind = rm.getAttribute('data-rm');
+      var i = Number(rm.getAttribute('data-i'));
+      if (kind === 'wake') wakeAliases.splice(i, 1);
+      if (kind === 'end') endPhrases.splice(i, 1);
+      if (kind === 'cancel') cancelPhrases.splice(i, 1);
+      toast('已删除说法');
+      render();
+      return;
+    }
+    var act = e.target.closest('[data-act]');
+    if (!act) return;
+    var a = act.getAttribute('data-act');
+    if (a === 'toggle-listen') {
+      listening = !listening;
+      toast(listening ? '免按键语音 · 开' : '免按键语音 · 关');
+      render();
+      return;
+    }
+    if (a === 'edit-primary') {
+      var next = window.prompt('主唤醒口令', primaryWake);
+      if (next && String(next).trim()) {
+        primaryWake = String(next).trim();
+        toast('主口令 → ' + primaryWake);
+        render();
+      }
+      return;
+    }
+    if (a === 'add-wake') { addWake(); return; }
+    if (a === 'add-end') {
+      var pe = window.prompt('结束语', '');
+      if (pe && pe.trim()) { endPhrases.push(pe.trim()); toast('已加结束语'); render(); }
+      return;
+    }
+    if (a === 'add-cancel') {
+      var pc = window.prompt('取消语', '');
+      if (pc && pc.trim()) { cancelPhrases.push(pc.trim()); toast('已加取消语'); render(); }
+      return;
+    }
+    if (a === 'add-cmd-phrase') {
+      var inp = document.getElementById('cmdPhraseInput');
+      var pv = String((inp && inp.value) || '').trim();
+      if (!pv) { toast('先输入说法'); return; }
+      CMDS[selectedCmd].phrases.push(pv);
+      toast('已挂到「' + CMDS[selectedCmd].name + '」');
+      render();
+      return;
+    }
+    if (a === 'clear-cmd') {
+      CMDS[selectedCmd].phrases = [];
+      toast('已清空说法');
+      render();
+      return;
+    }
+    if (a === 'add-cmd') { toast('新建命令说法 · 回中枢选命令（示意）'); return; }
+    if (a === 'try-wake' || a === 'try-cmd') { toast('试说中…（示意命中）'); return; }
+    if (a === 'engine-apply') { toast('已应用引擎 · ' + engine); return; }
+    if (a === 'engine-res') { toast('打开模型资源（示意）'); return; }
+    if (a === 'mic') { toast('选择麦克风（示意）'); return; }
+    if (a === 'hub') { toast('→ 命令中枢'); return; }
+    if (a === 'keys') { toast('→ 按键深页'); return; }
+    if (a === 'pad') { toast('→ Soft Pad 深页'); return; }
+    if (a === 'cam') { toast('→ 摄像头深页'); return; }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 四通道逻辑与页面规划</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8;
+  --voice:#5b4d8a; --voice-soft:#f0edf7;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --cam:#a9540f; --cam-soft:#fff3e7;
+  --warn:#b45309; --warn-soft:#fff7ed;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit}
+button{touch-action:manipulation;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid rgba(42,156,196,.72);outline-offset:2px;
+}
+a{color:var(--cyan-ink)}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.top a{
+  color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1280px,100%);margin:0 auto;padding:16px 14px 88px}
+
+.brief{
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin-bottom:14px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:92ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+}
+.brief .chips span.ok{background:var(--ok-soft);color:var(--ok);border-color:#86efac}
+.brief .chips span.warn{background:var(--warn-soft);color:var(--warn);border-color:#fdba74}
+
+.sec-title{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin:22px 0 10px;
+}
+.sec-title h2{margin:0;font-family:var(--display);font-size:18px;font-weight:700}
+.sec-title p{margin:0;color:var(--faint);font-size:12px}
+
+/* ── 逻辑链 ── */
+.flow{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;
+  box-shadow:0 14px 32px rgba(19,32,44,.07);
+}
+@media(max-width:900px){.flow{grid-template-columns:1fr 1fr}}
+.flow-node{
+  border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--wash);
+  min-height:104px;
+}
+.flow-node.core{background:var(--cyan-soft);border-color:var(--cyan-bd)}
+.flow-node .k{font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);text-transform:uppercase}
+.flow-node h3{margin:4px 0 6px;font-size:14px}
+.flow-node p{margin:0;font-size:12px;color:var(--mute)}
+.flow-arrow{
+  display:grid;place-items:center;color:var(--faint);font-size:18px;font-weight:800;
+}
+@media(max-width:900px){.flow-arrow{display:none}}
+
+.chans{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;
+}
+@media(max-width:960px){.chans{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.chans{grid-template-columns:1fr}}
+.chan{
+  border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:#fff;
+  box-shadow:0 10px 24px rgba(19,32,44,.05);
+}
+.chan.pad{border-top:3px solid var(--pad)}
+.chan.keys{border-top:3px solid var(--keys)}
+.chan.voice{border-top:3px solid var(--voice)}
+.chan.cam{border-top:3px solid var(--cam)}
+.chan .tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:750;padding:3px 8px;border-radius:999px;
+}
+.chan.pad .tag{background:var(--pad-soft);color:var(--pad)}
+.chan.keys .tag{background:var(--keys-soft);color:var(--keys)}
+.chan.voice .tag{background:var(--voice-soft);color:var(--voice)}
+.chan.cam .tag{background:var(--cam-soft);color:var(--cam)}
+.chan h3{margin:8px 0 4px;font-size:15px}
+.chan .owns{margin:0 0 8px;font-size:12.5px;font-weight:700;color:var(--ink)}
+.chan ul{margin:0;padding-left:16px;color:var(--mute);font-size:12px}
+.chan ul li{margin:3px 0}
+.chan .not{
+  margin-top:10px;padding:8px 9px;border-radius:9px;background:var(--wash);
+  font-size:11.5px;color:var(--mute);
+}
+.chan .not b{color:var(--warn)}
+
+/* ── 页面层级 ── */
+.layers{
+  display:grid;grid-template-columns:1.1fr .9fr;gap:12px;
+}
+@media(max-width:900px){.layers{grid-template-columns:1fr}}
+.layer-card{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+  box-shadow:0 14px 32px rgba(19,32,44,.06);
+}
+.layer-card h3{margin:0 0 8px;font-size:14px}
+.layer-row{
+  display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start;
+  padding:10px 0;border-top:1px solid var(--line);
+}
+.layer-row:first-of-type{border-top:0;padding-top:0}
+.layer-row .lv{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--cyan-ink);
+  background:var(--cyan-soft);border-radius:8px;padding:6px 8px;text-align:center;
+}
+.layer-row b{display:block;font-size:13px;margin-bottom:2px}
+.layer-row span{color:var(--mute);font-size:12px}
+.ia-compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;
+}
+.ia-box{
+  border:1px dashed var(--line);border-radius:12px;padding:11px;background:var(--wash);
+}
+.ia-box.good{background:var(--ok-soft);border-color:#86efac;border-style:solid}
+.ia-box .ttl{font-size:11px;font-weight:750;color:var(--faint);margin-bottom:6px}
+.ia-box.good .ttl{color:var(--ok)}
+.ia-box ul{margin:0;padding-left:16px;font-size:12px;color:var(--mute)}
+.ia-box li{margin:3px 0}
+
+/* ── 可点线框 ── */
+.stage-nav{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+}
+.stage-nav button{
+  appearance:none;border:1px solid var(--line);background:#fff;color:var(--mute);
+  border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;
+}
+.stage-nav button.on{background:#0f1820;border-color:transparent;color:#fff}
+.stage-nav button.hub.on{background:var(--cyan);color:#fff}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);
+}
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f4f8fb);
+}
+.scope-bar .brand{font-size:14.5px;font-weight:800}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.pill b{color:var(--ink);font-weight:800}
+.pill.edit{border-color:rgba(42,156,196,.4);background:var(--cyan-soft);color:var(--cyan-ink)}
+.pill.live{border-color:#86efac;background:var(--ok-soft);color:var(--ok)}
+.scope-bar .rule{margin-left:auto;font-size:11px;font-weight:650;color:var(--faint);max-width:40ch}
+
+.desk{
+  display:grid;grid-template-columns:minmax(200px,230px) minmax(0,1fr) minmax(260px,300px);
+  min-height:540px;
+}
+@media(max-width:980px){.desk{grid-template-columns:1fr}}
+
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:10px 8px;overflow:auto}
+.rail .sec{margin:8px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+.rail .item{
+  appearance:none;display:flex;align-items:center;gap:8px;width:100%;margin:2px 0;
+  padding:9px 10px;border:0;border-radius:10px;background:transparent;
+  font:inherit;font-size:12.5px;font-weight:650;color:var(--mute);text-align:left;
+}
+.rail .item:hover{background:rgba(255,255,255,.55)}
+.rail .item.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 0 var(--line)}
+.rail .ico{
+  width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  font-size:12px;font-weight:800;background:var(--cyan-soft);color:var(--cyan-ink);
+}
+.rail .lights{margin-left:auto;display:flex;gap:3px}
+.rail .dot{width:7px;height:7px;border-radius:50%;background:#d5dde5}
+.rail .dot.on.pad{background:var(--pad)}
+.rail .dot.on.keys{background:var(--keys)}
+.rail .dot.on.voice{background:var(--voice)}
+.rail .dot.on.cam{background:var(--cam)}
+
+.mid{padding:14px 16px;overflow:auto}
+.mid .hero{
+  display:flex;align-items:center;gap:12px;margin-bottom:12px;
+}
+.mid .hero .mark{
+  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:#13232c;color:#b7f5ef;font-weight:800;font-size:16px;
+}
+.mid .hero h3{margin:0;font-size:17px}
+.mid .hero p{margin:2px 0 0;color:var(--mute);font-size:12.5px}
+.sync{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+  padding:8px 11px;border-radius:10px;background:var(--ok-soft);color:var(--ok);
+  font-size:12px;font-weight:650;
+}
+.sync i{
+  width:8px;height:8px;border-radius:50%;background:currentColor;
+  box-shadow:0 0 0 3px rgba(21,128,61,.15);animation:pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse{50%{opacity:.45}}
+
+.lane-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.lane-grid{grid-template-columns:1fr}}
+.lane{
+  border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--wash);
+}
+.lane.pad{background:linear-gradient(180deg,#fff,var(--pad-soft))}
+.lane.keys{background:linear-gradient(180deg,#fff,var(--keys-soft))}
+.lane.voice{background:linear-gradient(180deg,#fff,var(--voice-soft))}
+.lane.cam{background:linear-gradient(180deg,#fff,var(--cam-soft))}
+.lane .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.lane h4{margin:0;font-size:13px}
+.lane .st{font-size:11px;font-weight:750}
+.lane .st.on{color:var(--ok)}
+.lane .st.off{color:var(--faint)}
+.lane .q{margin:0 0 8px;font-size:12px;color:var(--mute)}
+.lane .val{
+  font-family:var(--mono);font-size:13px;font-weight:700;padding:8px 10px;
+  border-radius:9px;background:#fff;border:1px solid var(--line);margin-bottom:8px;
+}
+.lane .acts{display:flex;flex-wrap:wrap;gap:6px}
+.btn{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:6px 9px;font-size:11.5px;font-weight:700;color:var(--ink);
+}
+.btn:hover{border-color:var(--cyan-bd);color:var(--cyan-ink)}
+.btn.primary{background:var(--cyan);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent}
+.btn.deep{border-style:dashed;color:var(--mute)}
+
+.inspector{border-left:1px solid var(--line);background:rgba(250,252,253,.9);padding:14px 14px;overflow:auto}
+.inspector h4{margin:0 0 4px;font-size:13px}
+.inspector .sub{margin:0 0 12px;color:var(--mute);font-size:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--faint);margin-bottom:4px}
+.field .box{
+  border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;font-size:12.5px;
+}
+.rule-box{
+  margin-top:14px;padding:10px;border-radius:10px;background:var(--cyan-soft);
+  border:1px solid var(--cyan-bd);font-size:11.5px;color:var(--cyan-ink);
+}
+.rule-box b{display:block;margin-bottom:3px}
+
+/* 通道深页 */
+.deep-desk{display:grid;grid-template-columns:200px 1fr;min-height:520px}
+@media(max-width:800px){.deep-desk{grid-template-columns:1fr}}
+.deep-rail{background:var(--rail);border-right:1px solid var(--line);padding:10px 8px}
+.deep-main{padding:16px 18px}
+.deep-main h3{margin:0 0 4px;font-size:16px}
+.deep-main .lead{margin:0 0 14px;color:var(--mute);font-size:12.5px;max-width:70ch}
+.block{
+  border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:10px;background:var(--wash);
+}
+.block h4{margin:0 0 6px;font-size:13px}
+.block p{margin:0;font-size:12px;color:var(--mute)}
+.block.auth{background:#fff;border-color:var(--cyan-bd);box-shadow:0 0 0 1px rgba(42,156,196,.08)}
+.block.ref{opacity:.85}
+.block .own{
+  display:inline-flex;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+  margin-bottom:6px;
+}
+.own.pad{background:var(--pad-soft);color:var(--pad)}
+.own.keys{background:var(--keys-soft);color:var(--keys)}
+.own.voice{background:var(--voice-soft);color:var(--voice)}
+.own.cam{background:var(--cam-soft);color:var(--cam)}
+.own.hub{background:var(--cyan-soft);color:var(--cyan-ink)}
+.fake-grid{
+  display:grid;grid-template-columns:repeat(4,36px);gap:6px;margin-top:8px;
+}
+.fake-grid i{
+  width:36px;height:36px;border-radius:8px;background:#fff;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--mute);
+}
+.fake-grid i.on{border-color:var(--pad);background:var(--pad-soft);color:var(--pad)}
+.banner{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:9px 12px;border-bottom:1px solid var(--line);background:#f8fbfd;font-size:12px;
+}
+.banner .back{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:5px 9px;font-size:11.5px;font-weight:700;
+}
+
+.legend{
+  margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.9);
+  border:1px solid var(--line);font-size:12px;color:var(--mute);
+}
+.legend b{color:var(--ink)}
+
+.foot-nav{
+  margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;
+}
+.foot-nav a{
+  text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:8px 12px;font-size:12px;font-weight:700;color:var(--cyan-ink);
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>四通道逻辑 · 页面规划</strong>
+  <em>一壳中枢 · 通道只挂触发 · 不做混搭</em>
+  <nav>
+    <a href="./keys-page-layout.html">按键页布局</a>
+    <a href="./voice-page-layout.html">语音页布局</a>
+    <a href="./abc-channel-bridge.html">A/B/C 方案</a>
+    <a href="./command-library.html">命令库</a>
+    <a href="./unified-tabs.html">三 Tab 壳</a>
+    <a href="./compare-wanted-vs-built.html">方案对比</a>
+  </nav>
+</header>
+
+<main class="page">
+  <section class="brief">
+    <h1>四个通道怎么理顺，四个页面怎么排</h1>
+    <p>
+      心智不是「四个设置产品」，而是：<b>习惯场景 → 一条命令（做什么）→ 四种调用方式</b>。
+      规划成 <b>1 个命令中枢 + 4 个通道深页</b>：中枢同屏配触发；深页只编本通道权威能力与高级项。
+    </p>
+    <div class="chips">
+      <span class="ok">命令是一份</span>
+      <span>通道 = 触发器</span>
+      <span>中枢可写触发</span>
+      <span class="warn">深页不做混搭</span>
+      <span>摄像头不是第四产品</span>
+    </div>
+  </section>
+
+  <!-- 1. 逻辑链 -->
+  <div class="sec-title">
+    <h2>1. 逻辑链（先理顺再画页）</h2>
+    <p>运行时：任一通道命中 → 同一 commandId → 同一动作</p>
+  </div>
+  <div class="flow" aria-label="逻辑链">
+    <div class="flow-node">
+      <div class="k">Scope</div>
+      <h3>习惯 / 场景</h3>
+      <p>Cursor · Agent<br/>决定「在哪生效」</p>
+    </div>
+    <div class="flow-arrow" aria-hidden="true">→</div>
+    <div class="flow-node core">
+      <div class="k">Core</div>
+      <h3>命令</h3>
+      <p>继续回复<br/>一份内容 · 一份风险策略</p>
+    </div>
+    <div class="flow-arrow" aria-hidden="true">→</div>
+    <div class="flow-node">
+      <div class="k">Triggers</div>
+      <h3>四通道触发</h3>
+      <p>盘面 / 实体键 / 说法 / 手势<br/>只回答「怎么叫到它」</p>
+    </div>
+  </div>
+
+  <div class="chans" aria-label="四通道所有权">
+    <article class="chan pad">
+      <span class="tag">Soft Pad</span>
+      <h3>屏幕按钮</h3>
+      <p class="owns">权威：盘面键位与布局</p>
+      <ul>
+        <li>绑定：哪颗屏幕键 → 哪条命令</li>
+        <li>权威面：Pad 布局 / Mini / 外观</li>
+        <li>中枢只选键位，不改编排</li>
+      </ul>
+      <div class="not"><b>不做：</b>在 Soft Pad 页伪装六条识别通道</div>
+    </article>
+    <article class="chan keys">
+      <span class="tag">实体按键</span>
+      <h3>硬件触发</h3>
+      <p class="owns">权威：录键 / 和弦 / 冲突</p>
+      <ul>
+        <li>绑定：Vol-、F9、鼠标侧键…</li>
+        <li>权威面：录键、占用检测</li>
+        <li>中枢只录/清触发键</li>
+      </ul>
+      <div class="not"><b>不做：</b>在按键页再编说法或手势</div>
+    </article>
+    <article class="chan voice">
+      <span class="tag">语音</span>
+      <h3>口头说法</h3>
+      <p class="owns">权威：说法 · 引擎 · 结束语</p>
+      <ul>
+        <li>绑定：同义说法列表</li>
+        <li>权威面：麦克风、引擎、结束规则</li>
+        <li>中枢只增删说法；引擎下钻</li>
+      </ul>
+      <div class="not"><b>不做：</b>在语音页再编识别键或盘面</div>
+    </article>
+    <article class="chan cam">
+      <span class="tag">摄像头</span>
+      <h3>手势 / 在席</h3>
+      <p class="owns">权威：手势 · 在席策略</p>
+      <ul>
+        <li>绑定：OK / 点头 / 摇头…</li>
+        <li>权威面：预览、阈值、在席动作</li>
+        <li>中枢只选手势；校准下钻</li>
+      </ul>
+      <div class="not"><b>不做：</b>把摄像头做成独立第四产品首页</div>
+    </article>
+  </div>
+
+  <!-- 2. 页面层级 -->
+  <div class="sec-title">
+    <h2>2. 页面怎么规划（1 + 4，不是 4 并列）</h2>
+    <p>侧栏入口收成「命令配置」；四通道深页降为二级权威编辑器</p>
+  </div>
+  <div class="layers">
+    <div class="layer-card">
+      <h3>信息架构层级</h3>
+      <div class="layer-row">
+        <div class="lv">L0</div>
+        <div>
+          <b>命令中枢（唯一主配置页）</b>
+          <span>左命令列表 · 中四通道触发卡 · 右检查器。同屏完成日常绑定。</span>
+        </div>
+      </div>
+      <div class="layer-row">
+        <div class="lv">L1</div>
+        <div>
+          <b>四通道深页（权威编辑器）</b>
+          <span>Soft Pad / 按键 / 语音 / 摄像头 —— 只编本通道权威能力；跨通道只读引用 + 跳回中枢。</span>
+        </div>
+      </div>
+      <div class="layer-row">
+        <div class="lv">L2</div>
+        <div>
+          <b>高级 / Pro 子面</b>
+          <span>引擎资源、在席策略、盘面外观、校准 —— 从不出现在中枢主画布。</span>
+        </div>
+      </div>
+    </div>
+    <div class="layer-card">
+      <h3>导航：改前 vs 改后</h3>
+      <div class="ia-compare">
+        <div class="ia-box">
+          <div class="ttl">现在（并列四页）</div>
+          <ul>
+            <li>按键设置</li>
+            <li>语音设置</li>
+            <li>Soft Pad</li>
+            <li>摄像头</li>
+            <li>→ 用户以为四个产品</li>
+          </ul>
+        </div>
+        <div class="ia-box good">
+          <div class="ttl">规划后</div>
+          <ul>
+            <li><b>命令配置</b>（中枢）</li>
+            <li>↳ Soft Pad 深页</li>
+            <li>↳ 按键深页</li>
+            <li>↳ 语音深页</li>
+            <li>↳ 摄像头深页</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 可点线框 -->
+  <div class="sec-title">
+    <h2>3. 线框：点下面切换「中枢 / 四深页」</h2>
+    <p>示意交互 · 不写真实配置</p>
+  </div>
+  <div class="stage-nav" role="tablist" aria-label="页面线框">
+    <button type="button" class="hub on" data-stage="hub" role="tab" aria-selected="true">L0 · 命令中枢</button>
+    <button type="button" data-stage="pad" role="tab" aria-selected="false">L1 · Soft Pad</button>
+    <button type="button" data-stage="keys" role="tab" aria-selected="false">L1 · 按键</button>
+    <button type="button" data-stage="voice" role="tab" aria-selected="false">L1 · 语音</button>
+    <button type="button" data-stage="cam" role="tab" aria-selected="false">L1 · 摄像头</button>
+  </div>
+
+  <div class="frame" id="stage" aria-live="polite"></div>
+
+  <p class="legend">
+    <b>读图规则：</b>
+    彩灯 / 「已配」= 该通道已挂触发；
+    「下钻」= 去 L1 权威面；
+    深页里带所有者标签的灰行 = 只读引用，点「去中枢」回到 L0。
+    中枢与深页共享同一场景条（正在编辑 / 正在使用）。
+  </p>
+
+  <div class="foot-nav">
+    <a href="./abc-channel-bridge.html">方案 B 交互原型 →</a>
+    <a href="./command-library.html">命令库 + 场景板 →</a>
+    <a href="./unified-tabs.html">同壳 Tab 示意 →</a>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var CMDS = [
+    { id: 'continue', icon: '续', name: '继续回复', desc: '让当前 Agent 接着完成任务',
+      pad: 'AG02', keys: 'Vol-', voice: '“继续” · “接着写”', cam: 'OK 手势',
+      lights: { pad: 1, keys: 1, voice: 1, cam: 1 } },
+    { id: 'new', icon: '新', name: '新建对话', desc: '打开一条新的 Agent 对话',
+      pad: 'AG01', keys: '', voice: '“新建”', cam: '',
+      lights: { pad: 1, keys: 0, voice: 1, cam: 0 } },
+    { id: 'send', icon: '发', name: '粘贴发送', desc: '粘贴并提交当前输入',
+      pad: '', keys: 'Ctrl+Enter', voice: '', cam: '张开手掌',
+      lights: { pad: 0, keys: 1, voice: 0, cam: 1 } },
+    { id: 'cancel', icon: '停', name: '取消', desc: '停止当前生成',
+      pad: 'ESC', keys: 'Esc', voice: '“取消”', cam: '摇头',
+      lights: { pad: 1, keys: 1, voice: 1, cam: 1 } }
+  ];
+  var selected = 'continue';
+  var stage = 'hub';
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function cmd() {
+    return CMDS.find(function (c) { return c.id === selected; }) || CMDS[0];
+  }
+  function lights(c) {
+    return '<span class="lights" aria-hidden="true">'
+      + '<i class="dot' + (c.lights.pad ? ' on pad' : '') + '"></i>'
+      + '<i class="dot' + (c.lights.keys ? ' on keys' : '') + '"></i>'
+      + '<i class="dot' + (c.lights.voice ? ' on voice' : '') + '"></i>'
+      + '<i class="dot' + (c.lights.cam ? ' on cam' : '') + '"></i>'
+      + '</span>';
+  }
+  function scopeBar(title, note) {
+    return '<div class="scope-bar">'
+      + '<span class="brand">' + esc(title) + '</span>'
+      + '<span class="pill edit">正在编辑 · <b>Cursor · Agent</b></span>'
+      + '<span class="pill live">正在使用 · <b>通用</b></span>'
+      + '<span class="rule">' + esc(note) + '</span>'
+      + '</div>';
+  }
+  function lane(cls, title, on, question, value, deepLabel, deepStage) {
+    return '<article class="lane ' + cls + '">'
+      + '<div class="hd"><h4>' + esc(title) + '</h4>'
+      + '<span class="st ' + (on ? 'on' : 'off') + '">' + (on ? '已配' : '未配') + '</span></div>'
+      + '<p class="q">' + esc(question) + '</p>'
+      + '<div class="val">' + esc(value || '尚未配置') + '</div>'
+      + '<div class="acts">'
+      + '<button type="button" class="btn primary" data-demo="中枢内编辑 · 写回本通道存储">编辑触发</button>'
+      + '<button type="button" class="btn deep" data-go="' + deepStage + '">' + esc(deepLabel) + '</button>'
+      + '</div></article>';
+  }
+
+  function renderHub() {
+    var c = cmd();
+    var list = CMDS.map(function (row) {
+      return '<button type="button" class="item' + (row.id === c.id ? ' is-on' : '') + '" data-pick="' + row.id + '">'
+        + '<span class="ico">' + esc(row.icon) + '</span>'
+        + '<span>' + esc(row.name) + '</span>'
+        + lights(row)
+        + '</button>';
+    }).join('');
+    return scopeBar('命令配置 · 中枢', '本页权威：四通道触发绑定 · 命令内容一份')
+      + '<div class="desk">'
+      + '<aside class="rail">'
+      + '<div class="sec">本场景命令</div>'
+      + list
+      + '<div class="sec">规则</div>'
+      + '<p style="margin:6px 8px;font-size:11.5px;color:var(--faint);line-height:1.4">灯亮 = 该通道已挂调用。点命令 → 中间改四种叫法。</p>'
+      + '</aside>'
+      + '<section class="mid">'
+      + '<div class="hero"><div class="mark">' + esc(c.icon) + '</div><div>'
+      + '<h3>' + esc(c.name) + '</h3><p>' + esc(c.desc) + '</p></div></div>'
+      + '<div class="sync"><i></i>同一条命令 · 四种叫法 · 写回各通道原生存储</div>'
+      + '<div class="lane-grid">'
+      + lane('pad', 'Soft Pad', !!c.pad, '点屏幕上哪个键？', c.pad, '下钻 · 盘面布局', 'pad')
+      + lane('keys', '实体按键', !!c.keys, '键盘 / 鼠标按哪个键？', c.keys, '下钻 · 录键与冲突', 'keys')
+      + lane('voice', '口头说法', !!c.voice, '说哪一句就执行？', c.voice, '下钻 · 引擎与结束语', 'voice')
+      + lane('cam', '摄像头', !!c.cam, '用哪个手势触发？', c.cam, '下钻 · 预览与在席', 'cam')
+      + '</div></section>'
+      + '<aside class="inspector">'
+      + '<h4>命令检查器</h4>'
+      + '<p class="sub">参数与风险只维护一次</p>'
+      + '<div class="field"><label>Command</label><div class="box">cmd.cursor.' + esc(c.id) + '</div></div>'
+      + '<div class="field"><label>动作</label><div class="box">agent.' + esc(c.id === 'send' ? 'send' : c.id) + '</div></div>'
+      + '<div class="field"><label>通道覆盖</label><div class="box">'
+      + (c.lights.pad + c.lights.keys + c.lights.voice + c.lights.cam) + ' / 4 已配'
+      + '</div></div>'
+      + '<button type="button" class="btn primary" style="width:100%" data-demo="已保存（示意）">保存命令</button>'
+      + '<div class="rule-box"><b>归属铁律</b>中枢可写触发；盘面编排 / 引擎 / 在席只在 L1–L2。跨通道不混编。</div>'
+      + '</aside></div>';
+  }
+
+  function deepChrome(title, channelClass, railItems, mainHtml) {
+    return '<div class="banner">'
+      + '<button type="button" class="back" data-go="hub">← 回命令中枢</button>'
+      + '<span class="pill ' + channelClass + '">L1 权威面 · ' + esc(title) + '</span>'
+      + '<span class="pill edit">正在编辑 · <b>Cursor · Agent</b></span>'
+      + '<span style="margin-left:auto;color:var(--faint);font-size:11px">跨通道只读 · 带所有者标签</span>'
+      + '</div>'
+      + scopeBar(title, '本页权威：' + title + ' · 其它通道只读引用')
+      + '<div class="deep-desk">'
+      + '<aside class="deep-rail">'
+      + '<div class="sec">本页可编辑</div>'
+      + railItems
+      + '<div class="sec">其它通道</div>'
+      + '<button type="button" class="item" data-go="hub">命令中枢 →</button>'
+      + '</aside>'
+      + '<section class="deep-main">' + mainHtml + '</section>'
+      + '</div>';
+  }
+
+  function renderPad() {
+    var c = cmd();
+    return deepChrome('Soft Pad', 'pad',
+      '<button type="button" class="item is-on">屏幕按钮</button>'
+      + '<button type="button" class="item" data-demo="打开盘面布局（L2）">盘面布局</button>'
+      + '<button type="button" class="item" data-demo="打开 Mini / 外观（L2）">外观 · Mini</button>',
+      '<h3>屏幕按钮 · 权威编辑</h3>'
+      + '<p class="lead">只编盘面键位。说法 / 实体键 / 手势在此只读，一点回中枢或跳权威页。</p>'
+      + '<div class="block auth"><span class="own pad">所有者 Soft Pad</span>'
+      + '<h4>本页可编 · ' + esc(c.name) + '</h4>'
+      + '<p>绑定键位 <b>' + esc(c.pad || '未配') + '</b></p>'
+      + '<div class="fake-grid"><i class="on">01</i><i class="on">02</i><i>03</i><i>04</i><i>05</i><i>06</i><i>07</i><i>08</i></div>'
+      + '<div style="margin-top:10px"><button type="button" class="btn primary" data-demo="选择键位">选择键位</button></div></div>'
+      + '<div class="block ref"><span class="own keys">所有者 按键</span><h4>Vol- · 只读</h4><p>实体触发 · <button type="button" class="btn ghost" data-go="keys">去按键深页</button></p></div>'
+      + '<div class="block ref"><span class="own voice">所有者 语音</span><h4>“继续” · 只读</h4><p>口头说法 · <button type="button" class="btn ghost" data-go="voice">去语音深页</button></p></div>'
+      + '<div class="block ref"><span class="own cam">所有者 摄像头</span><h4>OK · 只读</h4><p>手势触发 · <button type="button" class="btn ghost" data-go="cam">去摄像头深页</button></p></div>'
+    );
+  }
+
+  function renderKeys() {
+    var c = cmd();
+    return deepChrome('实体按键', 'keys',
+      '<button type="button" class="item is-on">录键 / 触发</button>'
+      + '<button type="button" class="item" data-demo="打开冲突检测">冲突检测</button>'
+      + '<button type="button" class="item" data-demo="打开捕获英雄键（L2）">捕获英雄键</button>',
+      '<h3>实体按键 · 权威编辑</h3>'
+      + '<p class="lead">只编硬件触发。不在此页添加说法或手势。</p>'
+      + '<div class="block auth"><span class="own keys">所有者 按键</span>'
+      + '<h4>' + esc(c.name) + ' · 触发键</h4>'
+      + '<p style="margin-bottom:8px">当前：<b>' + esc(c.keys || '未录') + '</b></p>'
+      + '<button type="button" class="btn primary" data-demo="开始录键">开始录键</button> '
+      + '<button type="button" class="btn" data-demo="检查冲突">检查冲突</button></div>'
+      + '<div class="block ref"><span class="own hub">中枢</span><h4>同命令其它通道</h4>'
+      + '<p>Soft Pad ' + esc(c.pad || '—') + ' · 语音 ' + esc(c.voice || '—') + ' · 摄像 ' + esc(c.cam || '—')
+      + ' · <button type="button" class="btn ghost" data-go="hub">在中枢同屏看</button></p></div>'
+    );
+  }
+
+  function renderVoice() {
+    var c = cmd();
+    return deepChrome('语音', 'voice',
+      '<button type="button" class="item is-on">说法绑定</button>'
+      + '<button type="button" class="item" data-demo="打开引擎（L2）">识别引擎</button>'
+      + '<button type="button" class="item" data-demo="打开结束语（L2）">结束语 / 自动发送</button>',
+      '<h3>口头说法 · 权威编辑</h3>'
+      + '<p class="lead">中枢可增删说法；引擎与结束规则留在本深页 L2。</p>'
+      + '<div class="block auth"><span class="own voice">所有者 语音</span>'
+      + '<h4>' + esc(c.name) + ' · 说法</h4>'
+      + '<p style="margin-bottom:8px">' + esc(c.voice || '尚未配置') + '</p>'
+      + '<button type="button" class="btn primary" data-demo="添加说法">添加说法</button> '
+      + '<button type="button" class="btn" data-demo="试说一次">试说一次</button></div>'
+      + '<div class="block"><span class="own voice">L2</span><h4>引擎 · 结束语</h4>'
+      + '<p>不进中枢主画布。需要时从这里进高级。</p>'
+      + '<div style="margin-top:8px"><button type="button" class="btn deep" data-demo="打开引擎面板">打开引擎</button></div></div>'
+    );
+  }
+
+  function renderCam() {
+    var c = cmd();
+    return deepChrome('摄像头', 'cam',
+      '<button type="button" class="item is-on">手势绑定</button>'
+      + '<button type="button" class="item" data-demo="打开预览">预览试一下</button>'
+      + '<button type="button" class="item" data-demo="打开在席（L2 / Pro）">在席策略</button>',
+      '<h3>手势触发 · 权威编辑</h3>'
+      + '<p class="lead">摄像头是第四种调用方式，不是第四个设置产品。校准与在席留在 L2。</p>'
+      + '<div class="block auth"><span class="own cam">所有者 摄像头</span>'
+      + '<h4>' + esc(c.name) + ' · 手势</h4>'
+      + '<p style="margin-bottom:8px">当前：<b>' + esc(c.cam || '未配') + '</b></p>'
+      + '<button type="button" class="btn primary" data-demo="更换手势">更换手势</button> '
+      + '<button type="button" class="btn" data-demo="试一下">试一下</button></div>'
+      + '<div class="block"><span class="own cam">L2 / Pro</span><h4>在席 · 置信度 · 校准</h4>'
+      + '<p>高风险动作二次确认；不在中枢展开。</p></div>'
+    );
+  }
+
+  function render() {
+    var host = document.getElementById('stage');
+    var map = { hub: renderHub, pad: renderPad, keys: renderKeys, voice: renderVoice, cam: renderCam };
+    host.innerHTML = (map[stage] || renderHub)();
+    document.querySelectorAll('.stage-nav button').forEach(function (btn) {
+      var on = btn.getAttribute('data-stage') === stage;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  document.querySelector('.stage-nav').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-stage]');
+    if (!btn) return;
+    stage = btn.getAttribute('data-stage');
+    render();
+  });
+
+  document.getElementById('stage').addEventListener('click', function (e) {
+    var pick = e.target.closest('[data-pick]');
+    if (pick) {
+      selected = pick.getAttribute('data-pick');
+      render();
+      return;
+    }
+    var go = e.target.closest('[data-go]');
+    if (go) {
+      stage = go.getAttribute('data-go');
+      render();
+      return;
+    }
+    var demo = e.target.closest('[data-demo]');
+    if (demo) {
+      var msg = demo.getAttribute('data-demo');
+      demo.animate([{ transform: 'scale(1)' }, { transform: 'scale(.97)' }, { transform: 'scale(1)' }], { duration: 160 });
+      console.info('[four-channel-ia]', msg);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

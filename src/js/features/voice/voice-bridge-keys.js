@@ -750,11 +750,48 @@
     if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel('keys');
   }
 
+  /** L5 phrase create/edit → Habits; custom-key mode stays on Keys (KEEP K). */
+  function openHabitPhraseEditor(row){
+    var Link=global.OneToneHabitCommandLink;
+    var mid=mappingId();
+    var cmd=row?(String(row.slotId||row.id||'').trim()):'';
+    var ch=claimChannelForRow(row);
+    if(ch==='cursor') ch='voice';
+    if(Link&&typeof Link.openHabitsMatch==='function'){
+      Link.openHabitsMatch({
+        mappingId:mid,
+        matchChannel:ch==='softPad'?'softPad':(ch==='camera'?'camera':'voice'),
+        matchCommand:cmd,
+        commandRef:cmd,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
+    }
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&typeof drawer.open==='function'){
+      drawer.open({
+        panel:'habits',
+        mappingId:mid,
+        matchChannel:'voice',
+        matchCommand:cmd,
+        commandRef:cmd,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
+    }
+    return false;
+  }
+
   function addPhrase(){
     if(listMode==='customKey'){
       openKeysPanel();
       return true;
     }
+    var all=listRows(false);
+    var row=all.find(function(r){ return r.id===pickId; })||all[0]||null;
+    if(openHabitPhraseEditor(row)) return true;
     var go=$('btnVoiceKeysGoFromCap')||$('btnVoiceKeysGoPage');
     if(go) go.click();
     return true;

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 命令库与场景命令</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #71808d;
+      --faint: #98a4ae;
+      --paper: #f5f8fa;
+      --panel: #ffffff;
+      --rail: #eef3f6;
+      --line: #dbe4e9;
+      --line-strong: #c8d3da;
+      --cyan: #167d91;
+      --cyan-soft: #e3f4f6;
+      --violet: #6654b5;
+      --violet-soft: #eeeafd;
+      --orange: #b96a28;
+      --orange-soft: #fff1e2;
+      --green: #19795d;
+      --green-soft: #e4f5ec;
+      --shadow: 0 14px 36px rgba(28, 50, 63, .09);
+      --radius: 13px;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 83% -12%, rgba(96, 176, 190, .13), transparent 36%),
+        linear-gradient(135deg, #f8fafb 0%, #edf3f6 100%);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; padding: 22px 24px 104px; }
+    .topbar { max-width: 1440px; margin: 0 auto 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .mark { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 11px; background: #13232c; color: #b7f5ef; font-weight: 800; letter-spacing: -.08em; box-shadow: 0 7px 14px rgba(18, 41, 52, .16); }
+    .brand strong { display: block; font-size: 15px; letter-spacing: -.01em; }
+    .brand small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .context { display: flex; align-items: center; gap: 8px; }
+    .context-label { color: var(--muted); font-size: 12px; }
+    .scene-select { border: 1px solid var(--line-strong); background: rgba(255,255,255,.75); border-radius: 9px; color: var(--ink); padding: 8px 31px 8px 11px; outline: none; }
+    .scene-select:focus-visible, input:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid #2c9db1; outline-offset: 2px; }
+    .top-actions { display: flex; gap: 7px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; border-radius: 8px; padding: 8px 11px; cursor: pointer; transition: transform .15s ease-out, border-color .15s ease-out, background .15s ease-out; }
+    .btn:hover { border-color: #7aaeb8; background: #fbffff; }
+    .btn:active { transform: scale(.98); }
+    .btn.primary { border-color: #167d91; background: #167d91; color: #fff; }
+    .btn.primary:hover { background: #126c7c; }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--cyan); }
+    .btn.small { padding: 6px 8px; font-size: 12px; }
+    .workspace { max-width: 1440px; min-height: 735px; margin: 0 auto; display: grid; grid-template-columns: 262px minmax(440px, 1fr) 345px; overflow: hidden; background: rgba(255,255,255,.76); border: 1px solid rgba(200, 211, 218, .9); border-radius: 18px; box-shadow: var(--shadow); }
+    .library, .inspector { background: rgba(250,252,253,.83); }
+    .library { border-right: 1px solid var(--line); padding: 17px 12px; }
+    .inspector { border-left: 1px solid var(--line); padding: 19px 17px; }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 0 6px 13px; }
+    .section-head h1, .section-head h2 { margin: 0; font-size: 14px; letter-spacing: -.01em; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .icon-btn { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid var(--line); background: white; border-radius: 7px; cursor: pointer; color: var(--cyan); }
+    .library-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; margin-bottom: 12px; background: #e7eef2; border-radius: 9px; }
+    .library-tabs button { border: 0; border-radius: 7px; background: transparent; color: var(--muted); padding: 7px 3px; font-size: 11px; cursor: pointer; }
+    .library-tabs button.is-active { background: #fff; color: var(--ink); box-shadow: 0 2px 7px rgba(37, 59, 71, .08); font-weight: 700; }
+    .search { position: relative; margin: 0 3px 14px; }
+    .search input { width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 9px 8px 29px; color: var(--ink); outline: none; }
+    .search span { position: absolute; left: 10px; top: 7px; color: var(--faint); }
+    .library-group { margin: 0 3px 14px; }
+    .library-group-title { padding: 0 4px 6px; color: var(--faint); font-size: 10px; letter-spacing: .04em; }
+    .library-item { width: 100%; display: flex; align-items: center; gap: 9px; text-align: left; border: 1px solid transparent; border-radius: 9px; background: transparent; padding: 9px 8px; margin-bottom: 3px; cursor: pointer; }
+    .library-item:hover { background: #f0f7f8; }
+    .library-item.is-selected { border-color: #aad5dc; background: var(--cyan-soft); }
+    .lib-icon { flex: 0 0 28px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--cyan); background: #d5edf0; font-size: 13px; font-weight: 750; }
+    .library-item[data-kind="macro"] .lib-icon { color: var(--violet); background: var(--violet-soft); }
+    .library-item[data-kind="custom"] .lib-icon { color: var(--orange); background: var(--orange-soft); }
+    .library-copy { min-width: 0; }
+    .library-copy b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .library-copy small { display: block; color: var(--muted); margin-top: 3px; font-size: 10px; }
+    .library-footer { border-top: 1px solid var(--line); margin: 18px 3px 0; padding: 13px 4px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .library-footer strong { color: var(--ink); }
+    .stage { min-width: 0; padding: 21px 23px; background: rgba(255,255,255,.64); }
+    .stage-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .eyebrow { color: var(--cyan); font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .stage-head h1 { margin: 5px 0 4px; font-size: 25px; letter-spacing: -.04em; }
+    .stage-head p { margin: 0; color: var(--muted); font-size: 12px; }
+    .stage-summary { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .summary-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+    .scene-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 17px; scrollbar-width: thin; }
+    .scene-chip { flex: 0 0 auto; border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 11px; }
+    .scene-chip.is-active { border-color: #78bac3; color: var(--ink); background: #edfafb; box-shadow: inset 0 -2px 0 var(--cyan); }
+    .scene-chip small { display: block; color: var(--faint); margin-top: 2px; }
+    .scene-chip.is-active small { color: var(--cyan); }
+    .command-card { border: 1px solid var(--line); background: #fff; border-radius: 13px; margin-bottom: 10px; overflow: hidden; transition: border-color .15s ease-out, box-shadow .15s ease-out; }
+    .command-card:hover { border-color: #a8c9cf; }
+    .command-card.is-selected { border-color: #69b4bf; box-shadow: 0 8px 22px rgba(30, 125, 145, .09); }
+    .command-card-head { display: flex; align-items: center; gap: 11px; padding: 13px 14px 11px; cursor: pointer; }
+    .command-symbol { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 10px; background: #e0f3f4; color: var(--cyan); font-size: 15px; font-weight: 800; }
+    .command-card[data-type="macro"] .command-symbol { color: var(--violet); background: var(--violet-soft); }
+    .command-card[data-type="custom"] .command-symbol { color: var(--orange); background: var(--orange-soft); }
+    .command-main { min-width: 0; flex: 1; }
+    .command-main b { display: block; font-size: 13px; }
+    .command-main p { margin: 4px 0 0; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .command-meta { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 10px; }
+    .command-menu { color: var(--faint); border: 0; background: transparent; cursor: pointer; font-size: 18px; padding: 1px 4px; }
+    .channel-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 10px; border-top: 1px solid #edf1f3; padding: 10px 14px; }
+    .channel-label { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+    .channel-glyph { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; font-size: 10px; font-weight: 800; }
+    .channel-glyph.key { color: var(--cyan); background: var(--cyan-soft); }
+    .channel-glyph.voice { color: #2a66a0; background: #e6f0fc; }
+    .channel-glyph.pad { color: var(--violet); background: var(--violet-soft); }
+    .channel-glyph.camera { color: var(--orange); background: var(--orange-soft); }
+    .channel-value { min-width: 0; color: var(--ink); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .channel-value.is-empty { color: var(--faint); }
+    .channel-edit { border: 0; background: transparent; color: var(--cyan); cursor: pointer; font-size: 11px; padding: 4px 0; }
+    .toggle { width: 31px; height: 18px; border: 0; border-radius: 999px; padding: 2px; background: #cbd5db; cursor: pointer; }
+    .toggle::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .16s ease-out; box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+    .toggle.is-on { background: var(--green); }
+    .toggle.is-on::after { transform: translateX(13px); }
+    .command-add { border: 1px dashed #a9c5cb; background: rgba(243, 251, 251, .7); color: var(--cyan); border-radius: 11px; width: 100%; padding: 13px; cursor: pointer; font-size: 12px; }
+    .command-add:hover { background: #e8f7f8; border-color: var(--cyan); }
+    .trace { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 10px 12px; border-radius: 9px; background: #f2f6f7; color: var(--muted); font-size: 11px; }
+    .trace strong { color: var(--green); font-weight: 700; }
+    .trace .trace-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .inspector-head { display: flex; align-items: flex-start; gap: 10px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+    .inspector-icon { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--cyan-soft); color: var(--cyan); font-weight: 800; }
+    .inspector-head h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .inspector-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .inspector-section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .inspector-section:last-child { border-bottom: 0; }
+    .inspector-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+    .inspector-title b { font-size: 11px; }
+    .inspector-title span { color: var(--faint); font-size: 10px; }
+    .step-list { display: grid; gap: 6px; }
+    .step { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
+    .step-index { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 5px; background: #edf1f3; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .step-copy { flex: 1; min-width: 0; }
+    .step-copy b { display: block; font-size: 11px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .step-copy small { display: block; color: var(--faint); font-size: 10px; margin-top: 2px; }
+    .step-drag { color: var(--faint); cursor: grab; }
+    .add-step { width: 100%; border: 1px dashed var(--line-strong); color: var(--cyan); background: transparent; border-radius: 8px; padding: 7px; font-size: 11px; cursor: pointer; margin-top: 7px; }
+    .trigger-editor { display: grid; gap: 7px; }
+    .trigger-line { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 7px; }
+    .trigger-line input { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 7px 8px; font-size: 11px; color: var(--ink); background: #fff; outline: none; }
+    .trigger-line input:focus { border-color: #65b3bf; }
+    .trigger-line .status { color: var(--green); font-size: 10px; }
+    .helper { padding: 10px; margin-top: 9px; border-radius: 8px; color: var(--muted); background: #f4f7f8; font-size: 10px; line-height: 1.45; }
+    .inspector-actions { display: flex; gap: 7px; margin-top: 13px; }
+    .inspector-actions .btn { flex: 1; }
+    .toast { position: fixed; right: 22px; bottom: 77px; z-index: 50; padding: 10px 13px; border: 1px solid #aad5c2; border-radius: 9px; background: #effaf4; color: var(--green); box-shadow: 0 10px 25px rgba(31, 92, 73, .13); font-size: 12px; opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity .18s ease-out, transform .18s ease-out; }
+    .toast.is-visible { opacity: 1; transform: translateY(0); }
+
+    /* Variant 2: scene board */
+    .variant-scene .workspace { grid-template-columns: 245px 1fr; }
+    .variant-scene .inspector { display: none; }
+    .scene-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .scene-board .command-card { margin: 0; }
+    .scene-board .command-card-head { padding-bottom: 13px; }
+    .matrix-strip { display: grid; grid-template-columns: 1.1fr repeat(4, 1fr); gap: 1px; margin-top: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line); }
+    .matrix-cell { min-width: 0; padding: 9px 8px; background: #fff; color: var(--muted); font-size: 10px; }
+    .matrix-cell.head { color: var(--ink); font-weight: 700; background: #f3f7f8; }
+    .matrix-cell b { display: block; color: var(--ink); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .matrix-cell .matrix-state { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--green); }
+    .matrix-state i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .matrix-state.off { color: var(--faint); }
+    .variant-scene .stage-head h1 { font-size: 29px; }
+    .scene-note { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 12px; color: var(--muted); font-size: 11px; }
+    .scene-note strong { color: var(--ink); }
+
+    /* Variant 3: macro editor */
+    .variant-macro .workspace { grid-template-columns: 245px minmax(400px, 1fr) 380px; }
+    .variant-macro .stage { background: #f4f6f7; }
+    .macro-canvas { min-height: 510px; padding: 18px; border: 1px solid #d4dde2; border-radius: 14px; background: #fff; box-shadow: 0 10px 24px rgba(42, 64, 75, .06); }
+    .macro-canvas-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+    .macro-canvas-head h2 { margin: 0; font-size: 19px; letter-spacing: -.03em; }
+    .macro-canvas-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .macro-step-flow { position: relative; display: grid; gap: 9px; margin: 20px 0 16px; }
+    .macro-step-flow::before { content: ""; position: absolute; left: 18px; top: 21px; bottom: 21px; width: 1px; background: #cbd9df; }
+    .macro-node { position: relative; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 10px 8px 7px; border: 1px solid var(--line); border-radius: 10px; background: #fcfdfd; }
+    .macro-node:hover { border-color: #76b9c3; }
+    .macro-node-index { position: relative; z-index: 1; width: 24px; height: 24px; display: grid; place-items: center; border: 2px solid #d9eef0; border-radius: 50%; background: #e8f7f8; color: var(--cyan); font-size: 10px; font-weight: 800; }
+    .macro-node-copy { flex: 1; }
+    .macro-node-copy b { display: block; font-size: 12px; }
+    .macro-node-copy small { display: block; color: var(--muted); margin-top: 2px; font-size: 10px; }
+    .macro-node-menu { border: 0; background: transparent; color: var(--faint); cursor: pointer; }
+    .macro-add-row { display: flex; gap: 7px; }
+    .macro-add-row .btn { flex: 1; font-size: 11px; }
+    .macro-trigger-dock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 15px; }
+    .macro-trigger { padding: 9px 6px; border: 1px solid var(--line); border-radius: 8px; background: #fafcfc; text-align: center; cursor: pointer; }
+    .macro-trigger:hover { border-color: #7bb9c2; background: #f0fafb; }
+    .macro-trigger b { display: block; margin-top: 5px; font-size: 10px; }
+    .macro-trigger small { color: var(--muted); font-size: 9px; }
+    .variant-macro .inspector { background: #f8fafb; }
+    .runtime-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 7px; background: var(--green-soft); color: var(--green); font-size: 10px; }
+    .runtime-pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* Picker: copied from prototype skill */
+    .proto-picker {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(10, 10, 10, 0.82);
+      -webkit-backdrop-filter: blur(12px) saturate(1.4);
+      backdrop-filter: blur(12px) saturate(1.4);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+        0 8px 24px rgba(0, 0, 0, 0.24),
+        0 2px 6px rgba(0, 0, 0, 0.12);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      line-height: 1;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+    .proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+    @media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+    .proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+    .proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+    .proto-picker-item:active { transform: scale(0.97); }
+    .proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+    .proto-picker-item[data-active] { color: #fff; }
+    .proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+    .proto-picker-replay { padding: 0 10px; font-size: 14px; }
+
+    @media (max-width: 1120px) {
+      .workspace, .variant-macro .workspace { grid-template-columns: 225px minmax(400px, 1fr); }
+      .inspector { display: none; }
+      .variant-scene .workspace { grid-template-columns: 225px 1fr; }
+      .stage { padding: 20px 18px; }
+    }
+    @media (max-width: 760px) {
+      .app { padding: 14px 10px 88px; }
+      .topbar { align-items: flex-start; flex-wrap: wrap; }
+      .context { width: 100%; }
+      .context-label { display: none; }
+      .scene-select { flex: 1; }
+      .top-actions { margin-left: auto; }
+      .workspace, .variant-scene .workspace, .variant-macro .workspace { display: block; min-height: 0; border-radius: 14px; }
+      .library { border-right: 0; border-bottom: 1px solid var(--line); padding: 13px 10px 10px; }
+      .library-group { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 7px; }
+      .library-group-title, .library-footer { display: none; }
+      .library-item { flex: 0 0 160px; margin: 0; }
+      .search { margin-bottom: 9px; }
+      .stage { padding: 18px 12px 22px; }
+      .stage-head { align-items: flex-start; flex-direction: column; gap: 7px; }
+      .stage-head h1 { font-size: 22px; }
+      .stage-summary { white-space: normal; }
+      .scene-board { grid-template-columns: 1fr; }
+      .matrix-strip { overflow-x: auto; grid-template-columns: 140px repeat(4, 94px); }
+      .proto-picker { bottom: 14px; }
+      .proto-picker-item { padding: 0 8px; font-size: 11px; }
+      .macro-canvas { padding: 13px; }
+      .macro-trigger-dock { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite">已添加到当前场景</div>
+
+  <nav class="proto-picker" aria-label="Prototype variants">
+    <span class="proto-picker-highlight" aria-hidden="true"></span>
+    <button class="proto-picker-item" data-active aria-current="true">命令库优先</button>
+    <button class="proto-picker-item">场景面板优先</button>
+    <button class="proto-picker-item">宏编辑优先</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+
+  <template id="shell-template">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand"><div class="mark">OT</div><div><strong>命令工作台</strong><small>把一个动作，配置成四种调用方式</small></div></div>
+        <div class="context">
+          <span class="context-label">当前场景</span>
+          <select class="scene-select" aria-label="当前场景"><option>Cursor · 编程</option><option>Codex · 对话</option><option>视频剪辑 · 时间线</option></select>
+          <div class="top-actions"><button class="btn small" data-action="duplicate">复制场景</button><button class="btn primary small" data-action="new-command">＋ 新建命令</button></div>
+        </div>
+      </header>
+      <main class="workspace" data-workspace></main>
+    </div>
+  </template>
+
+  <script>
+    const DATA = {
+      commands: [
+        { id: 'stop', name: '停止生成', desc: '立即停止当前 Agent 的输出', type: 'preset', icon: '停', steps: [{ title: 'agent.stop', desc: '语义动作 · 无参数' }], channels: { key: 'Ctrl + Esc', voice: '“停止” · “别生成了”', pad: '主面板 / 2 号键', camera: '' } },
+        { id: 'accept', name: '接受修改', desc: '确认当前 Agent 提出的修改', type: 'preset', icon: '收', steps: [{ title: 'agent.accept', desc: '语义动作 · 无参数' }], channels: { key: 'Ctrl + Enter', voice: '“接受”', pad: '主面板 / 3 号键', camera: 'OK 手势' } },
+        { id: 'continue', name: '继续回复', desc: '让当前 Agent 接着完成任务', type: 'preset', icon: '续', steps: [{ title: 'agent.continue', desc: '语义动作 · 无参数' }], channels: { key: 'F9', voice: '“继续” · “接着写”', pad: '主面板 / 1 号键', camera: '点头' } },
+        { id: 'send-wait', name: '发送并等待结果', desc: '发送输入，稍等后把焦点交还给 Agent', type: 'macro', icon: '宏', steps: [{ title: '发送文本', desc: 'Text · 当前输入' }, { title: 'Ctrl + Enter', desc: 'Key · 提交给 Agent' }, { title: '等待 300ms', desc: 'Delay · 300ms' }, { title: 'agent.focus', desc: '语义动作 · 聚焦 Agent' }], channels: { key: 'Ctrl + Shift + Enter', voice: '“发送并等待”', pad: '输入页 / 5 号键', camera: '' } },
+        { id: 'open-panel', name: '打开命令面板', desc: '打开当前应用的命令搜索', type: 'custom', icon: '开', steps: [{ title: 'app.shortcut', desc: '参数 · Ctrl + Shift + P' }], channels: { key: 'Ctrl + Shift + P', voice: '', pad: '', camera: '' } }
+      ],
+      sceneCommands: ['stop', 'accept', 'continue', 'send-wait']
+    };
+    let selectedId = 'stop';
+
+    function iconClass(channel) { return channel === 'pad' ? 'pad' : channel; }
+    function channelName(channel) { return ({ key: '按键', voice: '语音', pad: 'SoftPad', camera: '摄像头' })[channel]; }
+    function channelGlyph(channel) { return ({ key: '⌘', voice: '◌', pad: '▦', camera: '◉' })[channel]; }
+    function commandById(id) { return DATA.commands.find(c => c.id === id) || DATA.commands[0]; }
+    function shellBase(extraClass = '') {
+      const t = document.getElementById('shell-template').content.cloneNode(true);
+      const shell = t.querySelector('.app');
+      if (extraClass) shell.classList.add(extraClass);
+      return t;
+    }
+    function libraryMarkup() {
+      return `<aside class="library">
+        <div class="section-head"><div><h2>命令库</h2><p>添加一次，四个通道都能调用</p></div><button class="icon-btn" data-action="new-command" aria-label="新建命令">＋</button></div>
+        <div class="library-tabs" role="tablist"><button class="is-active" data-tab="preset" role="tab">预置命令</button><button data-tab="mine" role="tab">我的命令</button><button data-tab="macro" role="tab">我的宏</button></div>
+        <label class="search"><span>⌕</span><input data-search placeholder="搜索命令" aria-label="搜索命令" /></label>
+        <div data-library-list></div>
+        <div class="library-footer"><strong>命令内容只保存一份</strong><br/>场景和通道只决定它在哪里生效、如何被调用。</div>
+      </aside>`;
+    }
+    function libraryList(filter = 'preset', query = '') {
+      const q = query.trim().toLowerCase();
+      const list = DATA.commands.filter(c => {
+        const tab = filter === 'preset' ? c.type === 'preset' : filter === 'macro' ? c.type === 'macro' : c.type === 'custom';
+        return tab && (!q || `${c.name} ${c.desc}`.toLowerCase().includes(q));
+      });
+      return `<div class="library-group"><div class="library-group-title">${filter === 'preset' ? '适合当前 Agent 的推荐命令' : filter === 'macro' ? '可跨通道调用的宏' : '你创建或添加的命令'}</div>${list.length ? list.map(c => `<button class="library-item ${c.id === selectedId ? 'is-selected' : ''}" data-library-id="${c.id}" data-kind="${c.type}"><span class="lib-icon">${c.icon}</span><span class="library-copy"><b>${c.name}</b><small>${c.steps.length > 1 ? `${c.steps.length} 个步骤 · ` : ''}${c.type === 'preset' ? '预置' : c.type === 'macro' ? '宏命令' : '自定义'}</small></span></button>`).join('') : '<div class="helper">还没有这类命令。可以点击右上角“新建命令”。</div>'}</div>`;
+    }
+    function channelsMarkup(command, compact = false) {
+      return ['key', 'voice', 'pad', 'camera'].map(ch => {
+        const value = command.channels[ch];
+        return `<div class="channel-row"><div class="channel-label"><span class="channel-glyph ${iconClass(ch)}">${channelGlyph(ch)}</span>${channelName(ch)}</div><div class="channel-value ${value ? '' : 'is-empty'}">${value || '尚未配置调用方式'}</div><button class="channel-edit" data-action="edit-channel" data-channel="${ch}">${value ? '编辑' : '添加'}</button></div>`;
+      }).join('');
+    }
+    function commandCard(command, selected = false) {
+      const configured = Object.values(command.channels).filter(Boolean).length;
+      return `<article class="command-card ${selected ? 'is-selected' : ''}" data-command-card="${command.id}" data-type="${command.type}">
+        <div class="command-card-head" data-select-command="${command.id}"><span class="command-symbol">${command.icon}</span><div class="command-main"><b>${command.name}</b><p>${command.desc}</p></div><span class="command-meta">${configured}/4 通道</span><button class="command-menu" aria-label="更多命令操作">···</button></div>
+        <div class="command-channels">${channelsMarkup(command)}</div>
+      </article>`;
+    }
+    function inspectorMarkup(command) {
+      return `<aside class="inspector">
+        <div class="inspector-head"><div class="inspector-icon">${command.icon}</div><div><h2>${command.name}</h2><p>${command.type === 'macro' ? '宏命令 · 可由四个通道调用' : command.type === 'custom' ? '自定义命令 · 当前场景' : '预置命令 · 已添加到当前场景'}</p></div></div>
+        <section class="inspector-section"><div class="inspector-title"><b>执行内容</b><span>${command.steps.length} 个步骤</span></div><div class="step-list">${command.steps.map((s, i) => `<div class="step"><span class="step-index">${i + 1}</span><span class="step-copy"><b>${s.title}</b><small>${s.desc}</small></span><span class="step-drag">⠿</span></div>`).join('')}</div><button class="add-step" data-action="add-step">＋ 添加步骤</button></section>
+        <section class="inspector-section"><div class="inspector-title"><b>调用方式</b><span>任意一个都能触发</span></div><div class="trigger-editor">${['key','voice','pad','camera'].map(ch => `<label class="trigger-line"><span class="channel-glyph ${iconClass(ch)}">${channelGlyph(ch)}</span><input data-trigger-input="${ch}" value="${command.channels[ch] || ''}" placeholder="${ch === 'key' ? '录入快捷键' : ch === 'voice' ? '添加一句口令' : ch === 'pad' ? '选择 SoftPad 按钮' : '选择手势'}" /><span class="status">${command.channels[ch] ? '已启用' : ''}</span></label>`).join('')}</div><div class="helper">命令内容和触发方式分开保存。你可以把同一个宏复制到其他场景，再单独调整调用方式。</div></section>
+        <div class="inspector-actions"><button class="btn" data-action="test-command">▶ 测试命令</button><button class="btn primary" data-action="save-command">保存修改</button></div>
+      </aside>`;
+    }
+    function renderLibraryVariant() {
+      const t = shellBase();
+      const workspace = t.querySelector('[data-workspace]');
+      const command = commandById(selectedId);
+      workspace.innerHTML = `${libraryMarkup()}<section class="stage"><div class="stage-head"><div><div class="eyebrow">SCENE COMMANDS · 01</div><h1>Cursor · 编程</h1><p>把常用命令放进这个场景，再决定每个命令怎么调用。</p></div><div class="stage-summary"><span class="summary-dot"></span>自动识别当前 Agent · 4 个命令已启用</div></div><div class="scene-strip"><button class="scene-chip is-active">Cursor · 编程<small>4 个命令</small></button><button class="scene-chip">Codex · 对话<small>3 个命令</small></button><button class="scene-chip">视频剪辑 · 时间线<small>6 个命令</small></button><button class="scene-chip" data-action="new-scene">＋ 新建场景</button></div><div data-command-list>${DATA.sceneCommands.map(id => commandCard(commandById(id), id === selectedId)).join('')}</div><button class="command-add" data-action="add-preset">＋ 从命令库添加预置命令</button><div class="trace" data-trace><span class="trace-dot"></span><span>最近测试：SoftPad 2 号键 → <strong>停止生成</strong> → 执行成功</span></div></section>${inspectorMarkup(command)}`;
+      t.querySelector('[data-library-list]').innerHTML = libraryList(activeTab);
+      return t;
+    }
+    function renderSceneVariant() {
+      const t = shellBase('variant-scene');
+      const workspace = t.querySelector('[data-workspace]');
+      workspace.innerHTML = `${libraryMarkup()}<section class="stage"><div class="stage-head"><div><div class="eyebrow">SCENE BOARD · 02</div><h1>Cursor · 编程</h1><p>先看这个场景能做什么，再补齐每个通道的调用方式。</p></div><div class="stage-summary"><span class="summary-dot"></span>4 个命令 · 10 个触发器</div></div><div class="scene-note"><span>当前场景命令</span><button class="btn small" data-action="add-preset">＋ 添加命令</button></div><div class="scene-board">${DATA.sceneCommands.map(id => commandCard(commandById(id), id === selectedId)).join('')}</div><div class="matrix-strip"><div class="matrix-cell head">命令 / 通道</div><div class="matrix-cell head">按键</div><div class="matrix-cell head">语音</div><div class="matrix-cell head">SoftPad</div><div class="matrix-cell head">摄像头</div>${DATA.sceneCommands.map(id => { const c = commandById(id); return `<div class="matrix-cell"><b>${c.name}</b></div>${['key','voice','pad','camera'].map(ch => `<div class="matrix-cell"><span class="matrix-state ${c.channels[ch] ? '' : 'off'}"><i></i>${c.channels[ch] ? '已配置' : '未配置'}</span></div>`).join('')}`; }).join('')}</div></section>`;
+      t.querySelector('[data-library-list]').innerHTML = libraryList(activeTab);
+      return t;
+    }
+    function renderMacroVariant() {
+      const t = shellBase('variant-macro');
+      const workspace = t.querySelector('[data-workspace]');
+      const command = commandById('send-wait');
+      workspace.innerHTML = `${libraryMarkup()}<section class="stage"><div class="stage-head"><div><div class="eyebrow">COMMAND BUILDER · 03</div><h1>编辑宏命令</h1><p>把多个动作串成一个命令，再让四种通道共享它。</p></div><span class="runtime-pill"><i></i> 草稿已自动保存</span></div><div class="macro-canvas"><div class="macro-canvas-head"><div><h2>${command.name}</h2><p>${command.desc}</p></div><button class="btn primary small" data-action="test-command">▶ 测试整条宏</button></div><div class="macro-step-flow" data-step-flow>${command.steps.map((s, i) => `<div class="macro-node"><span class="macro-node-index">${i + 1}</span><span class="macro-node-copy"><b>${s.title}</b><small>${s.desc}</small></span><button class="macro-node-menu" aria-label="步骤菜单">···</button></div>`).join('')}</div><div class="macro-add-row"><button class="btn" data-action="add-step">＋ 添加动作</button><button class="btn" data-action="add-delay">＋ 插入等待</button><button class="btn" data-action="save-command">保存宏命令</button></div><div class="inspector-title" style="margin-top:22px"><b>让哪些通道可以调用？</b><span>可多选</span></div><div class="macro-trigger-dock">${['key','voice','pad','camera'].map(ch => `<button class="macro-trigger" data-action="edit-channel" data-channel="${ch}"><span class="channel-glyph ${iconClass(ch)}">${channelGlyph(ch)}</span><b>${channelName(ch)}</b><small>${command.channels[ch] || '添加调用方式'}</small></button>`).join('')}</div></div><div class="trace" data-trace><span class="trace-dot"></span><span>测试日志：等待触发命令</span></div></section>${inspectorMarkup(command)}`;
+      t.querySelector('[data-library-list]').innerHTML = libraryList(activeTab);
+      return t;
+    }
+
+    const variants = [renderLibraryVariant, renderSceneVariant, renderMacroVariant];
+    const stage = document.getElementById('stage');
+    const picker = document.querySelector('.proto-picker');
+    const highlight = picker.querySelector('.proto-picker-highlight');
+    const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+    const replay = picker.querySelector('.proto-picker-replay');
+    let current = 0;
+    let activeTab = 'preset';
+
+    function moveHighlight() { const el = items[current]; highlight.style.width = el.offsetWidth + 'px'; highlight.style.transform = `translateX(${el.offsetLeft}px)`; }
+    function mount(i) { stage.innerHTML = ''; requestAnimationFrame(() => { stage.appendChild(variants[i]()); bindInteractions(); }); }
+    function setActive(i) { if (i < 0 || i >= variants.length) return; current = i; items.forEach((el, j) => { el.toggleAttribute('data-active', j === i); if (j === i) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current'); }); moveHighlight(); const url = new URL(location); url.searchParams.set('v', i + 1); history.replaceState(null, '', url); mount(i); }
+    function showToast(message) { const el = document.getElementById('toast'); el.textContent = message; el.classList.add('is-visible'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.remove('is-visible'), 2200); }
+    function refreshLibrary(root) { const list = root.querySelector('[data-library-list]'); if (list) list.innerHTML = libraryList(activeTab, root.querySelector('[data-search]')?.value || ''); }
+    function bindInteractions() {
+      const root = document.getElementById('stage');
+      root.querySelectorAll('[data-library-id]').forEach(el => el.addEventListener('click', () => { selectedId = el.dataset.libraryId; mount(current); }));
+      root.querySelectorAll('[data-tab]').forEach(el => el.addEventListener('click', () => { activeTab = el.dataset.tab; root.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('is-active', x === el)); refreshLibrary(root); }));
+      root.querySelector('[data-search]')?.addEventListener('input', () => refreshLibrary(root));
+      root.querySelectorAll('[data-select-command]').forEach(el => el.addEventListener('click', e => { if (e.target.closest('.command-menu')) return; selectedId = el.dataset.selectCommand; mount(current); }));
+      root.querySelectorAll('[data-action="add-preset"], [data-action="new-command"]').forEach(el => el.addEventListener('click', () => { selectedId = 'open-panel'; activeTab = 'mine'; showToast('已创建“打开命令面板”，现在可以配置四种调用方式'); mount(current); }));
+      root.querySelectorAll('[data-action="duplicate"], [data-action="new-scene"]').forEach(el => el.addEventListener('click', () => showToast('已复制场景，可继续调整各通道触发方式')));
+      root.querySelectorAll('[data-action="test-command"]').forEach(el => el.addEventListener('click', () => { const trace = root.querySelector('[data-trace]'); if (trace) trace.innerHTML = '<span class="trace-dot"></span><span>正在运行：按键 → 宏步骤 1/4 → <strong>执行成功</strong></span>'; showToast('测试成功：4 个步骤按顺序完成'); }));
+      root.querySelectorAll('[data-action="save-command"]').forEach(el => el.addEventListener('click', () => showToast('命令已保存到当前场景')));
+      root.querySelectorAll('[data-action="add-step"], [data-action="add-delay"]').forEach(el => el.addEventListener('click', () => { const flow = root.querySelector('[data-step-flow]'); if (flow) { const n = flow.children.length + 1; const node = document.createElement('div'); node.className = 'macro-node'; node.innerHTML = `<span class="macro-node-index">${n}</span><span class="macro-node-copy"><b>${el.dataset.action === 'add-delay' ? '等待 200ms' : '选择一个动作'}</b><small>${el.dataset.action === 'add-delay' ? 'Delay · 200ms' : '待配置 · 点击步骤菜单选择'}</small></span><button class="macro-node-menu" aria-label="步骤菜单">···</button>`; flow.appendChild(node); showToast('已添加一个宏步骤'); } else showToast('可以在命令编辑器中添加步骤'); }));
+      root.querySelectorAll('[data-action="edit-channel"]').forEach(el => el.addEventListener('click', () => { const input = root.querySelector(`[data-trigger-input="${el.dataset.channel}"]`); if (input) { input.focus(); input.select(); } else showToast(`${channelName(el.dataset.channel)}：打开通道配置`); }));
+      root.querySelectorAll('[data-trigger-input]').forEach(input => input.addEventListener('change', () => showToast(`${channelName(input.dataset.triggerInput)}调用方式已更新`)));
+      root.querySelectorAll('.scene-chip:not([data-action])').forEach(el => el.addEventListener('click', () => { root.querySelectorAll('.scene-chip').forEach(x => x.classList.remove('is-active')); el.classList.add('is-active'); showToast(`已切换到${el.textContent.split('·')[0].trim()}场景`); }));
+    }
+    items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+    replay?.addEventListener('click', () => mount(current));
+    window.addEventListener('resize', moveHighlight);
+    document.addEventListener('keydown', e => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const num = parseInt(e.key, 10); if (num >= 1 && num <= variants.length) setActive(num - 1); else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length); else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length); else if (e.key === 'r' || e.key === 'R') mount(current); });
+    setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+    requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+  </script>
+</body>
+</html>

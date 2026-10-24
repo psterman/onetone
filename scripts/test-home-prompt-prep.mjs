@@ -499,6 +499,14 @@ function matchAttrSel(node, sel) {
   assert.equal(pasteRes.material.kind, 'text');
   assert.ok(pasteRes.material.id);
   assert.equal(API.getMaterialSummary().byKind.text, 1);
+  const textRef = API.getMaterialSummary().refs.find((r) => r.kind === 'text');
+  assert.equal(textRef.content, 'from options');
+  assert.ok(typeof API.updateMaterialContent === 'function');
+  API.updateMaterialContent(textRef.id, { content: 'edited paste' }, { skipSync: true });
+  assert.equal(
+    API.getMaterialSummary().refs.find((r) => r.id === textRef.id).content,
+    'edited paste'
+  );
 
   // 6 subscribe immediate
   const notes = [];

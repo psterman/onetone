@@ -1598,6 +1598,36 @@
     return e.subBody;
   }
 
+  function openHabitCommandMatch(opts) {
+    opts = opts || {};
+    var entry = resolveSoftPadEntry();
+    var mid = entry && entry.mapping && entry.mapping.id ? String(entry.mapping.id) : '';
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.openHabitsMatch === 'function') {
+      Link.openHabitsMatch({
+        mappingId: mid,
+        matchChannel: opts.matchChannel || 'softPad',
+        matchCommand: opts.matchCommand || opts.commandRef || '',
+        commandRef: opts.commandRef || opts.matchCommand || '',
+        openMatchEditor: true,
+        returnPanel: 'softPad'
+      });
+      return true;
+    }
+    var drawer = global.OneToneSettingsDrawer;
+    if (drawer && typeof drawer.open === 'function') {
+      drawer.open({
+        panel: 'habits',
+        mappingId: mid,
+        matchChannel: opts.matchChannel || 'softPad',
+        openMatchEditor: true,
+        returnPanel: 'softPad'
+      });
+      return true;
+    }
+    return false;
+  }
+
   function syncPadTabs() {
     var e = els();
     if (!e.padTabs) return;
@@ -1614,6 +1644,12 @@
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
+    var matchBtn = document.getElementById('btnSoftPadHabitMatch');
+    if (matchBtn) {
+      var matchShow = show && normalizeSoftPadPadMode(softPadPadMode) === 'keys';
+      matchBtn.hidden = !matchShow;
+      matchBtn.setAttribute('aria-hidden', matchShow ? 'false' : 'true');
+    }
   }
 
   /** Keys mode: right bind column + float dock. Show/skin: mid-ability panels. */
@@ -6061,6 +6097,14 @@
         setSoftPadPadMode(tab.getAttribute('data-pad-mode'), { fromUser: true });
       });
     }
+    var habitMatchBtn = document.getElementById('btnSoftPadHabitMatch');
+    if (habitMatchBtn && !habitMatchBtn.__otHabitMatchBound) {
+      habitMatchBtn.__otHabitMatchBound = true;
+      habitMatchBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        openHabitCommandMatch({ matchChannel: 'softPad' });
+      });
+    }
     if (e.subBack && !(global.__otSoftPadDetailChromeMounted)) {
       e.subBack.addEventListener('click', function () { closeSubpage(); });
     }
@@ -6771,6 +6815,7 @@
     },
     refreshSoftPadSceneKeys: refreshSoftPadSceneKeys,
     focusSoftPadSceneKey: focusSoftPadSceneKey,
+    openHabitCommandMatch: openHabitCommandMatch,
     setSoftPadRailChannel: setSoftPadRailChannel,
     openSoftPadChannelInKeys: openSoftPadChannelInKeys,
     softPadScopeSwitchLabel: softPadScopeSwitchLabel,

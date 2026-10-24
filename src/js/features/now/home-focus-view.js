@@ -315,6 +315,10 @@
     );
   }
 
+  function triad() {
+    return global.OneToneHomeFocusTriad;
+  }
+
   function quietContextLine(vm) {
     var project = String(vm.projectName || '').trim();
     var provider =
@@ -338,228 +342,27 @@
     );
   }
 
-  function quietMaterialSummaryHtml(summary) {
-    summary = summary || {};
-    var count = Number(summary.count) || 0;
-    if (count <= 0) return '';
-    var labels = {
-      text: '文字',
-      image: '图片',
-      file: '文件',
-      folder: '目录',
-      url: '网址',
-      voice: '口述'
-    };
-    var byKind = summary.byKind || {};
-    var bits = [];
-    Object.keys(byKind).forEach(function (k) {
-      if (!byKind[k]) return;
-      bits.push((labels[k] || k) + ' ' + byKind[k]);
-    });
-    // List lives on Soft Pad tray; home only shows a shallow count line.
-    var line =
-      '已加入 ' +
-      count +
-      ' 项' +
-      (bits.length ? ' · ' + bits.join(' · ') : '') +
-      ' · 详情在悬浮栏';
-    var hint =
-      Number(summary.manualUploadCount) > 0
-        ? '<p class="hn-quiet-mat-hint">本地图片不上传图床；交给网页 Agent 时请自行附上</p>'
-        : '';
-    return (
-      '<div class="hn-quiet-mat-summary" data-hn-mat-summary>' +
-      '<div class="hn-quiet-mat-head">' +
-      '<span class="hn-quiet-mat-count">' +
-      esc(line) +
-      '</span>' +
-      '<button type="button" class="hn-text-btn" data-hf-act="open_prep">整理</button>' +
-      '</div>' +
-      hint +
-      '</div>'
-    );
-  }
-
-  function agentTileIconHtml(t) {
-    var label = (t && t.label) || (t && t.kind) || 'Agent';
-    if (t && t.icon) {
-      return (
-        '<img class="hn-agent-tile__img" src="' +
-        esc(t.icon) +
-        '" alt="" decoding="async" width="22" height="22" />'
-      );
-    }
-    var badge = String(label).slice(0, 2);
-    return '<span class="hn-agent-tile__badge" aria-hidden="true">' + esc(badge) + '</span>';
-  }
-
   /**
-   * Agent icon grid — open app + Soft Pad carries assembled Markdown for paste.
-   * opts: { probeTargets, aimMemory, probePending }
-   */
-  function quietAgentIconGridHtml(targets, disabled, aimMemory, probePending) {
-    targets = Array.isArray(targets) ? targets : [];
-    if (!targets.length) {
-      if (!probePending) return '';
-      return (
-        '<div class="hn-agent-grid is-pending" data-hn-agent-grid aria-busy="true" aria-label="打开 Agent">' +
-        '<p class="hn-agent-grid__hint">正在检测本机 Agent…</p>' +
-        '</div>'
-      );
-    }
-    var bits = targets.map(function (t) {
-      if (!t || !t.kind) return '';
-      var label = t.label || t.kind;
-      var channel = String(t.channel || 'app');
-      var isCli = channel === 'cli' || channel === 'both';
-      var cls =
-        'hn-agent-tile' +
-        (t.installed || t.running ? '' : ' is-dim') +
-        (t.running ? ' is-live' : '') +
-        (isCli ? ' is-cli' : '');
-      var title =
-        label +
-        (isCli ? (channel === 'both' ? ' · 应用/CLI' : ' · CLI') : '') +
-        (t.installed || t.running ? '' : ' · 未检测到安装');
-      return (
-        '<button type="button" class="' +
-        cls +
-        '" data-hf-act="quick_handoff" data-hf-handoff-kind="' +
-        esc(t.kind) +
-        '"' +
-        (disabled ? ' disabled' : '') +
-        ' title="' +
-        esc(title) +
-        '" data-voice-phrases="' +
-        esc([label, t.kind, isCli ? 'CLI' : ''].filter(Boolean).join('|')) +
-        '">' +
-        agentTileIconHtml(t) +
-        '<span class="hn-agent-tile__name">' +
-        esc(label) +
-        '</span>' +
-        '</button>'
-      );
-    });
-    var aim = aimMemory || null;
-    var aimKind = (aim && aim.kind) || 'cursor';
-    var aimName = (aim && aim.label) || 'Agent';
-    var aimSet = !!(aim && aim.hasActive);
-    var aimRow =
-      '<div class="hn-aim-mem" data-hn-aim-mem data-hf-aim-kind="' +
-      esc(aimKind) +
-      '">' +
-      '<span class="hn-aim-mem__txt">' +
-      (aimSet
-        ? '已记住 ' + esc(aimName) + ' 输入位置'
-        : '首次打开会记下输入框位置（与语音/按键共用）') +
-      '</span>' +
-      '<span class="hn-aim-mem__acts">' +
-      '<button type="button" class="hn-text-btn" data-hf-act="aim_change" data-hf-aim-kind="' +
-      esc(aimKind) +
-      '">' +
-      (aimSet ? '更改' : '现在定位') +
-      '</button>' +
-      (aimSet
-        ? '<button type="button" class="hn-text-btn" data-hf-act="aim_clear" data-hf-aim-kind="' +
-          esc(aimKind) +
-          '">清除</button>'
-        : '') +
-      '</span></div>';
-    return (
-      '<div class="hn-agent-grid" data-hn-agent-grid aria-label="打开 Agent">' +
-      '<p class="hn-agent-grid__hint">已检测到的 Agent 会自动出现 · 点图标复制并定位输入框 · Ctrl+V（或悬浮栏「粘贴」）</p>' +
-      aimRow +
-      '<div class="hn-agent-grid__tiles">' +
-      bits.join('') +
-      '</div></div>'
-    );
-  }
-
-  /**
-   * Quiet opening composer. opts:
-   *   draftText, draftPreview, handoffDisabled, materialSummary, probeTargets
+   * Quiet opening composer — shared Triad Mid (Focus + V2).
    * Handoff = agent icon grid (not a single「复制并打开」CTA).
-   * Return mode keeps resume CTA; collect/draft work immediately.
    */
   function quietComposerHtml(vm, opts) {
     opts = opts || {};
-    vm = vm || {};
-    var isReturn = (vm.mode || '') === 'return';
-    var draft = String(opts.draftText || '');
-    var disabled = opts.handoffDisabled === true;
-    if (!disabled && !draft.trim() && !(opts.materialSummary && opts.materialSummary.count > 0)) {
-      disabled = true;
+    var T = triad();
+    if (!T || !T.composerHtml) {
+      return '<section class="hn-quiet-composer" data-hn-quiet-composer><p>Triad unavailable</p></section>';
     }
-    var headline = isReturn && vm.headline ? vm.headline : '今天想推进什么？';
-    var assist = isReturn
-      ? String(vm.assistance || '').trim() ||
-        '可以从停下的地方继续，也可以直接描述新工作或加入材料。'
-      : '直接描述你想完成的工作，也可以加入现有材料。';
-    // One primary resume when returning; avoid stacking 继续/新任务/整理.
-    var resumeCta =
-      isReturn && vm.primary && vm.primary.id && vm.primary.label
-        ? '<button type="button" class="hn-cta" data-hf-act="' +
-          esc(vm.primary.id) +
-          '">' +
-          esc(vm.primary.label) +
-          '</button>'
-        : '';
-    var startNew =
-      isReturn && vm.secondary && vm.secondary.id && vm.secondary.label
-        ? '<button type="button" class="hn-text-btn" data-hf-act="' +
-          esc(vm.secondary.id) +
-          '">' +
-          esc(vm.secondary.label) +
-          '</button>'
-        : '';
-    var restoreLink =
-      !resumeCta && opts.resumeAvailable
-        ? '<button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button>'
-        : '';
-    var matCount = Number((opts.materialSummary && opts.materialSummary.count) || 0);
-    // 「整理」lives on the material summary when items exist; otherwise one quiet link.
-    var prepLink =
-      matCount < 1
-        ? '<button type="button" class="hn-text-btn" data-hf-act="open_prep">整理方案</button>'
-        : '';
-    return (
-      '<section class="hn-quiet-composer" data-hn-quiet-composer aria-label="' +
-      esc(headline) +
-      '">' +
-      '<header class="hn-quiet-head">' +
-      '<h1 class="hn-headline">' +
-      esc(headline) +
-      '</h1>' +
-      '<p class="hn-assist">' +
-      esc(assist) +
-      '</p>' +
-      '</header>' +
-      '<div class="hn-composer">' +
-      '<textarea id="hnQuietDraft" class="hn-composer-input" rows="5" ' +
-      'aria-label="描述你想推进的工作" ' +
-      'placeholder="例如：把首页改得更直接，新用户打开就知道怎么开始……">' +
-      esc(draft) +
-      '</textarea>' +
-      '<div class="hn-composer-tools" aria-label="加入内容">' +
-      '<span class="hn-composer-tools-label">加入内容</span>' +
-      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="capture">截图</button>' +
-      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="paste">粘贴</button>' +
-      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="attach">附件</button>' +
-      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="url">网址</button>' +
-      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="folder">目录</button>' +
-      '</div>' +
-      quietMaterialSummaryHtml(opts.materialSummary) +
-      '</div>' +
-      quietContextLine(vm) +
-      quietAgentIconGridHtml(opts.probeTargets, disabled, opts.aimMemory, opts.probePending) +
-      '<div class="hn-actions hn-quiet-actions">' +
-      resumeCta +
-      startNew +
-      restoreLink +
-      prepLink +
-      '</div>' +
-      '</section>'
-    );
+    return T.composerHtml(vm, {
+      draftText: opts.draftText,
+      materialSummary: opts.materialSummary,
+      handoffDisabled: opts.handoffDisabled,
+      probeTargets: opts.probeTargets,
+      aimMemory: opts.aimMemory,
+      probePending: opts.probePending,
+      resumeAvailable: opts.resumeAvailable,
+      contextHtml: quietContextLine(vm || {}),
+      actPrefix: 'hf'
+    });
   }
 
   function quietGateKeepHtml(opts) {

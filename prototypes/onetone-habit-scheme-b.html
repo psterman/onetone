@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 方案 B · Cursor 角色目录</title>
+  <style>
+    :root {
+      --ink: #1a2330; --muted: #5c6b7a; --faint: #8a97a5; --line: #d5dde6;
+      --panel: #fff; --wash: #eef2f5; --rail: #f4f7f9;
+      --teal: #0f6e6a; --teal-soft: #e3f3f1;
+      --key: #2a5f8f; --key-soft: #e7f0f8;
+      --pad: #5a4d8c; --pad-soft: #efeaf8;
+      --cam: #8a5a28; --cam-soft: #f8efe4;
+      --slash: #6a5a40; --slash-soft: #f3ece0;
+      --talk: #3d5a80; --talk-soft: #e8edf3;
+      --ok: #1f6b3a; --ok-soft: #e6f3ea;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d5e2e4 0%, #e7ecef 48%, #dce4e8 100%);
+      color: var(--ink); font: 13px/1.45 var(--font);
+    }
+    button, summary { font: inherit; cursor: pointer; }
+    button:focus-visible, summary:focus-visible, .mode:focus-visible {
+      outline: 2px solid #16a6a0; outline-offset: 2px;
+    }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1180px, calc(100% - 28px)); margin: 20px auto 56px; }
+    .stage-head h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage-head p { margin: 6px 0 0; color: var(--muted); max-width: 720px; }
+    .note {
+      margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+      background: var(--ok-soft); color: var(--ok); font-size: 12px;
+    }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 14px 0 12px;
+    }
+    .mode {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 650;
+    }
+    .mode.is-on { background: #10242b; color: #fff; border-color: #10242b; }
+    .toolbar .hint { font-size: 11px; color: var(--faint); margin-left: 4px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .legend .ch {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+      border-radius: 8px; background: #fff; border: 1px solid var(--line);
+      font-size: 11px; color: var(--muted);
+    }
+    .legend .ch.is-on.voice { color: var(--teal); background: var(--teal-soft); border-color: #b7ddd8; }
+    .legend .ch.is-on.key { color: var(--key); background: var(--key-soft); border-color: #c5d8ea; }
+    .legend .ch.is-on.pad { color: var(--pad); background: var(--pad-soft); border-color: #d4cce8; }
+    .legend .ch.is-on.cam { color: var(--cam); background: var(--cam-soft); border-color: #e8d3b8; }
+    .ch svg, .hcl-ch svg { width: 15px; height: 15px; display: block; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(200px, 240px) minmax(300px, 380px) minmax(0, 1fr);
+      min-height: 580px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+
+    /* —— 目录树 —— */
+    .dir {
+      background: #f3f6f8; border-right: 1px solid var(--line);
+      padding: 12px 10px; overflow: auto;
+    }
+    .dir-head {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin: 0 0 8px 6px;
+    }
+    .tree { list-style: none; margin: 0; padding: 0; }
+    .tree > li { margin: 0 0 2px; }
+    .tree button.dir-item {
+      width: 100%; display: flex; align-items: center; gap: 8px;
+      text-align: left; border: 0; background: transparent; color: inherit;
+      padding: 7px 8px; border-radius: 8px;
+    }
+    .tree button.dir-item:hover { background: #fff; }
+    .tree button.dir-item.is-on {
+      background: #fff; box-shadow: 0 0 0 1px var(--line);
+      font-weight: 650;
+    }
+    .dir-ico {
+      width: 20px; height: 20px; border-radius: 5px; display: grid;
+      place-items: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .dir-ico.talk { background: var(--talk); }
+    .dir-ico.key { background: var(--key); }
+    .dir-ico.slash { background: var(--slash); }
+    .dir-ico.pad { background: var(--pad); }
+    .dir-ico.input { background: var(--teal); }
+    .dir-ico.session { background: #2a6f8f; }
+    .dir-label { flex: 1; font-size: 12px; min-width: 0; }
+    .dir-n { font-size: 11px; color: var(--faint); }
+    .tree .kids {
+      list-style: none; margin: 0 0 4px; padding: 0 0 0 28px;
+      display: none;
+    }
+    .tree .kids.is-open { display: block; }
+    .tree .kids button {
+      width: 100%; text-align: left; border: 0; background: transparent;
+      color: var(--muted); padding: 4px 6px; border-radius: 6px; font-size: 11px;
+    }
+    .tree .kids button:hover, .tree .kids button.is-on {
+      background: #fff; color: var(--ink);
+    }
+    .dir-foot {
+      margin-top: 14px; padding: 8px; border-radius: 8px;
+      background: var(--ok-soft); color: var(--ok); font-size: 11px;
+    }
+    .dir-foot code { font-size: 10px; }
+
+    /* —— 命令列表 —— */
+    .cmds { border-right: 1px solid var(--line); background: #fafbfc; padding: 12px; overflow: auto; }
+    .cmds-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 10px; }
+    .cmds-head strong { font-size: 13px; }
+    .cmds-head span { font-size: 11px; color: var(--muted); }
+
+    .acc { border: 1px solid var(--line); border-radius: 10px; background: #fff; margin: 0 0 8px; overflow: hidden; }
+    .acc > summary {
+      list-style: none; display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; user-select: none;
+    }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc-ico {
+      width: 22px; height: 22px; border-radius: 6px; display: grid;
+      place-items: center; font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .acc-title { font-size: 12px; font-weight: 650; flex: 1; }
+    .acc-count { font-size: 11px; color: var(--muted); }
+    .acc-body { padding: 0 8px 8px; display: grid; gap: 6px; }
+    .subhead {
+      margin: 4px 2px 2px; padding: 4px 6px; font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; color: var(--faint); text-transform: uppercase;
+    }
+    .subhead.b2-only { display: none; }
+    body.is-b2 .subhead.b2-only { display: block; }
+
+    .cmd {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto;
+      gap: 2px 8px; width: 100%; text-align: left; padding: 9px 10px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff; color: inherit;
+    }
+    .cmd:hover { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); }
+    .cmd.is-on { outline: 2px solid color-mix(in srgb, var(--teal) 50%, transparent); outline-offset: 1px; }
+    .cmd strong { font-size: 13px; grid-column: 1; }
+    .cmd .meta { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+    .chs { display: inline-flex; gap: 4px; grid-column: 2; grid-row: 1; justify-content: flex-end; }
+    .hcl-ch {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 6px; color: #9aa3b2; background: #eef1f5;
+    }
+    .hcl-ch.is-on.voice { color: var(--teal); background: var(--teal-soft); }
+    .hcl-ch.is-on.key { color: var(--key); background: var(--key-soft); }
+    .hcl-ch.is-on.pad { color: var(--pad); background: var(--pad-soft); }
+    .hcl-ch.is-on.cam { color: var(--cam); background: var(--cam-soft); }
+
+    .badge {
+      display: inline-block; margin-right: 6px; padding: 1px 5px; border-radius: 4px;
+      font-size: 10px; font-weight: 650;
+    }
+    .badge.talk { background: var(--talk-soft); color: var(--talk); }
+    .badge.cursor { background: var(--key-soft); color: var(--key); }
+    .badge.slash { background: var(--slash-soft); color: var(--slash); }
+    .badge.pad { background: var(--pad-soft); color: var(--pad); }
+    .badge.input { background: var(--teal-soft); color: var(--teal); }
+    .chord {
+      display: inline-block; font-family: ui-monospace, Consolas, monospace;
+      font-size: 11px; padding: 0 4px; border-radius: 4px;
+      background: var(--key-soft); color: var(--key);
+    }
+
+    /* —— 详情 —— */
+    .detail { padding: 14px 16px; background: #fff; min-width: 0; }
+    .detail .zone-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 8px;
+    }
+    .detail h2 { margin: 0 0 4px; font-size: 18px; }
+    .detail .lead { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+    .cta {
+      border: 1px solid var(--line); background: var(--rail); color: var(--ink);
+      padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 650;
+    }
+    .cta.primary { background: var(--teal); color: #fff; border-color: var(--teal); }
+    .facts { display: grid; gap: 8px; margin: 0 0 14px; }
+    .facts article {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--rail);
+    }
+    .facts h3 { margin: 0 0 4px; font-size: 12px; }
+    .facts p { margin: 0; font-size: 12px; color: var(--muted); }
+    .facts code { font-size: 11px; color: var(--ink); }
+    .map {
+      margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+      border: 1px dashed var(--line); background: #fafbfc; font-size: 12px; color: var(--muted);
+    }
+    .map strong { color: var(--ink); }
+
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .dir, .cmds { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="ico-voice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></symbol>
+    <symbol id="ico-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></symbol>
+    <symbol id="ico-pad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></symbol>
+    <symbol id="ico-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></symbol>
+  </svg>
+
+  <div class="proto-bar">
+    <strong>原型 · 方案 B</strong>
+    <em>Cursor 角色目录 · 单独展示</em>
+    <span>通道 = 图标灯 · 目录 ≠ 通道</span>
+    <span class="hint">prototypes/onetone-habit-scheme-b.html</span>
+  </div>
+
+  <div class="stage">
+    <div class="stage-head">
+      <h1>方案 B · 目录与列表效果</h1>
+      <p>左侧是<strong>功能角色目录</strong>（跨 Agent 可复用心智）；中间是习惯命令列表；右侧是选中命令的改入口。通道只出现在行内图标，不参与分桶。</p>
+      <p class="note">B：四桶扁平。B′：仅「Cursor 快捷键」内加模式 / 壳子标题（键 ≥5 时）。</p>
+    </div>
+
+    <div class="toolbar" role="group" aria-label="展示模式">
+      <button type="button" class="mode is-on" data-mode="b">B · 四桶</button>
+      <button type="button" class="mode" data-mode="b2">B′ · 键内二分</button>
+      <span class="hint">切换只影响 Cursor 快捷键桶内是否显示子标题</span>
+    </div>
+
+    <div class="legend" aria-label="通道图例">
+      <span class="ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg>口头</span>
+      <span class="ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg>按键</span>
+      <span class="ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg>Pad</span>
+      <span class="ch is-on cam"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg>手势</span>
+    </div>
+
+    <div class="shell" aria-label="方案 B 目录与效果">
+      <!-- 目录 -->
+      <nav class="dir" aria-label="角色目录">
+        <div class="dir-head">目录 · Cursor 角色</div>
+        <ul class="tree">
+          <li>
+            <button type="button" class="dir-item is-on" data-bucket="talk">
+              <span class="dir-ico talk">对</span>
+              <span class="dir-label">对话控制</span>
+              <span class="dir-n">3</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dir-item" data-bucket="cursorKey" id="dirCursorKey">
+              <span class="dir-ico key">键</span>
+              <span class="dir-label">Cursor 快捷键</span>
+              <span class="dir-n">6</span>
+            </button>
+            <ul class="kids" id="dirKids" aria-label="键内细分">
+              <li><button type="button" data-family="agentMode">Agent 模式键 · 3</button></li>
+              <li><button type="button" data-family="editorShell">编辑器壳 · 3</button></li>
+            </ul>
+          </li>
+          <li>
+            <button type="button" class="dir-item" data-bucket="slash">
+              <span class="dir-ico slash">/</span>
+              <span class="dir-label">斜杠指令</span>
+              <span class="dir-n">1</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dir-item" data-bucket="pad">
+              <span class="dir-ico pad">Pad</span>
+              <span class="dir-label">Soft Pad 原生</span>
+              <span class="dir-n">2</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dir-item" data-bucket="input">
+              <span class="dir-ico input">入</span>
+              <span class="dir-label">控制输入</span>
+              <span class="dir-n">1</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dir-item" data-bucket="session">
+              <span class="dir-ico session">会</span>
+              <span class="dir-label">会话与状态</span>
+              <span class="dir-n">—</span>
+            </button>
+          </li>
+        </ul>
+        <div class="dir-foot">
+          共享轴：<code>ActionCategory</code>（input/agent/…）<br />
+          Cursor 投影：本页四桶 · 不含 <code>app.shortcut</code>
+        </div>
+      </nav>
+
+      <!-- 列表 -->
+      <aside class="cmds" aria-label="命令列表">
+        <div class="cmds-head">
+          <strong>本习惯 · 命令</strong>
+          <span id="listHint">方案 B · Cursor</span>
+        </div>
+
+        <details class="acc" open data-bucket="talk">
+          <summary>
+            <span class="acc-ico dir-ico talk">对</span>
+            <span class="acc-title">对话控制</span>
+            <span class="acc-count">3</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd is-on" data-id="continue" data-bucket="talk">
+              <strong>继续</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge talk">对话</span>继续、接着写</span>
+            </button>
+            <button type="button" class="cmd" data-id="cancel" data-bucket="talk">
+              <strong>中断</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch is-on cam" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge talk">对话</span><span class="chord">Ctrl+Shift+Backspace</span></span>
+            </button>
+            <button type="button" class="cmd" data-id="newThread" data-bucket="talk">
+              <strong>新建对话</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge talk">对话</span><span class="chord">Ctrl+N</span> · 仍归对话，不进键桶</span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" open data-bucket="cursorKey">
+          <summary>
+            <span class="acc-ico dir-ico key">键</span>
+            <span class="acc-title">Cursor 快捷键</span>
+            <span class="acc-count">6</span>
+          </summary>
+          <div class="acc-body">
+            <div class="subhead b2-only">Agent 模式键</div>
+            <button type="button" class="cmd" data-id="plan" data-bucket="cursorKey" data-family="agentMode">
+              <strong>制定计划</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+Alt+Shift+P</span> · 模式热键</span>
+            </button>
+            <button type="button" class="cmd" data-id="switchAgent" data-bucket="cursorKey" data-family="agentMode">
+              <strong>切换助手</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+Alt+.</span></span>
+            </button>
+            <button type="button" class="cmd" data-id="quickChat" data-bucket="cursorKey" data-family="agentMode">
+              <strong>快速聊天</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+I</span></span>
+            </button>
+            <div class="subhead b2-only">编辑器壳</div>
+            <button type="button" class="cmd" data-id="openTerminal" data-bucket="cursorKey" data-family="editorShell">
+              <strong>打开终端</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+`</span></span>
+            </button>
+            <button type="button" class="cmd" data-id="commandPalette" data-bucket="cursorKey" data-family="editorShell">
+              <strong>命令菜单</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+Shift+P</span></span>
+            </button>
+            <button type="button" class="cmd" data-id="quickSearch" data-bucket="cursorKey" data-family="editorShell">
+              <strong>快速搜索</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge cursor">Cursor 键</span><span class="chord">Ctrl+F</span></span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" open data-bucket="slash">
+          <summary>
+            <span class="acc-ico dir-ico slash">/</span>
+            <span class="acc-title">斜杠指令</span>
+            <span class="acc-count">1</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd" data-id="status" data-bucket="slash">
+              <strong>查看状态</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge slash">斜杠</span>插入 <code>/status</code> · 不发送</span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" open data-bucket="pad">
+          <summary>
+            <span class="acc-ico dir-ico pad">Pad</span>
+            <span class="acc-title">Soft Pad 原生</span>
+            <span class="acc-count">2</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd" data-id="softSlots" data-bucket="pad">
+              <strong>Soft Pad 灯位</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge pad">Soft Pad</span>口令 + 灯位同源</span>
+            </button>
+            <button type="button" class="cmd" data-id="padPrimary" data-bucket="pad">
+              <strong>回到当前 Agent</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge pad">Soft Pad</span>ENC 主键</span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" data-bucket="input">
+          <summary>
+            <span class="acc-ico dir-ico input">入</span>
+            <span class="acc-title">控制输入</span>
+            <span class="acc-count">1</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd" data-id="send" data-bucket="input">
+              <strong>发送</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="badge input">输入</span>发送</span>
+            </button>
+          </div>
+        </details>
+      </aside>
+
+      <!-- 详情 -->
+      <div class="detail" id="detail">
+        <div class="zone-tag" id="dZone">对话控制</div>
+        <h2 id="dTitle">继续</h2>
+        <p class="lead" id="dLead">Agent 推进类能力。目录归「对话控制」；通道灯表示口头 / 按键 / Pad 均已绑定。</p>
+        <div class="cta-row" id="dCta"></div>
+        <div class="facts" id="dFacts"></div>
+        <div class="map" id="dMap"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var CMDS = {
+        continue: {
+          zone: '对话控制', title: '继续',
+          lead: 'Agent 推进。多通道绑定不拆桶——目录只看角色，通道看灯。',
+          ctas: [
+            { label: '改说法', primary: true },
+            { label: '改按键 · Keys' },
+            { label: '改 Pad 灯位' }
+          ],
+          facts: [
+            { h: '目录', p: '对话控制 · 非 Cursor 快捷键' },
+            { h: 'action', p: '<code>continueReply</code> · category ≈ agent' },
+            { h: '剔除', p: '与 <code>app.shortcut</code> 无关' }
+          ],
+          map: '共享目录用 ActionCategory；本桶是 Cursor 习惯投影的「对话」角色。'
+        },
+        cancel: {
+          zone: '对话控制', title: '中断',
+          lead: '停止生成。虽有默认和弦，仍归对话控制（语义是打断，不是 IDE 壳）。',
+          ctas: [{ label: '改按键 · Keys', primary: true }, { label: '改手势' }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+Shift+Backspace</span>' },
+            { h: 'action', p: '<code>cancel</code>' }
+          ],
+          map: '有键 ≠ 进 Cursor 快捷键桶；桶看「在 Cursor 里扮演什么」。'
+        },
+        newThread: {
+          zone: '对话控制', title: '新建对话',
+          lead: '开新会话。Ctrl+N 是壳键，但产品角色仍是会话/对话。',
+          ctas: [{ label: '改说法', primary: true }, { label: '改按键 · Keys' }],
+          facts: [{ h: '和弦', p: '<span class="chord">Ctrl+N</span>' }],
+          map: '也可落在「会话与状态」大类；本页演示归对话控制。'
+        },
+        plan: {
+          zone: 'Cursor 快捷键', title: '制定计划',
+          lead: 'Cursor 模式热键，不是斜杠插入。副行主显和弦。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+Alt+Shift+P</span>' },
+            { h: 'B′', p: 'Agent 模式键' },
+            { h: '非', p: 'insertOnly 斜杠（Soft Pad 已特殊处理）' }
+          ],
+          map: '白名单来自 CURSOR_DEFAULT_KEY_BY_SLOT 覆盖。'
+        },
+        switchAgent: {
+          zone: 'Cursor 快捷键', title: '切换助手',
+          lead: '模式热键。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+Alt+.</span>' },
+            { h: 'B′', p: 'Agent 模式键' }
+          ],
+          map: '同 plan：Cursor 特有，进键桶不进斜杠。'
+        },
+        quickChat: {
+          zone: 'Cursor 快捷键', title: '快速聊天',
+          lead: 'Cursor Agent 入口 Ctrl+I。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+I</span>' },
+            { h: 'B′', p: 'Agent 模式键' }
+          ],
+          map: 'VS Code 系共享表无此覆盖；Cursor pack 写入。'
+        },
+        openTerminal: {
+          zone: 'Cursor 快捷键', title: '打开终端',
+          lead: '编辑器壳快捷键。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+`</span>' },
+            { h: 'B′', p: '编辑器壳' }
+          ],
+          map: 'VSCODE_EDITOR_KEY_BY_SLOT 共享。'
+        },
+        commandPalette: {
+          zone: 'Cursor 快捷键', title: '命令菜单',
+          lead: '编辑器壳。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+Shift+P</span>' },
+            { h: 'B′', p: '编辑器壳' }
+          ],
+          map: '壳键与模式键同属「Cursor 快捷键」顶层桶。'
+        },
+        quickSearch: {
+          zone: 'Cursor 快捷键', title: '快速搜索',
+          lead: '编辑器壳 Ctrl+F。',
+          ctas: [{ label: '改按键 · Keys', primary: true }],
+          facts: [
+            { h: '和弦', p: '<span class="chord">Ctrl+F</span>' },
+            { h: 'B′', p: '编辑器壳' }
+          ],
+          map: '键桶变长时 B′ 子标题才有意义。'
+        },
+        status: {
+          zone: '斜杠指令', title: '查看状态',
+          lead: '真正 insertOnly：插入 /status，不发送。无 Cursor 模式 chord override。',
+          ctas: [{ label: '改说法', primary: true }, { label: '改 Pad' }],
+          facts: [
+            { h: '插入', p: '<code>/status</code>' },
+            { h: 'mode', p: 'insertOnly' }
+          ],
+          map: '与 plan 切开：斜杠 ≠ 模式键。'
+        },
+        softSlots: {
+          zone: 'Soft Pad 原生', title: 'Soft Pad 灯位',
+          lead: '产品原生口令槽 / 灯位，非 Agent 适配器执行。',
+          ctas: [{ label: '改说法', primary: true }, { label: '打开 Soft Pad' }],
+          facts: [{ h: 'slot', p: '<code>soft:*</code>' }],
+          map: 'layer / soft: 前缀；不叫「原生能力」五颗粒。'
+        },
+        padPrimary: {
+          zone: 'Soft Pad 原生', title: '回到当前 Agent',
+          lead: 'Pad 主键点击。不另开「点击执行」桶——通道灯已表达。',
+          ctas: [{ label: '改 Pad 布局', primary: true }],
+          facts: [{ h: '键位', p: 'ENC' }],
+          map: '角色 = Soft Pad；通道 = pad。'
+        },
+        send: {
+          zone: '控制输入', title: '发送',
+          lead: '输入类。对齐共享 ActionCategory = input。',
+          ctas: [{ label: '改说法', primary: true }, { label: '改 Pad' }],
+          facts: [{ h: 'category', p: 'input' }],
+          map: '大类来自共享目录；B 投影挂在习惯列表。'
+        }
+      };
+
+      function renderDetail(id) {
+        var d = CMDS[id];
+        if (!d) return;
+        document.getElementById('dZone').textContent = d.zone;
+        document.getElementById('dTitle').textContent = d.title;
+        document.getElementById('dLead').textContent = d.lead;
+        document.getElementById('dCta').innerHTML = d.ctas.map(function (c) {
+          return '<button type="button" class="cta' + (c.primary ? ' primary' : '') + '">' + c.label + '</button>';
+        }).join('');
+        document.getElementById('dFacts').innerHTML = d.facts.map(function (f) {
+          return '<article><h3>' + f.h + '</h3><p>' + f.p + '</p></article>';
+        }).join('');
+        document.getElementById('dMap').innerHTML = '<strong>落地</strong> · ' + d.map;
+      }
+
+      function selectCmd(btn) {
+        document.querySelectorAll('.cmd').forEach(function (b) { b.classList.remove('is-on'); });
+        btn.classList.add('is-on');
+        renderDetail(btn.getAttribute('data-id'));
+      }
+
+      function focusBucket(bucket) {
+        document.querySelectorAll('.dir-item').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-bucket') === bucket);
+        });
+        document.querySelectorAll('.acc').forEach(function (acc) {
+          var match = acc.getAttribute('data-bucket') === bucket;
+          acc.open = match || bucket === 'all';
+          if (match) {
+            var first = acc.querySelector('.cmd');
+            if (first) selectCmd(first);
+          }
+        });
+      }
+
+      document.querySelectorAll('.cmd').forEach(function (btn) {
+        btn.addEventListener('click', function () { selectCmd(btn); });
+      });
+
+      document.querySelectorAll('.dir-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          focusBucket(btn.getAttribute('data-bucket'));
+        });
+      });
+
+      document.querySelectorAll('.kids button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var fam = btn.getAttribute('data-family');
+          document.querySelectorAll('.kids button').forEach(function (b) { b.classList.remove('is-on'); });
+          btn.classList.add('is-on');
+          focusBucket('cursorKey');
+          var first = document.querySelector('.cmd[data-family="' + fam + '"]');
+          if (first) selectCmd(first);
+        });
+      });
+
+      function setMode(mode) {
+        document.body.classList.toggle('is-b2', mode === 'b2');
+        document.querySelectorAll('.mode').forEach(function (m) {
+          m.classList.toggle('is-on', m.getAttribute('data-mode') === mode);
+        });
+        document.getElementById('listHint').textContent =
+          mode === 'b2' ? '方案 B′ · 键内二分' : '方案 B · Cursor';
+        document.getElementById('dirKids').classList.toggle('is-open', mode === 'b2');
+      }
+
+      document.querySelectorAll('.mode').forEach(function (m) {
+        m.addEventListener('click', function () { setMode(m.getAttribute('data-mode')); });
+      });
+
+      renderDetail('continue');
+      setMode('b');
+    })();
+  </script>
+</body>
+</html>

@@ -25,7 +25,6 @@
   function cfg(){ return state().config||{}; }
   function prefs(){ return global.OneToneHabitExperiencePrefs; }
   function shared(){ return global.OneToneHabitShared; }
-  function novice(){ return global.OneToneHabitNoviceMode; }
   function diff(){ return global.OneToneHabitOverrideDiff||{}; }
   function lang(){
     var value=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():document.documentElement.lang;
@@ -105,6 +104,84 @@
     if(SECTIONS.indexOf(ui().habitProgramSection)<0) ui().habitProgramSection='scope';
     if(ui().habitWorkspaceChannel!=='all'&&!ui().habitWorkspaceItemId) ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel);
     return selected;
+  }
+  function fgIdentityKey(identity){
+    if(!identity) return '';
+    return String(identity.exeName||identity.exe_name||'')+'|'
+      +String(identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'')+'|'
+      +String(identity.fullPath||identity.full_path||'');
+  }
+  function fgDisplayName(identity){
+    if(!identity) return '—';
+    var name=String(identity.displayName||identity.display_name||'').trim();
+    if(name) return name;
+    var exe=String(identity.exeName||identity.exe_name||'').replace(/\.exe$/i,'');
+    return exe||'—';
+  }
+  function loadHabitForeground(){
+    var hub=global.OneToneHabitHub;
+    if(hub&&typeof hub.loadHabitForeground==='function') return hub.loadHabitForeground();
+    var invoke=global.OneToneIpc&&global.OneToneIpc.invoke;
+    if(!invoke) return Promise.resolve(null);
+    return invoke('cmd_habit_foreground_app',{}).catch(function(){ return null; }).then(function(held){
+      var self=hub&&hub.isSelfForegroundIdentity;
+      if(held&&(held.exeName||held.exe_name)&&!(self&&self(held))) return held;
+      return invoke('cmd_foreground_app',{});
+    });
+  }
+  /** Edit selection only — never touches activeSceneId / 正在使用. */
+  function applyForegroundEditSelection(identity,force){
+    var hub=global.OneToneHabitHub;
+    var self=hub&&hub.isSelfForegroundIdentity;
+    if(!identity||(self&&self(identity))){
+      ui().habitWorkspaceFgIdentity=null;
+      ui().habitWorkspaceFgHitId=null;
+      return false;
+    }
+    ui().habitWorkspaceFgIdentity=identity;
+    var hit=hub&&hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
+    ui().habitWorkspaceFgHitId=hit&&hit.id?String(hit.id):null;
+    if(!hit||!hit.id) return false;
+    if(!force&&ui().habitWorkspaceManualPick) return false;
+    if(String(state().selectedMappingId||'')===String(hit.id)) return false;
+    state().selectedMappingId=hit.id;
+    ui().habitWorkspaceManualPick=false;
+    return true;
+  }
+  function alignToForeground(opts){
+    opts=opts||{};
+    if(opts.force) ui().habitWorkspaceManualPick=false;
+    if(ui().habitWorkspaceManualPick&&!opts.force){
+      ui().habitWorkspaceFgReady=true;
+      return Promise.resolve(false);
+    }
+    return loadHabitForeground().then(function(res){
+      var prevKey=fgIdentityKey(ui().habitWorkspaceFgIdentity);
+      var changed=applyForegroundEditSelection(res,!!opts.force);
+      ui().habitWorkspaceFgReady=true;
+      var nextKey=fgIdentityKey(ui().habitWorkspaceFgIdentity);
+      if(changed||opts.force||prevKey!==nextKey){
+        render({skipFgAlign:true,skipStatsFetch:opts.skipStatsFetch!==false});
+      }
+      if(opts.force&&!ui().habitWorkspaceFgHitId&&global.OneToneAppToast){
+        global.OneToneAppToast.show(t('habitWsFgNoHabit','前台应用尚无习惯，可在左侧新建或切换查看'),'warn');
+      }
+      return changed;
+    }).catch(function(){
+      ui().habitWorkspaceFgReady=true;
+      return false;
+    });
+  }
+  function maybeAutoAlignForeground(opts){
+    opts=opts||{};
+    if(opts.skipFgAlign||ui().habitHubCreating||ui().habitWorkspaceFgReady||ui().habitWorkspaceManualPick) return;
+    if(ui().habitWorkspaceFgAligning) return;
+    ui().habitWorkspaceFgAligning=true;
+    alignToForeground({skipStatsFetch:true}).then(function(){
+      ui().habitWorkspaceFgAligning=false;
+    },function(){
+      ui().habitWorkspaceFgAligning=false;
+    });
   }
   function defaultItem(channel){
     return channel==='voice'?'voice-wake':channel==='camera'?'camera-away':channel==='softPad'?'softpad-layout':'key-main';
@@ -237,7 +314,7 @@
       var d=quickDetail(m,ch,first.id);
       q[ch]={enabled:d.enabled,count:d.count||0,source:d.source};
     });
-    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:ui().habitExperienceMode||prefs()&&prefs().getMode()||'novice',ruleRows:shared()&&shared().buildRuleRows?shared().buildRuleRows(m,{channel:channel}):[],inherit:shared()&&shared().inheritSummary?shared().inheritSummary(m):{overrideCount:0,inheritedCount:0,total:0}};
+    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:'locator',ruleRows:shared()&&shared().buildRuleRows?shared().buildRuleRows(m,{channel:channel}):[],inherit:shared()&&shared().inheritSummary?shared().inheritSummary(m):{overrideCount:0,inheritedCount:0,total:0}};
   }
 
   function ensureShell(){
@@ -344,15 +421,151 @@
     }
     return html;
   }
-  function modeBtn(mode, active, inner){
-    return '<button type="button" role="tab" aria-selected="'+(active?'true':'false')+'" class="pref-segmented-btn habit-ws-mode-btn'+(active?' is-active':'')+'" data-habit-mode="'+mode+'">'+inner+'</button>';
+  function modeHtml(){
+    return '';
   }
-  function modeHtml(mode){
-    var noviceLbl=t('habitDisplayModeNoviceLabel','小白模式');
-    var quickLbl=t('habitDisplayModeQuickLabel','快速设置');
-    var noviceInner='<span class="habit-ws-mode-glyph" aria-hidden="true">\uD83C\uDF31</span><span class="habit-ws-mode-text">'+esc(noviceLbl)+'</span> <span class="badge-new">'+esc(t('habitDisplayModeNew','新'))+'</span>';
-    var quickInner='<span class="habit-ws-mode-glyph" aria-hidden="true">\u26A1</span><span class="habit-ws-mode-text">'+esc(quickLbl)+'</span>'+(mode==='quick'?' <em>'+esc(c('recommended'))+'</em>':'');
-    return '<div class="habit-ws-modebar"><div class="pref-segmented habit-ws-modes" role="tablist" aria-label="Habit view">'+modeBtn('novice',mode==='novice',noviceInner)+modeBtn('quick',mode==='quick',quickInner)+'</div></div>';
+  function snapApi(){ return global.OneToneHabitChannelSnapshot; }
+  /** One subtitle line: no repeat of title; prefer key flow + counts. */
+  function locatorSubline(m,snap,appLabel,habitTitle){
+    var parts=[];
+    var title=String(habitTitle||'');
+    var app=String(appLabel||'').trim();
+    var isUniversal=!String(m&&m.appTargetId||'').trim()
+      ||(diff().isGlobalBaselineMapping&&diff().isGlobalBaselineMapping(m,cfg(),global.OneToneMappingCore));
+    if(isUniversal){
+      parts.push(lang()==='en'?'Fallback for other apps':'其它应用无专用时走这套');
+    }else if(app&&title.indexOf(app)<0){
+      parts.push((lang()==='en'?'For ':'适用于 ')+app);
+    }
+    var keySub=snapApi()&&snapApi().listSubtitle?snapApi().listSubtitle(m,snap,lang()):'';
+    if(keySub&&keySub!=='已关闭'&&keySub!=='Off'&&keySub!=='未设置键位'&&keySub!=='Keys not set'){
+      parts.push(keySub);
+    }else if(keySub==='未设置键位'||keySub==='Keys not set'){
+      parts.push(keySub);
+    }
+    if(snap){
+      parts.push(lang()==='en'
+        ?(snap.configuredActionCount+' actions')
+        :(snap.configuredActionCount+' 个动作'));
+    }
+    if(snap&&snap.hasAttention) parts.push(lang()==='en'?'Needs setup':'有待补');
+    return parts.join(' · ');
+  }
+  function locatorDetailHtml(model){
+    var m=model&&model.mapping;
+    if(!m) return '<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong></div>';
+    var api=snapApi();
+    var snap=api&&api.make?api.make(m,cfg(),lang()):null;
+    var appLabel=shared()&&shared().appName?shared().appName(m):(m.appTargetId||'');
+    var habitTitle=shared()&&shared().sceneName?shared().sceneName(m):(m.group||m.label||m.id||'—');
+    var isActive=String(cfg().activeSceneId||'')===String(m.id);
+    var renaming=String(ui().habitHubRenameId||'')===String(m.id);
+    var siblings=[];
+    if(api&&api.habitLocatorGroups&&api.scopeIdForMapping){
+      var scope=api.scopeIdForMapping(m,cfg());
+      var group=(api.habitLocatorGroups(model.mappings,cfg(),lang())||[]).find(function(g){ return g.scope===scope; });
+      siblings=group&&group.schemes?group.schemes:[];
+    }
+    var kpi='';
+    var stats=global.OneToneHabitActionStats;
+    if(stats&&stats.headKpiHtml) kpi=stats.headKpiHtml(m.id);
+
+    var nameHtml=renaming
+      ?('<span class="habit-locator-rename-wrap">'
+        +'<input type="text" class="habit-locator-rename-input" data-habit-rename-input="'+esc(m.id)+'" value="'+esc(m.group||m.label||'')+'" maxlength="48" />'
+        +'<button type="button" class="btn-ghost" data-habit-rename-save="'+esc(m.id)+'">'+esc(t('habitHubRenameSave','保存'))+'</button>'
+        +'<button type="button" class="btn-ghost" data-habit-rename-cancel>'+esc(t('habitScenarioCancel','取消'))+'</button>'
+        +'</span>')
+      :('<h2 class="habit-locator-name" data-habit-rename="'+esc(m.id)+'" title="'+esc(t('habitHubActRename','重命名'))+'">'+esc(habitTitle)+'</h2>');
+
+    var useTip=t('habitChannelStripHint','编辑不会立即切换正在使用；点「设为正在使用」后，按键 / 语音 / 摄像头 / Soft Pad 才按这套执行。');
+    var activeTip=t('habitLocatorActiveTip','按键、语音、摄像头、Soft Pad 当前按这套习惯执行。浏览左侧其它习惯只是编辑，不会自动改这里。');
+    // Active = green dot only (no "正在使用" text). Enable toggle lives beside sidebar delete.
+    var liveDot=isActive
+      ?('<span class="habit-locator-live-dot" role="status" aria-label="'+esc(t('habitActiveLabel','正在使用'))+'" title="'+esc(activeTip)+'"></span>')
+      :'';
+    var useBtn=!isActive
+      ?('<button type="button" class="btn-ghost habit-locator-use-btn" data-habit-scenario-use="'+esc(m.id)+'" title="'+esc(useTip)+'">'+esc(t('homeWbHabitBarUse','设为正在使用'))+'</button>')
+      :'';
+    var fgId=ui().habitWorkspaceFgIdentity;
+    var fgHit=String(ui().habitWorkspaceFgHitId||'');
+    var fgName=fgDisplayName(fgId);
+    var fgAligned=fgHit&&fgHit===String(m.id);
+    // Compact FG strip: no second「正在编辑」title (hero h2 already shows habit).
+    var truthBar='';
+    if(fgId){
+      var fgHint=fgHit
+        ?(fgAligned?'':t('habitWsFgOther','点对准前台回到此应用'))
+        :t('habitWsFgMissing','此前台尚无习惯');
+      truthBar='<div class="habit-ws-truth'+(fgAligned?' is-aligned':'')+'" role="status">'
+        +'<span class="habit-ws-truth-app">'+(fgAligned?'✓ ':'')
+        +esc(t('habitWsFgLabel','前台'))+' · '+esc(fgName)+'</span>'
+        +(fgHint?'<span class="habit-ws-truth-hint">'+esc(fgHint)+'</span>':'')
+        +(!fgAligned
+          ?('<button type="button" class="btn-ghost habit-ws-align-fg" data-habit-align-fg'
+            +' title="'+esc(t('habitWsAlignFgTip','只切换编辑选中，不会改正在使用'))+'">'
+            +esc(t('habitWsAlignFg','对准前台'))+'</button>')
+          :'')
+        +'</div>';
+    }
+
+    var sub=locatorSubline(m,snap,appLabel,habitTitle);
+
+    var chips=siblings.length>1
+      ?('<div class="habit-locator-chips" role="tablist">'
+        +siblings.map(function(s){
+          var on=s.id===m.id;
+          var chipName=shared()&&shared().sceneName?shared().sceneName(s):(s.group||s.label||s.id);
+          return '<button type="button" class="habit-locator-chip'+(on?' on':'')+'" data-habit-mapping="'+esc(s.id)+'" role="tab" aria-selected="'+(on?'true':'false')+'">'+esc(chipName)+'</button>';
+        }).join('')
+        +'</div>')
+      :'';
+
+    var scenes=(api&&api.SCENES)||[];
+    var boards=scenes.map(function(scene){
+      var ch=snap&&snap.channels?snap.channels[scene.id]:{tone:'idle',statusLabel:'',blurb:'',actions:[]};
+      var title=lang()==='en'?scene.titleEn:scene.titleZh;
+      var editLbl=lang()==='en'?scene.editEn:scene.editZh;
+      var acts=(ch.actions&&ch.actions.length)
+        ?ch.actions.map(function(a){
+          return '<button type="button" class="habit-locator-act'+(a.muted?' muted':'')+'" data-nav-scene="'+esc(scene.id)+'" data-nav-action="'+esc(a.id)+'">'
+            +'<span class="habit-locator-act-title">'+esc(a.title)+'</span>'
+            +(a.key?'<span class="habit-locator-act-key">'+esc(a.key)+'</span>':'')
+            +'</button>';
+        }).join('')
+        :'<div class="habit-locator-empty">'+(lang()==='en'?'No actions':'暂无动作')+'</div>';
+      return '<section class="habit-locator-board" data-ch="'+esc(scene.id)+'" data-tone="'+esc(ch.tone||'idle')+'">'
+        +'<header class="habit-locator-board-hd"><div><b>'+esc(title)+'</b><div class="habit-locator-blurb">'+esc(ch.blurb||'')+'</div></div>'
+        +'<span class="habit-locator-tone '+(ch.tone||'idle')+'">'+esc(ch.statusLabel||'')+'</span></header>'
+        +'<div class="habit-locator-board-body">'+acts+'</div>'
+        +'<footer class="habit-locator-board-ft"><button type="button" class="habit-locator-edit" data-nav-scene="'+esc(scene.id)+'" data-nav-action="">'+esc(editLbl)+'</button></footer>'
+        +'</section>';
+    }).join('');
+
+    return '<main class="habit-ws-main habit-locator-main">'
+      +'<header class="habit-locator-hero">'
+      +'<div class="habit-locator-hdr">'
+      +'<div class="habit-locator-hdr-left">'
+      +(shared()&&shared().appIconHtml?shared().appIconHtml(m):'')
+      +'<div class="habit-locator-hdr-copy">'
+      +'<div class="habit-locator-title-row">'+nameHtml+liveDot+'</div>'
+      +(sub?'<p class="habit-locator-sub">'+esc(sub)+'</p>':'')
+      +'</div></div>'
+      +(useBtn?'<div class="habit-locator-hdr-right">'+useBtn+'</div>':'')
+      +'</div>'
+      +truthBar
+      +kpi
+      +'</header>'
+      +chips
+      +'<div id="habitCommandLinkMount" class="hcl-mount" data-mapping="'+esc(m.id)+'"></div>'
+      +'<details class="habit-keep-fold">'
+      +'<summary>'+(lang()==='en'?'Channel capabilities (KEEP)':'各通道底层能力（KEEP）')+'</summary>'
+      +'<p class="habit-keep-fold-note">'+(lang()==='en'
+        ?'Recording, wake, pad layout and thresholds stay on channel pages. Command matching is above.'
+        :'录键、唤醒、Pad 布局与阈值仍在各通道页；命令匹配见上方中枢。')+'</p>'
+      +'<div class="habit-locator-boards">'+boards+'</div>'
+      +'</details>'
+      +'</main>';
   }
   function advancedFieldCount(groups){
     groups=groups||{};
@@ -383,20 +596,19 @@
   }
   function captureWorkspaceScroll(){
     var root=document.getElementById('habitWorkspace');
-    var main=root&&root.querySelector?root.querySelector('.habit-ws-main, .habit-novice-main'):null;
-    if(!main) main=document.querySelector('#habitWorkspace .habit-ws-main,#habitWorkspace .habit-novice-main');
+    var main=root&&root.querySelector?root.querySelector('.habit-locator-main, .habit-ws-main'):null;
+    if(!main) main=document.querySelector('#habitWorkspace .habit-locator-main,#habitWorkspace .habit-ws-main');
     if(main) ui().habitWorkspaceScrollTop=main.scrollTop||0;
     var active=document.activeElement;
-    if(active&&active.matches&&active.matches('[data-habit-mode],[data-habit-mapping],[data-habit-channel],[data-habit-novice-dim]')){
-      if(active.hasAttribute('data-habit-mode')) ui().habitWorkspaceFocusSelector='[data-habit-mode="'+active.getAttribute('data-habit-mode')+'"]';
-      else if(active.hasAttribute('data-habit-mapping')) ui().habitWorkspaceFocusSelector='[data-habit-mapping="'+active.getAttribute('data-habit-mapping')+'"]';
-      else if(active.hasAttribute('data-habit-channel')) ui().habitWorkspaceFocusSelector='[data-habit-channel="'+active.getAttribute('data-habit-channel')+'"]';
-      else if(active.hasAttribute('data-habit-novice-dim')) ui().habitWorkspaceFocusSelector='[data-habit-novice-dim="'+active.getAttribute('data-habit-novice-dim')+'"]';
+    if(active&&active.matches&&active.matches('[data-habit-mapping],[data-habit-scope],[data-nav-scene]')){
+      if(active.hasAttribute('data-habit-mapping')) ui().habitWorkspaceFocusSelector='[data-habit-mapping="'+active.getAttribute('data-habit-mapping')+'"]';
+      else if(active.hasAttribute('data-habit-scope')) ui().habitWorkspaceFocusSelector='[data-habit-scope="'+active.getAttribute('data-habit-scope')+'"]';
+      else if(active.hasAttribute('data-nav-scene')) ui().habitWorkspaceFocusSelector='[data-nav-scene="'+active.getAttribute('data-nav-scene')+'"]';
     }
   }
   function restoreWorkspaceScroll(host){
     setTimeout(function(){
-      var main=host&&host.querySelector('.habit-ws-main, .habit-novice-main');
+      var main=host&&host.querySelector('.habit-locator-main, .habit-ws-main');
       if(main&&Number.isFinite(Number(ui().habitWorkspaceScrollTop))) main.scrollTop=Number(ui().habitWorkspaceScrollTop)||0;
       var sel=String(ui().habitWorkspaceFocusSelector||'').trim();
       if(sel){
@@ -423,37 +635,36 @@
     bindEvents(host);
     bindUsageLive();
     captureWorkspaceScroll();
-    if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';
-    if(ui().habitExperienceMode==='programmer') ui().habitExperienceMode='quick';
-    if(!ui().habitNoviceDim) ui().habitNoviceDim='key';
-    if(!ui().habitNoviceScene) ui().habitNoviceScene='begin';
+    ui().habitExperienceMode='locator';
     if(ui().habitHubCreating){
       var hub=global.OneToneHabitHub;
       var createHtml=hub&&hub.inlineCreateHtml?hub.inlineCreateHtml():'';
-      host.innerHTML=modeHtml(ui().habitExperienceMode||'novice')+'<div class="habit-ws-create">'+createHtml+'</div>';
+      host.innerHTML='<div class="habit-ws-create">'+createHtml+'</div>';
       restoreWorkspaceScroll(host);
       return;
     }
     var model=buildWorkspaceModel();
     if(model.empty){
-      host.innerHTML=modeHtml(ui().habitExperienceMode)+'<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
+      host.innerHTML='<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
       restoreWorkspaceScroll(host);
       return;
     }
-    var body='';
-    if(model.mode==='novice'&&novice()&&novice().layoutHtml){
-      body=novice().layoutHtml(model);
-      if(novice().bindEvents) novice().bindEvents(host,function(){ render({skipStatsFetch:true}); });
-    }else{
-      body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+quickHtml(model)+'</main></div>';
-    }
-    host.innerHTML=modeHtml(model.mode)+body;
+    var body='<div class="habit-ws-layout habit-locator">'+appListHtml(model)+locatorDetailHtml(model)+'</div>';
+    host.innerHTML=body;
     restoreWorkspaceScroll(host);
+    try{
+      var hcl=global.OneToneHabitCommandLink;
+      if(hcl&&typeof hcl.mountInto==='function'){
+        var mount=document.getElementById('habitCommandLinkMount');
+        if(mount) hcl.mountInto(mount,model.mapping);
+      }
+    }catch(_){}
+    maybeAutoAlignForeground(opts);
     if(!opts.skipStatsFetch){
       var api=global.OneToneHabitActionStats;
       if(api&&api.fetch&&!(api.isFresh&&api.isFresh(168))){
         api.fetch({hours:168}).then(function(){
-          render({skipStatsFetch:true});
+          render({skipStatsFetch:true,skipFgAlign:true});
         }).catch(function(){});
       }
     }
@@ -506,34 +717,83 @@
     if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitWsCopyJsonFail','无法访问剪贴板'),'scheme');
     return Promise.resolve();
   }
-  function switchMode(mode){
-    captureWorkspaceScroll();
-    if(mode==='programmer') mode='quick';
-    mode=mode==='quick'?'quick':'novice';
-    ui().habitExperienceMode=mode;
-    if(prefs()) prefs().setMode(mode);
+  function switchMode(){
+    ui().habitExperienceMode='locator';
+    if(prefs()) prefs().setMode('locator');
     render();
   }
-  function openEditor(channel,focus){
+  function openEditor(channel,focus,actionId){
     var m=normalizeSelection();
     if(!m) return;
+    var api=snapApi();
+    var editorCh=api&&api.editorChannelId?api.editorChannelId(channel):channel;
+    if(editorCh==='cam') editorCh='camera';
+    else if(editorCh==='pad') editorCh='softPad';
     var scrollHost=document.getElementById('settingsPanelWrap');
-    var ctx={mappingId:m.id,channel:ui().habitWorkspaceChannel,itemId:ui().habitWorkspaceItemId,mode:ui().habitExperienceMode,sectionId:ui().habitProgramSection,focusId:focus,scrollTop:scrollHost?scrollHost.scrollTop:0};
+    var ctx={
+      mappingId:m.id,
+      channel:editorCh,
+      itemId:ui().habitWorkspaceItemId||'',
+      mode:'locator',
+      sectionId:ui().habitProgramSection,
+      focusId:focus,
+      scrollTop:scrollHost?scrollHost.scrollTop:0
+    };
     if(global.OneToneActionNav&&global.OneToneActionNav.openChannelEditor){
-      global.OneToneActionNav.openChannelEditor({mappingId:m.id,channel:channel,focusId:focus,returnContext:ctx});
+      global.OneToneActionNav.openChannelEditor({
+        mappingId:m.id,
+        channel:editorCh,
+        actionId:actionId||null,
+        focusId:focus,
+        returnContext:ctx
+      });
     }
+  }
+  function openBoardNav(boardId,actionId){
+    var api=snapApi();
+    var focus=api&&api.focusIdForAction?api.focusIdForAction(boardId,actionId):'';
+    openEditor(boardId,focus,actionId);
+  }
+  function selectScope(scope){
+    var api=snapApi();
+    if(!api||!api.habitLocatorGroups) return;
+    var groups=api.habitLocatorGroups(mappings(),cfg(),lang());
+    var group=groups.find(function(g){ return g.scope===scope; });
+    if(!group||!group.schemes.length) return;
+    var pick=api.pickSchemeInGroup(group.schemes,cfg().activeSceneId,state().selectedMappingId);
+    if(pick){
+      state().selectedMappingId=pick.id;
+      ui().habitWorkspaceManualPick=true;
+      ui().habitWorkspaceFgReady=true;
+    }
+    render({skipFgAlign:true});
   }
   function bindEvents(host){
     if(host.__habitWorkspaceBound) return;
     host.__habitWorkspaceBound=true;
     host.addEventListener('click',function(event){
-      var target=event.target.closest&&event.target.closest('[data-habit-rule-toggle],button,[data-habit-item]');
+      // Hub owns enable / scenario-use / rename / delete — do not stop those.
+      var hubOwned=event.target.closest&&event.target.closest('[data-habit-enable],[data-habit-scenario-use],[data-habit-del],[data-habit-del-confirm],[data-habit-del-cancel],[data-habit-rename],[data-habit-rename-save],[data-habit-rename-cancel],[data-habit-rename-input],[data-habit-batch-toggle],[data-habit-select],[data-habit-batch-del],[data-habit-batch-del-confirm],[data-habit-batch-del-cancel],[data-habit-select-all],[data-habit-clear-sel]');
+      if(hubOwned) return;
+
+      var target=event.target.closest&&event.target.closest('[data-nav-scene],[data-habit-scope],button,[data-habit-mapping],[data-habit-align-fg],[data-habit-usage-peek],[data-habit-usage-export],[data-habit-usage-export-all],[data-habit-usage-rank],[data-habit-add]');
       if(!target) return;
-      if(target.hasAttribute('data-habit-mode')){ switchMode(target.getAttribute('data-habit-mode')); return; }
+      if(target.hasAttribute('data-nav-scene')){
+        event.stopPropagation();
+        openBoardNav(target.getAttribute('data-nav-scene'),target.getAttribute('data-nav-action')||'');
+        return;
+      }
+      if(target.hasAttribute('data-habit-scope')){
+        event.stopPropagation();
+        selectScope(target.getAttribute('data-habit-scope'));
+        return;
+      }
       if(target.hasAttribute('data-habit-usage-rank')){
         event.stopPropagation();
         state().selectedMappingId=target.getAttribute('data-habit-usage-rank');
-        render({skipStatsFetch:true});
+        ui().habitWorkspaceManualPick=true;
+        ui().habitWorkspaceFgReady=true;
+        render({skipStatsFetch:true,skipFgAlign:true});
         return;
       }
       if(target.hasAttribute('data-habit-usage-export-all')){
@@ -557,33 +817,20 @@
         }
         return;
       }
+      if(target.hasAttribute('data-habit-align-fg')){
+        event.stopPropagation();
+        alignToForeground({force:true,skipStatsFetch:true});
+        return;
+      }
       if(target.hasAttribute('data-habit-mapping')){
         event.stopPropagation();
         if(ui().habitHubBatchMode||(Array.isArray(ui().habitHubSelectedIds)&&ui().habitHubSelectedIds.length)){
           return;
         }
         state().selectedMappingId=target.getAttribute('data-habit-mapping');
-        render();
-        return;
-      }
-      if(target.hasAttribute('data-habit-channel')){ event.stopPropagation(); ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); if(ui().habitWorkspaceChannel!=='all') ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
-      if(target.hasAttribute('data-habit-rule-toggle')){ event.stopPropagation(); var rid=target.getAttribute('data-habit-rule-toggle'); ui().habitWorkspaceRuleOpen=ui().habitWorkspaceRuleOpen===rid?null:rid; render({skipStatsFetch:true}); return; }
-      if(target.hasAttribute('data-habit-inherited-toggle')){ event.stopPropagation(); ui().habitWorkspaceInheritedOpen=!ui().habitWorkspaceInheritedOpen; render({skipStatsFetch:true}); return; }
-      if(target.hasAttribute('data-habit-item')){ event.stopPropagation(); ui().habitWorkspaceItemId=target.getAttribute('data-habit-item'); render(); return; }
-      if(target.hasAttribute('data-habit-section')){ ui().habitProgramSection=target.getAttribute('data-habit-section'); render(); return; }
-      if(target.hasAttribute('data-habit-edit')){ openEditor(target.getAttribute('data-channel'),target.getAttribute('data-focus')); return; }
-      if(target.hasAttribute('data-habit-advanced-toggle')){ event.stopPropagation(); ui().habitWorkspaceAdvancedOpen=!ui().habitWorkspaceAdvancedOpen; render({skipStatsFetch:true}); return; }
-      if(target.hasAttribute('data-habit-fine')){ event.stopPropagation(); ui().habitWorkspaceAdvancedOpen=true; render({skipStatsFetch:true}); return; }
-      if(target.hasAttribute('data-habit-export-json')){
-        event.stopPropagation();
-        var expM=normalizeSelection();
-        if(expM) downloadMappingJson(expM);
-        return;
-      }
-      if(target.hasAttribute('data-habit-copy-json')){
-        event.stopPropagation();
-        var copyM=normalizeSelection();
-        if(copyM) copyMappingJson(copyM);
+        ui().habitWorkspaceManualPick=true;
+        ui().habitWorkspaceFgReady=true;
+        render({skipFgAlign:true});
         return;
       }
       if(target.hasAttribute('data-habit-add')){
@@ -595,18 +842,6 @@
         }
         return;
       }
-    });
-    host.addEventListener('keydown',function(event){
-      var modeButton=event.target.closest&&event.target.closest('[data-habit-mode]');
-      if(!modeButton||(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')) return;
-      event.preventDefault();
-      var modes=['novice','quick'];
-      var current=modeButton.getAttribute('data-habit-mode')||'novice';
-      var idx=modes.indexOf(current);
-      if(idx<0) idx=0;
-      var nextIdx=event.key==='ArrowRight'?(idx+1)%modes.length:(idx+modes.length-1)%modes.length;
-      var next=modeButton.parentElement&&modeButton.parentElement.querySelector('[data-habit-mode="'+modes[nextIdx]+'"]');
-      if(next){ next.focus(); next.click(); }
     });
     host.addEventListener('input',function(event){
       if(event.target&&event.target.hasAttribute('data-habit-search')){
@@ -621,23 +856,28 @@
   function restoreReturnContext(context){
     if(!context||!context.mappingId) return;
     state().selectedMappingId=context.mappingId;
-    var mode=context.mode==='novice'?'novice':'quick';
-    if(context.mode==='programmer'){
-      mode='quick';
-      ui().habitWorkspaceAdvancedOpen=true;
-    }
-    ui().habitExperienceMode=mode;
-    ui().habitWorkspaceChannel=QUICK_CHANNELS.indexOf(context.channel)>=0?context.channel:(CHANNELS.indexOf(context.channel)>=0?context.channel:'all');
+    ui().habitWorkspaceManualPick=true;
+    ui().habitWorkspaceFgReady=true;
+    ui().habitExperienceMode='locator';
+    var ch=String(context.channel||'');
+    if(ch==='cam') ch='camera';
+    if(ch==='pad') ch='softPad';
+    if(QUICK_CHANNELS.indexOf(ch)>=0||CHANNELS.indexOf(ch)>=0) ui().habitWorkspaceChannel=ch;
     ui().habitWorkspaceItemId=context.itemId||defaultItem(ui().habitWorkspaceChannel);
-    ui().habitProgramSection=SECTIONS.indexOf(context.sectionId)>=0?context.sectionId:'scope';
-    render();
+    if(SECTIONS.indexOf(context.sectionId)>=0) ui().habitProgramSection=context.sectionId;
+    render({skipFgAlign:true});
     setTimeout(function(){
       var scrollHost=document.getElementById('settingsPanelWrap');
       if(scrollHost&&Number.isFinite(Number(context.scrollTop))) scrollHost.scrollTop=Number(context.scrollTop)||0;
-      var focus=document.querySelector('[data-habit-channel="'+ui().habitWorkspaceChannel+'"]');
-      if(focus) focus.focus();
     },0);
   }
 
-  global.OneToneHabitWorkspace={render:render,buildWorkspaceModel:buildWorkspaceModel,switchMode:switchMode,restoreReturnContext:restoreReturnContext,defaultItem:defaultItem};
+  global.OneToneHabitWorkspace={
+    render:render,
+    buildWorkspaceModel:buildWorkspaceModel,
+    switchMode:switchMode,
+    restoreReturnContext:restoreReturnContext,
+    defaultItem:defaultItem,
+    alignToForeground:alignToForeground
+  };
 })((typeof window!=='undefined')?window:globalThis);

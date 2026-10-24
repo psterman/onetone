@@ -76,10 +76,11 @@ pub fn status(workspace: Option<&str>, agent_busy: bool) -> TmStatus {
         };
     }
 
-    // ponytail: no full `git status` here — huge untracked trees (e.g. target/) freeze the UI.
-    // Dirty fingerprint is taken only on restore preflight in git_ops.
+    // ponytail: -uno only (tracked dirty). Full untracked walks (target/) freeze the UI.
+    // Dirty fingerprint for restore races stays on restore preflight in git_ops.
     let tip = oplog::tip_op(&ws);
     let block = git_ops::conflict_block_reason(&ws);
+    let changed = git_ops::count_porcelain_changes(&ws).unwrap_or(0);
 
     TmStatus {
         level: if block.is_some() {
@@ -101,7 +102,7 @@ pub fn status(workspace: Option<&str>, agent_busy: bool) -> TmStatus {
                 Some(format!("最近 {}", short_time(&o.created_at)))
             }
         }),
-        changed_count: 0,
+        changed_count: changed,
         auto_save_enabled: config.auto_save_enabled,
         auto_save_interval_min: config.auto_save_interval_min,
         last_auto_save_at: store::last_auto_save_at_for(&ws),

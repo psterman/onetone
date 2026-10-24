@@ -2574,6 +2574,11 @@
     return navigateAgentSub(dest, agent);
   }
 
+  /** Shared client-effect handler for Agent Center + HA2 (avoid duplicated navigate logic). */
+  global.OneToneAgentClientEffects = {
+    apply: applyClientEffect
+  };
+
   function dispatchAction(actionId, agentId) {
     if (agentId) state.selectedId = agentId;
     var agent = byId(state.selectedId);
@@ -3288,6 +3293,7 @@
     mountDemo: mountDemo,
     refresh: refresh,
     dispatchAction: dispatchAction,
+    applyClientEffect: applyClientEffect,
     ensureWorkHostVisible: ensureWorkHostVisible,
     applyNavTarget: applyNavTarget,
     _fixture: fixtureSnap,

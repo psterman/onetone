@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-clipboard-read-image"
+description = "Enables the cmd_clipboard_read_image command without any pre-configured scope."
+commands.allow = ["cmd_clipboard_read_image"]
+
+[[permission]]
+identifier = "deny-cmd-clipboard-read-image"
+description = "Denies the cmd_clipboard_read_image command without any pre-configured scope."
+commands.deny = ["cmd_clipboard_read_image"]

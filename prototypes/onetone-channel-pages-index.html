@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 通道页规划索引（能力留页 / 匹配回习惯）</title>
+  <style>
+    :root {
+      --ink: #14202c; --muted: #6a7a89; --line: #dbe3e8;
+      --teal: #117c79; --teal-soft: #e5f5f3;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100%;
+      background: #dfe8e9; color: var(--ink); font: 14px/1.5 var(--font);
+    }
+    .bar {
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .bar strong { color: #fff; }
+    .wrap { width: min(860px, calc(100% - 28px)); margin: 28px auto 48px; }
+    h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.02em; }
+    .lede { margin: 0 0 22px; color: var(--muted); max-width: 62ch; }
+    .rule {
+      margin: 0 0 18px; padding: 12px 14px; border-radius: 8px;
+      background: var(--teal-soft); color: #0b5d5b; font-size: 13px; font-weight: 650;
+    }
+    .grid { display: grid; gap: 12px; }
+    a.card {
+      display: block; padding: 16px 18px; border: 1px solid rgba(22,45,53,.14);
+      border-radius: 12px; background: #fff; text-decoration: none; color: inherit;
+      box-shadow: 0 12px 28px rgba(25,45,55,.08);
+    }
+    a.card:hover { border-color: #9bd5d1; }
+    a.card h2 { margin: 0 0 4px; font-size: 16px; color: var(--teal); }
+    a.card p { margin: 0; color: var(--muted); font-size: 13px; }
+    a.card .meta { margin-top: 10px; font-size: 11px; color: #83949c; font-weight: 700; }
+    table {
+      width: 100%; margin-top: 28px; border-collapse: collapse; background: #fff;
+      border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 12.5px;
+    }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f4f7f8; color: #83949c; font-size: 11px; font-weight: 800; }
+    td strong { display: block; }
+    td small { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header class="bar"><strong>OneTone</strong> · 通道页 HTML 规划索引</header>
+  <main class="wrap">
+    <h1>修改后的按键 / 语音 / 软键盘</h1>
+    <p class="lede">三页共用原则：通道页保留本通道能力与配置；跨通道命令匹配统一进习惯页。</p>
+    <p class="rule">能力留页 · 匹配回习惯 · 存储与 runtime 不拆</p>
+
+    <div class="grid">
+      <a class="card" href="./onetone-keys-capability-v2.html">
+        <h2>按键</h2>
+        <p>现网「起点 + 识别」壳。输入法①②与自定义录键保留；口头/应用/软键盘/手势只读并回习惯。</p>
+        <div class="meta">onetone-keys-capability-v2.html</div>
+      </a>
+      <a class="card" href="./onetone-voice-capability-v2.html">
+        <h2>语音</h2>
+        <p>唤醒、引擎、结束取消保留；口头命令匹配只读投影，日常改说法进习惯。</p>
+        <div class="meta">onetone-voice-capability-v2.html</div>
+      </a>
+      <a class="card" href="./onetone-softpad-capability-v2.html">
+        <h2>软键盘</h2>
+        <p>布局/皮肤/purpose/车道保留；点键位去习惯内联；六通道工作室抽走。</p>
+        <div class="meta">onetone-softpad-capability-v2.html</div>
+      </a>
+      <a class="card" href="./onetone-ia-left-nav-v2.html">
+        <h2>习惯（匹配入口）</h2>
+        <p>应用习惯目录 + 命令 + 四通道内联绑定。三页「去习惯」都指向这里。</p>
+        <div class="meta">onetone-ia-left-nav-v2.html</div>
+      </a>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>页</th><th>KEEP（本页）</th><th>匹配（习惯页）</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>按键</strong></td>
+          <td><small>触发键、听写键、说完后、IME、自定义录 chord</small></td>
+          <td><small>口头/应用键/Pad/手势 ↔ 命令</small></td>
+        </tr>
+        <tr>
+          <td><strong>语音</strong></td>
+          <td><small>免按键、唤醒词、引擎、麦、结束取消</small></td>
+          <td><small>说法 ↔ 命令</small></td>
+        </tr>
+        <tr>
+          <td><strong>软键盘</strong></td>
+          <td><small>设备、布局、皮肤、purpose、Auto 车道、只读预览</small></td>
+          <td><small>AG0x ↔ 命令</small></td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

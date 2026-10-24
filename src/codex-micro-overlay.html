@@ -2255,6 +2255,7 @@
         }
         if(capCmds){ capCmds.hidden=true; capCmds.innerHTML=''; }
         if(capBadge){ capBadge.hidden=true; }
+        if(cap) cap.classList.remove('is-oral-cmds');
         if(miniOralCmdStrip){ miniOralCmdStrip.hidden=true; miniOralCmdStrip.innerHTML=''; }
         // Oral ACT10 listening must not keep Soft Pad hold-lock / blue listening skin.
         if(localPadStatus==='listening'&&(localStatusMicro==='ACT10'||holdLockId==='ACT10')){
@@ -2286,7 +2287,14 @@
         var nameEl=cap.querySelector('[data-cap-name]');
         var chordEl=cap.querySelector('[data-cap-chord]');
         if(capBadge) capBadge.hidden=false;
-        if(nameEl) nameEl.textContent=armHint;
+        // Badge = status; chips = sayables; flow = Esc/发送. Don't repeat「可说：…」in the name line.
+        if(nameEl){
+          var needAim=armHint.indexOf('请先圈选')>=0;
+          var captionName=chips
+            ?(needAim?armHint:'')
+            :armHint;
+          nameEl.textContent=captionName;
+        }
         if(capCmds){
           capCmds.innerHTML=chips;
           capCmds.hidden=!chips;
@@ -2298,6 +2306,7 @@
           cap.classList.toggle('is-usage-sub', !!flowHint);
         }
         cap.classList.add('is-oral-arm-caption','is-beginner-arm-caption','is-active');
+        cap.classList.toggle('is-oral-cmds', !!chips);
       }
     }
 

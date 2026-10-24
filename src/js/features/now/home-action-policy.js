@@ -15,7 +15,12 @@
     trae: 'Trae Work',
     traeCode: 'Trae Code',
     qoder: 'Qoder',
-    chatgpt: 'ChatGPT'
+    chatgpt: 'ChatGPT',
+    opencode: 'OpenCode',
+    kimi: 'Kimi',
+    pi: 'Pi',
+    openclaw: 'OpenClaw',
+    hermes: 'Hermes'
   };
   /** Homepage agent icon order. */
   var PROBE_KINDS = [
@@ -26,19 +31,32 @@
     'workbuddy',
     'trae',
     'traeCode',
-    'qoder'
+    'qoder',
+    'opencode',
+    'kimi',
+    'pi',
+    'openclaw',
+    'hermes'
   ];
 
-  /** Probe kind → app-target preset id (icons / launch). */
+  /** Probe kind → app-target id (per-agent composer_anchors key). */
   var PROBE_APP_ID = {
     cursor: 'cursor-chat',
     claude: 'claude-code',
     chatgpt: 'codex-chat',
+    codex: 'codex-chat',
     minimax: 'minimax-chat',
     workbuddy: 'workbuddy-chat',
     trae: 'trae-work',
+    traework: 'trae-work',
     traeCode: 'trae-code',
-    qoder: 'qoder-chat'
+    traecode: 'trae-code',
+    qoder: 'qoder-chat',
+    opencode: 'opencode-chat',
+    kimi: 'kimi-chat',
+    pi: 'pi-chat',
+    openclaw: 'openclaw-chat',
+    hermes: 'hermes-chat'
   };
 
   /** Homepage never requests Rust auto-paste — clipboard + composer aim only. */

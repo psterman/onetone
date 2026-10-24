@@ -1,0 +1,1513 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 左侧目录 IA v2</title>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --ink: #14202c;
+      --muted: #6a7a89;
+      --faint: #9aa8b4;
+      --line: #dbe3e8;
+      --panel: #ffffff;
+      --wash: #f4f7f8;
+      --rail: #eef3f4;
+      --teal: #117c79;
+      --teal-dark: #0b5d5b;
+      --teal-soft: #e5f5f3;
+      --blue: #2b6f9e;
+      --blue-soft: #e8f2f8;
+      --violet: #68548d;
+      --violet-soft: #f0ecf7;
+      --green: #24734f;
+      --green-soft: #eaf6ef;
+      --amber: #9a6118;
+      --amber-soft: #fff4df;
+      --shadow: 0 18px 45px rgba(25, 45, 55, .10);
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: #dfe8e9;
+      color: var(--ink);
+      font: 13px/1.45 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; }
+    button:focus-visible {
+      outline: 2px solid #16a6a0;
+      outline-offset: 2px;
+    }
+
+    .prototype-bar {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 18px;
+      background: #10242b;
+      color: #b9cbd0;
+      font-size: 12px;
+    }
+    .prototype-bar strong { color: #fff; font-size: 13px; }
+    .prototype-bar span { color: #70d7cf; }
+    .prototype-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage {
+      width: min(1220px, calc(100% - 28px));
+      margin: 22px auto 54px;
+    }
+    .stage-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 0 4px 12px;
+    }
+    .stage-head h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+    .stage-head p {
+      margin: 5px 0 0;
+      max-width: 680px;
+      color: var(--muted);
+    }
+    .ia-key {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    .ia-key b {
+      padding: 4px 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #f9fbfb;
+      color: var(--ink);
+      font-size: 10px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 258px minmax(0, 1fr);
+      min-height: 650px;
+      overflow: hidden;
+      border: 1px solid rgba(22, 45, 53, .15);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 16px 11px 12px;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 9px 17px;
+      border-bottom: 1px solid rgba(72, 97, 105, .14);
+    }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 29px;
+      height: 29px;
+      border-radius: 7px;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .brand-copy strong { display: block; font-size: 14px; }
+    .brand-copy small { color: var(--muted); font-size: 10px; }
+
+    .nav-scroll { overflow: auto; padding-top: 15px; }
+    .nav-group + .nav-group { margin-top: 20px; }
+    .nav-label {
+      padding: 0 10px 6px;
+      color: #83949c;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .06em;
+    }
+    .nav-item,
+    .nav-subitem {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #52646e;
+      cursor: pointer;
+      text-align: left;
+    }
+    .nav-item {
+      min-height: 38px;
+      padding: 8px 10px;
+      font-weight: 700;
+    }
+    .nav-subitem {
+      min-height: 30px;
+      padding: 5px 10px 5px 40px;
+      color: #71818a;
+      font-size: 12px;
+    }
+    .nav-item:hover,
+    .nav-subitem:hover { background: rgba(255, 255, 255, .72); color: var(--ink); }
+    .nav-item.is-active {
+      background: #fff;
+      color: var(--teal-dark);
+      box-shadow: 0 1px 0 rgba(31, 68, 74, .07);
+    }
+    .nav-item.is-active .nav-icon { color: var(--teal); }
+    .nav-item.is-quiet { color: #798a93; }
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      color: #81929a;
+    }
+    .nav-text { min-width: 0; flex: 1; }
+    .nav-text strong { display: block; font-weight: 750; }
+    .nav-text small {
+      display: block;
+      margin-top: 1px;
+      color: #99a7ad;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .nav-badge {
+      min-width: 19px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+    }
+    .nav-badge.warn { background: var(--amber-soft); color: var(--amber); }
+    .nav-caret { width: 13px; height: 13px; color: #9aa8ad; }
+    .subnav { padding: 2px 0 2px; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 9px 0;
+      border-top: 1px solid rgba(72, 97, 105, .14);
+    }
+    .scope {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .scope-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #29a56f;
+      box-shadow: 0 0 0 3px #d7f0e3;
+    }
+    .scope strong { color: var(--ink); font-weight: 750; }
+
+    .content {
+      min-width: 0;
+      padding: 25px 29px 30px;
+      background: #fbfcfc;
+    }
+    .content-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow { color: var(--teal); font-size: 11px; font-weight: 800; }
+    .content h2 { margin: 4px 0 3px; font-size: 22px; letter-spacing: -.02em; }
+    .content-lede { margin: 0; color: var(--muted); }
+    .primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 6px;
+      padding: 9px 12px;
+      background: var(--teal);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .primary:hover { background: var(--teal-dark); }
+
+    .model-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 19px 0 15px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .model-strip strong { color: var(--ink); }
+    .model-line { width: 32px; height: 1px; background: #b7c9cb; }
+    .model-chip {
+      padding: 4px 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 750;
+    }
+    .model-chip.core { border-color: #8ad4cf; background: var(--teal-soft); color: var(--teal-dark); }
+
+    .command-layout {
+      display: grid;
+      grid-template-columns: 205px minmax(0, 1fr);
+      gap: 16px;
+    }
+    .command-list {
+      padding-right: 13px;
+      border-right: 1px solid var(--line);
+    }
+    .list-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .command-row {
+      width: 100%;
+      display: block;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: left;
+    }
+    .command-row + .command-row { margin-top: 4px; }
+    .command-row:hover { background: #f1f7f7; }
+    .command-row.is-active {
+      border-color: #a8dcd7;
+      background: var(--teal-soft);
+    }
+    .command-row strong { display: block; font-size: 12.5px; }
+    .command-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 10.5px; }
+    .command-lights { display: flex; gap: 4px; margin-top: 7px; }
+    .light {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #cbd5d8;
+    }
+    .light.voice { background: var(--violet); }
+    .light.key { background: var(--blue); }
+    .light.pad { background: var(--green); }
+
+    .detail { min-width: 0; }
+    .detail-head { display: flex; align-items: start; gap: 12px; }
+    .command-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      border: 1px solid #b8dedb;
+      border-radius: 8px;
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+      font-weight: 850;
+    }
+    .detail-head h3 { margin: 0; font-size: 17px; }
+    .detail-head p { margin: 3px 0 0; color: var(--muted); }
+    .status {
+      margin-left: auto;
+      padding: 4px 7px;
+      border: 1px solid #9bd5b5;
+      border-radius: 5px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .detail-section { margin-top: 20px; }
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .section-heading h4 { margin: 0; font-size: 13px; }
+    .section-heading span { color: var(--faint); font-size: 10.5px; }
+    .effect {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--teal);
+      background: #fff;
+    }
+    .effect strong { display: block; }
+    .effect p { margin: 4px 0 0; color: var(--muted); font-size: 11.5px; }
+    .binding-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .binding {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .binding-head { display: flex; align-items: center; gap: 7px; }
+    .binding-icon {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 850;
+    }
+    .binding.voice .binding-icon { background: var(--violet-soft); color: var(--violet); }
+    .binding.key .binding-icon { background: var(--blue-soft); color: var(--blue); }
+    .binding.pad .binding-icon { background: var(--green-soft); color: var(--green); }
+    .binding strong { font-size: 12px; }
+    .binding p { min-height: 31px; margin: 8px 0; color: var(--muted); font-size: 11px; }
+    .binding button {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--teal-dark);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .binding button:hover { text-decoration: underline; }
+    .binding button svg { width: 12px; height: 12px; }
+    .note {
+      display: flex;
+      align-items: start;
+      gap: 8px;
+      margin-top: 17px;
+      padding: 10px 11px;
+      background: #f5f8f8;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .note svg { width: 15px; height: 15px; flex: 0 0 15px; color: var(--teal); }
+
+    .page-view[hidden] { display: none; }
+    .route-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .route-head h2 { margin: 4px 0 3px; font-size: 22px; letter-spacing: -.02em; }
+    .route-head p { margin: 0; color: var(--muted); }
+    .route-kicker { color: var(--teal); font-size: 11px; font-weight: 800; }
+    .route-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px solid #a5d8bf;
+      border-radius: 5px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .route-status i { width: 8px; height: 8px; border-radius: 50%; background: #2da66f; }
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 158px minmax(0, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .settings-rail {
+      padding-right: 13px;
+      border-right: 1px solid var(--line);
+    }
+    .settings-rail-label {
+      margin: 0 0 7px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .settings-rail button {
+      width: 100%;
+      display: block;
+      padding: 8px 9px;
+      border: 0;
+      border-left: 2px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .settings-rail button:hover { background: #f1f7f7; color: var(--ink); }
+    .settings-rail button.is-active {
+      border-left-color: var(--teal);
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+    }
+    .settings-main { min-width: 0; }
+    .scope-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .scope-row strong { color: var(--ink); }
+    .scope-pill {
+      padding: 4px 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 750;
+    }
+    .scope-pill.good { border-color: #9bd5b5; background: var(--green-soft); color: var(--green); }
+    .settings-card {
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .settings-card + .settings-card { margin-top: 12px; }
+    .settings-card.accent-key { border-top: 3px solid var(--blue); }
+    .settings-card.accent-voice { border-top: 3px solid var(--violet); }
+    .settings-card-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .settings-card-head h3 { margin: 0; font-size: 14px; }
+    .settings-card-head p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .settings-card-head small { color: var(--faint); font-size: 10px; text-align: right; }
+    .key-hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 15px;
+      padding: 13px;
+      border: 1px solid #b9d5e4;
+      background: var(--blue-soft);
+    }
+    .key-hero-label { color: var(--blue); font-size: 10px; font-weight: 800; }
+    .key-hero h3 { margin: 3px 0 3px; font-size: 18px; }
+    .key-hero p { margin: 0; color: var(--muted); font-size: 11px; }
+    .keycap {
+      display: grid;
+      place-items: center;
+      min-width: 108px;
+      min-height: 52px;
+      padding: 8px 12px;
+      border: 1px solid #91b7cf;
+      border-bottom-width: 3px;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 850;
+      box-shadow: 0 2px 0 rgba(43, 111, 158, .12);
+    }
+    .segmented { display: flex; gap: 5px; margin-top: 12px; }
+    .segmented button {
+      flex: 1;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .segmented button.is-active { border-color: #92bed6; background: var(--blue-soft); color: var(--blue); }
+    .binding-table { width: 100%; border-collapse: collapse; }
+    .binding-table th {
+      padding: 0 0 7px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 800;
+      text-align: left;
+    }
+    .binding-table td {
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+      vertical-align: middle;
+      font-size: 11.5px;
+    }
+    .binding-table td:last-child { text-align: right; }
+    .binding-table strong { display: block; font-size: 12px; }
+    .binding-table small { display: block; margin-top: 2px; color: var(--muted); }
+    .table-key {
+      display: inline-block;
+      min-width: 46px;
+      padding: 5px 7px;
+      border: 1px solid #c5d9e5;
+      border-bottom-width: 2px;
+      border-radius: 5px;
+      background: #f8fbfd;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 850;
+      text-align: center;
+    }
+    .text-action {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--teal-dark);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .text-action:hover { text-decoration: underline; }
+    .read-only {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+    .read-only svg { width: 13px; height: 13px; color: var(--teal); }
+    .voice-switch {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 11px;
+      border: 1px solid #d0c6e4;
+      background: var(--violet-soft);
+    }
+    .switch {
+      width: 38px;
+      height: 22px;
+      padding: 2px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--violet);
+      cursor: pointer;
+    }
+    .switch::after {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 18px;
+      margin-left: 14px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(20, 32, 44, .22);
+    }
+    .voice-switch strong { display: block; color: var(--violet); font-size: 12px; }
+    .voice-switch small { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+    .phrase-list { display: grid; gap: 7px; }
+    .phrase-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .phrase-row strong { flex: 1; font-size: 12px; }
+    .phrase-row span { color: var(--muted); font-size: 11px; }
+    .phrase-row .phrase { color: var(--violet); font-weight: 750; }
+    .phrase-row button { padding: 0; border: 0; background: transparent; color: var(--teal-dark); cursor: pointer; font-size: 11px; font-weight: 800; }
+    .voice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .voice-field { padding: 10px; border: 1px solid var(--line); background: var(--wash); }
+    .voice-field label { display: block; color: var(--faint); font-size: 10px; font-weight: 800; }
+    .voice-field strong { display: block; margin-top: 5px; font-size: 12px; }
+    .voice-field small { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+    .owner-note {
+      display: flex;
+      align-items: start;
+      gap: 7px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .owner-note svg { width: 14px; height: 14px; flex: 0 0 14px; color: var(--teal); }
+
+    /* L0 habit hub: scope truth first, then app habit, then inline bindings. */
+    .truth-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+      gap: 1px;
+      margin-top: 17px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+    .truth-cell {
+      min-width: 0;
+      padding: 10px 11px;
+      background: #fff;
+    }
+    .truth-cell.is-warning { background: var(--amber-soft); }
+    .truth-cell label {
+      display: block;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .truth-cell strong {
+      display: block;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .truth-cell small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .truth-cell.is-warning strong { color: var(--amber); }
+    .truth-action {
+      align-self: stretch;
+      padding: 0 11px;
+      border: 0;
+      background: #fff;
+      color: var(--teal-dark);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .truth-action:hover { background: var(--teal-soft); }
+    .habit-workspace {
+      display: grid;
+      grid-template-columns: 198px minmax(0, 1fr);
+      gap: 17px;
+      margin-top: 17px;
+    }
+    .habit-directory {
+      min-width: 0;
+      padding-right: 13px;
+      border-right: 1px solid var(--line);
+    }
+    .habit-directory-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .habit-directory-head h3 { margin: 0; font-size: 12.5px; }
+    .habit-directory-head button { padding: 0; border: 0; background: transparent; color: var(--teal-dark); cursor: pointer; font-size: 16px; font-weight: 700; }
+    .habit-filter {
+      width: 100%;
+      margin: 9px 0 13px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 11px;
+    }
+    .habit-filter:focus { outline: 2px solid rgba(17, 124, 121, .25); border-color: #8accc8; }
+    .habit-group-label { margin: 11px 0 5px; color: var(--faint); font-size: 10px; font-weight: 800; }
+    .habit-entry {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: left;
+    }
+    .habit-entry + .habit-entry { margin-top: 3px; }
+    .habit-entry:hover { background: #f1f7f7; }
+    .habit-entry.is-selected { border-color: #a8dcd7; background: var(--teal-soft); }
+    .habit-app-icon {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      flex: 0 0 26px;
+      border-radius: 6px;
+      background: #e8edf0;
+      color: #52646e;
+      font-size: 10px;
+      font-weight: 850;
+    }
+    .habit-app-icon.cursor { background: #202a32; color: #fff; }
+    .habit-app-icon.codex { background: #dcefe9; color: #227150; }
+    .habit-entry-text { min-width: 0; flex: 1; }
+    .habit-entry-text strong { display: block; overflow: hidden; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .habit-entry-text small { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .habit-entry-state { width: 6px; height: 6px; border-radius: 50%; background: #bdc8cc; }
+    .habit-entry-state.live { background: #2da66f; box-shadow: 0 0 0 3px #d7f0e3; }
+    .habit-entry-state.edit { background: var(--amber); box-shadow: 0 0 0 3px #ffe7b8; }
+    .habit-command-area { min-width: 0; }
+    .habit-command-area .model-strip { margin-top: 0; }
+    .habit-command-area .command-layout { margin-top: 15px; }
+    .habit-command-area .binding-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .inline-binding-editor {
+      display: none;
+      margin-top: 10px;
+      padding: 11px;
+      border: 1px solid #9bd5d1;
+      background: var(--teal-soft);
+    }
+    .inline-binding-editor.is-open { display: block; }
+    .inline-binding-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .inline-binding-head strong { color: var(--teal-dark); font-size: 12px; }
+    .inline-binding-head button { padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; }
+    .inline-binding-form { display: flex; align-items: end; gap: 8px; margin-top: 9px; }
+    .inline-binding-form label { flex: 1; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .inline-binding-form input,
+    .inline-binding-form select { width: 100%; margin-top: 4px; padding: 7px 8px; border: 1px solid #b7d9d6; border-radius: 5px; background: #fff; color: var(--ink); font-size: 11px; }
+    .inline-binding-form button { padding: 7px 10px; border: 0; border-radius: 5px; background: var(--teal); color: #fff; cursor: pointer; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .binding.is-clickable { cursor: pointer; }
+    .binding.is-clickable:hover { border-color: #9bd5d1; }
+    .binding.is-clickable button { pointer-events: none; }
+    .binding.camera .binding-icon { background: var(--amber-soft); color: var(--amber); }
+    .binding.camera { grid-column: span 1; }
+    .advanced-redirect {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 11px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--teal-dark);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .advanced-redirect:hover { border-color: #9bd5d1; background: var(--teal-soft); }
+    .advanced-redirect svg { width: 13px; height: 13px; }
+
+    .pad-preview {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid #c7dcca;
+      background: var(--green-soft);
+    }
+    .pad-cell {
+      min-height: 58px;
+      padding: 8px 6px;
+      border: 1px solid #b9d4c0;
+      border-radius: 5px;
+      background: #fff;
+      color: var(--green);
+      cursor: pointer;
+      text-align: left;
+    }
+    .pad-cell:hover { border-color: #67ad82; background: #f8fffa; }
+    .pad-cell.is-bound { border-color: #75b98c; box-shadow: inset 0 0 0 1px #d8efdf; }
+    .pad-cell.is-empty { color: var(--muted); }
+    .pad-cell strong { display: block; font-size: 10px; }
+    .pad-cell span { display: block; margin-top: 5px; color: var(--ink); font-size: 11px; font-weight: 750; }
+    .pad-cell small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+    .pad-preview-note { margin: 7px 0 0; color: var(--muted); font-size: 10.5px; }
+    .pad-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 7px;
+      border: 1px solid #b7d7c0;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .pad-status i { width: 7px; height: 7px; border-radius: 50%; background: #2da66f; }
+
+    /* Habit page default state: one task path, supporting detail on demand. */
+    .stage-head { display: none; }
+    .habit-command-area .model-strip { display: none; }
+    .truth-bar { margin-top: 15px; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+    .truth-cell { padding: 8px 10px; }
+    .truth-cell label { font-size: 9px; }
+    .truth-cell strong { margin-top: 2px; font-size: 11.5px; }
+    .truth-cell small { display: none; }
+    .truth-cell.is-warning strong { color: var(--amber); }
+    .truth-action { font-size: 10.5px; }
+    .habit-workspace { margin-top: 14px; }
+    .habit-directory { padding-right: 11px; }
+    .habit-directory-head h3 { font-size: 12px; }
+    .habit-group-label { margin-top: 13px; }
+    .habit-entry { padding: 7px; }
+    .habit-command-area .command-layout { margin-top: 11px; }
+    .command-list { padding-right: 11px; }
+    .command-row { padding: 8px; }
+    .command-row small { display: none; }
+    .command-lights { margin-top: 6px; }
+    .detail-section { margin-top: 14px; }
+    .section-heading { margin-bottom: 6px; }
+    .section-heading span { display: none; }
+    .effect { padding: 9px 10px; }
+    .effect p { margin-top: 2px; font-size: 11px; }
+    .habit-command-area .binding-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .binding { padding: 9px; }
+    .binding p { min-height: auto; margin: 6px 0; font-size: 10.5px; }
+    .binding button { font-size: 10.5px; }
+    .page-view[data-view="commands"] > .note { display: none; }
+    .habit-rule-details {
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+    .habit-rule-details summary { padding: 9px 0; color: var(--muted); cursor: pointer; font-weight: 750; }
+    .habit-rule-details p { margin: 0 0 9px; line-height: 1.5; }
+
+    @media (max-width: 820px) {
+      .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
+      .content { padding: 22px 20px 26px; }
+      .command-layout, .settings-layout, .habit-workspace { grid-template-columns: 1fr; }
+      .settings-rail { padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .settings-rail button { display: inline-block; width: auto; margin-right: 4px; border-left: 0; border-bottom: 2px solid transparent; }
+      .settings-rail button.is-active { border-bottom-color: var(--teal); }
+      .habit-directory { padding: 0 0 11px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .habit-directory .habit-filter { max-width: 280px; }
+      .truth-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .truth-action { min-height: 42px; }
+      .command-list { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .command-row { display: inline-block; width: calc(50% - 4px); vertical-align: top; }
+      .binding-grid { grid-template-columns: 1fr; }
+      .habit-command-area .binding-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .prototype-bar .hint, .ia-key { display: none; }
+      .stage { width: 100%; margin: 0; }
+      .stage-head { margin: 16px 14px 12px; }
+      .stage-head h1 { font-size: 19px; }
+      .app-shell { display: block; border-radius: 0; }
+      .sidebar { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .nav-scroll { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+      .nav-group + .nav-group { margin-top: 0; }
+      .nav-group:last-child, .sidebar-footer { display: none; }
+      .content { padding: 20px 15px 28px; }
+      .content-top, .route-head { display: block; }
+      .primary { margin-top: 13px; }
+      .key-hero { grid-template-columns: 1fr; }
+      .keycap { justify-self: start; }
+      .voice-grid { grid-template-columns: 1fr; }
+      .pad-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .truth-bar { display: block; }
+      .truth-cell { border-bottom: 1px solid var(--line); }
+      .truth-action { width: 100%; min-height: 38px; }
+      .inline-binding-form { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-bar">
+    <strong>OneTone</strong>
+    <span>Habit Hub · 内联绑定</span>
+    <div class="hint">前台应用 → 习惯 → 命令 → 通道</div>
+  </header>
+
+  <main class="stage">
+    <div class="stage-head">
+      <div>
+        <h1>把“做什么”和“怎么调用”分开</h1>
+        <p>命令中心统一管理内容与动作；按键、语音、Soft Pad 只管理各自的调用入口。</p>
+      </div>
+      <div class="ia-key"><b>L0</b> 命令中心 <b>L1</b> 通道 <b>L2</b> 系统能力</div>
+    </div>
+
+    <section class="app-shell" aria-label="OneTone 新目录原型">
+      <aside class="sidebar" aria-label="主目录">
+        <div class="brand">
+          <div class="brand-mark">一</div>
+          <div class="brand-copy">
+            <strong>一声 OneTone</strong>
+            <small>多入口命令中枢</small>
+          </div>
+        </div>
+
+        <div class="nav-scroll">
+          <div class="nav-group">
+            <div class="nav-label">工作区</div>
+            <button class="nav-item" data-page="home">
+              <i data-lucide="house" class="nav-icon"></i>
+              <span class="nav-text"><strong>首页</strong><small>当前状态与最近动作</small></span>
+            </button>
+            <button class="nav-item is-active" data-page="commands" aria-current="page">
+              <i data-lucide="layers-3" class="nav-icon"></i>
+              <span class="nav-text"><strong>习惯</strong><small>应用、命令与生效范围</small></span>
+              <span class="nav-badge">4</span>
+            </button>
+            <div class="subnav">
+              <button class="nav-subitem" data-page="commands">概览</button>
+              <button class="nav-subitem" data-page="commands">命令 <span class="nav-badge">4</span></button>
+              <button class="nav-subitem" data-page="commands">生效范围</button>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <div class="nav-label">调用方式</div>
+            <button class="nav-item" data-page="keys">
+              <i data-lucide="keyboard" class="nav-icon"></i>
+              <span class="nav-text"><strong>按键</strong><small>启动键与按键能力</small></span>
+              <span class="nav-caret" data-lucide="chevron-right"></span>
+            </button>
+            <button class="nav-item" data-page="voice">
+              <i data-lucide="mic-2" class="nav-icon"></i>
+              <span class="nav-text"><strong>语音</strong><small>唤醒与识别能力</small></span>
+              <span class="nav-caret" data-lucide="chevron-right"></span>
+            </button>
+            <button class="nav-item" data-page="pad">
+              <i data-lucide="grid-3x3" class="nav-icon"></i>
+              <span class="nav-text"><strong>Soft Pad</strong><small>按键布局与命令绑定</small></span>
+              <span class="nav-caret" data-lucide="chevron-right"></span>
+            </button>
+            <button class="nav-item" data-page="camera">
+              <i data-lucide="scan-face" class="nav-icon"></i>
+              <span class="nav-text"><strong>摄像头</strong><small>手势与视觉触发</small></span>
+              <span class="nav-caret" data-lucide="chevron-right"></span>
+            </button>
+          </div>
+
+          <div class="nav-group">
+            <div class="nav-label">系统</div>
+            <button class="nav-item is-quiet" data-page="engine">
+              <i data-lucide="audio-lines" class="nav-icon"></i>
+              <span class="nav-text"><strong>识别与音频</strong><small>引擎、麦克风、结束与取消</small></span>
+              <span class="nav-badge warn">!</span>
+            </button>
+            <button class="nav-item is-quiet" data-page="general">
+              <i data-lucide="settings-2" class="nav-icon"></i>
+              <span class="nav-text"><strong>通用设置</strong><small>语言、启动与反馈</small></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="scope"><span class="scope-dot"></span><span>当前习惯：<strong>工作</strong></span></div>
+        </div>
+      </aside>
+
+      <section class="content" id="contentPanel">
+        <div class="page-view is-visible" data-view="commands">
+        <div class="content-top">
+          <div>
+            <div class="eyebrow">L0 · 习惯 / 命令</div>
+            <h2>工作 · 命令</h2>
+            <p class="content-lede">在当前习惯里管理命令，再决定通过什么方式调用。</p>
+          </div>
+          <button class="primary" type="button"><i data-lucide="plus"></i> 新建命令</button>
+        </div>
+
+        <div class="truth-bar" aria-label="应用习惯状态">
+          <div class="truth-cell"><label>前台应用</label><strong>Cursor</strong></div>
+          <div class="truth-cell"><label>正在使用</label><strong>Cursor · 工作</strong></div>
+          <div class="truth-cell is-warning"><label>正在编辑</label><strong>通用默认 · 基础</strong></div>
+          <button class="truth-action" type="button">对准前台</button>
+        </div>
+
+        <div class="habit-workspace">
+          <aside class="habit-directory" aria-label="应用习惯目录">
+            <div class="habit-directory-head"><h3>应用习惯</h3><button type="button" aria-label="新建应用习惯">+</button></div>
+            <input class="habit-filter" type="search" placeholder="筛选应用或习惯" aria-label="筛选应用或习惯" />
+            <div class="habit-group-label">通用默认</div>
+            <button class="habit-entry" type="button"><span class="habit-app-icon">∞</span><span class="habit-entry-text"><strong>基础</strong><small>所有应用 · 可继承</small></span><i class="habit-entry-state edit"></i></button>
+            <div class="habit-group-label">按应用</div>
+            <button class="habit-entry is-selected" type="button"><span class="habit-app-icon cursor">C</span><span class="habit-entry-text"><strong>Cursor · 工作</strong><small>Cursor.exe · 正在使用</small></span><i class="habit-entry-state live"></i></button>
+            <button class="habit-entry" type="button"><span class="habit-app-icon codex">O</span><span class="habit-entry-text"><strong>Codex · 审查</strong><small>Codex.exe · 2 条命令</small></span><i class="habit-entry-state"></i></button>
+            <button class="habit-entry" type="button"><span class="habit-app-icon">W</span><span class="habit-entry-text"><strong>浏览器 · 写作</strong><small>msedge.exe · 未启用</small></span><i class="habit-entry-state"></i></button>
+          </aside>
+
+          <div class="habit-command-area">
+          <div class="model-strip" aria-label="信息架构关系">
+            <strong>Cursor · 工作</strong><span class="model-line"></span><span class="model-chip core">命令：继续回复</span><span class="model-line"></span><span class="model-chip">语音 · 按键 · Pad · 摄像头</span>
+          </div>
+
+          <div class="command-layout">
+          <aside class="command-list" aria-label="命令列表">
+            <div class="list-title"><span>工作习惯 · 命令</span><span>4 条</span></div>
+            <button class="command-row is-active" type="button" data-command="continue">
+              <strong>继续回复</strong><small>让 Agent 接着当前上下文工作</small>
+              <span class="command-lights"><i class="light voice"></i><i class="light key"></i><i class="light pad"></i></span>
+            </button>
+            <button class="command-row" type="button" data-command="fix">
+              <strong>修复这个问题</strong><small>保留当前约束，修改最少</small>
+              <span class="command-lights"><i class="light voice"></i><i class="light key"></i></span>
+            </button>
+            <button class="command-row" type="button" data-command="summary">
+              <strong>总结修改</strong><small>提炼刚才完成的变化</small>
+              <span class="command-lights"><i class="light voice"></i></span>
+            </button>
+            <button class="command-row" type="button" data-command="new">
+              <strong>新建对话</strong><small>打开一个新的工作上下文</small>
+              <span class="command-lights"><i class="light key"></i></span>
+            </button>
+          </aside>
+
+          <article class="detail">
+            <div class="detail-head">
+              <div class="command-mark">继</div>
+              <div>
+                <h3>继续回复</h3>
+                <p>让 Agent 接着当前上下文工作</p>
+              </div>
+              <span class="status">已启用</span>
+            </div>
+
+            <section class="detail-section">
+              <div class="section-heading"><h4>做什么</h4><span>命令内容的唯一编辑位置</span></div>
+              <div class="effect">
+                <strong>继续上一阶段的工作</strong>
+                <p>保留当前约束，检查已有结果，然后直接推进下一步。</p>
+              </div>
+            </section>
+
+            <section class="detail-section">
+              <div class="section-heading"><h4>怎么调用</h4><span>每个通道只配置自己的入口</span></div>
+              <div class="binding-grid">
+                <div class="binding voice is-clickable" data-inline-channel="voice">
+                  <div class="binding-head"><span class="binding-icon">声</span><strong>语音</strong></div>
+                  <p>“继续”<br />“接着写”</p>
+                  <button type="button">改说法 <i data-lucide="pencil"></i></button>
+                </div>
+                <div class="binding key is-clickable" data-inline-channel="key">
+                  <div class="binding-head"><span class="binding-icon">键</span><strong>按键</strong></div>
+                  <p>启动键：音量 -<br />执行快捷键：已配置</p>
+                  <button type="button">录按键 <i data-lucide="pencil"></i></button>
+                </div>
+                <div class="binding pad is-clickable" data-inline-channel="pad">
+                  <div class="binding-head"><span class="binding-icon">Pad</span><strong>Soft Pad</strong></div>
+                  <p>AG02<br />工作习惯专用</p>
+                  <button type="button">选 Pad 键 <i data-lucide="pencil"></i></button>
+                </div>
+                <div class="binding camera is-clickable" data-inline-channel="camera">
+                  <div class="binding-head"><span class="binding-icon">视</span><strong>摄像头</strong></div>
+                  <p>OK 手势<br />未覆盖本习惯</p>
+                  <button type="button">选手势 <i data-lucide="pencil"></i></button>
+                </div>
+              </div>
+              <div class="inline-binding-editor" id="inlineBindingEditor" aria-live="polite">
+                <div class="inline-binding-head"><strong id="inlineBindingTitle">在当前习惯内编辑语音说法</strong><button type="button" id="inlineBindingClose" aria-label="关闭内联编辑">×</button></div>
+                <div class="inline-binding-form" id="inlineBindingForm">
+                  <label id="inlineBindingLabel">说法<input id="inlineBindingInput" value="继续，接着写" /></label>
+                  <button type="button" id="inlineBindingSave">保存绑定</button>
+                </div>
+              </div>
+            </section>
+
+            <details class="habit-rule-details">
+              <summary>继承与覆盖</summary>
+              <p>应用习惯可以继承通用默认，也可以只覆盖当前命令的某个调用方式。编辑习惯不会自动切换正在运行的习惯。</p>
+            </details>
+          </article>
+        </div>
+          </div>
+        </div>
+        </div>
+
+        <div class="page-view" data-view="keys" hidden>
+          <div class="route-head">
+            <div>
+              <div class="route-kicker">L1 · 调用方式</div>
+              <h2>按键</h2>
+              <p>管理启动键、实体按键与执行快捷键。命令内容仍在当前习惯的“命令”中编辑。</p>
+            </div>
+            <span class="route-status"><i></i> 按键监听正常</span>
+          </div>
+
+          <div class="settings-layout">
+            <nav class="settings-rail" aria-label="按键设置目录">
+              <p class="settings-rail-label">按键设置</p>
+              <button class="is-active" type="button">启动键</button>
+              <button type="button">冲突与录制</button>
+              <button type="button">高级行为</button>
+            </nav>
+            <div class="settings-main">
+              <div class="scope-row"><strong>作用范围</strong><span class="scope-pill good">全局</span><span>启动键和按键能力对所有应用生效</span></div>
+
+              <section class="settings-card accent-key">
+                <div class="settings-card-head">
+                  <div><h3>启动键</h3><p>按下它，OneTone 才开始听你说话。</p></div>
+                  <small>按键页权威配置</small>
+                </div>
+                <div class="key-hero">
+                  <div>
+                    <div class="key-hero-label">当前触发键</div>
+                    <h3>音量 -</h3>
+                    <p>适用于外接键盘、鼠标侧键和硬件控制器。</p>
+                    <div class="segmented" role="group" aria-label="启动方式">
+                      <button class="is-active" type="button">按住说话</button>
+                      <button type="button">点击开始 / 再点结束</button>
+                    </div>
+                  </div>
+                  <div class="keycap">Volume -</div>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>当前按键映射</h3><p>保留原有的触发键、执行键和触发方式录制；命令正文仍由习惯页维护。</p></div>
+                  <small>映射能力</small>
+                </div>
+                <table class="binding-table">
+                  <thead><tr><th>项目</th><th>当前值</th><th></th></tr></thead>
+                  <tbody>
+                    <tr><td><strong>当前动作</strong><small>Cursor · 工作</small></td><td>继续回复</td><td><span class="read-only"><i data-lucide="link-2"></i>来自习惯页</span></td></tr>
+                    <tr><td><strong>触发键</strong><small>启动一次输入</small></td><td><span class="table-key">F13</span></td><td><button class="text-action" type="button">录制</button></td></tr>
+                    <tr><td><strong>执行键</strong><small>发送到当前应用</small></td><td><span class="table-key">Alt + R</span></td><td><button class="text-action" type="button">录制</button></td></tr>
+                  </tbody>
+                </table>
+                <div class="segmented" role="group" aria-label="按键触发模式">
+                  <button class="is-active" type="button">按住说话</button>
+                  <button type="button">点击开始 / 再点结束</button>
+                  <button type="button">双击触发</button>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>按键高级能力</h3><p>冲突、录制诊断和系统级行为留在这里；日常给命令挂按键请回到习惯页。</p></div>
+                  <small>L1 · 能力设置</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>冲突检测</label><strong>未发现冲突</strong><small>检查系统快捷键与外设监听</small></div>
+                  <div class="voice-field"><label>录制诊断</label><strong>页面 / IPC / 系统钩子</strong><small>查看按键是否完整到达后端</small></div>
+                  <div class="voice-field"><label>系统保留键</label><strong>Fn · Esc · Wake</strong><small>不建议作为启动键</small></div>
+                  <div class="voice-field"><label>录制方式</label><strong>按下后自动识别</strong><small>支持外设键与组合键</small></div>
+                </div>
+                <button class="advanced-redirect" type="button" data-page="commands"><i data-lucide="arrow-left"></i> 回到习惯页绑定命令</button>
+              </section>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="page-view" data-view="pad" hidden>
+          <div class="route-head">
+            <div>
+              <div class="route-kicker">L1 · 调用方式</div>
+              <h2>Soft Pad</h2>
+              <p>管理 Pad 设备、布局和交互行为；Pad 对应的命令在习惯页内绑定。</p>
+            </div>
+            <span class="pad-status"><i></i> Pad 已连接</span>
+          </div>
+
+          <div class="settings-layout">
+            <nav class="settings-rail" aria-label="Soft Pad 设置目录">
+              <p class="settings-rail-label">Soft Pad</p>
+              <button class="is-active" type="button">布局</button>
+              <button type="button">显示与外观</button>
+              <button type="button">用途与工作流</button>
+              <button type="button">设备诊断</button>
+            </nav>
+            <div class="settings-main">
+              <div class="scope-row"><strong>当前设备</strong><span class="scope-pill good">OneTone Pad</span><span>4 × 3 网格 · USB 已连接</span></div>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>当前布局</h3><p>布局决定 Pad 的外观和页面，不决定命令内容。</p></div>
+                  <small>布局设置</small>
+                </div>
+                <div class="pad-preview" aria-label="Soft Pad 布局预览">
+                  <button class="pad-cell is-bound" type="button"><strong>AG01</strong><span>已配置</span><small>通用默认</small></button>
+                  <button class="pad-cell is-bound" type="button"><strong>AG02</strong><span>已配置</span><small>Cursor · 工作</small></button>
+                  <button class="pad-cell is-bound" type="button"><strong>AG03</strong><span>已配置</span><small>Cursor · 工作</small></button>
+                  <button class="pad-cell is-empty" type="button"><strong>AG04</strong><span>空位</span><small>当前无绑定</small></button>
+                  <button class="pad-cell is-empty" type="button"><strong>AG05</strong><span>空位</span><small>当前无绑定</small></button>
+                  <button class="pad-cell is-empty" type="button"><strong>AG06</strong><span>空位</span><small>当前无绑定</small></button>
+                  <button class="pad-cell is-bound" type="button"><strong>AG07</strong><span>已配置</span><small>通用默认</small></button>
+                  <button class="pad-cell is-empty" type="button"><strong>AG08</strong><span>空位</span><small>当前无绑定</small></button>
+                </div>
+                <p class="pad-preview-note">预览只展示布局和绑定状态，不在此编辑命令内容。</p>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>布局行为</h3><p>调整 Pad 如何响应点击，不修改命令本身。</p></div>
+                  <small>L1 · 能力设置</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>当前页面</label><strong>工作页</strong><small>支持多页面切换</small></div>
+                  <div class="voice-field"><label>按键反馈</label><strong>亮起并播放提示音</strong><small>点击后显示执行状态</small></div>
+                  <div class="voice-field"><label>长按行为</label><strong>重复触发关闭</strong><small>避免误触连续执行</small></div>
+                  <div class="voice-field"><label>布局管理</label><strong>工作页 · 个人页</strong><small>导入、复制或重命名布局</small></div>
+                </div>
+                <button class="advanced-redirect" type="button" data-page="commands"><i data-lucide="arrow-left"></i> 回到习惯页绑定命令</button>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>显示与外观</h3><p>保留 Pad 的皮肤、密度和反馈设置。</p></div>
+                  <small>显示设置</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>当前皮肤</label><strong>深色 · 高对比</strong><small>适合长时间查看</small></div>
+                  <div class="voice-field"><label>按键密度</label><strong>紧凑</strong><small>显示更多按键</small></div>
+                  <div class="voice-field"><label>按键反馈</label><strong>高亮 + 提示音</strong><small>点击后显示执行状态</small></div>
+                  <div class="voice-field"><label>闲置显示</label><strong>显示最近状态</strong><small>无操作后保持布局</small></div>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>用途与工作流</h3><p>保留 Soft Pad 的工作台模式和跨应用操作能力。</p></div>
+                  <small>工作流设置</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>工作台模式</label><strong>工作页</strong><small>支持多个页面和布局</small></div>
+                  <div class="voice-field"><label>剪贴板工作流</label><strong>粘贴后发送</strong><small>发送前仍保留确认</small></div>
+                  <div class="voice-field"><label>前台应用跟随</label><strong>已开启</strong><small>按当前应用切换布局</small></div>
+                  <div class="voice-field"><label>页面切换</label><strong>左右滑动</strong><small>也支持快捷键切换</small></div>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>设备诊断</h3><p>确认按键事件和反馈是否正常到达。</p></div>
+                  <small>系统能力</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>连接</label><strong>USB · 正常</strong><small>最近连接：刚刚</small></div>
+                  <div class="voice-field"><label>输入延迟</label><strong>12 ms</strong><small>低于 30 ms 目标</small></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div class="page-view" data-view="voice" hidden>
+          <div class="route-head">
+            <div>
+              <div class="route-kicker">L1 · 调用方式</div>
+              <h2>语音</h2>
+              <p>管理唤醒、识别和结束方式；命令说法在习惯页内绑定。</p>
+            </div>
+            <span class="route-status"><i></i> 识别引擎已就绪</span>
+          </div>
+
+          <div class="settings-layout">
+            <nav class="settings-rail" aria-label="语音设置目录">
+              <p class="settings-rail-label">语音设置</p>
+              <button class="is-active" type="button">语音入口</button>
+              <button type="button">识别流程</button>
+              <button type="button">结束与取消</button>
+            </nav>
+            <div class="settings-main">
+              <div class="scope-row"><strong>作用范围</strong><span class="scope-pill good">全局</span><span>唤醒和识别能力对所有应用生效</span></div>
+
+              <section class="settings-card accent-voice">
+                <div class="settings-card-head">
+                  <div><h3>语音入口</h3><p>决定语音什么时候开始工作。</p></div>
+                  <small>语音页权威配置</small>
+                </div>
+                <div class="voice-switch">
+                  <button class="switch" type="button" role="switch" aria-checked="true" aria-label="开启免按键语音"></button>
+                  <div><strong>免按键语音已开启</strong><small>说出唤醒词后直接进入口头命令模式，也可以继续使用按键启动。</small></div>
+                </div>
+                <div class="voice-grid" style="margin-top: 9px;">
+                  <div class="voice-field"><label>唤醒词</label><strong>小一小一</strong><small>点击这里修改唤醒口令</small></div>
+                  <div class="voice-field"><label>按键说话</label><strong>音量 - · 按住</strong><small>启动键由按键页面维护</small></div>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>语音高级能力</h3><p>识别引擎、模型资源与诊断留在这里；日常给命令挂说法请回到习惯页。</p></div>
+                  <small>L1 · 能力设置</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>唤醒监听</label><strong>后台监听已开启</strong><small>仅在本地匹配唤醒词</small></div>
+                  <div class="voice-field"><label>声学命令</label><strong>已校准</strong><small>短词匹配状态正常</small></div>
+                  <div class="voice-field"><label>模型资源</label><strong>中文离线模型</strong><small>资源目录与下载状态</small></div>
+                  <div class="voice-field"><label>识别诊断</label><strong>查看实时识别日志</strong><small>麦克风、电平和匹配链路</small></div>
+                </div>
+                <button class="advanced-redirect" type="button" data-page="commands"><i data-lucide="arrow-left"></i> 回到习惯页绑定口头命令</button>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head">
+                  <div><h3>识别流程</h3><p>保留原有的唤醒、识别和发送流程状态。</p></div>
+                  <small>语音流程</small>
+                </div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>01 · 唤醒</label><strong>已就绪</strong><small>等待唤醒词或启动键</small></div>
+                  <div class="voice-field"><label>02 · 识别</label><strong>本地离线识别</strong><small>中文模型 · 已加载</small></div>
+                  <div class="voice-field"><label>03 · 结束</label><strong>自动判断停顿</strong><small>也支持结束词</small></div>
+                  <div class="voice-field"><label>04 · 发送</label><strong>按确认键发送</strong><small>可在通用设置调整</small></div>
+                </div>
+              </section>
+
+              <section class="settings-card">
+                <div class="settings-card-head"><div><h3>结束与取消</h3><p>控制一次语音输入如何结束，或在执行前撤销。</p></div><small>系统能力</small></div>
+                <div class="voice-grid">
+                  <div class="voice-field"><label>识别引擎</label><strong>本地离线识别</strong><small>中文模型 · 已就绪</small></div>
+                  <div class="voice-field"><label>麦克风</label><strong>默认麦克风</strong><small>电平正常</small></div>
+                  <div class="voice-field"><label>说完后</label><strong>自动判断停顿</strong><small>也可以使用结束词</small></div>
+                  <div class="voice-field"><label>取消口令</label><strong>取消 · 算了</strong><small>取消当前输入，不执行命令</small></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var navItems = document.querySelectorAll('[data-page]');
+      var views = document.querySelectorAll('.page-view');
+      var commandView = document.querySelector('[data-view="commands"]');
+      var copy = {
+        commands: ['L0 · 习惯 / 命令', '工作 · 命令', '在当前习惯里管理命令，再决定通过什么方式调用。'],
+        keys: ['L1 · 调用方式', '按键', '管理启动键、实体按键和执行快捷键。'],
+        pad: ['L1 · 调用方式', 'Soft Pad', '管理设备、布局和交互行为。'],
+        voice: ['L1 · 调用方式', '语音', '管理唤醒、识别和结束方式。命令说法在习惯页内绑定。']
+      };
+
+      function activate(page) {
+        var route = (page === 'keys' || page === 'voice' || page === 'pad' || page === 'commands') ? page : 'commands';
+        var target = document.querySelector('[data-view="' + route + '"]') || commandView;
+        views.forEach(function (view) { view.hidden = view !== target; });
+        navItems.forEach(function (item) {
+          if (item.tagName === 'BUTTON' && item.classList.contains('nav-item')) {
+            var on = item.getAttribute('data-page') === route;
+            item.classList.toggle('is-active', on);
+            if (on) item.setAttribute('aria-current', 'page');
+            else item.removeAttribute('aria-current');
+          }
+        });
+        if (copy[route]) {
+          var data = copy[route];
+          var heading = target.querySelector('h2');
+          var kicker = target.querySelector('.eyebrow, .route-kicker');
+          var lede = target.querySelector('.content-lede, .route-head p');
+          if (heading) heading.textContent = data[1];
+          if (kicker) kicker.textContent = data[0];
+          if (lede) lede.textContent = data[2];
+        }
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      navItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+          var page = item.getAttribute('data-page');
+          if (page) activate(page);
+        });
+      });
+
+      document.querySelectorAll('.command-row').forEach(function (row) {
+        row.addEventListener('click', function () {
+          document.querySelectorAll('.command-row').forEach(function (item) { item.classList.remove('is-active'); });
+          row.classList.add('is-active');
+        });
+      });
+
+      document.querySelectorAll('.habit-entry').forEach(function (entry) {
+        entry.addEventListener('click', function () {
+          document.querySelectorAll('.habit-entry').forEach(function (item) { item.classList.remove('is-selected'); });
+          entry.classList.add('is-selected');
+          var name = entry.querySelector('strong') ? entry.querySelector('strong').textContent : '当前习惯';
+          var modelName = document.querySelector('.model-strip strong');
+          var listName = document.querySelector('.list-title span');
+          var editing = document.querySelector('.truth-cell.is-warning strong');
+          if (modelName) modelName.textContent = name;
+          if (listName) listName.textContent = name + ' · 命令';
+          if (editing) editing.textContent = name;
+        });
+      });
+
+      var truthAction = document.querySelector('.truth-action');
+      if (truthAction) {
+        truthAction.addEventListener('click', function () {
+          var targetEntry = document.querySelector('.habit-entry.is-selected');
+          var name = targetEntry && targetEntry.querySelector('strong') ? targetEntry.querySelector('strong').textContent : 'Cursor · 工作';
+          var cell = document.querySelector('.truth-cell.is-warning');
+          if (cell) {
+            cell.classList.remove('is-warning');
+            cell.querySelector('strong').textContent = name;
+            cell.querySelector('small').textContent = 'selectedMappingId · 已对准前台应用';
+          }
+          truthAction.textContent = '已对准前台应用';
+        });
+      }
+
+      var inlineEditor = document.getElementById('inlineBindingEditor');
+      var inlineTitle = document.getElementById('inlineBindingTitle');
+      var inlineLabel = document.getElementById('inlineBindingLabel');
+      var inlineInput = document.getElementById('inlineBindingInput');
+      var inlineSave = document.getElementById('inlineBindingSave');
+      var inlineClose = document.getElementById('inlineBindingClose');
+      var inlineMeta = {
+        voice: { title: '在当前习惯内编辑语音说法', label: '说法', value: '继续，接着写', placeholder: '例如：继续 / 接着写' },
+        key: { title: '在当前习惯内录制按键', label: '执行快捷键', value: 'Alt+R', placeholder: '按下组合键' },
+        pad: { title: '在当前习惯内选择 Soft Pad 按键', label: 'Pad 按键', value: 'AG02', placeholder: '' },
+        camera: { title: '在当前习惯内选择手势', label: '手势', value: 'OK 手势', placeholder: '' }
+      };
+      function openInline(channel) {
+        var meta = inlineMeta[channel] || inlineMeta.voice;
+        inlineEditor.dataset.channel = channel;
+        inlineTitle.textContent = meta.title;
+        inlineLabel.childNodes[0].textContent = meta.label;
+        if (channel === 'pad') {
+          inlineInput.outerHTML = '<select id="inlineBindingInput"><option>AG01</option><option selected>AG02</option><option>AG03</option><option>ESC</option></select>';
+        } else if (channel === 'camera') {
+          inlineInput.outerHTML = '<select id="inlineBindingInput"><option>OK 手势</option><option>挥手</option><option>眨眼</option><option>未绑定</option></select>';
+        } else {
+          inlineInput.outerHTML = '<input id="inlineBindingInput" value="' + meta.value + '" placeholder="' + meta.placeholder + '" />';
+        }
+        inlineInput = document.getElementById('inlineBindingInput');
+        inlineEditor.classList.add('is-open');
+        inlineInput.focus();
+      }
+      document.querySelectorAll('[data-inline-channel]').forEach(function (card) {
+        card.addEventListener('click', function () { openInline(card.getAttribute('data-inline-channel')); });
+      });
+      if (inlineClose) inlineClose.addEventListener('click', function () { inlineEditor.classList.remove('is-open'); });
+      if (inlineSave) inlineSave.addEventListener('click', function () {
+        var channel = inlineEditor.dataset.channel || 'voice';
+        inlineSave.textContent = '已保存';
+        setTimeout(function () {
+          inlineSave.textContent = '保存绑定';
+          inlineEditor.classList.remove('is-open');
+        }, 700);
+        var card = document.querySelector('[data-inline-channel="' + channel + '"] p');
+        if (card && inlineInput && channel === 'voice') card.innerHTML = '“' + inlineInput.value.replace(/，/g, '”<br />“') + '”';
+      });
+
+      if (window.lucide) window.lucide.createIcons();
+    }());
+  </script>
+</body>
+</html>

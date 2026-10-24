@@ -15,7 +15,7 @@
       font-family:system-ui,"Segoe UI","Microsoft YaHei UI",sans-serif;
       cursor:crosshair;user-select:none;touch-action:none
     }
-    /* Top-center of the covered monitor only (Rust covers FG window's screen). */
+    /* Docked to the active monitor (Rust injects layout) — never virtual-desktop center. */
     #hint{
       position:fixed;left:50%;top:28px;transform:translateX(-50%);z-index:3;
       background:rgba(255,255,255,.96);color:#12181f;font-size:15px;font-weight:650;
@@ -46,13 +46,17 @@
     }
     button{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
     #cancel{background:#fff;color:#12181f}
+    #cancel kbd{
+      display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;
+      background:#e8eef3;font:600 11px/1.4 ui-monospace,Consolas,monospace;color:#334
+    }
   </style>
 </head>
 <body>
-  <div id="hint">第一步：按住拖动，圈住聊天输入框（可略大）</div>
+  <div id="hint">第一步：按住拖动，圈住聊天输入框（可略大） · Esc 取消</div>
   <div id="mq"></div>
   <div id="pin"></div>
-  <div id="bar"><button type="button" id="cancel">取消 Esc</button></div>
+  <div id="bar"><button type="button" id="cancel">取消 <kbd>Esc</kbd></button></div>
   <script>
     (function () {
       function getInvoke() {
@@ -74,6 +78,7 @@
       var dragging = false;
       var x0 = 0, y0 = 0;
       var box = null;
+      var nearBox = false;
 
       function call(cmd, args) {
         if (!invoke) return Promise.reject(new Error('no_invoke'));
@@ -84,37 +89,79 @@
         return Math.min(Math.max(n, lo), hi);
       }
 
+      /** Active monitor client rect inside the virtual-desktop overlay. */
+      function activeMonitorClient() {
+        var desk = window.__OT_AIM_DESK__;
+        var act = window.__OT_AIM_ACTIVE__;
+        var vw = Math.max(window.innerWidth || 1, 1);
+        var vh = Math.max(window.innerHeight || 1, 1);
+        if (!desk || !act || !desk.w || !desk.h) {
+          return { l: 0, t: 0, r: vw, b: vh, w: vw, h: vh };
+        }
+        var ml = ((act.x - desk.x) / desk.w) * vw;
+        var mt = ((act.y - desk.y) / desk.h) * vh;
+        var mw = (act.w / desk.w) * vw;
+        var mh = (act.h / desk.h) * vh;
+        return { l: ml, t: mt, r: ml + mw, b: mt + mh, w: mw, h: mh };
+      }
+
+      /** Dock tip + Esc to the active monitor — never the gap between screens. */
+      function placeChromeOnActiveMonitor() {
+        if (nearBox && box) {
+          placeChromeNearBox(box);
+          return;
+        }
+        var m = activeMonitorClient();
+        var pad = 28;
+        var cx = m.l + m.w / 2;
+        hint.classList.remove('is-near', 'is-below');
+        hint.style.left = Math.round(cx) + 'px';
+        hint.style.top = Math.round(m.t + pad) + 'px';
+        hint.style.transform = 'translateX(-50%)';
+        bar.classList.remove('is-near');
+        bar.style.left = Math.round(cx) + 'px';
+        bar.style.top = '';
+        bar.style.bottom = '';
+        bar.style.transform = 'translateX(-50%)';
+        // Bottom of active monitor in client space.
+        bar.style.top = Math.round(m.b - 56) + 'px';
+        bar.style.bottom = 'auto';
+      }
+      window.__OT_AIM_PLACE_CHROME__ = placeChromeOnActiveMonitor;
+
       /** Put tip + cancel next to the marquee (eye stays on the box). */
       function placeChromeNearBox(b) {
         if (!b) {
-          hint.classList.remove('is-near', 'is-below');
-          hint.style.left = '';
-          hint.style.top = '';
-          bar.classList.remove('is-near');
-          bar.style.left = '';
-          bar.style.top = '';
+          nearBox = false;
+          placeChromeOnActiveMonitor();
           return;
         }
+        nearBox = true;
         var mid = (b.l + b.r) / 2;
-        var vw = window.innerWidth || 1280;
-        var vh = window.innerHeight || 800;
-        mid = clamp(mid, 48, vw - 48);
-        var preferAbove = b.t >= 64;
+        var m = activeMonitorClient();
+        mid = clamp(mid, m.l + 48, m.r - 48);
+        var preferAbove = b.t - m.t >= 64;
         hint.classList.add('is-near');
         hint.classList.toggle('is-below', !preferAbove);
         hint.style.left = Math.round(mid) + 'px';
         hint.style.top = Math.round(preferAbove ? b.t - 10 : b.b + 10) + 'px';
+        hint.style.transform = preferAbove ? 'translate(-50%,-100%)' : 'translate(-50%,0)';
 
-        // Cancel on the opposite side of the tip so both stay in peripheral vision.
         bar.classList.add('is-near');
         bar.style.left = Math.round(mid) + 'px';
-        var barTop = preferAbove ? b.b + 12 : Math.max(12, b.t - 52);
-        bar.style.top = Math.round(clamp(barTop, 12, vh - 56)) + 'px';
+        bar.style.bottom = 'auto';
+        var barTop = preferAbove ? b.b + 12 : Math.max(m.t + 12, b.t - 52);
+        bar.style.top = Math.round(clamp(barTop, m.t + 12, m.b - 56)) + 'px';
+        bar.style.transform = 'translateX(-50%)';
       }
 
-      function setHint(msg, nearBox) {
+      function setHint(msg, useNear) {
         hint.textContent = msg;
-        placeChromeNearBox(nearBox ? box : null);
+        if (useNear && box) placeChromeNearBox(box);
+        else {
+          nearBox = false;
+          placeChromeOnActiveMonitor();
+        }
       }
 
       function cancel() {
@@ -128,7 +175,10 @@
         cancel();
       };
       window.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') cancel();
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cancel();
+        }
       });
 
       function onDown(e) {
@@ -140,7 +190,7 @@
         if (phase === 'refine') {
           if (!box) return;
           if (e.clientX < box.l || e.clientX > box.r || e.clientY < box.t || e.clientY > box.b) {
-            setHint('请点在蓝框内部', true);
+            setHint('请点在蓝框内部 · Esc 取消', true);
             return;
           }
           pin.style.display = 'block';
@@ -154,7 +204,7 @@
             setHint('已保存', true);
             setTimeout(function () { try { window.close(); } catch (_) {} }, 350);
           }).catch(function (err) {
-            setHint('保存失败：' + (err && err.message ? err.message : String(err || '')), true);
+            setHint('保存失败：' + (err && err.message ? err.message : String(err || '')) + ' · Esc 取消', true);
           });
           return;
         }
@@ -167,7 +217,7 @@
         mq.style.top = y0 + 'px';
         mq.style.width = '0px';
         mq.style.height = '0px';
-        setHint('拖动中…松开完成粗圈', false);
+        setHint('拖动中…松开完成粗圈 · Esc 取消', false);
       }
 
       function onMove(e) {
@@ -187,13 +237,13 @@
         var r = Math.max(x0, e.clientX), b = Math.max(y0, e.clientY);
         if (r - l < 12 || b - t < 12) {
           box = null;
-          setHint('圈太小，请再拖大一点', false);
+          setHint('圈太小，请再拖大一点 · Esc 取消', false);
           mq.style.display = 'none';
           return;
         }
         box = { l: l, t: t, r: r, b: b };
         phase = 'refine';
-        setHint('第二步：在蓝框内点一下精确位置', true);
+        setHint('第二步：在蓝框内点一下精确位置 · Esc 取消', true);
       }
 
       // Attach to documentElement so the whole screen hits, including near edges.
@@ -203,7 +253,10 @@
       root.addEventListener('pointerup', onUp);
       root.addEventListener('pointercancel', onUp);
 
-      if (!invoke) setHint('校准层未接到 IPC，请从应用内打开', false);
+      placeChromeOnActiveMonitor();
+      window.addEventListener('resize', placeChromeOnActiveMonitor);
+
+      if (!invoke) setHint('校准层未接到 IPC，请从应用内打开 · Esc 取消', false);
     })();
   </script>
 </body>

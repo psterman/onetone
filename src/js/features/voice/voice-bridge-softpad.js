@@ -205,8 +205,38 @@
     renderCap(m);
   }
 
-  /** Soft Pad face is explain-only — open Soft Pad to bind existing phrases. */
+  /** L5 phrase create/edit → Habits; Soft Pad layout remains KEEP for look/keycap. */
   function addPhrase(){
+    var m=currentMapping();
+    var mid=m&&m.id?String(m.id):'';
+    var keys=padKeys(m);
+    var pk=keys.find(function(k){ return String(k.microKeyId||'')===String(pickMicroKeyId||''); })||keys[0];
+    var cmd=pk&&pk.slotId?String(pk.slotId):'';
+    var Link=global.OneToneHabitCommandLink;
+    if(Link&&typeof Link.openHabitsMatch==='function'){
+      Link.openHabitsMatch({
+        mappingId:mid,
+        matchChannel:'softPad',
+        matchCommand:cmd,
+        commandRef:cmd,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
+    }
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&typeof drawer.open==='function'){
+      drawer.open({
+        panel:'habits',
+        mappingId:mid,
+        matchChannel:'softPad',
+        matchCommand:cmd,
+        commandRef:cmd,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
+    }
     var go=$('btnVoiceSpGoPadFromCap')||$('btnVoiceSpGoPad');
     if(go) go.click();
     return true;

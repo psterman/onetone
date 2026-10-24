@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>习惯 · 应用动作总览（只读 + 跳转）</title>
+<style>
+:root{
+  --bg:#eef1f5;--panel:#f7f8fa;--panel-2:#fff;--panel-3:#f1f4f8;
+  --bd:#d8dee6;--bd-2:#b8c4d2;
+  --tx:#1a2230;--mu:#526175;--dim:#667289;
+  --ac:#1d8fb8;--ac-soft:#e8f4fb;--ac-ring:rgba(29,143,184,.45);
+  --ch-key:#1d8fb8;--ch-voice:#7c5cbf;--ch-cam:#c77f1a;--ch-pad:#187144;
+  --att:#e0892a;--att-soft:#fff4e6;--att-dot:#f59e0b;
+  --gr:#187144;--gr-soft:#e8f5ee;
+  --idle:#8a94a3;--idle-soft:#eef1f5;
+  --side:228px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 13px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;min-width:1080px;overflow:hidden}
+
+/* ── App chrome (fake) ── */
+.nav{width:56px;flex:none;background:#161a20;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:8px}
+.nav .logo{width:30px;height:30px;border-radius:8px;background:var(--ac);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:11px;margin-bottom:10px}
+.nav a{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#8b93a0;text-decoration:none;font-size:14px}
+.nav a.on{background:rgba(29,143,184,.2);color:#7ec8e6}
+.nav .spacer{flex:1}
+
+/* ── Sidebar ── */
+.side{width:var(--side);flex:none;background:var(--panel);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;min-height:0}
+.side-hd{padding:14px 12px 8px}
+.side-hd h1{margin:0 0 10px;font-size:15px;font-weight:650}
+.srch{width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px 10px 7px 30px;
+  font-size:12px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23667289' stroke-width='2'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath d='M10 10l3 3'/%3E%3C/svg%3E") 9px 50% no-repeat;outline:none}
+.srch:focus{border-color:color-mix(in srgb,var(--ac) 45%,var(--bd));box-shadow:0 0 0 3px var(--ac-soft)}
+.side-list{flex:1;overflow:auto;padding:4px 8px 8px}
+.side-ft{padding:8px 10px 12px;border-top:1px solid var(--bd)}
+.btn-new{width:100%;padding:8px 10px;border:1px dashed var(--bd-2);border-radius:9px;
+  background:var(--panel-2);color:var(--mu);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left}
+.btn-new:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
+
+.app-row{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;
+  padding:8px 9px;border-radius:10px;cursor:pointer;margin-bottom:2px;
+  border:1px solid transparent;position:relative}
+.app-row:hover{background:var(--panel-3)}
+.app-row.on{background:#fff;border-color:var(--ac-ring);box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.app-ico{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;
+  font-size:13px;font-weight:700;color:#fff;flex:none}
+.app-ico.global{background:linear-gradient(135deg,#64748b,#94a3b8)}
+.app-ico.cursor{background:linear-gradient(135deg,#1a1a1a,#444)}
+.app-ico.codex{background:linear-gradient(135deg,#0d9488,#14b8a6)}
+.app-ico.chrome{background:linear-gradient(135deg,#4285f4,#34a853)}
+.app-ico.notion{background:linear-gradient(135deg,#111,#555)}
+.app-meta{min-width:0}
+.app-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-sub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.app-badges{display:flex;align-items:center;gap:5px;flex:none}
+.cnt{min-width:20px;height:18px;padding:0 6px;border-radius:999px;background:var(--panel-3);
+  color:var(--mu);font-size:11px;font-weight:650;display:grid;place-items:center}
+.app-row.on .cnt{background:var(--ac-soft);color:var(--ac)}
+.att-dot{width:8px;height:8px;border-radius:50%;background:var(--att-dot);box-shadow:0 0 0 2px #fff}
+.pill-cur{font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;
+  background:var(--gr-soft);color:var(--gr);letter-spacing:.02em}
+
+/* ── Detail ── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.detail{flex:1;overflow:auto;padding:18px 22px 40px}
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.hdr-left{display:flex;align-items:center;gap:12px;min-width:0}
+.hdr-ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex:none}
+.hdr-copy{min-width:0}
+.hdr-name{margin:0;font-size:18px;font-weight:650;cursor:text;border-radius:6px;padding:1px 4px;margin-left:-4px}
+.hdr-name:hover{background:rgba(29,143,184,.08)}
+.hdr-name[contenteditable="true"]:focus{outline:2px solid var(--ac-ring);background:#fff}
+.hdr-sub{margin:3px 0 0;font-size:12px;color:var(--mu)}
+.hdr-right{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap}
+.toggle{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--mu);cursor:pointer;user-select:none}
+.toggle input{appearance:none;width:34px;height:20px;border-radius:999px;background:#c5ccd6;position:relative;cursor:pointer;transition:.15s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:.15s}
+.toggle input:checked{background:var(--ac)}
+.toggle input:checked::after{left:16px}
+.live{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--gr-soft);color:var(--gr);
+  border:1px solid color-mix(in srgb,var(--gr) 25%,var(--bd));font-weight:650}
+.live.off{background:var(--idle-soft);color:var(--idle);border-color:var(--bd)}
+.btn-ghost{padding:6px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;
+  color:var(--mu);font-size:12px;cursor:pointer;font-family:inherit}
+.btn-ghost:hover{border-color:var(--bd-2);color:var(--tx)}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+.btn-danger{color:#b42318;border-color:#f0c4c0}
+.btn-danger:hover:not(:disabled){background:#fef3f2;border-color:#f0a8a2}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.chip{padding:5px 12px;border-radius:999px;border:1px solid var(--bd);background:#fff;
+  font-size:12px;color:var(--mu);cursor:pointer;font-family:inherit}
+.chip:hover{border-color:var(--bd-2)}
+.chip.on{background:var(--ac-soft);border-color:color-mix(in srgb,var(--ac) 40%,var(--bd));color:var(--ac);font-weight:650}
+
+/* ── Four scene boards ── */
+.boards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:stretch}
+@media (max-width:1280px){.boards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.board{background:var(--panel-2);border:1px solid var(--bd);border-radius:14px;
+  display:flex;flex-direction:column;min-height:320px;overflow:hidden}
+.board[data-tone="attention"]{border-color:color-mix(in srgb,var(--att) 35%,var(--bd))}
+.board-hd{padding:12px 14px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.board-title{display:flex;align-items:center;gap:8px;min-width:0}
+.board-ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:14px;flex:none}
+.board[data-ch="key"] .board-ico{background:#e8f4fb}
+.board[data-ch="voice"] .board-ico{background:#f0ebfa}
+.board[data-ch="cam"] .board-ico{background:#fef7ec}
+.board[data-ch="pad"] .board-ico{background:#e8f5ee}
+.board-title b{font-size:13px;font-weight:650;display:block}
+.board-blurb{font-size:11px;color:var(--dim);margin-top:1px;line-height:1.35}
+.tone{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;flex:none;white-space:nowrap}
+.tone.ready{background:var(--gr-soft);color:var(--gr)}
+.tone.attention{background:var(--att-soft);color:var(--att)}
+.tone.idle{background:var(--idle-soft);color:var(--idle)}
+
+.board-body{flex:1;padding:8px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.act{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;
+  padding:8px 10px;border-radius:9px;border:1px solid transparent;cursor:pointer;
+  text-align:left;font-family:inherit;color:inherit;background:transparent;width:100%}
+.act:hover{background:var(--panel-3);border-color:var(--bd)}
+.act:focus-visible{outline:2px solid var(--ac-ring);outline-offset:1px}
+.act.muted{opacity:.72}
+.act.muted .act-title{font-weight:500;color:var(--dim)}
+.act-title{font-size:12.5px;font-weight:600;line-height:1.35}
+.act-key{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;
+  padding:2px 7px;border-radius:6px;background:var(--panel-3);border:1px solid var(--bd);white-space:nowrap}
+.act.muted .act-key{display:none}
+.empty{padding:18px 12px;text-align:center;color:var(--dim);font-size:12px;line-height:1.5}
+
+.board-ft{padding:8px 10px 10px;border-top:1px solid var(--bd)}
+.btn-edit{width:100%;padding:7px 10px;border:1px solid color-mix(in srgb,var(--ac) 28%,var(--bd));
+  border-radius:8px;background:#fff;color:var(--ac);font-size:12px;font-weight:650;cursor:pointer;font-family:inherit}
+.btn-edit:hover{background:var(--ac-soft)}
+
+/* ── Toast / jump log ── */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:#1a2230;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  box-shadow:0 8px 28px rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:min(520px,92vw)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast code{background:rgba(255,255,255,.12);padding:1px 6px;border-radius:4px;font-size:11px}
+
+.proto{position:fixed;top:12px;right:12px;z-index:15;background:#fff;border:1px solid var(--bd);
+  border-radius:10px;padding:10px 12px;font-size:11px;color:var(--dim);max-width:240px;
+  box-shadow:0 4px 16px rgba(15,23,42,.08);line-height:1.45}
+.proto b{color:var(--ac);display:block;margin-bottom:4px;font-size:12px}
+.proto kbd{font:inherit;background:var(--panel-3);border:1px solid var(--bd);border-radius:4px;padding:0 4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="nav" aria-label="主导航">
+    <div class="logo">OT</div>
+    <a href="#" title="Home">⌂</a>
+    <a href="#" class="on" title="Habits">◎</a>
+    <a href="#" title="Keys">⌨</a>
+    <a href="#" title="Voice">🎙</a>
+    <div class="spacer"></div>
+    <a href="#" title="Settings">⚙</a>
+  </nav>
+
+  <aside class="side">
+    <div class="side-hd">
+      <h1>习惯</h1>
+      <input class="srch" id="search" type="search" placeholder="搜索应用…" autocomplete="off">
+    </div>
+    <div class="side-list" id="appList" role="listbox" aria-label="应用列表"></div>
+    <div class="side-ft">
+      <button type="button" class="btn-new" id="btnFrontNew">+ 为前台 App 新建</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="detail" id="detail"></div>
+  </main>
+</div>
+
+<div class="proto">
+  <b>Windows 对齐稿 · list</b>
+  只读总览 → 点动作 /「改…」直达编辑页。<br>
+  四场景固定：按键 → 语音 → 摄像 → Soft Pad。<br>
+  投影：<kbd>HabitChannelSnapshot.make</kbd>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /** ── Scene order (HomeAbilityTab.habitsFilterCases) ── */
+  var SCENES = [
+    { id: 'key',  title: '按键',     blurb: '按键开口打字',   editLabel: '改按键',     emoji: '⌨' },
+    { id: 'voice',title: '语音',     blurb: '嘴说启动听写',   editLabel: '改语音',     emoji: '🎙' },
+    { id: 'cam',  title: '摄像头',   blurb: '姿势触发',       editLabel: '改摄像头',   emoji: '📷' },
+    { id: 'pad',  title: 'Soft Pad', blurb: '屏幕小遥控',     editLabel: '改 Soft Pad', emoji: '⌘' }
+  ];
+
+  var CAM_GESTURES = [
+    { id: 'blink',  title: '眨眼' },
+    { id: 'fist',   title: '握拳' },
+    { id: 'shake',  title: '摇头' },
+    { id: 'away',   title: '离开' },
+    { id: 'return', title: '回来' },
+    { id: 'palm',   title: '举手' }
+  ];
+
+  /** ── Demo schemes (Windows MappingScheme shape, simplified) ── */
+  var schemes = [
+    {
+      id: 'sch-global',
+      name: '通用回落',
+      appGroupId: 'global',
+      enabled: true,
+      keys: { trigger: 'F8', target: 'Win+H', finish: 'Enter' },
+      voiceWakeCommands: [],
+      camera: { enabled: false, blink: false, fist: false, shake: false, away: false, return: false, palm: false },
+      softPad: []
+    },
+    {
+      id: 'sch-cursor-main',
+      name: 'Cursor · 主流程',
+      appGroupId: 'cursor',
+      enabled: true,
+      keys: { trigger: 'Caps', target: 'Ctrl+L', finish: 'Enter' },
+      voiceWakeCommands: ['一声', '改这里', '发 Cursor', '停'],
+      camera: { enabled: true, blink: true, fist: false, shake: false, away: true, return: true, palm: false },
+      softPad: [
+        { id: 'pad-ptt', title: '开麦', chordHint: 'ENC' },
+        { id: 'pad-send', title: '发送', chordHint: 'ACT10' },
+        { id: 'pad-agent', title: '切 Agent', chordHint: 'AG' }
+      ]
+    },
+    {
+      id: 'sch-cursor-plan',
+      name: 'Cursor · 先商量',
+      appGroupId: 'cursor',
+      enabled: true,
+      keys: { trigger: 'Caps', target: '', finish: 'Esc' },
+      voiceWakeCommands: ['商量', '计划'],
+      camera: { enabled: false, blink: false, fist: false, shake: false, away: false, return: false, palm: false },
+      softPad: [
+        { id: 'pad-plan', title: 'Plan', chordHint: '摇杆↑' }
+      ]
+    },
+    {
+      id: 'sch-codex',
+      name: 'Codex 工作流',
+      appGroupId: 'codex',
+      enabled: true,
+      keys: { trigger: 'F9', target: 'Ctrl+Shift+P', finish: 'Enter' },
+      voiceWakeCommands: ['Codex', '执行'],
+      camera: { enabled: true, blink: false, fist: true, shake: false, away: false, return: false, palm: true },
+      softPad: [
+        { id: 'pad-c1', title: '召唤', chordHint: '1' },
+        { id: 'pad-c2', title: '停止', chordHint: '0' }
+      ]
+    },
+    {
+      id: 'sch-chrome',
+      name: 'Chrome 听写',
+      appGroupId: 'chrome',
+      enabled: false,
+      keys: { trigger: '', target: '', finish: '' },
+      voiceWakeCommands: ['听写'],
+      camera: { enabled: false, blink: false, fist: false, shake: false, away: false, return: false, palm: false },
+      softPad: []
+    },
+    {
+      id: 'sch-notion',
+      name: 'Notion 笔记',
+      appGroupId: 'notion',
+      enabled: true,
+      keys: { trigger: 'F7', target: 'Win+H', finish: '' },
+      voiceWakeCommands: [],
+      camera: { enabled: false, blink: false, fist: false, shake: false, away: false, return: false, palm: false },
+      softPad: []
+    }
+  ];
+
+  var APP_META = {
+    global: { name: '全部应用', icoClass: 'global', glyph: '∀', subFallback: '回落' },
+    cursor: { name: 'Cursor',   icoClass: 'cursor', glyph: 'C', subFallback: '' },
+    codex:  { name: 'Codex',    icoClass: 'codex',  glyph: 'X', subFallback: '' },
+    chrome: { name: 'Chrome',   icoClass: 'chrome', glyph: 'G', subFallback: '' },
+    notion: { name: 'Notion',   icoClass: 'notion', glyph: 'N', subFallback: '' }
+  };
+
+  /** Runtime: active = frontmost; focus = page selection (may differ) */
+  var state = {
+    activeSchemeId: 'sch-cursor-main',
+    habitsFocusSchemeId: 'sch-cursor-main',
+    search: ''
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /** ── HabitChannelSnapshot.make(scheme) — read-only projection ── */
+  function HabitChannelSnapshot_make(scheme) {
+    var key = snapshotKey(scheme);
+    var voice = snapshotVoice(scheme);
+    var cam = snapshotCam(scheme);
+    var pad = snapshotPad(scheme);
+    var channels = { key: key, voice: voice, cam: cam, pad: pad };
+    var configuredActionCount = SCENES.reduce(function (n, s) {
+      return n + channels[s.id].actions.filter(function (a) { return !a.muted; }).length;
+    }, 0);
+    var hasAttention = SCENES.some(function (s) { return channels[s.id].tone === 'attention'; });
+    return { channels: channels, configuredActionCount: configuredActionCount, hasAttention: hasAttention };
+  }
+
+  function snapshotKey(scheme) {
+    var blurb = '按键开口打字';
+    if (!scheme.enabled) {
+      return { tone: 'idle', statusLabel: '未开', blurb: blurb, actions: [] };
+    }
+    var k = scheme.keys || {};
+    var actions = [];
+    if (k.trigger) actions.push({ id: 'keys.trigger', title: '启动', key: k.trigger });
+    if (k.target)  actions.push({ id: 'keys.target',  title: '打开语音', key: k.target });
+    if (k.finish)  actions.push({ id: 'keys.finish',  title: '收尾', key: k.finish });
+    if (!actions.length) {
+      return { tone: 'attention', statusLabel: '待补', blurb: blurb, actions: [] };
+    }
+    var tone = (!k.trigger || !k.target) ? 'attention' : 'ready';
+    return {
+      tone: tone,
+      statusLabel: tone === 'attention' ? '待补' : '就绪',
+      blurb: blurb,
+      actions: actions
+    };
+  }
+
+  function snapshotVoice(scheme) {
+    var blurb = '嘴说启动听写';
+    var cmds = (scheme.voiceWakeCommands || []).filter(Boolean).slice(0, 4);
+    if (!cmds.length) {
+      return {
+        tone: 'idle',
+        statusLabel: '沿用全局',
+        blurb: blurb,
+        actions: [{ id: 'voice.inherit', title: '沿用全局', key: '', muted: true }]
+      };
+    }
+    return {
+      tone: 'ready',
+      statusLabel: '就绪',
+      blurb: blurb,
+      actions: cmds.map(function (c, i) {
+        return { id: 'voice.wake.' + i, title: i === 0 ? '唤醒听写' : c, key: c };
+      })
+    };
+  }
+
+  function snapshotCam(scheme) {
+    var blurb = '姿势触发';
+    var cam = scheme.camera || {};
+    if (!scheme.enabled || !cam.enabled) {
+      return { tone: 'idle', statusLabel: '未开', blurb: blurb, actions: [] };
+    }
+    var actions = CAM_GESTURES.filter(function (g) { return !!cam[g.id]; })
+      .map(function (g) { return { id: 'cam.' + g.id, title: g.title, key: g.id }; });
+    if (!actions.length) {
+      return { tone: 'attention', statusLabel: '待补', blurb: blurb, actions: [] };
+    }
+    return { tone: 'ready', statusLabel: '就绪', blurb: blurb, actions: actions };
+  }
+
+  function snapshotPad(scheme) {
+    var blurb = '屏幕小遥控';
+    var pads = (scheme.softPad || []).filter(function (p) { return p && p.title; });
+    if (!pads.length) {
+      return { tone: 'idle', statusLabel: '未开', blurb: blurb, actions: [] };
+    }
+    return {
+      tone: 'ready',
+      statusLabel: pads.length + ' 键',
+      blurb: blurb,
+      actions: pads.map(function (p) {
+        return { id: p.id || ('pad.' + p.title), title: p.title, key: p.chordHint || '' };
+      })
+    };
+  }
+
+  /** ── habitLocatorGroups: schemes by scope; Global first; no Quick Start ── */
+  function habitLocatorGroups() {
+    var map = {};
+    schemes.forEach(function (s) {
+      var scope = s.appGroupId || 'global';
+      if (!map[scope]) map[scope] = [];
+      map[scope].push(s);
+    });
+    Object.keys(map).forEach(function (k) {
+      map[k].sort(function (a, b) {
+        return String(a.name).localeCompare(String(b.name), 'zh');
+      });
+    });
+    var order = Object.keys(map).sort(function (a, b) {
+      if (a === 'global') return -1;
+      if (b === 'global') return 1;
+      var na = (APP_META[a] && APP_META[a].name) || a;
+      var nb = (APP_META[b] && APP_META[b].name) || b;
+      return na.localeCompare(nb, 'zh');
+    });
+    return order.map(function (scope) {
+      var list = map[scope];
+      var snaps = list.map(HabitChannelSnapshot_make);
+      var badge = snaps.reduce(function (n, sn) { return n + sn.configuredActionCount; }, 0);
+      var attention = snaps.some(function (sn) { return sn.hasAttention; });
+      var primary = list.find(function (s) { return s.id === state.activeSchemeId; }) || list[0];
+      return { scope: scope, schemes: list, badge: badge, attention: attention, primary: primary };
+    });
+  }
+
+  function schemeById(id) {
+    return schemes.find(function (s) { return s.id === id; }) || null;
+  }
+
+  function focusScheme() {
+    return schemeById(state.habitsFocusSchemeId);
+  }
+
+  function sidebarSub(group) {
+    var meta = APP_META[group.scope] || { subFallback: '' };
+    if (group.scope === 'global') return '回落';
+    var s = group.primary;
+    if (!s || !s.enabled) return '已关闭';
+    var k = s.keys || {};
+    if (k.trigger && k.target) return k.trigger + ' → ' + k.target;
+    if (k.trigger) return k.trigger + ' → …';
+    return '未设置键位';
+  }
+
+  function navigate(sceneId, actionId) {
+    var scheme = focusScheme();
+    if (!scheme) return;
+    state.habitsFocusSchemeId = scheme.id; // select habit first
+    var dest = {
+      key:   { page: 'Keys', params: deepKey(actionId) },
+      voice: { page: 'Voice', params: 'oral scheme=' + scheme.id },
+      cam:   { page: 'Camera', params: 'step=1' },
+      pad:   { page: 'Virtual Keyboard / Agent', params: 'tile displayKeys' }
+    }[sceneId];
+    showToast('选中「' + scheme.name + '」→ 打开 <code>' + dest.page + '</code> · ' + dest.params);
+  }
+
+  function deepKey(actionId) {
+    if (actionId === 'keys.trigger') return 'step=1 (trigger)';
+    if (actionId === 'keys.target')  return 'step=2 (target)';
+    if (actionId === 'keys.finish')  return 'step=3 (finish)';
+    return 'step=1';
+  }
+
+  var toastTimer = 0;
+  function showToast(html) {
+    var el = document.getElementById('toast');
+    el.innerHTML = html;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2800);
+  }
+
+  function renderSidebar() {
+    var q = state.search.trim().toLowerCase();
+    var groups = habitLocatorGroups().filter(function (g) {
+      if (!q) return true;
+      var meta = APP_META[g.scope];
+      var name = ((meta && meta.name) || g.scope).toLowerCase();
+      return name.indexOf(q) >= 0 || g.schemes.some(function (s) {
+        return String(s.name).toLowerCase().indexOf(q) >= 0;
+      });
+    });
+    var focus = focusScheme();
+    var focusScope = focus ? focus.appGroupId : null;
+    var html = groups.map(function (g) {
+      var meta = APP_META[g.scope] || { name: g.scope, icoClass: 'global', glyph: '?' };
+      var on = g.scope === focusScope;
+      var isActiveScope = g.schemes.some(function (s) { return s.id === state.activeSchemeId; });
+      return (
+        '<div class="app-row' + (on ? ' on' : '') + '" role="option" aria-selected="' + on + '" data-scope="' + esc(g.scope) + '" title="' + esc(sidebarSub(g)) + '">' +
+          '<div class="app-ico ' + esc(meta.icoClass) + '">' + esc(meta.glyph) + '</div>' +
+          '<div class="app-meta"><div class="app-name">' + esc(meta.name) + '</div><div class="app-sub">' + esc(sidebarSub(g)) + '</div></div>' +
+          '<div class="app-badges">' +
+            (isActiveScope ? '<span class="pill-cur">当前</span>' : '') +
+            (g.attention ? '<span class="att-dot" title="有待补场景"></span>' : '') +
+            '<span class="cnt" title="非 muted 动作数">' + g.badge + '</span>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+    document.getElementById('appList').innerHTML = html || '<div class="empty">无匹配应用</div>';
+  }
+
+  function renderDetail() {
+    var scheme = focusScheme();
+    var host = document.getElementById('detail');
+    if (!scheme) {
+      host.innerHTML = '<div class="empty">选择左侧应用查看习惯</div>';
+      return;
+    }
+    var meta = APP_META[scheme.appGroupId] || { name: scheme.appGroupId, icoClass: 'global', glyph: '?' };
+    var snap = HabitChannelSnapshot_make(scheme);
+    var siblings = schemes.filter(function (s) { return s.appGroupId === scheme.appGroupId; });
+    var isActive = scheme.id === state.activeSchemeId;
+    var canDelete = schemes.filter(function (s) { return s.appGroupId === scheme.appGroupId; }).length > 1
+      || schemes.length > 1;
+
+    var chips = siblings.length > 1
+      ? '<div class="chips" role="tablist" aria-label="同应用习惯">' + siblings.map(function (s) {
+          return '<button type="button" class="chip' + (s.id === scheme.id ? ' on' : '') + '" data-focus-scheme="' + esc(s.id) + '" role="tab" aria-selected="' + (s.id === scheme.id) + '">' + esc(s.name) + '</button>';
+        }).join('') + '</div>'
+      : '';
+
+    var boards = SCENES.map(function (scene) {
+      var ch = snap.channels[scene.id];
+      var acts = ch.actions.length
+        ? ch.actions.map(function (a) {
+            return (
+              '<button type="button" class="act' + (a.muted ? ' muted' : '') + '" data-nav-scene="' + esc(scene.id) + '" data-nav-action="' + esc(a.id) + '">' +
+                '<span class="act-title">' + esc(a.title) + (a.muted ? '' : '') + '</span>' +
+                (a.key ? '<span class="act-key">' + esc(a.key) + '</span>' : '') +
+              '</button>'
+            );
+          }).join('')
+        : '<div class="empty">暂无动作</div>';
+      return (
+        '<section class="board" data-ch="' + esc(scene.id) + '" data-tone="' + esc(ch.tone) + '">' +
+          '<header class="board-hd">' +
+            '<div class="board-title"><span class="board-ico">' + scene.emoji + '</span><div><b>' + esc(scene.title) + '</b><div class="board-blurb">' + esc(ch.blurb) + '</div></div></div>' +
+            '<span class="tone ' + esc(ch.tone) + '">' + esc(ch.statusLabel) + '</span>' +
+          '</header>' +
+          '<div class="board-body">' + acts + '</div>' +
+          '<footer class="board-ft"><button type="button" class="btn-edit" data-nav-scene="' + esc(scene.id) + '" data-nav-action="">' + esc(scene.editLabel) + '</button></footer>' +
+        '</section>'
+      );
+    }).join('');
+
+    host.innerHTML =
+      '<div class="hdr">' +
+        '<div class="hdr-left">' +
+          '<div class="hdr-ico ' + esc(meta.icoClass) + '">' + esc(meta.glyph) + '</div>' +
+          '<div class="hdr-copy">' +
+            '<h2 class="hdr-name" id="hdrName" contenteditable="true" spellcheck="false" title="点名重命名">' + esc(scheme.name) + '</h2>' +
+            '<p class="hdr-sub">' + esc(meta.name) + (scheme.appGroupId === 'global' ? ' · 回落' : '') +
+              ' · 动作 ' + snap.configuredActionCount +
+              (snap.hasAttention ? ' · 有待补' : '') +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hdr-right">' +
+          '<label class="toggle"><input type="checkbox" id="enToggle"' + (scheme.enabled ? ' checked' : '') + '> 启用</label>' +
+          '<span class="live' + (isActive ? '' : ' off') + '">' + (isActive ? '当前前台生效' : '未生效') + '</span>' +
+          '<button type="button" class="btn-ghost" id="btnActivate"' + (isActive ? ' disabled' : '') + '>设为当前</button>' +
+          '<button type="button" class="btn-ghost btn-danger" id="btnDelete"' + (canDelete ? '' : ' disabled') + '>删除习惯</button>' +
+        '</div>' +
+      '</div>' +
+      chips +
+      '<div class="boards">' + boards + '</div>';
+  }
+
+  function render() {
+    renderSidebar();
+    renderDetail();
+  }
+
+  function selectScope(scope) {
+    var group = habitLocatorGroups().find(function (g) { return g.scope === scope; });
+    if (!group || !group.schemes.length) return;
+    var prefer = group.schemes.find(function (s) { return s.id === state.activeSchemeId; })
+      || group.schemes.find(function (s) { return s.id === state.habitsFocusSchemeId; })
+      || group.schemes[0];
+    state.habitsFocusSchemeId = prefer.id;
+    render();
+  }
+
+  document.getElementById('appList').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-scope]');
+    if (!row) return;
+    selectScope(row.getAttribute('data-scope'));
+  });
+
+  document.getElementById('search').addEventListener('input', function (e) {
+    state.search = e.target.value || '';
+    renderSidebar();
+  });
+
+  document.getElementById('detail').addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-focus-scheme]');
+    if (chip) {
+      state.habitsFocusSchemeId = chip.getAttribute('data-focus-scheme');
+      render();
+      return;
+    }
+    var nav = e.target.closest('[data-nav-scene]');
+    if (nav) {
+      navigate(nav.getAttribute('data-nav-scene'), nav.getAttribute('data-nav-action') || '');
+      return;
+    }
+    if (e.target.id === 'btnActivate') {
+      state.activeSchemeId = state.habitsFocusSchemeId;
+      showToast('activeSchemeId → <code>' + state.activeSchemeId + '</code>（前台生效）');
+      render();
+      return;
+    }
+    if (e.target.id === 'btnDelete') {
+      var s = focusScheme();
+      if (!s || schemes.length <= 1) return;
+      var sameApp = schemes.filter(function (x) { return x.appGroupId === s.appGroupId; });
+      if (sameApp.length <= 1 && schemes.length <= 1) return;
+      var idx = schemes.indexOf(s);
+      schemes.splice(idx, 1);
+      if (state.activeSchemeId === s.id) state.activeSchemeId = schemes[0].id;
+      state.habitsFocusSchemeId = schemes[Math.max(0, idx - 1)] ? schemes[Math.max(0, idx - 1)].id : schemes[0].id;
+      showToast('已删除习惯（demo）');
+      render();
+    }
+  });
+
+  document.getElementById('detail').addEventListener('change', function (e) {
+    if (e.target.id !== 'enToggle') return;
+    var s = focusScheme();
+    if (!s) return;
+    s.enabled = !!e.target.checked;
+    showToast('scheme.enabled = <code>' + s.enabled + '</code>');
+    render();
+  });
+
+  document.getElementById('detail').addEventListener('blur', function (e) {
+    if (e.target.id !== 'hdrName') return;
+    var s = focusScheme();
+    if (!s) return;
+    var name = String(e.target.textContent || '').trim() || s.name;
+    s.name = name;
+    e.target.textContent = name;
+    renderSidebar();
+  }, true);
+
+  document.getElementById('btnFrontNew').addEventListener('click', function () {
+    var front = 'cursor';
+    var existing = schemes.filter(function (s) { return s.appGroupId === front; });
+    if (existing.length) {
+      var ok = window.confirm('前台 Cursor 已有 ' + existing.length + ' 条习惯。仍要新建？');
+      if (!ok) return;
+    }
+    var id = 'sch-new-' + Date.now();
+    schemes.push({
+      id: id,
+      name: 'Cursor · 新习惯',
+      appGroupId: front,
+      enabled: true,
+      keys: { trigger: '', target: '', finish: '' },
+      voiceWakeCommands: [],
+      camera: { enabled: false, blink: false, fist: false, shake: false, away: false, return: false, palm: false },
+      softPad: []
+    });
+    state.habitsFocusSchemeId = id;
+    showToast('addSchemeForFrontmost → 新建 <code>' + id + '</code>（待补键位）');
+    render();
+  });
+
+  render();
+
+  // Self-check: projection invariants
+  (function selfCheck() {
+    var snap = HabitChannelSnapshot_make(schemeById('sch-global'));
+    console.assert(snap.channels.voice.tone === 'idle' && snap.channels.voice.actions[0] && snap.channels.voice.actions[0].muted, 'global voice inherits');
+    var cur = HabitChannelSnapshot_make(schemeById('sch-cursor-main'));
+    console.assert(cur.configuredActionCount === cur.channels.key.actions.length + cur.channels.voice.actions.filter(function (a) { return !a.muted; }).length + cur.channels.cam.actions.length + cur.channels.pad.actions.length, 'badge count');
+    var chrome = HabitChannelSnapshot_make(schemeById('sch-chrome'));
+    console.assert(chrome.channels.key.tone === 'idle' && chrome.channels.key.actions.length === 0, 'disabled chrome key idle');
+    var notion = HabitChannelSnapshot_make(schemeById('sch-notion'));
+    console.assert(notion.channels.key.tone === 'attention' && notion.hasAttention, 'notion missing target → attention');
+  })();
+})();
+</script>
+</body>
+</html>

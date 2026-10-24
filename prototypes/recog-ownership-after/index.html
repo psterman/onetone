@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>识别归属 · 旧·三页示意（对照）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8;
+  --voice:#5b4d8a; --voice-soft:#f0edf7;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --warn:#b45309; --warn-soft:#fff7ed; --warn-bd:#fdba74;
+  --pad-shell:#1a2433; --pad-shell-2:#2a3544;
+  --key-top:#fff; --key-bot:#eef2f6;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.dir{display:flex;gap:4px;flex-wrap:wrap}
+.dir button{
+  border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+  border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+}
+.dir button.on{background:var(--cyan);border-color:transparent;color:#fff}
+.mode{display:flex;gap:4px;margin-left:auto}
+.mode button{
+  border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+  border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+}
+.mode button.on{background:#0284c7;color:#fff;border-color:transparent}
+
+.page{width:min(1280px,100%);margin:0 auto;padding:16px 14px 72px}
+.brief{
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:90ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+}
+.brief .chips span.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-bd)}
+.brief .chips span.ok{background:var(--ok-soft);color:var(--ok);border-color:#86efac}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);
+}
+
+/* ── 统一归属条（三页同形）── */
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f4f8fb);
+}
+.scope-bar .brand{font-size:15px;font-weight:800}
+.scope-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.scope-pill b{color:var(--ink);font-weight:800}
+.scope-pill.edit{border-color:rgba(42,156,196,.4);background:var(--cyan-soft);color:var(--cyan-ink)}
+.scope-pill.live{border-color:#86efac;background:var(--ok-soft);color:var(--ok)}
+.scope-pill.lane{border-color:rgba(24,113,68,.3);background:var(--pad-soft);color:var(--pad)}
+.scope-bar .rule{
+  margin-left:auto;font-size:11px;font-weight:650;color:var(--faint);max-width:42ch;
+}
+
+.desk{
+  display:grid;
+  grid-template-columns:minmax(200px,220px) minmax(0,1fr) minmax(280px,320px);
+  min-height:560px;
+}
+@media(max-width:960px){.desk{grid-template-columns:1fr}}
+
+.rail{
+  background:var(--rail);border-right:1px solid var(--line);
+  padding:8px 4px;display:flex;flex-direction:column;overflow:auto;
+}
+.rail .sec{
+  margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+}
+.rail .item{
+  appearance:none;display:block;width:100%;margin:1px 0;padding:8px 10px;
+  border:0;border-radius:9px;background:transparent;font:inherit;
+  font-size:12.5px;font-weight:650;color:var(--mute);text-align:left;cursor:pointer;
+}
+.rail .item:hover{background:rgba(255,255,255,.55)}
+.rail .item.is-on{
+  background:#fff;color:var(--cyan-ink);
+  box-shadow:inset 3px 0 0 var(--cyan),0 0 0 1px rgba(42,156,196,.2);
+}
+.rail .item .sub{display:block;font-size:10px;font-weight:600;color:var(--faint);margin-top:1px}
+.rail .item.is-on .sub{color:rgba(15,95,122,.7)}
+.rail .item.is-ghost{
+  opacity:.55;cursor:default;
+}
+.rail .item.is-ghost:hover{background:transparent}
+.rail .owner-note{
+  margin:10px 8px 4px;padding:10px;border-radius:10px;
+  background:#fff;border:1px dashed var(--cyan-bd);
+  font-size:11.5px;color:var(--mute);line-height:1.45;
+}
+.rail .owner-note b{color:var(--cyan-ink)}
+.rail .owner-note a{
+  display:inline-block;margin-top:6px;color:var(--cyan-ink);font-weight:750;text-decoration:none;
+}
+.rail .owner-note a:hover{text-decoration:underline}
+
+.mid{
+  background:var(--wash);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto;
+}
+.mid-hint{margin:0;font-size:11.5px;font-weight:550;color:var(--mute);line-height:1.4}
+.mid-hint b{color:var(--cyan-ink);font-weight:750}
+
+.hero{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.hero .cap{
+  width:72px;height:56px;border-radius:12px;
+  background:linear-gradient(180deg,#fff,var(--cyan-soft));
+  border:2px solid rgba(42,156,196,.45);
+  display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--cyan-deep);
+  box-shadow:0 0 0 3px rgba(42,156,196,.15);
+}
+.hero .meta{flex:1;min-width:160px}
+.hero .meta h3{margin:0 0 2px;font-size:14px;font-weight:800}
+.hero .meta p{margin:0;font-size:11.5px;color:var(--mute)}
+.owner-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;font-weight:750;padding:3px 8px;border-radius:999px;
+  border:1px solid var(--line);background:var(--wash);color:var(--mute);
+}
+.owner-tag.keys{background:var(--keys-soft);color:var(--keys);border-color:#9bc6da}
+.owner-tag.voice{background:var(--voice-soft);color:var(--voice);border-color:#c4b8e0}
+.owner-tag.pad{background:var(--pad-soft);color:var(--pad);border-color:#86c9a3}
+.owner-tag.readonly{opacity:.9}
+.owner-tag .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.pad-card{
+  background:rgba(248,250,252,.9);border:1px solid var(--line);border-radius:14px;
+  padding:12px 10px 14px;max-width:340px;margin:0 auto;width:100%;
+}
+.pad-card .lbl{
+  margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(42,156,196,.88);text-align:center;
+}
+.pad-shell{
+  width:100%;max-width:240px;margin:0 auto;padding:12px;border-radius:22px;
+  background:
+    radial-gradient(120% 80% at 50% 0%,rgba(42,156,196,.18),transparent 55%),
+    linear-gradient(165deg,var(--pad-shell-2),var(--pad-shell));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 28px rgba(0,0,0,.22);
+}
+.pad-face{background:rgba(248,250,252,.94);border-radius:14px;padding:8px}
+.pad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;aspect-ratio:4/5}
+.key{
+  border-radius:10px;border:1px solid rgba(15,27,42,.1);
+  background:linear-gradient(180deg,var(--key-top),var(--key-bot));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  font-size:9.5px;font-weight:750;color:var(--mute);cursor:pointer;
+  box-shadow:inset 0 1px 0 #fff;min-height:0;padding:4px 2px;
+}
+.key .k{font-size:10px;font-weight:800;color:var(--ink)}
+.key .a{font-size:8.5px;font-weight:650;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.key.is-on{
+  border-color:rgba(42,156,196,.55);
+  box-shadow:0 0 0 2px rgba(42,156,196,.35),inset 0 1px 0 #fff;
+  background:linear-gradient(180deg,#fff,var(--cyan-soft));
+}
+.key.is-on .k{color:var(--cyan-deep)}
+
+.bind-panel{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+}
+.bind-panel h4{margin:0 0 4px;font-size:13px;font-weight:800}
+.bind-panel .sub{margin:0 0 10px;font-size:11.5px;color:var(--mute)}
+.bind-row{
+  display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--line);background:var(--wash);margin:0 0 6px;
+}
+.bind-row.is-on{border-color:rgba(42,156,196,.45);background:var(--cyan-soft);box-shadow:inset 3px 0 0 var(--cyan)}
+.bind-row.is-ref{background:#fff;border-style:dashed}
+.bind-row .nm{flex:1;min-width:0;font-size:13px;font-weight:700}
+.bind-row .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--faint);margin-top:1px;font-family:var(--mono)}
+.bind-row .act{
+  appearance:none;border:1px solid var(--cyan-bd);background:#fff;color:var(--cyan-ink);
+  border-radius:8px;padding:5px 9px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;white-space:nowrap;
+}
+.bind-row .act.ghost{
+  border-color:var(--line);color:var(--mute);background:transparent;
+}
+.bind-row .act.ghost:hover{border-color:var(--cyan-bd);color:var(--cyan-ink)}
+
+.mid-stage{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.95fr);gap:12px;align-items:start;
+}
+@media(max-width:720px){.mid-stage{grid-template-columns:1fr}}
+
+.habits{
+  background:var(--rail);border-left:1px solid var(--line);
+  padding:10px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+}
+.habits .lbl{
+  margin:2px 2px 0;font-size:10px;font-weight:750;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--faint);
+}
+.app-bind{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;
+  background:#fff;border:1px solid var(--line);
+}
+.app-bind .ico{
+  width:28px;height:28px;border-radius:8px;background:var(--cyan-soft);
+  display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--cyan-ink);
+}
+.app-bind .nm{flex:1;font-size:13px;font-weight:750}
+.app-bind .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--faint)}
+.act-list{display:flex;flex-direction:column;gap:4px}
+.act-item{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;
+  background:#fff;border:1px solid var(--line);font-size:12px;font-weight:650;
+}
+.act-item .ch{
+  font-size:10px;font-weight:750;padding:2px 6px;border-radius:6px;
+  background:var(--wash);color:var(--mute);
+}
+.act-item .ch.pad{background:var(--pad-soft);color:var(--pad)}
+.act-item .ch.keys{background:var(--keys-soft);color:var(--keys)}
+.act-item .ch.voice{background:var(--voice-soft);color:var(--voice)}
+
+.ref-banner{
+  display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+  border-radius:12px;border:1px dashed var(--cyan-bd);background:#fff;
+}
+.ref-banner strong{display:block;font-size:13px;font-weight:800;margin-bottom:2px}
+.ref-banner p{margin:0;font-size:12px;color:var(--mute);line-height:1.45}
+.ref-banner .go{
+  flex-shrink:0;appearance:none;border:0;background:var(--cyan);color:#fff;
+  border-radius:9px;padding:8px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;white-space:nowrap;
+}
+
+.compare{
+  display:none;margin-top:14px;padding:14px;border-radius:14px;
+  background:#0f1820;color:#c5d0de;font-size:12.5px;line-height:1.5;
+}
+body.show-before .compare{display:block}
+.compare h2{margin:0 0 8px;font-size:13px;font-weight:800;color:#7dd3fc;letter-spacing:.04em;text-transform:uppercase}
+.compare .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:720px){.compare .cols{grid-template-columns:1fr}}
+.compare .col{background:rgba(255,255,255,.04);border-radius:10px;padding:12px}
+.compare .col h3{margin:0 0 6px;font-size:13px;font-weight:800;color:#fff}
+.compare ul{margin:0;padding-left:18px}
+.compare li{margin:4px 0}
+.compare .bad{color:#fda4af}
+.compare .good{color:#86efac}
+
+.panel{display:none}
+.panel.is-on{display:block}
+
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:#1a2230;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  box-shadow:0 8px 28px rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:.2s;z-index:40;
+  max-width:min(520px,92vw);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>识别归属 · 旧·三页对照</strong>
+  <em>对照用 · 正式示意见「单页三 Tab」</em>
+  <div class="dir" role="tablist" aria-label="设置页">
+    <button type="button" class="on" data-page="pad">软键盘</button>
+    <button type="button" data-page="keys">按键设置</button>
+    <button type="button" data-page="voice">语音设置</button>
+  </div>
+  <div class="mode">
+    <button type="button" class="on" id="btnAfter" type="button">修改后</button>
+    <button type="button" id="btnBefore">对照现状问题</button>
+    <a href="./unified-tabs.html" style="margin-left:6px;color:#5eead4;font-weight:700;text-decoration:none;border:1px solid rgba(94,234,212,.45);border-radius:9px;padding:6px 11px;font-size:12px">你要的 · 单页三 Tab</a>
+    <a href="./compare-wanted-vs-built.html" style="color:#7dd3fc;font-weight:700;text-decoration:none;border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;font-size:12px">方案对比</a>
+    <a href="./novice-command-card.html" style="color:#86efac;font-weight:700;text-decoration:none;border:1px solid rgba(134,239,172,.4);border-radius:9px;padding:6px 11px;font-size:12px">小白 · 命令卡</a>
+  </div>
+</header>
+
+<main class="page">
+  <div class="brief">
+    <h1 id="briefTitle">软键盘：只编屏幕键位</h1>
+    <p id="briefBody">左轨不再伪装六条「识别」通道。本页权威编辑 Soft Pad 盘面；其它通道命令以只读引用出现，带所有者标签，一点跳到权威页。</p>
+    <div class="chips" id="briefChips">
+      <span class="ok">一动作一权威面</span>
+      <span>跨通道只读 + 所有者</span>
+      <span>三页同形归属条</span>
+    </div>
+  </div>
+
+  <!-- ═══ Soft Pad ═══ -->
+  <section class="frame panel is-on" id="panelPad" data-panel="pad">
+    <div class="scope-bar">
+      <span class="brand">软键盘</span>
+      <span class="scope-pill edit">正在编辑 <b>Cursor · Agent</b></span>
+      <span class="scope-pill live">正在使用 <b>通用</b></span>
+      <span class="scope-pill lane">Soft Pad 车道 <b>Auto · Cursor</b></span>
+      <span class="rule">按键/语音跟「正在使用」；盘面跟 Auto 车道 — 条上写清，不靠记</span>
+    </div>
+    <div class="desk">
+      <aside class="rail">
+        <div class="sec">本页可编辑</div>
+        <button type="button" class="item is-on">屏幕按钮<span class="sub">Soft Pad 盘面 · 权威</span></button>
+        <div class="sec">其它通道（只读入口）</div>
+        <button type="button" class="item is-ghost" data-jump="keys" title="去按键设置">口头 / 听写 / 录键<span class="sub">所有者 · 按键设置 →</span></button>
+        <button type="button" class="item is-ghost" data-jump="voice" title="去语音设置">说法与引擎<span class="sub">所有者 · 语音设置 →</span></button>
+        <div class="owner-note">
+          <b>不再</b>用六条「识别」tab 假装本页可编。<br>
+          想改识别键或说法，走下方链接。
+          <a href="#" data-jump="keys">打开按键设置 →</a>
+        </div>
+      </aside>
+      <div class="mid">
+        <p class="mid-hint">点预览键帽 → 右侧改<strong>本盘绑定</strong>。加载到实体识别键请去按键页。</p>
+        <div class="mid-stage">
+          <div class="pad-card">
+            <p class="lbl">预览 · Cursor</p>
+            <div class="pad-shell"><div class="pad-face"><div class="pad-grid" id="padGrid"></div></div></div>
+          </div>
+          <div class="bind-panel">
+            <h4>AG02 · 继续回复</h4>
+            <p class="sub">权威所有者 · <span class="owner-tag pad"><span class="dot"></span>软键盘</span></p>
+            <div class="bind-row is-on">
+              <div class="nm">屏幕键位 AG02<small>codexMicroPad.keys</small></div>
+              <button type="button" class="act">改绑定</button>
+            </div>
+            <div class="bind-row is-ref">
+              <div class="nm">若也要实体键触发<small>识别键在按键页 · 只读引用</small></div>
+              <span class="owner-tag keys readonly"><span class="dot"></span>按键</span>
+              <button type="button" class="act ghost" data-jump="keys">去按键页 →</button>
+            </div>
+            <div class="bind-row is-ref">
+              <div class="nm">口头说法「继续」<small>voice 绑定 · 只读引用</small></div>
+              <span class="owner-tag voice readonly"><span class="dot"></span>语音</span>
+              <button type="button" class="act ghost" data-jump="voice">去语音页 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="habits">
+        <div class="lbl">应用场景</div>
+        <div class="app-bind">
+          <div class="ico">Cu</div>
+          <div class="nm">Cursor<small>Agent · Soft Pad 主控</small></div>
+        </div>
+        <div class="lbl">本盘动作</div>
+        <div class="act-list">
+          <div class="act-item"><span class="ch pad">盘</span>继续回复</div>
+          <div class="act-item"><span class="ch pad">盘</span>新建对话</div>
+          <div class="act-item"><span class="ch keys">键</span>粘贴发送 · 引用</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═══ Keys ═══ -->
+  <section class="frame panel" id="panelKeys" data-panel="keys">
+    <div class="scope-bar">
+      <span class="brand">按键设置</span>
+      <span class="scope-pill edit">正在编辑 <b>Cursor · Agent</b></span>
+      <span class="scope-pill live">正在使用 <b>通用</b></span>
+      <span class="scope-pill lane">Soft Pad 车道 <b>Auto · Cursor</b></span>
+      <span class="rule">本页权威：触发键 + 识别键帽 + 通道命令录入</span>
+    </div>
+    <div class="desk">
+      <aside class="rail">
+        <div class="sec">识别通道 · 本页权威</div>
+        <button type="button" class="item">输入法</button>
+        <button type="button" class="item">我录的键</button>
+        <button type="button" class="item is-on">软键盘能力<span class="sub">加载到识别键</span></button>
+        <button type="button" class="item">口头</button>
+        <button type="button" class="item">手势</button>
+        <div class="owner-note">
+          Soft Pad <b>盘面布局</b>不在这里改。<br>
+          <a href="#" data-jump="pad">打开软键盘 →</a>
+        </div>
+      </aside>
+      <div class="mid">
+        <p class="mid-hint">点 Soft Pad 键帽 → <strong>加载到识别键</strong>（本页权威）。盘面绑定回软键盘页改。</p>
+        <div class="hero">
+          <div class="cap">AG02</div>
+          <div class="meta">
+            <h3>识别键 · 继续回复</h3>
+            <p>来源通道 Soft Pad · 实体触发待录</p>
+          </div>
+          <span class="owner-tag keys"><span class="dot"></span>按键 · 权威</span>
+          <span class="owner-tag pad readonly"><span class="dot"></span>盘面在软键盘</span>
+        </div>
+        <div class="mid-stage">
+          <div class="pad-card">
+            <p class="lbl">从 Soft Pad 选能力（只读预览）</p>
+            <div class="pad-shell"><div class="pad-face"><div class="pad-grid" id="padGridKeys"></div></div></div>
+          </div>
+          <div class="bind-panel">
+            <h4>识别键绑定</h4>
+            <p class="sub">改盘面 → 软键盘；改说法 → 语音；本页只管识别键与触发。</p>
+            <div class="bind-row is-on">
+              <div class="nm">加载 AG02 → 识别键<small>captureHeroRef · softPad</small></div>
+              <button type="button" class="act" id="btnLoadHero">录触发键</button>
+            </div>
+            <div class="ref-banner" style="margin-top:10px">
+              <div>
+                <strong>盘面布局归软键盘</strong>
+                <p>这里点键帽只影响识别键，不改 Soft Pad 屏幕布局。</p>
+              </div>
+              <button type="button" class="go" data-jump="pad">去软键盘 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="habits">
+        <div class="lbl">应用场景</div>
+        <div class="app-bind">
+          <div class="ico">Cu</div>
+          <div class="nm">Cursor<small>与软键盘同一编辑习惯</small></div>
+        </div>
+        <div class="lbl">本习惯通道动作</div>
+        <div class="act-list">
+          <div class="act-item"><span class="ch keys">键</span>识别键 · AG02</div>
+          <div class="act-item"><span class="ch voice">语</span>继续 · 引用</div>
+          <div class="act-item"><span class="ch pad">盘</span>继续回复 · 引用</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═══ Voice ═══ -->
+  <section class="frame panel" id="panelVoice" data-panel="voice">
+    <div class="scope-bar">
+      <span class="brand">语音设置</span>
+      <span class="scope-pill edit">正在编辑 <b>Cursor · Agent</b></span>
+      <span class="scope-pill live">正在使用 <b>通用</b></span>
+      <span class="scope-pill lane">Soft Pad 车道 <b>Auto · Cursor</b></span>
+      <span class="rule">本页权威：说法 / 引擎；识别键与盘面只读引用</span>
+    </div>
+    <div class="desk">
+      <aside class="rail">
+        <div class="sec">本页可编辑</div>
+        <button type="button" class="item is-on">口头命令<span class="sub">说法 · 权威</span></button>
+        <button type="button" class="item">听写 / 引擎</button>
+        <div class="sec">从其它通道加载（只读目录）</div>
+        <button type="button" class="item is-ghost" data-jump="keys">按键动作库 →</button>
+        <button type="button" class="item is-ghost" data-jump="pad">Soft Pad 能力 →</button>
+        <div class="owner-note">
+          Soft Pad 归属的动作<strong>仍显示</strong>，标「盘面所有者」，不再从列表消失。
+        </div>
+      </aside>
+      <div class="mid">
+        <p class="mid-hint">点选动作只<strong>挂说法</strong>；不在本页录识别键。Soft Pad 行可见且标明所有者。</p>
+        <div class="bind-panel">
+          <h4>动作库 · 挂说法</h4>
+          <p class="sub">同一动作可出现；编辑识别 / 盘面走所有者链接。</p>
+          <div class="bind-row is-on">
+            <div class="nm">继续回复<small>说法「继续」「接着写」</small></div>
+            <span class="owner-tag voice"><span class="dot"></span>语音 · 权威</span>
+            <button type="button" class="act">改说法</button>
+          </div>
+          <div class="bind-row is-ref">
+            <div class="nm">继续回复 · Soft Pad AG02<small>盘面绑定 · 可见引用（不再隐藏）</small></div>
+            <span class="owner-tag pad readonly"><span class="dot"></span>软键盘</span>
+            <button type="button" class="act ghost" data-jump="pad">去软键盘 →</button>
+          </div>
+          <div class="bind-row is-ref">
+            <div class="nm">识别键 Vol-<small>实体触发 · 只读引用</small></div>
+            <span class="owner-tag keys readonly"><span class="dot"></span>按键</span>
+            <button type="button" class="act ghost" data-jump="keys">去按键页 →</button>
+          </div>
+        </div>
+        <div class="ref-banner">
+          <div>
+            <strong>还没设触发键？</strong>
+            <p>口头说法在本页；启动键与识别键在按键设置。</p>
+          </div>
+          <button type="button" class="go" data-jump="keys">按键设置 →</button>
+        </div>
+      </div>
+      <aside class="habits">
+        <div class="lbl">应用场景</div>
+        <div class="app-bind">
+          <div class="ico">Cu</div>
+          <div class="nm">Cursor<small>三页同一编辑习惯</small></div>
+        </div>
+        <div class="lbl">说法</div>
+        <div class="act-list">
+          <div class="act-item"><span class="ch voice">语</span>继续 → 继续回复</div>
+          <div class="act-item"><span class="ch voice">语</span>新建 → 新建对话</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="compare" id="compareBox">
+    <h2>现状问题对照（点「对照现状问题」时显示）</h2>
+    <div class="cols">
+      <div class="col">
+        <h3 class="bad">修改前</h3>
+        <ul>
+          <li>Soft Pad 左轨六条「识别」tab，大多是假编辑器 / deeplink</li>
+          <li>同一动作在语音列表因 Soft Pad 归属被滤掉 → 忽隐忽现</li>
+          <li>正在编辑 / 正在使用 / Soft Pad 车道靠用户自己记</li>
+          <li>「已加载到识别键」发生在按键语义，盘面却在 Soft Pad</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3 class="good">修改后（本页）</h3>
+        <ul>
+          <li>Soft Pad 只留「屏幕按钮」权威轨；其它通道诚实只读入口</li>
+          <li>跨通道行始终可见，带所有者标签 + 跳转</li>
+          <li>三页顶栏同形：编辑 / 使用 / Soft Pad 车道</li>
+          <li>一动作一权威面；其它页只引用不双编</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var KEYS = [
+    { id: 'AG01', a: '新建', on: false },
+    { id: 'AG02', a: '继续', on: true },
+    { id: 'AG03', a: '收起', on: false },
+    { id: '7', a: '会话1', on: false },
+    { id: '8', a: '会话2', on: false },
+    { id: '9', a: '会话3', on: false },
+    { id: '6', a: '发送', on: false },
+    { id: 'ESC', a: '取消', on: false },
+    { id: 'FN', a: '更多', on: false },
+    { id: '1', a: '', on: false },
+    { id: '2', a: '', on: false },
+    { id: '3', a: '', on: false }
+  ];
+
+  var COPY = {
+    pad: {
+      title: '软键盘：只编屏幕键位',
+      body: '左轨不再伪装六条「识别」通道。本页权威编辑 Soft Pad 盘面；其它通道命令以只读引用出现，带所有者标签，一点跳到权威页。',
+      chips: ['ok:一动作一权威面', '跨通道只读 + 所有者', '三页同形归属条']
+    },
+    keys: {
+      title: '按键设置：识别键权威面',
+      body: '触发键与识别键帽只在本页改。Soft Pad 盘面以只读预览出现；想改布局走「去软键盘」。归属条与软键盘 / 语音同形。',
+      chips: ['ok:识别键本页权威', '盘面只读预览', '三页同形归属条']
+    },
+    voice: {
+      title: '语音设置：说法权威面',
+      body: '本页只挂说法与引擎。Soft Pad 归属动作仍显示并标所有者（不再静默过滤）。识别键 / 盘面只读跳转。',
+      chips: ['ok:Soft Pad 行可见', '说法本页权威', '三页同形归属条']
+    }
+  };
+
+  function paintPad(hostId) {
+    var g = document.getElementById(hostId);
+    if (!g) return;
+    g.innerHTML = KEYS.map(function (k) {
+      return (
+        '<button type="button" class="key' +
+        (k.on ? ' is-on' : '') +
+        '" data-key="' +
+        k.id +
+        '"><span class="k">' +
+        k.id +
+        '</span><span class="a">' +
+        (k.a || '·') +
+        '</span></button>'
+      );
+    }).join('');
+  }
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () {
+      el.classList.remove('show');
+    }, 2200);
+  }
+
+  function setPage(id) {
+    document.querySelectorAll('.dir button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-page') === id);
+    });
+    document.querySelectorAll('.panel').forEach(function (p) {
+      p.classList.toggle('is-on', p.getAttribute('data-panel') === id);
+    });
+    var c = COPY[id] || COPY.pad;
+    document.getElementById('briefTitle').textContent = c.title;
+    document.getElementById('briefBody').textContent = c.body;
+    document.getElementById('briefChips').innerHTML = c.chips
+      .map(function (s) {
+        var warn = s.indexOf('warn:') === 0;
+        var ok = s.indexOf('ok:') === 0;
+        var t = s.replace(/^(ok|warn):/, '');
+        return (
+          '<span class="' +
+          (ok ? 'ok' : warn ? 'warn' : '') +
+          '">' +
+          t +
+          '</span>'
+        );
+      })
+      .join('');
+  }
+
+  paintPad('padGrid');
+  paintPad('padGridKeys');
+
+  document.querySelector('.dir').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-page]');
+    if (!b) return;
+    setPage(b.getAttribute('data-page'));
+  });
+
+  document.body.addEventListener('click', function (e) {
+    var jump = e.target.closest('[data-jump]');
+    if (jump) {
+      e.preventDefault();
+      var to = jump.getAttribute('data-jump');
+      setPage(to);
+      toast('已跳到权威页 · ' + (to === 'pad' ? '软键盘' : to === 'keys' ? '按键设置' : '语音设置'));
+    }
+  });
+
+  document.getElementById('btnAfter').addEventListener('click', function () {
+    document.body.classList.remove('show-before');
+    this.classList.add('on');
+    document.getElementById('btnBefore').classList.remove('on');
+  });
+  document.getElementById('btnBefore').addEventListener('click', function () {
+    document.body.classList.add('show-before');
+    this.classList.add('on');
+    document.getElementById('btnAfter').classList.remove('on');
+    document.getElementById('compareBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  document.getElementById('btnLoadHero') &&
+    document.getElementById('btnLoadHero').addEventListener('click', function () {
+      toast('识别键权威在按键页 · 已进入录制（示意）');
+    });
+})();
+</script>
+</body>
+</html>

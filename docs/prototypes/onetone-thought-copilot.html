@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>OneTone 思路副驾</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #e8ece9;
+      --shell: #f5f7f4;
+      --paper: #fffefa;
+      --surface: #ffffff;
+      --surface-soft: #f0f3ef;
+      --ink: #17231f;
+      --ink-2: #3d4b46;
+      --muted: #69756f;
+      --line: #d7ddd9;
+      --line-strong: #bdc8c2;
+      --green: #176d5d;
+      --green-dark: #0d5649;
+      --green-soft: #dceee7;
+      --amber: #81571e;
+      --amber-soft: #f8edd9;
+      --red: #913f39;
+      --red-soft: #f8e9e7;
+      --blue: #315f7a;
+      --blue-soft: #e4eff4;
+      --shadow: 0 28px 80px rgba(28, 43, 36, .16);
+      --radius: 12px;
+      --motion-fast: 140ms;
+      --motion-base: 220ms;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.55 "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, select, input { font: inherit; }
+    button, select, label { touch-action: manipulation; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 3px solid rgba(23, 109, 93, .26);
+      outline-offset: 2px;
+    }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    .app {
+      width: min(1500px, calc(100% - 24px));
+      min-height: calc(100dvh - 24px);
+      margin: 12px auto;
+      overflow: hidden;
+      border: 1px solid rgba(23, 35, 31, .1);
+      border-radius: 16px;
+      background: var(--shell);
+      box-shadow: var(--shadow);
+    }
+
+    .topbar {
+      min-height: 64px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .92);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 190px; }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: var(--ink);
+      color: #c8eee4;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .brand b { display: block; font-size: 15px; letter-spacing: -.02em; }
+    .brand span { display: block; color: var(--muted); font-size: 11px; }
+    .crumb { min-width: 0; flex: 1; color: var(--muted); }
+    .crumb strong { color: var(--ink-2); }
+    .model-pair { display: flex; align-items: center; gap: 7px; }
+    .model-label { color: var(--muted); font-size: 11px; }
+    .model-node {
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .model-link { color: var(--muted); font-size: 12px; }
+    .model-pair select {
+      min-height: 34px;
+      padding: 5px 28px 5px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .independence {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--green-dark);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .independence::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .workspace {
+      min-height: calc(100dvh - 89px);
+      display: grid;
+      grid-template-columns: 216px minmax(560px, 1fr) 354px;
+    }
+
+    .mode-rail {
+      padding: 18px 12px;
+      border-right: 1px solid var(--line);
+      background: #eef1ee;
+    }
+    .rail-kicker, .panel-kicker {
+      margin: 0 8px 9px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .mode-list { display: grid; gap: 4px; }
+    .mode-button {
+      min-height: 52px;
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: 25px 1fr;
+      gap: 9px;
+      align-items: start;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink-2);
+      text-align: left;
+    }
+    .mode-button:hover { background: rgba(255, 255, 255, .7); }
+    .mode-button[aria-selected="true"] {
+      border-color: #b7d1c8;
+      background: var(--surface);
+      color: var(--green-dark);
+      box-shadow: 0 5px 15px rgba(30, 64, 51, .06);
+    }
+    .mode-index {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #dde3df;
+      color: var(--muted);
+      font: 700 11px/1 Consolas, monospace;
+    }
+    .mode-button[aria-selected="true"] .mode-index {
+      background: var(--green-soft);
+      color: var(--green-dark);
+    }
+    .mode-name { display: block; font-size: 13px; font-weight: 760; }
+    .mode-help { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .rail-divider { height: 1px; margin: 17px 8px; background: var(--line); }
+    .skill-mini { margin: 0 8px; }
+    .skill-mini b { display: block; font-size: 12px; }
+    .skill-mini p { margin: 4px 0 10px; color: var(--muted); font-size: 11px; }
+    .skill-count { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
+    .skill-count strong { color: var(--green-dark); font: 800 18px/1 Consolas, monospace; }
+
+    .main-pane { min-width: 0; background: var(--paper); }
+    .brief-head {
+      padding: 22px 26px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 254, 250, .95);
+    }
+    .brief-row { display: flex; align-items: flex-start; gap: 16px; }
+    .brief-copy { min-width: 0; flex: 1; }
+    .eyebrow { margin: 0 0 5px; color: var(--green-dark); font-size: 11px; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(22px, 2.3vw, 30px); line-height: 1.2; letter-spacing: -.035em; }
+    .brief-meta { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+    .brief-meta span { margin-right: 12px; }
+    .run-button {
+      min-height: 42px;
+      padding: 9px 16px;
+      border: 1px solid var(--green);
+      border-radius: 10px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 780;
+      box-shadow: 0 6px 16px rgba(23, 109, 93, .17);
+      transition: background var(--motion-fast), transform var(--motion-fast);
+    }
+    .run-button:hover { background: var(--green-dark); }
+    .run-button:active { transform: translateY(1px); }
+    .brief-summary {
+      margin-top: 16px;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 18px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .summary-block b { display: block; margin-bottom: 3px; font-size: 11px; color: var(--muted); }
+    .summary-block p { margin: 0; color: var(--ink-2); font-size: 13px; }
+    .addition-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+    .addition {
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .addition-empty { color: var(--muted); font-size: 12px; }
+
+    .results { padding: 20px 26px 44px; }
+    .results-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 13px; }
+    .results-head h2 { margin: 0; font-size: 17px; }
+    .results-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .review-stamp {
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 10px;
+      font-weight: 740;
+    }
+    .review-stamp::before { content: "副驾建议 · "; color: var(--green-dark); }
+    .result-list { border-top: 1px solid var(--line-strong); }
+    .result-card { padding: 17px 2px 16px; border-bottom: 1px solid var(--line); }
+    .result-card.resolved { opacity: .67; }
+    .result-top { display: grid; grid-template-columns: 27px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+    .result-number {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font: 800 11px/1 Consolas, monospace;
+    }
+    .result-card[data-severity="high"] .result-number { background: var(--red-soft); color: var(--red); }
+    .result-card[data-severity="medium"] .result-number { background: var(--amber-soft); color: var(--amber); }
+    .result-card[data-severity="low"] .result-number { background: var(--blue-soft); color: var(--blue); }
+    .result-title { margin: 0; font-size: 14px; line-height: 1.4; }
+    .result-section { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .confidence { color: var(--muted); font: 700 11px/1.4 Consolas, monospace; white-space: nowrap; }
+    .result-body { margin: 10px 37px 0; color: var(--ink-2); }
+    .result-body p { margin: 0 0 8px; }
+    .evidence {
+      padding-left: 10px;
+      border-left: 2px solid var(--line-strong);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .result-actions { margin: 12px 37px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .action-button {
+      min-height: 31px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-2);
+      font-size: 11px;
+      font-weight: 700;
+      transition: background var(--motion-fast), border-color var(--motion-fast);
+    }
+    .action-button:hover { border-color: #95b6aa; background: var(--green-soft); color: var(--green-dark); }
+    .action-button.primary-action { border-color: #aac9be; background: var(--green-soft); color: var(--green-dark); }
+    .action-button.reject:hover { border-color: #d7aaa6; background: var(--red-soft); color: var(--red); }
+    .resolved-note { margin: 9px 37px 0; color: var(--green-dark); font-size: 11px; font-weight: 700; }
+
+    .empty-review { padding: 54px 16px; text-align: center; color: var(--muted); border-top: 1px solid var(--line); }
+    .empty-review strong { display: block; color: var(--ink-2); font-size: 15px; }
+    .empty-review p { max-width: 480px; margin: 7px auto 0; }
+    .loading-review { padding-top: 7px; }
+    .skeleton { height: 82px; margin: 10px 0; border-bottom: 1px solid var(--line); position: relative; overflow: hidden; }
+    .skeleton::before, .skeleton::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      height: 9px;
+      border-radius: 5px;
+      background: #e3e8e4;
+    }
+    .skeleton::before { top: 14px; width: 42%; }
+    .skeleton::after { top: 38px; width: 78%; }
+
+    .side-pane {
+      min-width: 0;
+      border-left: 1px solid var(--line);
+      background: #f0f3f0;
+    }
+    .side-section { padding: 18px; border-bottom: 1px solid var(--line); }
+    .side-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .side-title h2 { margin: 0; font-size: 14px; }
+    .side-title span { color: var(--muted); font-size: 10px; }
+    .context-list { display: grid; gap: 6px; }
+    .context-option {
+      min-height: 43px;
+      padding: 7px 9px;
+      display: grid;
+      grid-template-columns: 17px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .context-option:hover { border-color: var(--line-strong); }
+    .context-option input { width: 16px; height: 16px; accent-color: var(--green); }
+    .context-name { min-width: 0; }
+    .context-name b { display: block; font-size: 12px; }
+    .context-name span { display: block; color: var(--muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .context-state { color: var(--green-dark); font-size: 10px; font-weight: 740; }
+    .context-state.off { color: var(--muted); }
+    .research-note {
+      margin-top: 8px;
+      padding: 9px 10px;
+      border: 1px solid #c9d8df;
+      border-radius: 9px;
+      background: var(--blue-soft);
+      color: #365c70;
+      font-size: 11px;
+    }
+    .research-note b { display: block; margin-bottom: 2px; }
+
+    .skill-list { display: grid; gap: 7px; }
+    .skill-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; align-items: center; }
+    .skill-row b { display: block; font: 700 11px/1.4 Consolas, "Microsoft YaHei UI", monospace; }
+    .skill-row span { display: block; color: var(--muted); font-size: 10px; }
+    .skill-status { color: var(--green-dark); font-size: 10px; font-weight: 760; }
+    .decision-list { display: grid; gap: 8px; max-height: 206px; overflow: auto; }
+    .decision-empty { color: var(--muted); font-size: 11px; }
+    .decision-item { padding-left: 9px; border-left: 2px solid var(--line-strong); }
+    .decision-item b { display: block; font-size: 11px; }
+    .decision-item span { display: block; color: var(--muted); font-size: 10px; }
+    .guardrail {
+      padding: 10px 11px;
+      border: 1px solid #ddc89f;
+      border-radius: 9px;
+      background: var(--amber-soft);
+      color: #694b22;
+      font-size: 11px;
+    }
+    .guardrail b { display: block; margin-bottom: 2px; }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 24px;
+      max-width: min(460px, calc(100% - 32px));
+      padding: 10px 14px;
+      border-radius: 9px;
+      background: var(--ink);
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(15, 27, 22, .24);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity var(--motion-base), transform var(--motion-base);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1160px) {
+      .workspace { grid-template-columns: 190px minmax(500px, 1fr) 312px; }
+      .model-label, .model-node.main-model, .model-link { display: none; }
+      .result-actions { margin-right: 0; }
+    }
+
+    @media (max-width: 900px) {
+      body { font-size: 16px; }
+      .app { width: 100%; min-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+      .topbar { position: sticky; top: 0; z-index: 20; padding: 9px 14px; }
+      .brand { min-width: 0; }
+      .brand span, .crumb, .independence { display: none; }
+      .model-pair { margin-left: auto; }
+      .model-pair select { max-width: 145px; font-size: 12px; }
+      .workspace { min-height: auto; display: block; }
+      .mode-rail { padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+      .rail-kicker, .rail-divider, .skill-mini { display: none; }
+      .mode-list { width: max-content; display: flex; gap: 6px; }
+      .mode-button { min-height: 42px; padding: 7px 10px; display: flex; align-items: center; }
+      .mode-index { flex: none; }
+      .mode-help { display: none; }
+      .brief-head, .results { padding-left: 16px; padding-right: 16px; }
+      .brief-row { display: block; }
+      .run-button { width: 100%; margin-top: 14px; }
+      .brief-summary { grid-template-columns: 1fr; gap: 10px; padding-left: 0; padding-right: 0; }
+      .side-pane { border-left: 0; border-top: 1px solid var(--line); }
+      .side-section { padding: 16px; }
+      .result-top { grid-template-columns: 27px minmax(0, 1fr); }
+      .confidence { grid-column: 2; }
+      .result-body, .result-actions, .resolved-note { margin-left: 37px; }
+      .action-button { min-height: 40px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">OT</span><div><b>OneTone</b><span>思路副驾</span></div></div>
+      <div class="crumb"><strong>首页方案简报</strong> / 第二视角审视</div>
+      <div class="model-pair" aria-label="模型分工">
+        <span class="model-label">主 Agent</span>
+        <span class="model-node main-model">Codex</span>
+        <span class="model-link">＋</span>
+        <label class="model-label" for="modelSelect">副驾</label>
+        <select id="modelSelect" aria-label="选择副驾模型">
+          <option value="deepseek">DeepSeek R1</option>
+          <option value="claude">Claude Sonnet</option>
+          <option value="gemini">Gemini Pro</option>
+        </select>
+      </div>
+      <span class="independence" id="independenceStatus">独立上下文已启用</span>
+    </header>
+
+    <div class="workspace">
+      <nav class="mode-rail" id="modeRail" aria-label="审视方式">
+        <p class="rail-kicker">审视方式</p>
+        <div class="mode-list" role="tablist" aria-orientation="vertical">
+          <button class="mode-button" type="button" role="tab" aria-selected="true" data-mode="gap">
+            <span class="mode-index">01</span><span><span class="mode-name">查漏补缺</span><span class="mode-help">找缺失前提、边界与验收项</span></span>
+          </button>
+          <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="alternatives">
+            <span class="mode-index">02</span><span><span class="mode-name">备选方案</span><span class="mode-help">给出不同路径与取舍依据</span></span>
+          </button>
+          <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="redteam">
+            <span class="mode-index">03</span><span><span class="mode-name">反方评审</span><span class="mode-help">主动寻找反例与失败条件</span></span>
+          </button>
+          <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="competitor">
+            <span class="mode-index">04</span><span><span class="mode-name">竞品参考</span><span class="mode-help">带来源对照，不照抄答案</span></span>
+          </button>
+          <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="plan">
+            <span class="mode-index">05</span><span><span class="mode-name">计划审查</span><span class="mode-help">检查测试、回滚与交付顺序</span></span>
+          </button>
+        </div>
+        <div class="rail-divider"></div>
+        <div class="skill-mini">
+          <b>当前方法库</b>
+          <p>按任务加载，不把所有 Skill 一次塞给模型。</p>
+          <div class="skill-count"><span>已启用</span><strong>4</strong></div>
+        </div>
+      </nav>
+
+      <main class="main-pane" id="mainContent">
+        <section class="brief-head" aria-labelledby="briefTitle">
+          <div class="brief-row">
+            <div class="brief-copy">
+              <p class="eyebrow">当前简报 · v3 已保存</p>
+              <h1 id="briefTitle">让首页成为可复用的开发工作台</h1>
+              <p class="brief-meta"><span>主 Agent：Codex</span><span>6 项素材</span><span>4 条约束</span></p>
+            </div>
+            <button class="run-button" id="runReview" type="button">开始查漏补缺</button>
+          </div>
+          <div class="brief-summary">
+            <div class="summary-block"><b>目标摘要</b><p>把用户的想法、参考与限制整理成可执行简报，再交给主 Agent 开发。</p></div>
+            <div class="summary-block"><b>副驾采纳项</b><div class="addition-list" id="briefAdditions"><span class="addition-empty">尚未采纳建议</span></div></div>
+          </div>
+        </section>
+
+        <section class="results" aria-labelledby="resultsTitle">
+          <div class="results-head">
+            <div><h2 id="resultsTitle">第二视角</h2><p id="resultsSubtitle">选择审视方式后运行，结果不会直接改写你的简报。</p></div>
+            <span class="review-stamp" id="reviewStamp">等待运行</span>
+          </div>
+          <div id="reviewResults" aria-live="polite">
+            <div class="empty-review"><strong>让副驾先提出异议</strong><p>它只会读取右侧已授权的上下文，并把结论标记为建议。你决定哪些内容进入简报。</p></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="side-pane">
+        <section class="side-section" id="contextPanel" aria-labelledby="contextTitle">
+          <div class="side-title"><h2 id="contextTitle">可见上下文</h2><span>最小授权</span></div>
+          <div class="context-list">
+            <label class="context-option"><input type="checkbox" checked data-context="brief"><span class="context-name"><b>当前简报</b><span>目标、约束、验收标准</span></span><span class="context-state">已授权</span></label>
+            <label class="context-option"><input type="checkbox" checked data-context="materials"><span class="context-name"><b>已选素材</b><span>6 项只读引用</span></span><span class="context-state">已授权</span></label>
+            <label class="context-option"><input type="checkbox" checked data-context="memory"><span class="context-name"><b>项目记忆</b><span>2 个相关检查点</span></span><span class="context-state">已授权</span></label>
+            <label class="context-option"><input type="checkbox" checked data-context="diff"><span class="context-name"><b>当前改动</b><span>仅摘要，不含未选文件</span></span><span class="context-state">已授权</span></label>
+            <label class="context-option"><input type="checkbox" data-context="history"><span class="context-name"><b>历史决策</b><span>过去 5 次采纳与拒绝</span></span><span class="context-state off">未授权</span></label>
+            <label class="context-option"><input type="checkbox" data-context="web"><span class="context-name"><b>联网研究</b><span>仅在竞品模式下建议开启</span></span><span class="context-state off">未授权</span></label>
+          </div>
+          <div class="research-note" id="researchNote" hidden><b>QZ 研究连接器</b>打开浏览器调研并返回带来源的研究材料。网页内容只作为证据，不自动成为结论。</div>
+        </section>
+
+        <section class="side-section" aria-labelledby="skillsTitle">
+          <div class="side-title"><h2 id="skillsTitle">本轮 Skills</h2><span>按需组合</span></div>
+          <div class="skill-list" id="skillList">
+            <div class="skill-row"><div><b>problem-framing</b><span>重述目标与成功条件</span></div><span class="skill-status">启用</span></div>
+            <div class="skill-row"><div><b>engineering-completeness</b><span>测试、异常、回滚与可观测性</span></div><span class="skill-status">启用</span></div>
+            <div class="skill-row"><div><b>counter-evidence</b><span>主动寻找相反证据</span></div><span class="skill-status">启用</span></div>
+            <div class="skill-row"><div><b>decision-hygiene</b><span>区分事实、推断与偏好</span></div><span class="skill-status">启用</span></div>
+          </div>
+        </section>
+
+        <section class="side-section" aria-labelledby="decisionTitle">
+          <div class="side-title"><h2 id="decisionTitle">决策记录</h2><span id="decisionCount">0 条</span></div>
+          <div class="decision-list" id="decisionLog" aria-live="polite"><p class="decision-empty">采纳、拒绝和转交都会记录在这里。</p></div>
+        </section>
+
+        <section class="side-section">
+          <div class="guardrail"><b>防止信息茧房</b>副驾使用独立上下文与不同模型，必须给出未知项、反证和置信度。用户保留最终决定权。</div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+    const MODE_LABELS = {
+      gap: '查漏补缺',
+      alternatives: '备选方案',
+      redteam: '反方评审',
+      competitor: '竞品参考',
+      plan: '计划审查'
+    };
+
+    const MODE_SKILLS = {
+      gap: [['problem-framing', '重述目标与成功条件'], ['engineering-completeness', '测试、异常、回滚与可观测性'], ['counter-evidence', '主动寻找相反证据'], ['decision-hygiene', '区分事实、推断与偏好']],
+      alternatives: [['alternative-paths', '生成差异足够大的可选路径'], ['tradeoff-matrix', '比较成本、风险与可逆性'], ['constraint-check', '用既有约束筛选方案']],
+      redteam: [['red-team-review', '从失败条件反推薄弱点'], ['counter-evidence', '寻找会推翻结论的证据'], ['scope-control', '识别隐性范围扩张']],
+      competitor: [['competitor-research', '提取可验证的竞品模式'], ['source-trace', '保留网页来源与采集时间'], ['transfer-test', '判断做法是否适合当前产品']],
+      plan: [['plan-review', '检查依赖与执行顺序'], ['test-strategy', '补齐验证层级'], ['rollback-design', '定义失败后的恢复路径'], ['delivery-check', '确认交付物与责任边界']]
+    };
+
+    const REVIEWS = {
+      gap: [
+        {section: '理解的目标', severity: 'low', confidence: '高', title: '核心目标不是多一个聊天入口，而是提高开发决策质量', body: '副驾应围绕当前简报做二次审视，输出可处理的建议。它不接管主 Agent，也不静默修改用户内容。', evidence: '依据：当前简报目标、只读素材约束、主 Agent 交付路径。'},
+        {section: '隐含假设', severity: 'medium', confidence: '中', title: '默认不同模型就一定能带来不同观点', body: '模型差异只是一层保障。还需要固定的反方角色、独立上下文和反证要求，否则两个模型仍可能重复同一种答案。', evidence: '推断：当前方案已经区分主 Agent 与副驾，但尚未定义观点重复时的降级策略。'},
+        {section: '缺失信息', severity: 'high', confidence: '高', title: '缺少“何时停止分析”的退出条件', body: '如果副驾可以无限补充建议，用户会从编码阻塞变成分析阻塞。建议设置单轮上限，只保留影响范围、风险或验收的高价值问题。', evidence: '依据：开发工作台强调继续执行，需要避免把审视变成新的流程负担。'},
+        {section: '验收与回滚', severity: 'medium', confidence: '高', title: '需要衡量建议是否真的改善结果', body: '至少记录采纳率、返工减少、遗漏问题命中率和额外等待时间。若连续低价值，应允许关闭自动提醒，只保留手动调用。', evidence: '依据：功能价值来自减少返工，而不是建议数量。'}
+      ],
+      alternatives: [
+        {section: '备选路径', severity: 'low', confidence: '高', title: '路径 A：简报内嵌的结构化审视', body: '最贴合 OneTone。副驾围绕目标、假设、风险、验收输出建议，用户逐条采纳。界面成本低，决策来源清楚。', evidence: '适合：日常开发、需求澄清、计划交接。'},
+        {section: '备选路径', severity: 'medium', confidence: '高', title: '路径 B：独立研究工作区', body: '适合竞品和陌生领域调研，可连接 QZ 浏览器能力并保存来源，但会增加操作层级，不应成为默认入口。', evidence: '适合：需要网页证据、跨站比较或长时研究的任务。'},
+        {section: '备选路径', severity: 'medium', confidence: '中', title: '路径 C：交付前自动门禁', body: '在发送给主 Agent 或验收前自动运行固定清单。覆盖稳定，但容易产生形式化噪声，建议只对高风险任务启用。', evidence: '适合：发布、迁移、权限与数据变更。'},
+        {section: '证据与置信度', severity: 'low', confidence: '高', title: '建议以路径 A 为默认，路径 B 与 C 作为按需能力', body: '这能把价值放在用户正在工作的简报里，同时保留深度研究和工程门禁的扩展空间。', evidence: '判断依据：进入成本、上下文复用、可追溯性与实现复杂度。'}
+      ],
+      redteam: [
+        {section: '风险与遗漏', severity: 'high', confidence: '高', title: '功能可能制造“分析很充分”的虚假安全感', body: '结构化输出看起来完整，不代表内容正确。必须明确区分事实、推断和建议，并让关键结论能回到原始证据。', evidence: '反例：模型可以用完整格式包装未经验证的假设。'},
+        {section: '隐含假设', severity: 'high', confidence: '中', title: '用户可能不会阅读第二份长答案', body: '如果每次都生成完整报告，开发者会快速忽略。默认只显示少量高影响建议，其余折叠或不生成。', evidence: '未知项：尚无真实用户对建议长度和调用频率的反馈。'},
+        {section: '风险与遗漏', severity: 'medium', confidence: '高', title: '联网竞品研究可能把外部提示注入带入项目上下文', body: '网页材料必须视为不可信输入，只提取事实与引用，不允许网页文本改变系统规则或直接触发执行。', evidence: '反例：竞品页面或仓库 README 中包含面向 Agent 的恶意指令。'},
+        {section: '验收与回滚', severity: 'medium', confidence: '高', title: '必须能关闭自动介入并恢复原始简报', body: '所有采纳动作应形成可撤销差异，副驾不可直接覆盖用户原文。', evidence: '判断依据：辅助功能不能降低用户对工作成果的控制。'}
+      ],
+      competitor: [
+        {section: '证据与置信度', severity: 'medium', confidence: '中', title: 'QZ 更适合作为研究连接器，不适合作为完整产品原型', body: '可借鉴其浏览器研究与任务规划能力，把结果收敛为带来源材料，再由 OneTone 副驾判断是否适用。', evidence: '来源占位：QZ Browser Agent 项目说明与交互范式，实际接入时需记录访问时间。'},
+        {section: '备选路径', severity: 'low', confidence: '中', title: '参考 Cursor Rules 与 Agent Skills 的可复用方法层', body: '把常见审视方法沉淀为短小 Skill，按任务加载。重点不是堆提示词，而是让输入、输出和触发条件稳定。', evidence: '来源占位：公开产品文档，接入研究后补充精确链接。'},
+        {section: '风险与遗漏', severity: 'high', confidence: '高', title: '竞品功能不等于 OneTone 用户问题', body: '每个参考都要回答三个问题：解决了什么问题、依赖什么前提、迁移后可能损失什么。没有迁移判断的参考只会扩大信息噪声。', evidence: '方法依据：transfer-test，当前产品约束优先于竞品表象。'},
+        {section: '缺失信息', severity: 'medium', confidence: '中', title: '需要先定义允许研究的站点与数据边界', body: '代码、私有文档和登录态页面是否能发送给研究模型，需要在产品层明确授权和脱敏规则。', evidence: '未知项：当前简报没有列出联网数据策略。'}
+      ],
+      plan: [
+        {section: '计划审查', severity: 'high', confidence: '高', title: '计划缺少从原型到真实能力的分阶段门槛', body: '建议先验证用户是否会主动调用和采纳，再接真实模型，最后才增加联网研究。不要同时建设多模型、Skills 市场和浏览器自动化。', evidence: '依据：当前仍处于界面与工作流验证阶段。'},
+        {section: '验收与回滚', severity: 'medium', confidence: '高', title: '第一阶段应有可量化的验收信号', body: '选择 10 个真实开发任务，记录遗漏命中、采纳后返工变化、单轮耗时和被关闭次数。', evidence: '建议门槛：以对照任务比较，不使用虚构百分比。'},
+        {section: '风险与遗漏', severity: 'medium', confidence: '高', title: '需要错误和超时的降级体验', body: '副驾不可用时，主 Agent 流程仍应继续。联网失败时保留已有简报，并明确哪些结论没有得到外部证据。', evidence: '依据：辅助层不应成为核心开发路径的单点故障。'},
+        {section: '验收与回滚', severity: 'low', confidence: '高', title: '采纳项应以差异形式进入简报', body: '保留原文、建议来源、采纳人和时间，允许逐条撤销。主 Agent 只读取用户确认后的版本。', evidence: '依据：可追溯性、可逆性与责任边界。'}
+      ]
+    };
+
+    let activeMode = 'gap';
+    let decisionTotal = 0;
+
+    function escapeHtml(value) {
+      const node = document.createElement('div');
+      node.textContent = value;
+      return node.innerHTML;
+    }
+
+    function toast(message) {
+      const node = $('#toast');
+      node.textContent = message;
+      node.classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => node.classList.remove('show'), 2300);
+    }
+
+    function renderSkills() {
+      $('#skillList').innerHTML = MODE_SKILLS[activeMode].map(([name, note]) => `
+        <div class="skill-row"><div><b>${escapeHtml(name)}</b><span>${escapeHtml(note)}</span></div><span class="skill-status">启用</span></div>
+      `).join('');
+    }
+
+    function setMode(mode) {
+      activeMode = mode;
+      $$('.mode-button').forEach(button => button.setAttribute('aria-selected', String(button.dataset.mode === mode)));
+      $('#runReview').textContent = `开始${MODE_LABELS[mode]}`;
+      $('#resultsTitle').textContent = MODE_LABELS[mode];
+      $('#resultsSubtitle').textContent = mode === 'competitor'
+        ? '建议开启联网研究；所有外部结论必须附来源。'
+        : '结果只作为第二视角，不会直接改写你的简报。';
+      $('#reviewStamp').textContent = '等待运行';
+      $('#reviewResults').innerHTML = '<div class="empty-review"><strong>审视方式已切换</strong><p>确认右侧上下文授权后运行。本轮会重新生成独立建议。</p></div>';
+      renderSkills();
+    }
+
+    function renderReview() {
+      const cards = REVIEWS[activeMode];
+      $('#reviewResults').innerHTML = `<div class="result-list">${cards.map((item, index) => `
+        <article class="result-card" data-card="${index}" data-severity="${item.severity}">
+          <div class="result-top">
+            <span class="result-number">${String(index + 1).padStart(2, '0')}</span>
+            <div><h3 class="result-title">${escapeHtml(item.title)}</h3><div class="result-section">${escapeHtml(item.section)}</div></div>
+            <span class="confidence">置信度 ${escapeHtml(item.confidence)}</span>
+          </div>
+          <div class="result-body"><p>${escapeHtml(item.body)}</p><div class="evidence">${escapeHtml(item.evidence)}</div></div>
+          <div class="result-actions">
+            <button class="action-button primary-action" type="button" data-action="accept">采纳到简报</button>
+            <button class="action-button" type="button" data-action="handoff">交给主 Agent</button>
+            <button class="action-button" type="button" data-action="constraint">设为约束</button>
+            <button class="action-button reject" type="button" data-action="reject">暂不采纳</button>
+            <button class="action-button" type="button" data-action="skill">保存为 Skill</button>
+          </div>
+        </article>
+      `).join('')}</div>`;
+      $('#reviewStamp').textContent = `${cards.length} 条 · ${$('#modelSelect').selectedOptions[0].text}`;
+    }
+
+    function runReview() {
+      const run = $('#runReview');
+      const enabled = $$('[data-context]:checked').length;
+      if (!enabled) {
+        toast('请至少授权一项上下文');
+        return;
+      }
+      run.disabled = true;
+      run.textContent = '正在独立审视…';
+      $('#reviewStamp').textContent = '分析中';
+      $('#reviewResults').innerHTML = '<div class="loading-review" aria-label="正在生成审视建议"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
+      setTimeout(() => {
+        renderReview();
+        run.disabled = false;
+        run.textContent = `重新${MODE_LABELS[activeMode]}`;
+        toast(`已完成${MODE_LABELS[activeMode]}，请逐条判断`);
+      }, 760);
+    }
+
+    function addBriefItem(title, kind) {
+      const list = $('#briefAdditions');
+      $('.addition-empty', list)?.remove();
+      const chip = document.createElement('span');
+      chip.className = 'addition';
+      chip.textContent = `${kind}：${title.length > 16 ? `${title.slice(0, 16)}…` : title}`;
+      list.appendChild(chip);
+    }
+
+    function addDecision(action, title) {
+      const log = $('#decisionLog');
+      $('.decision-empty', log)?.remove();
+      const item = document.createElement('div');
+      item.className = 'decision-item';
+      item.innerHTML = `<b>${escapeHtml(action)} · ${escapeHtml(title)}</b><span>刚刚 · ${escapeHtml(MODE_LABELS[activeMode])} · ${escapeHtml($('#modelSelect').selectedOptions[0].text)}</span>`;
+      log.prepend(item);
+      decisionTotal += 1;
+      $('#decisionCount').textContent = `${decisionTotal} 条`;
+    }
+
+    function handleAction(button) {
+      const card = button.closest('.result-card');
+      if (!card || card.classList.contains('resolved')) return;
+      const title = $('.result-title', card).textContent;
+      const action = button.dataset.action;
+      const mapping = {
+        accept: ['已采纳', '建议'],
+        handoff: ['已转交主 Agent', '追问'],
+        constraint: ['已设为约束', '约束'],
+        reject: ['暂不采纳', '拒绝'],
+        skill: ['已保存为 Skill 草稿', 'Skill']
+      };
+      const [message, kind] = mapping[action];
+      if (action === 'accept' || action === 'constraint') addBriefItem(title, kind);
+      addDecision(message, title);
+      card.classList.add('resolved');
+      const actions = $('.result-actions', card);
+      actions.querySelectorAll('button').forEach(control => control.disabled = true);
+      const note = document.createElement('div');
+      note.className = 'resolved-note';
+      note.textContent = message;
+      actions.after(note);
+      toast(`${message}，已写入决策记录`);
+    }
+
+    $$('.mode-button').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
+    $('#runReview').addEventListener('click', runReview);
+    $('#reviewResults').addEventListener('click', event => {
+      const button = event.target.closest('[data-action]');
+      if (button) handleAction(button);
+    });
+    $$('[data-context]').forEach(input => input.addEventListener('change', () => {
+      const state = input.closest('.context-option').querySelector('.context-state');
+      state.textContent = input.checked ? '已授权' : '未授权';
+      state.classList.toggle('off', !input.checked);
+      if (input.dataset.context === 'web') $('#researchNote').hidden = !input.checked;
+    }));
+    $('#modelSelect').addEventListener('change', () => {
+      $('#independenceStatus').textContent = '独立上下文已启用';
+      toast(`副驾已切换为 ${$('#modelSelect').selectedOptions[0].text}`);
+      $('#reviewStamp').textContent = '模型已切换';
+    });
+
+    renderSkills();
+  </script>
+</body>
+</html>

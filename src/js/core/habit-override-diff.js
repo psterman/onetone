@@ -371,6 +371,52 @@
     return n;
   }
 
+  var CAMERA_TRIGGER_KEYS=['away','shake','blink','openPalm','okHand','fist','wave'];
+  var CAMERA_ACTION_KEYS=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'];
+
+  /** Global presenceActions blob from cfg — no edit-context prefs(). */
+  function globalPresenceActions(cfg){
+    cfg=cfg||{};
+    var cp=cfg.cameraPrefs||cfg.camera_prefs||{};
+    var pa=cp.presenceActions||cp.presence_actions||{};
+    return pa&&typeof pa==='object'?pa:{};
+  }
+
+  /**
+   * Pure merge of global presence + mapping.cameraOverride.
+   * override.false covers global true; does not read camera UI edit mode.
+   */
+  function getEffectiveCameraPresence(mapping,cfg){
+    var base=globalPresenceActions(cfg);
+    var btr=base.triggers&&typeof base.triggers==='object'?base.triggers:{};
+    var ov=mapping&&mapping.cameraOverride&&typeof mapping.cameraOverride==='object'?mapping.cameraOverride:{};
+    var otr=ov.triggers&&typeof ov.triggers==='object'?ov.triggers:{};
+    var triggers={};
+    var inheritedTriggers={};
+    CAMERA_TRIGGER_KEYS.forEach(function(k){
+      inheritedTriggers[k]=otr[k]===undefined;
+      triggers[k]=otr[k]!==undefined?!!otr[k]:!!btr[k];
+    });
+    var actions={};
+    var inheritedActions={};
+    CAMERA_ACTION_KEYS.forEach(function(k){
+      var hasOv=ov[k]!=null&&String(ov[k]).trim()!=='';
+      inheritedActions[k]=!hasOv;
+      actions[k]=hasOv?ov[k]:(base[k]!=null?base[k]:'none');
+    });
+    var hasAnyTrigger=CAMERA_TRIGGER_KEYS.some(function(k){ return !!triggers[k]; });
+    return {
+      enabled:!!base.enabled,
+      triggers:triggers,
+      inheritedTriggers:inheritedTriggers,
+      actions:actions,
+      inheritedActions:inheritedActions,
+      hasAnyTrigger:hasAnyTrigger,
+      base:base,
+      override:ov
+    };
+  }
+
   function activeAgentBindings(m, triggerType){
     var list=Array.isArray(m&&m.agentBindings)?m.agentBindings:[];
     var out=[];
@@ -618,6 +664,8 @@
     isGlobalBaselineMapping:isGlobalBaselineMapping,
     getKeysAccessState:getKeysAccessState,
     getVoiceAccessState:getVoiceAccessState,
+    getEffectiveCameraPresence:getEffectiveCameraPresence,
+    globalPresenceActions:globalPresenceActions,
     globalCancelPhrases:globalCancelPhrases,
     globalSendPhrases:globalSendPhrases,
     diffVoiceOverride:diffVoiceOverride,

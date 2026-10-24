@@ -14,7 +14,7 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
@@ -585,6 +585,56 @@
     }catch(_){}
   }
 
+  var agentCapsuleOpenGen=0;
+  var pendingAgentSub=null;
+
+  function openAgentCapsuleDesk(workspace,opts){
+    opts=opts||{};
+    var TM=global.OneToneSoftPadTimeMachine;
+    if(!TM||typeof TM.openDesk!=='function') return;
+    var Ready=global.OneToneAgentCapsuleMount;
+    var gen=++agentCapsuleOpenGen;
+    if(!Ready||typeof Ready.waitForHosts!=='function'){
+      console.error('agent capsule readiness helper unavailable');
+      return;
+    }
+    Ready.waitForHosts({
+      getFrame:function(){ return $('agentProtoFrame'); }
+    }).then(function(hosts){
+      if(gen!==agentCapsuleOpenGen) return;
+      if(normalizePanel(ui.settingsPanel)!=='agent') return;
+      if(opts.syncSub!==false){
+        ui.agentSub='capsule';
+        pendingAgentSub='capsule';
+        postAgentPageCmd('setSub',{sub:'capsule',workspace:workspace||null});
+      }
+      return TM.openDesk({
+        mount:'agent',
+        deskEl:hosts.desk,
+        detailEl:hosts.detail,
+        workspace:workspace?String(workspace):undefined,
+        force:true
+      });
+    }).catch(function(err){
+      if(gen!==agentCapsuleOpenGen) return;
+      console.error('agent capsule openDesk',err);
+      try{
+        if(global.OneToneToast&&global.OneToneToast.show){
+          global.OneToneToast.show(String((err&&err.message)||err||'时间胶囊打开失败'));
+        }
+      }catch(_){}
+    });
+  }
+
+  function closeAgentCapsuleDesk(){
+    agentCapsuleOpenGen+=1;
+    pendingAgentSub=null;
+    var TM=global.OneToneSoftPadTimeMachine;
+    if(TM&&typeof TM.closeAgentMount==='function'){
+      try{ TM.closeAgentMount(); }catch(_){}
+    }
+  }
+
   function openScenarioDetail(id,opts){
     opts=opts||{};
     if(id) state().selectedMappingId=id;
@@ -741,9 +791,15 @@
 
     ui.settingsPanel=panel;
     if(panel==='agent'){
-      ui.agentSub=opts.agentSub==='data'?'data':(opts.agentSub||null);
+      ui.agentSub=opts.agentSub==='data'
+        ?'data'
+        :opts.agentSub==='capsule'
+          ?'capsule'
+          :(opts.agentSub||null);
+      pendingAgentSub=ui.agentSub||null;
     }else{
       ui.agentSub=null;
+      pendingAgentSub=null;
     }
 
     if(ui.drawerOpen){
@@ -787,6 +843,9 @@
     if(panelChanged&&leavingPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
     }
+    if(panelChanged&&leavingPanel==='agent'&&panel!=='agent'){
+      closeAgentCapsuleDesk();
+    }
     if(panelChanged&&leavingPanel==='softPad'&&panel!=='softPad'){
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
@@ -800,6 +859,23 @@
         if(softPreview) softPreview.replaceChildren();
         if(softSub) softSub.replaceChildren();
         if(softTiles) softTiles.innerHTML='';
+      }
+    }
+    // Leave habits without completing match: drop deep-link focus/return (idempotent).
+    if(panelChanged&&leavingPanel==='habits'&&panel!=='habits'){
+      try{
+        var HCLLeave=global.OneToneHabitCommandLink;
+        if(HCLLeave&&typeof HCLLeave.clearMatchDeepLink==='function') HCLLeave.clearMatchDeepLink();
+      }catch(_){}
+    }
+    // Enter habits: auto-align edit selection to FG unless caller pinned a mappingId.
+    if(panelChanged&&panel==='habits'){
+      if(opts.mappingId){
+        ui.habitWorkspaceManualPick=true;
+        ui.habitWorkspaceFgReady=true;
+      }else{
+        ui.habitWorkspaceManualPick=false;
+        ui.habitWorkspaceFgReady=false;
       }
     }
     if(panelChanged&&leavingPanel==='agentData'&&panel!=='agentData'){
@@ -936,6 +1012,23 @@
       }
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
 
+    }else if(panel==='keys2'){
+
+      // Parallel preview: command-card mock only — never refreshKeysPanel / islands.
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='keys2') return;
+          var card=global.OneToneKeys2CommandCard;
+          if(card&&typeof card.mount==='function'){
+            try{ card.mount(); }
+            catch(err){ console.error('keys2 command card mount',err); }
+          }else if(card&&typeof card.refresh==='function'){
+            try{ card.refresh(); }
+            catch(err){ console.error('keys2 command card refresh',err); }
+          }
+        },0);
+      });
+
     }else if(panel==='softPad'){
 
       // Defer heavy Soft Pad paint ??sync render on open used to ?? the drawer.
@@ -997,11 +1090,21 @@
               console.error('agent data bridge start',err);
             }
           }
+          closeAgentCapsuleDesk();
           postAgentPageCmd('setSub',{sub:'data'});
+        }else if(opts.agentSub==='capsule'||ui.agentSub==='capsule'){
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+            try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+          }
+          var capsuleWs=opts.tmWorkspace
+            ||(opts.agentTarget&&opts.agentTarget.workspace)
+            ||null;
+          openAgentCapsuleDesk(capsuleWs,{syncSub:true});
         }else{
           if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
             try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
           }
+          closeAgentCapsuleDesk();
           postAgentPageCmd('setSub',{sub:'overview'});
         }
         if(opts.agentTarget){
@@ -1541,6 +1644,30 @@
     // Soft Pad leave cleanup / mvp flush with a blank content column.
     syncSettingsChrome();
 
+    // Habit command×channel deep-link (does not activateScene).
+    try{
+      if(opts.mappingId) state().selectedMappingId=String(opts.mappingId);
+      if(opts.matchChannel||opts.matchCommand||opts.commandRef||opts.openMatchEditor||opts.returnPanel){
+        var HCL=global.OneToneHabitCommandLink;
+        var cmdRef=String(opts.commandRef||opts.matchCommand||'').trim();
+        if(HCL&&typeof HCL.applyMatchDeepLink==='function'){
+          HCL.applyMatchDeepLink({
+            mappingId:opts.mappingId||state().selectedMappingId,
+            matchChannel:opts.matchChannel,
+            matchCommand:cmdRef,
+            commandRef:cmdRef,
+            openMatchEditor:opts.openMatchEditor!==false,
+            returnPanel:opts.returnPanel
+          });
+        }else{
+          if(opts.matchChannel) ui.habitMatchChannel=String(opts.matchChannel);
+          if(cmdRef) ui.habitMatchCommand=cmdRef;
+          ui.habitOpenMatchEditor=opts.openMatchEditor!==false;
+          if(opts.returnPanel) ui.habitMatchReturnPanel=String(opts.returnPanel);
+        }
+      }
+    }catch(_){}
+
     // Pause MediaPipe before any panel remount ??presence createImageBitmap + habit/softPad
     // remount on the same turn wedges WebView2 (Responding=false).
     // Camera family must unpause — tracks stay disabled if we only "skip pause".
@@ -1737,13 +1864,25 @@
         return;
       }
       if(data&&data.type==='ot-agent-page'&&data.event==='sub'){
-        ui.agentSub=data.sub==='data'?'data':null;
+        var matchedPending=!!(pendingAgentSub&&data.sub===pendingAgentSub);
+        if(pendingAgentSub&&data.sub!==pendingAgentSub) return;
+        if(matchedPending) pendingAgentSub=null;
+        ui.agentSub=data.sub==='data'?'data':data.sub==='capsule'?'capsule':null;
         if(data.sub==='data'){
+          closeAgentCapsuleDesk();
           if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
             try{ global.OneToneAgentDataBridge.start(); }catch(_){}
           }
-        }else if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
-          try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+        }else if(data.sub==='capsule'){
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+            try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+          }
+          if(!matchedPending) openAgentCapsuleDesk(data.workspace||null,{syncSub:false});
+        }else{
+          closeAgentCapsuleDesk();
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+            try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+          }
         }
         if(ui.drawerOpen&&normalizePanel(ui.settingsPanel)==='agent'){
           try{ syncWorkbenchNav('agent',{agentSub:ui.agentSub}); }catch(_){}

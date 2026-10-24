@@ -690,12 +690,15 @@
       var conf = rowConfidence(r);
       var src = rowSource(r);
       var when = relativeWhenRow(r);
+      var sid = String((r && (r.sessionId || r.session_id)) || '').trim() || null;
+      // Title stays a shell here — home-agent-v2 deskSupplement enriches from Center session.
       return {
         title: agent + ' 正在活动',
         detail: agent + (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
         note: '可信活跃 · 非等待',
         provider: agent,
         badge: agent,
+        sessionId: sid,
         confidence: conf,
         source: src,
         sourceBadge: sourceBadge(src),

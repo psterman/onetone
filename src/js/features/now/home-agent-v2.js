@@ -10,7 +10,91 @@
   var unsubStore = null;
   var shellBuilt = false;
   var matMenuOpen = false;
+  /** Text material ids currently expanded for full read/edit. */
+  var matTextExpanded = {};
+  /** Bump to cancel stale expand focus rAF after collapse. */
+  var matTextExpandSeq = {};
+  /** Ignore expand for a beat after collapse — same-spot ghost click re-opens. */
+  var matCollapseGuardUntil = {};
   var draftSel = { start: 0, end: 0 };
+  var composing = false;
+  var pickerAnchor = null;
+  var pickerReposTimer = 0;
+  /** 'menu' = top-right vertical list; 'dock' = dock grid. Never share one panel. */
+  var pickerSurface = null;
+
+  function toast(msg) {
+    var T = global.OneToneToast;
+    if (T && T.show) {
+      try {
+        T.show(String(msg || ''));
+        return;
+      } catch (_) {}
+    }
+  }
+
+  /** Pin picker to its own trigger — menu hangs under top-right; dock floats above chip. */
+  function positionPickerPanel() {
+    if (!root) return;
+    var panel = root.querySelector('[data-ha2-picker-panel]');
+    if (!panel) return;
+    var anchor =
+      pickerAnchor && pickerAnchor.isConnected
+        ? pickerAnchor
+        : pickerSurface === 'menu'
+          ? root.querySelector('[data-ha2-menu-picker]')
+          : root.querySelector('.ha2-chip.target[data-ha2-picker]') ||
+            root.querySelector('[data-ha2-picker]');
+    if (!anchor) return;
+    var ar = anchor.getBoundingClientRect();
+    var isMenu = pickerSurface === 'menu' || panel.classList.contains('is-menu');
+    var pw = isMenu
+      ? Math.min(260, Math.max(200, window.innerWidth - 24))
+      : Math.min(430, Math.max(280, window.innerWidth - 24));
+    var gap = 8;
+    panel.style.width = pw + 'px';
+    panel.style.right = 'auto';
+    if (isMenu) {
+      // Align to the right edge of the task menu (top-right).
+      var left = Math.round(ar.right - pw);
+      if (left < 12) left = 12;
+      if (left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
+      panel.style.left = left + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.top = Math.round(ar.bottom + gap) + 'px';
+      global.requestAnimationFrame(function () {
+        if (!panel.isConnected) return;
+        var ph = panel.offsetHeight || 200;
+        if (ar.bottom + gap + ph > window.innerHeight - 12) {
+          panel.style.top = 'auto';
+          panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
+        }
+      });
+      return;
+    }
+    var leftDock = Math.round(ar.left);
+    if (leftDock + pw > window.innerWidth - 12) leftDock = window.innerWidth - pw - 12;
+    if (leftDock < 12) leftDock = 12;
+    panel.style.left = leftDock + 'px';
+    panel.style.top = 'auto';
+    panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
+    global.requestAnimationFrame(function () {
+      if (!panel.isConnected) return;
+      var ph = panel.offsetHeight || 200;
+      if (ar.top < ph + gap + 16) {
+        panel.style.bottom = 'auto';
+        panel.style.top = Math.min(window.innerHeight - ph - 12, Math.round(ar.bottom + gap)) + 'px';
+      }
+    });
+  }
+
+  function schedulePositionPicker() {
+    if (pickerReposTimer) clearTimeout(pickerReposTimer);
+    pickerReposTimer = global.setTimeout(function () {
+      pickerReposTimer = 0;
+      positionPickerPanel();
+    }, 0);
+  }
 
   function t(key, fallback) {
     if (global.OneToneI18n && typeof global.OneToneI18n.t === 'function') {
@@ -71,20 +155,433 @@
     if (/needs|waiting|approval|needsinput/.test(status)) return 'wait';
     if (/working|running|active/.test(status)) return 'live';
     if (/fail|error/.test(status)) return 'fail';
+    if (/done|complet/.test(status)) return 'done';
     return '';
+  }
+
+  function pulseSt(status) {
+    var tone = statusTone(status);
+    if (tone === 'wait' || tone === 'fail') return 'needs';
+    if (tone === 'live') return 'running';
+    if (tone === 'done') return 'done';
+    return 'idle';
+  }
+
+  function relWhen(ms) {
+    var n = Number(ms) || 0;
+    if (!n) return '';
+    var d = Math.max(0, Date.now() - n);
+    if (d < 60000) return t('ha2JustNow', '刚刚');
+    if (d < 3600000) return Math.floor(d / 60000) + t('ha2MinutesAgo', ' 分钟前');
+    if (d < 86400000) return Math.floor(d / 3600000) + t('ha2HoursAgo', ' 小时前');
+    return Math.floor(d / 86400000) + t('ha2DaysAgo', ' 天前');
+  }
+
+  function truncateLabel(s, max) {
+    s = String(s || '').trim();
+    if (!s) return '';
+    max = max || 42;
+    return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  }
+
+  function contextLabels() {
+    var fg = t('ha2FgUnknown', '前台应用');
+    var habit = t('ha2HabitUnknown', '当前习惯');
+    try {
+      var rt = global.OneToneRuntimeHabitControl;
+      var id = rt && rt.foregroundIdentity ? rt.foregroundIdentity() : null;
+      if (!id) {
+        var nav = global.OneToneHabitLayerNav;
+        id = nav && nav.getForegroundIdentity ? nav.getForegroundIdentity() : null;
+      }
+      if (id) {
+        fg =
+          truncateLabel(
+            id.windowTitle || id.window_title || id.exeName || id.exe_name || id.appId || ''
+          ) || fg;
+      }
+    } catch (_) {}
+    try {
+      var hr = global.OneToneHabitRuntime;
+      var snap = hr && hr.getSnapshot ? hr.getSnapshot() : null;
+      var name = snap && snap.current && snap.current.name;
+      if (name) habit = truncateLabel(name, 28);
+    } catch (_) {}
+    return { fg: fg, habit: habit };
+  }
+
+  function selectedAgent(snap) {
+    var kind = (snap && snap.selectedKind) || '';
+    if (!kind) return null;
+    var list = (snap && snap.agents) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].kind === kind) return list[i];
+    }
+    return null;
+  }
+
+  function taskVm(snap) {
+    var fvm = snap.focusVm;
+    var mode = snap.mode || (fvm && fvm.mode) || 'quiet';
+    if (fvm && fvm.headline && (mode === 'attention' || mode === 'return' || mode === 'degraded')) {
+      return {
+        kicker:
+          mode === 'attention'
+            ? t('ha2TaskNeeds', '需要你确认')
+            : mode === 'return'
+              ? t('ha2TaskReturn', '可以继续')
+              : t('ha2TaskFailed', '遇到问题'),
+        title: fvm.headline,
+        sub: fvm.assistance || fvm.copy || '',
+        menu: sendMenuLabel(snap)
+      };
+    }
+    var rows = (store() && store().workRows && store().workRows(3)) || [];
+    var agent = rows[0] || null;
+    if (!agent) {
+      // Prefer a real history / help hint over industrial empty boilerplate.
+      var hints =
+        (store() && store().quietHintLines && store().quietHintLines(1)) || [];
+      var sub =
+        hints[0] && hints[0].text
+          ? hints[0].text
+          : !snap.inventoryLoaded
+            ? t('ha2TaskEmptySubLoading', '正在探测本机 Agent…')
+            : t('ha2TaskEmptySub', '在底栏选一个 Agent，写一句就能发过去');
+      return {
+        // Nav / page already says「现在」— empty state needs no kicker prefix.
+        kicker: '',
+        title: t('ha2TaskEmptyTitle', '没有正在推进的事'),
+        sub: sub,
+        menu: sendMenuLabel(snap)
+      };
+    }
+    var st = String(agent.status || '');
+    var kicker = t('ha2TaskNow', '现在');
+    if (/needs|waiting|approval|needsinput/.test(st)) kicker = t('ha2TaskNeeds', '需要你确认');
+    else if (/fail|error/.test(st)) kicker = t('ha2TaskFailed', '遇到问题');
+    else if (/done|complet/.test(st)) kicker = t('ha2TaskDone', '刚刚完成');
+    else if (/working|running|active/.test(st)) kicker = t('ha2TaskWorking', '正在处理');
+    var title = agent.line || agent.title || t('ha2TaskWorkingTitle', '正在处理中');
+    var when = relWhen(agent.updated);
+    var subParts = [(agent.cat && agent.cat.name) || agent.kind];
+    if (agent.project) subParts.push(agent.project);
+    if (when) subParts.push(when);
+    return {
+      kicker: kicker,
+      title: title,
+      sub: subParts.join(' · '),
+      menu: sendMenuLabel(snap)
+    };
+  }
+
+  /** Soft Pad trigger copy: 「发送 Cursor」 when a target is known. */
+  function sendMenuLabel(snap) {
+    var c = currentCat(snap);
+    if (c && c.id && c.name) return t('ha2Send', '发送') + ' ' + c.name;
+    return t('ha2PickAgent', '选择 Agent');
+  }
+
+  function presenceBits(snap) {
+    var targets = (snap && snap.targets) || [];
+    var running = [];
+    var idle = [];
+    var i;
+    for (i = 0; i < targets.length; i++) {
+      var tg = targets[i];
+      if (!tg || !tg.kind || !tg.discovered) continue;
+      var name = tg.label || tg.kind;
+      if (tg.running) running.push(name);
+      else idle.push(name);
+    }
+    return { running: running, idle: idle };
+  }
+
+  function pulseHtml(snap) {
+    // Mac pulse: eligible work first; else running targets before idle discovered.
+    var rows = (store() && store().workRows && store().workRows(3)) || [];
+    var chips = [];
+    var seen = {};
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r || !r.kind || seen[r.kind]) continue;
+      seen[r.kind] = true;
+      chips.push({
+        kind: r.kind,
+        name: (r.cat && r.cat.name) || r.kind,
+        status: r.status
+      });
+    }
+    if (!chips.length) {
+      var targets = (snap.targets || []).slice().sort(function (a, b) {
+        return (b && b.running ? 1 : 0) - (a && a.running ? 1 : 0);
+      });
+      for (i = 0; i < targets.length && chips.length < 4; i++) {
+        var tg = targets[i];
+        if (!tg || !tg.kind || !tg.discovered || seen[tg.kind]) continue;
+        seen[tg.kind] = true;
+        chips.push({
+          kind: tg.kind,
+          name: tg.label || tg.kind,
+          status: tg.running ? 'running' : 'idle',
+          label: tg.running
+            ? (tg.label || tg.kind) + ' · 已打开'
+            : (tg.label || tg.kind) + ' · 已发现'
+        });
+      }
+    }
+    if (!chips.length) return '';
+    return (
+      '<div class="ha2-pulse" data-ha2-pulse role="list" aria-label="' +
+      esc(t('ha2PulseLabel', 'Agent 状态')) +
+      '">' +
+      chips
+        .map(function (chip) {
+          var st = pulseSt(chip.status);
+          var on = snap.selectedKind === chip.kind ? ' is-on' : '';
+          var text = chip.label || chip.name;
+          return (
+            '<button type="button" class="ha2-pulse-chip' +
+            on +
+            '" data-st="' +
+            st +
+            '" data-ha2-select="' +
+            esc(chip.kind) +
+            '" role="listitem">' +
+            '<i class="ha2-dot ' +
+            (st === 'running' ? 'live' : st === 'needs' ? 'wait' : st === 'done' ? 'done' : '') +
+            '" aria-hidden="true"></i>' +
+            esc(text) +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function pillsHtml(snap) {
+    var receipt = snap && (snap.deliveryReceipt || snap.receipt);
+    var notice = snap && snap.validationNotice;
+    var deliv = t('ha2PillNoDelivery', '尚未投递');
+    var tone = '';
+    if (notice && notice.kind === 'missing_project') {
+      deliv = notice.message || t('ha2NeedProject', '先选定项目');
+      tone = ' is-warn';
+    } else if (receipt) {
+      if (receipt.phase === 'sending' || receipt.outcome === 'delivery_attempt') {
+        deliv = receipt.title || t('ha2PillSending', '正在尝试投递');
+      } else if (receipt.phase === 'failed' || receipt.outcome === 'failed') {
+        deliv = receipt.title || t('ha2PillFailed', '投递失败');
+        tone = ' is-warn';
+      } else if (receipt.outcome === 'pasted_confirmed') {
+        deliv = receipt.title || t('ha2PillPasted', '已确认粘贴');
+        tone = ' is-ok';
+      } else if (receipt.outcome === 'activated_confirmed') {
+        deliv = receipt.title || t('ha2PillActivated', '已确认唤起');
+        tone = ' is-ok';
+      } else if (receipt.outcome === 'attempted') {
+        deliv = receipt.title || t('ha2PillAttempted', '结果未确认');
+        tone = ' is-warn';
+      } else {
+        deliv = receipt.title || t('ha2PillAttempted', '结果未确认');
+        tone = receipt.verified ? ' is-ok' : ' is-warn';
+      }
+    }
+    // Target lives on task-menu / dock chip — no second「发送到 X」echo.
+    return (
+      '<div class="ha2-pills" data-ha2-pills>' +
+      '<span class="ha2-pill' +
+      tone +
+      '"><i aria-hidden="true"></i><span class="ha2-pill-lbl">' +
+      esc(t('ha2PillDelivery', '投递')) +
+      '</span><span class="ha2-pill-val">' +
+      esc(truncateLabel(deliv, 28)) +
+      '</span></span></div>'
+    );
+  }
+
+  /** Agent that can be approved inline (prefer selected). */
+  function approvalTarget(snap) {
+    function eligible(a) {
+      if (!a) return false;
+      if (can(a.actions, 'approval.approve') || can(a.actions, 'approval.reject')) return true;
+      return /needs|waiting|approval|needsinput/.test(String(a.status || ''));
+    }
+    // Prefer merged workRows (Center ∪ Soft Pad desk) so Soft Pad wait isn't a second strip.
+    var rows = (store() && store().workRows && store().workRows(5)) || [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      if (eligible(rows[i])) return rows[i];
+    }
+    var sel = selectedAgent(snap);
+    if (eligible(sel)) return sel;
+    var list = (snap && snap.agents) || [];
+    for (i = 0; i < list.length; i++) {
+      if (eligible(list[i])) return list[i];
+    }
+    return null;
+  }
+
+  function approveHtml(snap) {
+    var agent = approvalTarget(snap);
+    if (!agent) return '';
+    var acts = [];
+    if (can(agent.actions, 'approval.reject')) {
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-action="approval.reject" data-agent="' +
+          esc(agent.agentId) +
+          '">' +
+          esc(t('ha2Reject', '拒绝')) +
+          '</button>'
+      );
+    }
+    if (can(agent.actions, 'approval.approve')) {
+      acts.push(
+        '<button type="button" class="ha2-btn primary" data-ha2-action="approval.approve" data-agent="' +
+          esc(agent.agentId) +
+          '">' +
+          esc(t('ha2Approve', '批准')) +
+          '</button>'
+      );
+    }
+    if (!acts.length) {
+      acts.push(
+        '<button type="button" class="ha2-btn primary" data-ha2-go-agent="' +
+          esc(agent.kind || '') +
+          '" data-agent="' +
+          esc(agent.agentId || '') +
+          '">' +
+          esc(t('ha2GoHandle', '前往处理')) +
+          '</button>'
+      );
+    }
+    return (
+      '<div class="ha2-approve" data-ha2-approve role="status">' +
+      '<div class="ha2-approve-copy"><b>' +
+      esc(t('ha2NeedsYou', '需要你处理')) +
+      '</b><span>' +
+      esc(
+        agent.line ||
+          agent.title ||
+          ((agent.cat && agent.cat.name) || agent.kind) +
+            ' · ' +
+            t('ha2NeedsYouHint', '打开详情查看请求')
+      ) +
+      '</span></div><div class="ha2-approve-acts">' +
+      acts.join('') +
+      '</div></div>'
+    );
+  }
+
+  /** At most one primary banner: permission/runtime > needsYou > warning alert. */
+  function primaryBannerHtml(snap) {
+    var perm = permissionHtml(snap);
+    if (perm) return { html: perm, kind: 'permission' };
+    var approve = approveHtml(snap);
+    if (approve) return { html: approve, kind: 'needsYou' };
+    var WB = global.OneToneHomeWorkbench;
+    var alert =
+      WB && typeof WB.getPrimaryAlertModel === 'function' ? WB.getPrimaryAlertModel() : null;
+    if (alert && alert.text) {
+      return {
+        kind: 'alert',
+        html:
+          '<div class="ha2-runtime-alert ' +
+          esc(alert.severity || 'is-warn') +
+          '" data-ha2-runtime-alert role="status">' +
+          '<div class="ha2-grow"><b>' +
+          esc(t('ha2RuntimeAlert', '需要注意')) +
+          '</b><span>' +
+          esc(alert.text) +
+          '</span></div>' +
+          (alert.action
+            ? '<button type="button" class="ha2-btn" data-ha2-alert-action="' +
+              esc(JSON.stringify(alert.action)) +
+              '">' +
+              esc(alert.actionLabel || t('ha2Handle', '处理')) +
+              '</button>'
+            : '') +
+          '</div>'
+      };
+    }
+    return { html: '', kind: null };
+  }
+
+  function situationHtml(snap) {
+    var ctx = contextLabels();
+    var task = taskVm(snap);
+    var banner = primaryBannerHtml(snap);
+    return (
+      '<div class="ha2-situation" data-ha2-situation>' +
+      '<div class="ha2-ctx">' +
+      '<span class="ha2-ctx-fg" title="' +
+      esc(ctx.fg) +
+      '">' +
+      esc(ctx.fg) +
+      '</span>' +
+      '<button type="button" class="ha2-ctx-habit" data-ha2-habit-hub title="' +
+      esc(t('ha2OpenHabitHub', '打开习惯')) +
+      '"><b>' +
+      esc(t('ha2HabitChip', '习惯')) +
+      '</b> ' +
+      esc(ctx.habit) +
+      '</button></div>' +
+      '<div class="ha2-task">' +
+      '<div class="ha2-task-body">' +
+      (task.kicker
+        ? '<div class="ha2-task-kicker">' + esc(task.kicker) + '</div>'
+        : '') +
+      '<h2 class="ha2-task-title">' +
+      esc(task.title) +
+      '</h2>' +
+      (task.sub ? '<p class="ha2-task-sub">' + esc(task.sub) + '</p>' : '') +
+      '</div>' +
+      '<button type="button" class="ha2-task-menu" data-ha2-menu-picker aria-haspopup="listbox">' +
+      esc(task.menu) +
+      ' ▾</button></div>' +
+      pillsHtml(snap) +
+      pulseHtml(snap) +
+      (banner.kind === 'needsYou' || banner.kind === 'alert' ? banner.html : '') +
+      '</div>'
+    );
   }
 
   function currentCat(snap) {
     var S = store();
-    var kind = (snap && snap.selectedKind) || 'codex';
+    var kind = (snap && snap.selectedKind) || '';
+    // No inventing targets[0] (often closed Codex) when nothing is selected.
+    if (!kind) return { id: '', name: t('ha2PickAgent', '选择 Agent'), appId: '', icon: '' };
     return (S && S.catalog && S.catalog(kind)) || { id: kind, name: kind, appId: '', icon: '' };
+  }
+
+  function classifyActionResult(res) {
+    var outcome = String((res && res.outcome) || '').toLowerCase();
+    var detail = String((res && (res.detail || res.error)) || '');
+    var pasteOk = /composer_pasted|chat_pasted/.test(detail);
+    if (outcome === 'failed' || outcome === 'fail') {
+      return { tier: 'failed', pasteOk: false, detail: detail };
+    }
+    if (outcome === 'attemptedunverified' || outcome === 'attempted_unverified') {
+      return { tier: 'attempted', pasteOk: false, detail: detail };
+    }
+    if (outcome === 'verified' || outcome === 'ok' || outcome === 'success') {
+      return { tier: pasteOk ? 'verified_paste' : 'verified_no_paste', pasteOk: pasteOk, detail: detail };
+    }
+    // Legacy: detail-only evidence when outcome missing.
+    if (pasteOk) return { tier: 'verified_paste', pasteOk: true, detail: detail };
+    if (res && outcome && outcome !== 'failed') {
+      return { tier: 'attempted', pasteOk: false, detail: detail };
+    }
+    return { tier: 'failed', pasteOk: false, detail: detail };
   }
 
   function emptyListHtml(snap) {
     if (snap.loadPhase === 'loading') {
       return (
         '<div class="ha2-empty" data-ha2-phase="loading">' +
-        esc(t('ha2LoadingAgents', '正在确认 Agent 状态…')) +
+        esc(t('ha2LoadingAgents', '正在读取 Agent 会话…')) +
         '</div>'
       );
     }
@@ -101,119 +598,229 @@
       snap.loadPhase === 'stale'
         ? '<div class="ha2-stale">' + esc(t('ha2ShowingStale', '显示上次可信快照，正在刷新…')) + '</div>'
         : '';
+    var hints =
+      (store() && store().quietHintLines && store().quietHintLines(3)) || [];
+    if (!hints.length && !snap.inventoryLoaded) {
+      return (
+        stale +
+        '<div class="ha2-empty">' +
+        esc(t('ha2EmptyAgentsProbing', '会话已同步 · 本机 Agent 探测稍候…')) +
+        '</div>'
+      );
+    }
+    var lines = '';
+    var hi;
+    for (hi = 0; hi < hints.length; hi++) {
+      var h = hints[hi];
+      if (!h || !h.text) continue;
+      lines +=
+        '<div class="ha2-quiet-hint" data-kind="' +
+        esc(h.kind || 'hist') +
+        '">' +
+        esc(h.text) +
+        '</div>';
+    }
+    if (!lines) {
+      lines =
+        '<div class="ha2-quiet-hint" data-kind="help">' +
+        esc(t('ha2EmptyHelp', '在底栏选一个 Agent，写一句就能发过去')) +
+        '</div>';
+    }
+    return stale + '<div class="ha2-empty ha2-empty--hints">' + lines + '</div>';
+  }
+
+  function rowPrimaryCta(r, snap) {
+    var cta = r.primaryCta || 'open';
+    // Avoid duplicate approve when the top approve bar already covers this agent.
+    var bar = approvalTarget(snap);
+    if ((cta === 'approve' || cta === 'navigate') && bar && bar.kind === r.kind) cta = 'open';
+    if (cta === 'approve' && can(r.actions, 'approval.approve')) {
+      return (
+        '<button type="button" class="ha2-btn primary ha2-row-cta" data-ha2-action="approval.approve" data-agent="' +
+        esc(r.agentId) +
+        '">' +
+        esc(t('ha2Approve', '批准')) +
+        '</button>'
+      );
+    }
+    if (cta === 'navigate' || cta === 'approve') {
+      return (
+        '<button type="button" class="ha2-btn primary ha2-row-cta" data-ha2-go-agent="' +
+        esc(r.kind) +
+        '" data-agent="' +
+        esc(r.agentId || '') +
+        '">' +
+        esc(t('ha2GoHandle', '前往处理')) +
+        '</button>'
+      );
+    }
+    if (cta === 'resume' && can(r.actions, 'session.resume')) {
+      return (
+        '<button type="button" class="ha2-btn primary ha2-row-cta" data-ha2-action="session.resume" data-agent="' +
+        esc(r.agentId) +
+        '">' +
+        esc(t('ha2Continue', '继续')) +
+        '</button>'
+      );
+    }
+    if (cta === 'send' && (r.canSend || can(r.actions, 'agent.focus'))) {
+      return (
+        '<button type="button" class="ha2-btn ha2-row-cta" data-ha2-select="' +
+        esc(r.kind) +
+        '">' +
+        esc(t('ha2SendHere', '发送到此')) +
+        '</button>'
+      );
+    }
     return (
-      stale +
-      '<div class="ha2-empty">' +
-      esc(t('ha2EmptyAgents', '尚未发现 Agent 工作区。你仍可从下方选择目标并发送。')) +
-      '</div>'
+      '<button type="button" class="ha2-btn ha2-row-cta" data-ha2-detail="' +
+      esc(r.kind) +
+      '">' +
+      esc(t('ha2View', '查看')) +
+      '</button>'
     );
   }
 
-  function rowHtml(r) {
+  function rowHtml(r, snap) {
     var st = statusTone(r.status);
-    var acts = [];
-    if (can(r.actions, 'approval.reject')) {
-      acts.push(
-        '<button type="button" class="ha2-btn" data-ha2-action="approval.reject" data-agent="' +
-          esc(r.agentId) +
-          '">' +
-          esc(t('ha2Reject', '拒绝')) +
-          '</button>'
-      );
-    }
-    if (can(r.actions, 'approval.approve')) {
-      acts.push(
-        '<button type="button" class="ha2-btn primary" data-ha2-action="approval.approve" data-agent="' +
-          esc(r.agentId) +
-          '">' +
-          esc(t('ha2Approve', '批准')) +
-          '</button>'
-      );
-    }
-    if (can(r.actions, 'agent.focus')) {
-      acts.push(
-        '<button type="button" class="ha2-btn" data-ha2-action="agent.focus" data-agent="' +
-          esc(r.agentId) +
-          '">' +
-          esc(t('ha2Focus', '聚焦')) +
-          '</button>'
-      );
-    }
-    if (can(r.actions, 'session.resume')) {
-      acts.push(
-        '<button type="button" class="ha2-btn primary" data-ha2-action="session.resume" data-agent="' +
-          esc(r.agentId) +
-          '">' +
-          esc(t('ha2Continue', '继续')) +
-          '</button>'
-      );
-    }
+    var selected = snap && snap.selectedKind === r.kind ? ' is-on' : '';
+    var tag = r.tag
+      ? '<span class="ha2-row-tag' +
+        (r.tagTone ? ' is-' + esc(r.tagTone) : '') +
+        '">' +
+        esc(r.tag) +
+        '</span>'
+      : '';
     var S = store();
-    var win = S && S.windowsLabel ? S.windowsLabel(r.kind) : '';
+    var note =
+      S && typeof S.rowNoteText === 'function'
+        ? S.rowNoteText(r)
+        : String(r.line || r.title || '').trim();
+    var when = relWhen(r.updated);
+    var tier = r.evidenceTier ? ' data-evidence="' + esc(r.evidenceTier) + '"' : '';
+    var name = (r.cat && r.cat.name) || r.kind;
     return (
-      '<article class="ha2-row" data-ha2-agent="' +
+      '<article class="ha2-row' +
+      selected +
+      '" data-ha2-agent="' +
       esc(r.kind) +
+      '"' +
+      tier +
+      '>' +
+      '<button type="button" class="ha2-row-main" data-ha2-detail="' +
+      esc(r.kind) +
+      '" aria-label="' +
+      esc(t('ha2OpenDetail', '打开详情') + ' · ' + name) +
       '">' +
       iconHtml(r.cat) +
-      '<div><div class="ha2-row-title"><i class="ha2-dot ' +
+      '<div class="ha2-row-body"><div class="ha2-row-title"><i class="ha2-dot ' +
       st +
       '"></i><b>' +
-      esc(r.cat.name + ' · ' + r.project) +
-      '</b></div><div class="ha2-meta">' +
-      esc(win) +
-      '</div><div class="ha2-note">' +
-      esc(r.title) +
-      '</div></div><div class="ha2-actions">' +
-      acts.join('') +
-      '<button type="button" class="ha2-btn" data-ha2-detail="' +
-      esc(r.kind) +
-      '">›</button></div></article>'
+      esc(name) +
+      '</b>' +
+      tag +
+      '</div>' +
+      (note ? '<div class="ha2-note">' + esc(note) + '</div>' : '') +
+      (when ? '<div class="ha2-when">' + esc(when) + '</div>' : '') +
+      (r.boundary
+        ? '<div class="ha2-boundary">' + esc(r.boundary) + '</div>'
+        : '') +
+      '</div></button><div class="ha2-actions">' +
+      rowPrimaryCta(r, snap) +
+      '</div></article>'
     );
   }
 
   function listHtml(snap) {
-    var rows = (store() && store().workRows && store().workRows(3)) || snap.agents.slice(0, 3);
-    if (!rows.length) return emptyListHtml(snap);
+    var rows = (store() && store().workRows && store().workRows(3)) || [];
+    var workspace = workspaceCapsuleRowHtml(snap);
+    if (!rows.length) return workspace + emptyListHtml(snap);
     var stale =
       snap.loadPhase === 'stale'
         ? '<div class="ha2-stale">' + esc(t('ha2ShowingStale', '显示上次可信快照，正在刷新…')) + '</div>'
         : '';
-    return stale + rows.map(rowHtml).join('');
+    return (
+      workspace +
+      stale +
+      rows
+        .map(function (r) {
+          return rowHtml(r, snap);
+        })
+        .join('')
+    );
   }
 
-  function ticketHtml(snap) {
-    var attention = snap.attention;
-    var rows =
-      (attention && (attention.signals || attention.items || attention.needsInput || attention.rows)) ||
-      [];
-    if (!Array.isArray(rows) || !rows.length) return '';
-    var x = rows[0] || {};
+  /**
+   * Agent reported done/completed — observation only, not a verified task receipt.
+   * No aria-live: avoid re-announcing on every refresh.
+   */
+  function completionObservationHtml(snap) {
+    var list = (snap && snap.agents) || [];
+    var done = null;
+    for (var i = 0; i < list.length; i++) {
+      if (/done|complet/.test(String(list[i].status || ''))) {
+        done = list[i];
+        break;
+      }
+    }
+    if (!done) return '';
     return (
-      '<div class="ha2-ticket"><span class="ha2-receipt-mark ha2-warn">!</span><div class="ha2-grow"><b>' +
-      esc(x.title || t('ha2NeedsYou', '需要你处理')) +
+      '<div class="ha2-done-receipt ha2-completion-obs" data-ha2-completion-obs>' +
+      '<span class="ha2-receipt-mark">·</span><div class="ha2-grow"><b>' +
+      esc(t('ha2CompletionObserved', '检测到 Agent 报告完成状态')) +
       '</b><small>' +
-      esc(x.message || x.detail || x.cause || t('ha2NeedsYouHint', '打开详情查看请求')) +
-      '</small></div><button type="button" class="ha2-btn" data-ha2-open-center>' +
+      esc((done.cat && done.cat.name) || done.kind) +
+      ' · ' +
+      esc(t('ha2NoOnetoneVerify', '尚未运行 OneTone 验证')) +
+      '</small></div><button type="button" class="ha2-link" data-ha2-detail="' +
+      esc(done.kind) +
+      '">' +
       esc(t('ha2View', '查看')) +
       '</button></div>'
     );
   }
 
-  function receiptHtml(snap) {
-    var receipt = snap.receipt;
-    if (!receipt) return '';
-    var mark = receipt.phase === 'sending' ? '…' : receipt.phase === 'failed' ? '!' : '✓';
+  /** @deprecated use completionObservationHtml */
+  function doneReceiptHtml(snap) {
+    return completionObservationHtml(snap);
+  }
+
+  function validationNoticeHtml(snap) {
+    var n = snap && snap.validationNotice;
+    if (!n) return '';
     return (
-      '<div class="ha2-receipt" data-phase="' +
-      esc(receipt.phase) +
+      '<div class="ha2-receipt ha2-validation-notice" data-receipt-kind="validation">' +
+      '<span class="ha2-receipt-mark">!</span><div class="ha2-grow"><b>' +
+      esc(n.message || t('ha2NeedProject', '先选定项目')) +
+      '</b><small>' +
+      esc(t('ha2ValidationHint', '尚未尝试投递')) +
+      '</small></div></div>'
+    );
+  }
+
+  /** Delivery attempt outcome — never labeled「已发送」. */
+  function deliveryReceiptHtml(snap) {
+    var receipt = snap && (snap.deliveryReceipt || snap.receipt);
+    if (!receipt) return '';
+    var failed = receipt.phase === 'failed' || receipt.outcome === 'failed';
+    var sending =
+      receipt.phase === 'sending' || receipt.outcome === 'delivery_attempt';
+    var mark = sending ? '…' : failed ? '!' : '✓';
+    return (
+      '<div class="ha2-receipt ha2-delivery-receipt" data-phase="' +
+      esc(receipt.phase || receipt.outcome || '') +
+      '" data-receipt-kind="delivery" data-outcome="' +
+      esc(receipt.outcome || '') +
       '"><span class="ha2-receipt-mark">' +
       mark +
       '</span><div class="ha2-grow"><b>' +
       esc(receipt.title) +
       '</b><small>' +
-      esc(receipt.message) +
+      esc(receipt.message || '') +
+      (receipt.message ? ' · ' : '') +
+      esc(t('ha2DeliveryReceiptHint', '投递回执')) +
       '</small></div>' +
-      (receipt.phase === 'failed'
+      (failed
         ? '<button type="button" class="ha2-btn" data-ha2-retry>' +
           esc(t('ha2Retry', '重试')) +
           '</button>'
@@ -222,39 +829,255 @@
     );
   }
 
-  function homeContentHtml(snap) {
-    var rows = (store() && store().workRows && store().workRows(3)) || snap.agents.slice(0, 3);
+  function actionReceiptHtml(snap) {
+    var receipt = snap && snap.actionReceipt;
+    if (!receipt) return '';
+    var failed = receipt.outcome === 'failed';
+    var verified = receipt.outcome === 'verified';
+    var mark = receipt.phase === 'sending' ? '…' : failed ? '!' : verified ? '✓' : '·';
+    return (
+      '<div class="ha2-receipt ha2-action-receipt" data-receipt-kind="action" data-outcome="' +
+      esc(receipt.outcome || '') +
+      '"><span class="ha2-receipt-mark">' +
+      mark +
+      '</span><div class="ha2-grow"><b>' +
+      esc(receipt.title || '') +
+      '</b><small>' +
+      esc(receipt.message || '') +
+      (receipt.message ? ' · ' : '') +
+      esc(t('ha2ActionReceiptHint', '操作回执（≠ 任务完成）')) +
+      '</small></div></div>'
+    );
+  }
+
+  /** @deprecated use deliveryReceiptHtml */
+  function receiptHtml(snap) {
+    return deliveryReceiptHtml(snap);
+  }
+
+  /**
+   * Mac WorkbenchHomeView scroll: perm? → ctx/task/pills/pulse/approve →
+   * done receipt → delivery receipt → rows. Draft lives only in Dock.
+   */
+  function permissionHtml(snap) {
+    var mode = snap.mode || (snap.focusVm && snap.focusVm.mode) || 'quiet';
+    var deliv = snap.deliveryReceipt || snap.receipt;
+    var need =
+      mode === 'degraded' ||
+      snap.loadPhase === 'error' ||
+      (deliv &&
+        (deliv.phase === 'failed' || deliv.outcome === 'failed') &&
+        /权限|permission|access/i.test(String(deliv.message || '')));
+    if (!need) return '';
     var S = store();
     var c = currentCat(snap);
     var win = S && S.windowsLabel ? S.windowsLabel(c.id) : '';
     return (
-      '<div class="ha2-head"><div><h1>' +
-      esc(t('ha2HomeTitle', '继续正在推进的工作')) +
-      '</h1><p>' +
-      esc(t('ha2HomeSub', 'Agent、项目和需要你处理的事情都在这里。')) +
-      '</p></div><button type="button" class="ha2-link" data-ha2-picker>' +
-      esc(t('ha2PickAgent', '选择 Agent')) +
-      '</button></div><div class="ha2-permission"><b>' +
-      esc(t('ha2WinCapability', 'Windows 投递能力')) +
-      '</b><span data-ha2-win-label>' +
-      esc(win) +
+      '<div class="ha2-permission" data-ha2-mode="' +
+      esc(mode) +
+      '"><span>' +
+      esc(
+        mode === 'degraded'
+          ? t('ha2DegradedHint', '当前依据不足 · 可重试或检查数据源')
+          : t('ha2PermHint', '需要权限才能向 Agent 投递文本')
+      ) +
+      (win ? ' · ' + esc(win) : '') +
       '</span><button type="button" class="ha2-btn" data-ha2-refresh>' +
       esc(t('ha2Redetect', '重新检测')) +
-      '</button></div><div class="ha2-section-head"><h2>' +
-      esc(t('ha2Workspace', '工作区')) +
-      '</h2><span data-ha2-active-count>' +
-      rows.length +
-      ' ' +
-      esc(t('ha2ActiveCount', '个正在活动')) +
+      '</button></div>'
+    );
+  }
+
+  function tmWorkspaceRaw(snap) {
+    var tm = snap && snap.timeMachine;
+    return tm && (tm.workspace || tm.workspacePath || tm.workspace_path)
+      ? String(tm.workspace || tm.workspacePath || tm.workspace_path)
+      : '';
+  }
+
+  function tmChangedCount(snap) {
+    var tm = snap && snap.timeMachine;
+    return Number((tm && (tm.changedCount != null ? tm.changedCount : tm.changed_count)) || 0);
+  }
+
+  function targetPathMatchedTm(snap) {
+    var ctx = snap && snap.targetContext;
+    var S = store();
+    if (!ctx || !ctx.projectPath) return false;
+    if (ctx.tmWorkspaceMatched) return true;
+    if (S && S.pathsEqual) return S.pathsEqual(ctx.projectPath, tmWorkspaceRaw(snap));
+    var PP = global.OneToneProjectPath;
+    return !!(PP && PP.pathsEqual && PP.pathsEqual(ctx.projectPath, tmWorkspaceRaw(snap)));
+  }
+
+  /** One workspace row inside the existing work list — never a separate receipt card. */
+  function workspaceCapsuleRowHtml(snap) {
+    var tm = snap && snap.timeMachine;
+    var path = tmWorkspaceRaw(snap);
+    var leaf = '';
+    var PP = global.OneToneProjectPath;
+    if (PP && PP.pathLeaf) leaf = PP.pathLeaf(path) || '';
+    else if (path) {
+      var parts = path.replace(/[\\/]+$/, '').split(/[\\/]/);
+      leaf = parts[parts.length - 1] || path;
+    }
+    var isGit = !!(tm && (tm.isGit === true || tm.is_git === true));
+    var block = tm && (tm.blockReason || tm.block_reason);
+    var changed = tmChangedCount(snap);
+    var ctx = snap && snap.targetContext;
+    var title = leaf ? leaf + ' 工作区' : t('ha2TmLabel', '项目时间胶囊');
+    var tag;
+    var note;
+    var tagTone = '';
+    var action = t('ha2OpenTimeCapsule', '打开');
+    var tipLabel = tm && (tm.tipLabel || tm.tip_label || tm.tipId || tm.tip_id);
+    if (!tm) {
+      tag = t('ha2TmLoadingTag', '读取中');
+      note = t('ha2TmLoading', '正在读取 Git 状态…');
+    } else if (block) {
+      tag = t('ha2TmNeedsAttention', '需处理');
+      note = String(block);
+      tagTone = ' is-wait';
+    } else if (!path) {
+      tag = t('ha2TmNoProjectTag', '未接入');
+      note = t('ha2TmNoProject', '选择项目后可查看改动与恢复点');
+    } else if (ctx && ctx.projectPath && !targetPathMatchedTm(snap)) {
+      tag = t('ha2TmOtherProjectTag', '其他项目');
+      note = t('ha2TmOtherProject', '时间胶囊当前连接到另一个项目');
+      tagTone = ' is-wait';
+    } else if (!isGit) {
+      tag = t('ha2TmUnprotected', '未保护');
+      note = t('ha2TmNotGit', '当前项目还不是 Git 仓库');
+      tagTone = ' is-wait';
+    } else if (changed > 0) {
+      tag = changed + t('ha2WorkspaceChanges', ' 项改动');
+      note = tipLabel
+        ? t('ha2RecentProtectPoint', '最近保护点') + ' · ' + tipLabel
+        : t('ha2TmDirtyHint', '打开后可查看恢复点和影响文件');
+      action = t('ha2ViewChanges', '查看改动');
+    } else {
+      tag = t('ha2TmClean', '工作区干净');
+      note = tipLabel
+        ? t('ha2RecentProtectPoint', '最近保护点') + ' · ' + tipLabel
+        : t('ha2TmCleanHint', '可随时保存或回到已有恢复点');
+    }
+    return (
+      '<article class="ha2-row ha2-workspace-row" data-ha2-workspace-row>' +
+      '<button type="button" class="ha2-row-main" data-ha2-tm aria-label="' +
+      esc(t('ha2TmOpenHint', '打开项目时间胶囊')) +
+      '"><span class="ha2-workspace-icon" aria-hidden="true">' +
+      '<svg viewBox="0 0 24 24" focusable="false"><path d="M3.5 6.5h6l1.8 2h9.2v9H3.5z"/><path d="M3.5 8.5h17"/></svg>' +
+      '</span><div class="ha2-row-body"><div class="ha2-row-title"><b>' +
+      esc(title) +
+      '</b><span class="ha2-row-tag' +
+      tagTone +
+      '">' +
+      esc(tag) +
+      '</span></div><div class="ha2-note">' +
+      esc(note) +
+      '</div></div></button><div class="ha2-actions"><button type="button" class="ha2-btn ha2-row-cta" data-ha2-tm>' +
+      esc(action) +
+      '</button></div></article>'
+    );
+  }
+
+  function openTimeCapsule() {
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    var tm = snap && snap.timeMachine;
+    var ws =
+      tm && (tm.workspace || tm.workspacePath)
+        ? String(tm.workspace || tm.workspacePath)
+        : '';
+    var Nav = global.OneToneAgentNavTarget;
+    if (Nav && typeof Nav.open === 'function') {
+      if (Nav.open({ view: 'capsule', workspace: ws || null })) return;
+    }
+    var Drawer = global.OneToneSettingsDrawer;
+    if (Drawer && typeof Drawer.open === 'function') {
+      try {
+        Drawer.open({
+          panel: 'agent',
+          agentSub: 'capsule',
+          tmWorkspace: ws || undefined
+        });
+      } catch (_) {}
+    }
+  }
+
+  function homeContentHtml(snap) {
+    var banner = primaryBannerHtml(snap);
+    var permOnly = banner.kind === 'permission' ? banner.html : permissionHtml(snap);
+    return (
+      permOnly +
+      situationHtml(snap) +
+      '<div data-ha2-completion-obs>' +
+      completionObservationHtml(snap) +
+      '</div><div data-ha2-validation-notice>' +
+      validationNoticeHtml(snap) +
+      '</div><div data-ha2-delivery-receipt role="status" aria-live="polite" aria-atomic="true">' +
+      deliveryReceiptHtml(snap) +
+      '</div><div data-ha2-action-receipt role="status" aria-live="polite" aria-atomic="true">' +
+      actionReceiptHtml(snap) +
+      '</div>' +
+      '<div class="ha2-section-head"><h3>' +
+      esc(t('ha2Workspace', 'Agent 任务与会话')) +
+      '</h3><span>' +
+      esc(t('ha2WorkspaceHint', '改动 · 会话 · 任务')) +
       '</span><button type="button" class="ha2-link" data-ha2-open-center>' +
       esc(t('ha2ViewAll', '查看全部')) +
       '</button></div><div class="ha2-list" data-ha2-list>' +
       listHtml(snap) +
-      '</div><div data-ha2-ticket>' +
-      ticketHtml(snap) +
-      '</div><div data-ha2-receipt>' +
-      receiptHtml(snap) +
       '</div>'
+    );
+  }
+
+  function sessionCardHtml(s) {
+    if (!s) return '';
+    var when = s.updatedAt ? relWhen(s.updatedAt) : '';
+    var meta = [
+      s.projectId || s.projectMatch || '',
+      s.activitySource || '',
+      when,
+      s.status || ''
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    return (
+      '<button type="button" class="ha2-session" data-ha2-session="' +
+      esc(s.sessionId) +
+      '" aria-expanded="false">' +
+      '<b>' +
+      esc(s.title || s.sessionId || t('ha2UnnamedSession', '未命名会话')) +
+      '</b><small>' +
+      esc(meta) +
+      '</small>' +
+      '<div class="ha2-session-meta" hidden>' +
+      '<div>' +
+      esc(t('ha2SessionId', '会话')) +
+      ': ' +
+      esc(s.sessionId) +
+      '</div>' +
+      (s.provider
+        ? '<div>' + esc(t('ha2Provider', '来源')) + ': ' + esc(s.provider) + '</div>'
+        : '') +
+      (s.projectId
+        ? '<div>' + esc(t('ha2ProjectId', '项目')) + ': ' + esc(s.projectId) + '</div>'
+        : '') +
+      (s.projectMatch
+        ? '<div>' + esc(t('ha2ProjectMatch', '匹配')) + ': ' + esc(s.projectMatch) + '</div>'
+        : '') +
+      (s.activitySource
+        ? '<div>' + esc(t('ha2ActivitySource', '活动来源')) + ': ' + esc(s.activitySource) + '</div>'
+        : '') +
+      (s.activeConfidence != null
+        ? '<div>' +
+          esc(t('ha2ActiveConfidence', '活跃置信')) +
+          ': ' +
+          esc(String(s.activeConfidence)) +
+          '</div>'
+        : '') +
+      '</div></button>'
     );
   }
 
@@ -269,8 +1092,22 @@
     }
     var S = store();
     var win = S && S.windowsLabel ? S.windowsLabel(c.id) : '';
-    var sessions = (agent && agent.sessions) || [];
+    var sessions =
+      S && typeof S.buildSessionCards === 'function'
+        ? S.buildSessionCards(agent || c.id)
+        : [];
     var a = agent || { actions: [], agentId: '' };
+    var obsFresh =
+      agent && agent.observedStatus
+        ? agent.observedStatus.freshUntil || agent.observedStatus.fresh_until
+        : null;
+    var agentFreshBit = obsFresh
+      ? '<p class="ha2-agent-fresh">' +
+        esc(t('ha2AgentStatusFresh', 'Agent 状态新鲜度')) +
+        ' · ' +
+        esc(String(obsFresh)) +
+        '</p>'
+      : '';
     return (
       '<div class="ha2-head"><div><h1>' +
       esc(c.name) +
@@ -284,7 +1121,9 @@
       esc(c.name) +
       '</h2><p>' +
       esc(win) +
-      '</p></div><div class="ha2-actions">' +
+      '</p>' +
+      agentFreshBit +
+      '</div><div class="ha2-actions">' +
       (can(a.actions, 'agent.focus')
         ? '<button type="button" class="ha2-btn" data-ha2-action="agent.focus" data-agent="' +
           esc(a.agentId) +
@@ -310,18 +1149,7 @@
       esc(t('ha2RecentSessions', '最近会话')) +
       '</b>' +
       (sessions.length
-        ? sessions
-            .slice(0, 5)
-            .map(function (s) {
-              return (
-                '<div class="ha2-session"><b>' +
-                esc(s.title || s.sessionId || t('ha2UnnamedSession', '未命名会话')) +
-                '</b><small>' +
-                esc(s.status || '') +
-                '</small></div>'
-              );
-            })
-            .join('')
+        ? sessions.slice(0, 5).map(sessionCardHtml).join('')
         : '<div class="ha2-empty">' + esc(t('ha2NoSessions', '没有可确认的会话记录')) + '</div>') +
       '<button type="button" class="ha2-link" data-ha2-open-center>' +
       esc(t('ha2OpenAgentCenter', '在 Agent Center 查看完整能力 ›')) +
@@ -329,44 +1157,228 @@
     );
   }
 
-  function capClass(cap) {
+  function capClass(cap, kind) {
     var st = (cap && cap.state) || 'off';
-    if (st === 'on') return 'ha2-cap on';
+    if (st === 'on') {
+      return kind === 'camera' ? 'ha2-cap on on-cam' : 'ha2-cap on';
+    }
     if (st === 'pending') return 'ha2-cap pending';
     if (st === 'error' || (cap && cap.error)) return 'ha2-cap error';
     if (st === 'unavailable') return 'ha2-cap unavailable';
     return 'ha2-cap';
   }
 
+  function capPanelText(caps) {
+    caps = caps || {};
+    var bits = [];
+    function bit(cap, label) {
+      if (!cap) return;
+      if (cap.state === 'on' && cap.runtimeReady) bits.push(label + ' ' + t('ha2CapReady', '就绪'));
+      else if (cap.state === 'on' || cap.configOn) bits.push(label + ' ' + t('ha2CapConfigOn', '已启用'));
+      else if (cap.state === 'pending') bits.push(label + '…');
+      else if (cap.state === 'error') bits.push(label + ' ' + t('ha2CapError', '异常'));
+    }
+    bit(caps.softPad, t('ha2SoftPad', 'Soft Pad'));
+    bit(caps.voice, t('ha2Voice', '语音'));
+    bit(caps.camera, t('ha2Camera', '摄像头'));
+    if (!bits.length) return '';
+    return bits.join(' · ') + ' · ' + t('ha2CapPanelHint', '配置开 ≠ 运行就绪');
+  }
+
+  function matKindLabel(kind, source) {
+    var k = String(kind || '');
+    var src = String(source || '');
+    if (/截图|capture|screenshot/i.test(src) || k === 'screenshot') {
+      return t('ha2MatScreenshot', '截图');
+    }
+    if (k === 'image') return t('ha2MatImage', '图片');
+    if (k === 'file' || k === 'folder' || k === 'attach') return t('ha2MatFile', '文件');
+    if (k === 'url') return t('ha2MatUrl', '链接');
+    if (k === 'text') return t('ha2MatPaste', '粘贴内容');
+    return t('ha2Attachment', '附件');
+  }
+
+  function localFileSrc(path) {
+    var p = String(path || '').trim();
+    if (!p) return '';
+    try {
+      var core = global.__TAURI__ && global.__TAURI__.core;
+      if (core && typeof core.convertFileSrc === 'function') return core.convertFileSrc(p);
+    } catch (_) {}
+    return '';
+  }
+
+  function materialCardHtml(x) {
+    if (!x || !x.id) return '';
+    var kind = String(x.kind || 'text');
+    var label = matKindLabel(kind, x.source);
+    var closeBtn =
+      '<button type="button" class="ha2-mat-card-close" data-ha2-remove="' +
+      esc(x.id) +
+      '" title="' +
+      esc(t('ha2MatRemove', '移除')) +
+      '" aria-label="' +
+      esc(t('ha2MatRemove', '移除')) +
+      '">×</button>';
+    var isImg =
+      kind === 'image' ||
+      !!(x.previewDataUrl) ||
+      /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(x.name || x.path || ''));
+    var thumbSrc = x.previewDataUrl || localFileSrc(x.path) || '';
+    // Compact image tiles — many can sit in one row.
+    if (isImg && thumbSrc) {
+      return (
+        '<article class="ha2-mat-card ha2-mat-card--thumb" data-ha2-mat-card="' +
+        esc(x.id) +
+        '" data-kind="image" title="' +
+        esc(x.name || label) +
+        '">' +
+        closeBtn +
+        '<img class="ha2-mat-thumb" src="' +
+        esc(thumbSrc) +
+        '" alt="' +
+        esc(x.name || label) +
+        '" decoding="async" />' +
+        '</article>'
+      );
+    }
+    if (isImg && !thumbSrc) {
+      return (
+        '<article class="ha2-mat-card ha2-mat-card--thumb is-ph" data-ha2-mat-card="' +
+        esc(x.id) +
+        '" data-kind="image" title="' +
+        esc(x.name || label) +
+        '">' +
+        closeBtn +
+        '<span class="ha2-mat-thumb-ph" aria-hidden="true"></span></article>'
+      );
+    }
+    var body;
+    var toggleBtn = '';
+    if (kind === 'text') {
+      var raw = String(x.content || '');
+      var long = isLongMatText(raw);
+      var open = !!matTextExpanded[x.id];
+      var chars = raw.length;
+      // Toggle lives in the header so 收起 stays visible (not under the tall editor).
+      if (long) {
+        toggleBtn = open
+          ? '<button type="button" class="ha2-mat-toggle" data-ha2-mat-collapse="' +
+            esc(x.id) +
+            '">' +
+            esc(t('ha2MatCollapse', '收起')) +
+            '</button>'
+          : '<button type="button" class="ha2-mat-toggle" data-ha2-mat-expand="' +
+            esc(x.id) +
+            '">' +
+            esc(t('ha2MatExpand', '展开')) +
+            '</button>';
+      }
+      if (long && !open) {
+        var prev = raw.replace(/\s+/g, ' ').trim();
+        if (prev.length > 96) prev = prev.slice(0, 96) + '…';
+        body =
+          '<button type="button" class="ha2-mat-preview" data-ha2-mat-expand="' +
+          esc(x.id) +
+          '" title="' +
+          esc(t('ha2MatExpand', '展开全文')) +
+          '">' +
+          esc(prev || t('ha2MatTextPlaceholder', '粘贴的文字，可直接改')) +
+          '</button>' +
+          '<div class="ha2-mat-preview-meta"><span>' +
+          chars +
+          esc(t('ha2MatChars', ' 字')) +
+          '</span></div>';
+      } else if (long && open) {
+        body =
+          '<textarea class="ha2-mat-card-text is-open" data-ha2-mat-text="' +
+          esc(x.id) +
+          '" rows="12" placeholder="' +
+          esc(t('ha2MatTextPlaceholder', '粘贴的文字，可直接改')) +
+          '">' +
+          esc(raw) +
+          '</textarea>';
+      } else {
+        body =
+          '<textarea class="ha2-mat-card-text" data-ha2-mat-text="' +
+          esc(x.id) +
+          '" rows="2" placeholder="' +
+          esc(t('ha2MatTextPlaceholder', '粘贴的文字，可直接改')) +
+          '">' +
+          esc(raw) +
+          '</textarea>';
+      }
+    } else if (kind === 'url') {
+      body =
+        '<input class="ha2-mat-card-url" data-ha2-mat-text="' +
+        esc(x.id) +
+        '" type="text" value="' +
+        esc(x.content || x.path || x.name || '') +
+        '" />';
+    } else {
+      var sub = x.path || x.description || '';
+      body =
+        '<div class="ha2-mat-card-file">' +
+        '<b>' +
+        esc(x.name || label) +
+        '</b>' +
+        (sub ? '<small title="' + esc(sub) + '">' + esc(sub) + '</small>' : '') +
+        '</div>';
+    }
+    return (
+      '<article class="ha2-mat-card ha2-mat-card--wide' +
+      (kind === 'text' && matTextExpanded[x.id] ? ' is-text-open' : '') +
+      '" data-ha2-mat-card="' +
+      esc(x.id) +
+      '" data-kind="' +
+      esc(kind) +
+      '">' +
+      '<header class="ha2-mat-card-head"><span class="ha2-mat-card-kind">' +
+      esc(label) +
+      '</span>' +
+      toggleBtn +
+      closeBtn +
+      '</header>' +
+      '<div class="ha2-mat-card-body">' +
+      body +
+      '</div></article>'
+    );
+  }
+
   function attachmentsHtml(snap) {
     var mats = snap.materials || [];
     if (!mats.length) return '';
+    var thumbs = [];
+    var rest = [];
+    var i;
+    for (i = 0; i < mats.length; i++) {
+      var m = mats[i];
+      if (!m) continue;
+      var k = String(m.kind || '');
+      var img =
+        k === 'image' ||
+        !!m.previewDataUrl ||
+        /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(m.name || m.path || ''));
+      if (img) thumbs.push(m);
+      else rest.push(m);
+    }
     return (
       '<div class="ha2-attachments" data-ha2-attachments>' +
-      mats
-        .map(function (x) {
-          return (
-            '<button type="button" class="ha2-attachment" data-ha2-remove="' +
-            esc(x.id) +
-            '">' +
-            esc(x.name || t('ha2Attachment', '附件')) +
-            ' ×</button>'
-          );
-        })
-        .join('') +
+      (thumbs.length
+        ? '<div class="ha2-mat-thumbs">' + thumbs.map(materialCardHtml).join('') + '</div>'
+        : '') +
+      rest.map(materialCardHtml).join('') +
       '</div>'
     );
   }
 
   function matMenuHtml() {
     if (!matMenuOpen) return '';
+    // File picker already accepts images — no separate「图片」row.
     return (
       '<div class="ha2-mat-menu" data-ha2-mat-menu role="menu">' +
       '<button type="button" data-ha2-mat="file">' +
       esc(t('ha2MatFile', '文件')) +
-      '</button>' +
-      '<button type="button" data-ha2-mat="image">' +
-      esc(t('ha2MatImage', '图片')) +
       '</button>' +
       '<button type="button" data-ha2-mat="screenshot">' +
       esc(t('ha2MatScreenshot', '截图')) +
@@ -377,6 +1389,106 @@
     );
   }
 
+  function closeMatMenu() {
+    if (!matMenuOpen) return;
+    matMenuOpen = false;
+    if (store()) paint(store().getSnapshot());
+  }
+
+  /** Outside click / Escape — picker and mat menu must rebound. */
+  function onDocPointerDown(e) {
+    if (!mounted || !root) return;
+    var t = e.target;
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    if (snap && snap.pickerOpen) {
+      if (
+        !(t && t.closest && (t.closest('[data-ha2-picker-panel]') ||
+          t.closest('[data-ha2-picker]') ||
+          t.closest('[data-ha2-menu-picker]')))
+      ) {
+        closePickerSurface();
+      }
+    }
+    if (matMenuOpen) {
+      if (!(t && t.closest && (t.closest('[data-ha2-mat-menu]') || t.closest('[data-ha2-add]')))) {
+        closeMatMenu();
+      }
+    }
+  }
+
+  function onDocKeyDown(e) {
+    if (!mounted || !e) return;
+    if (e.key !== 'Escape') return;
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    if (snap && snap.pickerOpen) {
+      e.preventDefault();
+      closePickerSurface();
+      return;
+    }
+    if (matMenuOpen) {
+      e.preventDefault();
+      closeMatMenu();
+    }
+  }
+
+  /** Crosshair mark: dashed = need aim, solid green = locked. */
+  function aimChipHtml(hasAim) {
+    var label = hasAim ? t('ha2AimLocked', '已对准输入框') : t('ha2AimNow', '现在定位');
+    return (
+      '<button type="button" class="ha2-aim-chip' +
+      (hasAim ? ' is-ok' : ' is-off') +
+      '" data-ha2-aim title="' +
+      esc(label) +
+      '" aria-label="' +
+      esc(label) +
+      '"><span class="ha2-aim-ico" aria-hidden="true">' +
+      '<svg viewBox="0 0 20 20" width="16" height="16" fill="none">' +
+      '<circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/>' +
+      '<circle class="ha2-aim-dot" cx="10" cy="10" r="2.2" fill="currentColor"/>' +
+      '<path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+      '</svg></span></button>'
+    );
+  }
+
+  function syncAimChip(hasAim) {
+    var aimBtn = root && root.querySelector('[data-ha2-aim]');
+    var aimClear = root && root.querySelector('[data-ha2-aim-clear]');
+    if (aimBtn) {
+      var label = hasAim ? t('ha2AimLocked', '已对准输入框') : t('ha2AimNow', '现在定位');
+      aimBtn.classList.toggle('is-ok', hasAim);
+      aimBtn.classList.toggle('is-off', !hasAim);
+      aimBtn.setAttribute('aria-label', label);
+      aimBtn.title = label;
+    }
+    if (aimClear) aimClear.hidden = !hasAim;
+  }
+
+  function targetProjectLabel(snap) {
+    var ctx = snap && snap.targetContext;
+    if (!ctx || !ctx.projectPath) return t('ha2NoProject', '未选项目');
+    var PP = global.OneToneProjectPath;
+    if (PP && PP.pathLeaf) return PP.pathLeaf(ctx.projectPath) || ctx.projectPath;
+    var parts = String(ctx.projectPath).replace(/[\\/]+$/, '').split(/[\\/]/);
+    return parts[parts.length - 1] || ctx.projectPath;
+  }
+
+  function canSendNow(snap, draftOverride) {
+    var draft =
+      draftOverride != null
+        ? draftOverride
+        : snap && snap.draft
+          ? snap.draft
+          : '';
+    var hasContent =
+      !!String(draft || '').trim() || !!(snap && snap.materials && snap.materials.length);
+    var ctx = snap && snap.targetContext;
+    var hasAgent = !!(ctx && ctx.kind);
+    var hasProject = !!(ctx && ctx.projectPath);
+    return hasContent && hasAgent && hasProject;
+  }
+
   function dockStaticHtml(snap) {
     var c = currentCat(snap);
     var caps = snap.capabilities || {};
@@ -385,42 +1497,61 @@
     var appId = c.appId || '';
     var aim = (snap.aimByAppId && snap.aimByAppId[appId]) || {};
     var hasAim = !!aim.hasActive;
+    var hasMats = !!(snap.materials && snap.materials.length);
+    var panel = capPanelText(caps);
+    var projectLabel = targetProjectLabel(snap);
+    var sendOk = canSendNow(snap);
     return (
-      '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop><div class="ha2-dock-top"><button type="button" class="ha2-chip target" data-ha2-picker>' +
+      '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop>' +
+      '<div class="ha2-dock-target">' +
+      '<button type="button" class="ha2-chip target" data-ha2-picker>' +
       iconHtml(c, 'ha2-chip-icon') +
+      '<span data-ha2-dest-name>' +
       esc(c.name) +
-      '⌄</button><span class="ha2-chip keys" data-ha2-soft-chip hidden>' +
-      esc(t('ha2SoftPadOn', '软键盘常开')) +
-      '</span>' +
-      (snap.materials && snap.materials.length
-        ? '<span class="ha2-chip saved">' + esc(t('ha2Saved', '已存')) + '</span>'
-        : '') +
-      '<div class="ha2-aim"><span data-ha2-aim-label>' +
-      esc(hasAim ? t('ha2AimCustom', '已自定义') : t('ha2AimDefault', '默认')) +
-      '</span><button type="button" data-ha2-aim>' +
-      esc(hasAim ? t('ha2AimChange', '更改位置') : t('ha2AimNow', '现在定位')) +
-      '</button><button type="button" data-ha2-aim-clear' +
+      '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+      esc(projectLabel) +
+      '</span> ▾</button>' +
+      aimChipHtml(hasAim) +
+      '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
       (hasAim ? '' : ' hidden') +
-      '>' +
+      ' title="' +
       esc(t('ha2AimClear', '清除')) +
-      '</button></div></div><textarea class="ha2-editor" data-ha2-draft placeholder="' +
-      esc(t('ha2DraftPlaceholder', '写给') + ' ' + c.name + '…') +
-      '"></textarea><div data-ha2-attach-host>' +
+      '">' +
+      esc(t('ha2AimClear', '清除')) +
+      '</button></div>' +
+      '<div class="ha2-compose"><label class="ha2-sr-only" for="ha2-draft-input">' +
+      esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
+      '</label><textarea id="ha2-draft-input" class="ha2-editor" data-ha2-draft aria-label="' +
+      esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
+      '" placeholder="' +
+      esc(t('ha2DraftPlaceholder', '写给') + (c.name ? ' ' + c.name + '…' : '…')) +
+      '" rows="3"></textarea></div>' +
+      '<div data-ha2-attach-host>' +
       attachmentsHtml(snap) +
-      '</div><div class="ha2-dock-bottom"><div class="ha2-add-wrap"><button type="button" class="ha2-round" data-ha2-add title="' +
+      '</div>' +
+      '<div class="ha2-cap-panel' +
+      (panel ? ' is-show' : '') +
+      '" data-ha2-cap-panel' +
+      (panel ? '' : ' hidden') +
+      '>' +
+      esc(panel) +
+      '</div>' +
+      '<div class="ha2-dock-bar">' +
+      '<div class="ha2-add-wrap"><button type="button" class="ha2-round" data-ha2-add title="' +
       esc(t('ha2AddMaterial', '加入材料')) +
       '">+</button>' +
       matMenuHtml() +
-      '</div><i class="ha2-divider"></i><button type="button" class="' +
-      capClass(caps.softPad) +
+      '</div><i class="ha2-divider" aria-hidden="true"></i>' +
+      '<button type="button" class="' +
+      capClass(caps.softPad, 'softPad') +
       '" data-ha2-cap="softPad">' +
-      esc(t('ha2SoftPad', '软键盘')) +
+      esc(t('ha2SoftPad', 'Soft Pad')) +
       '</button><button type="button" class="' +
-      capClass(caps.voice) +
+      capClass(caps.voice, 'voice') +
       '" data-ha2-cap="voice">' +
       esc(t('ha2Voice', '语音')) +
       '</button><button type="button" class="' +
-      capClass(caps.camera) +
+      capClass(caps.camera, 'camera') +
       '" data-ha2-cap="camera">' +
       esc(t('ha2Camera', '摄像头')) +
       '</button><span class="ha2-spacer"></span><div class="ha2-quick" data-ha2-quick>' +
@@ -439,39 +1570,117 @@
           );
         })
         .join('') +
-      '</div><button type="button" class="ha2-agent-btn more" data-ha2-picker>···</button><button type="button" class="ha2-send" data-ha2-send ' +
-      (!String(snap.draft || '').trim() && !(snap.materials && snap.materials.length) ? 'disabled' : '') +
+      '</div><button type="button" class="ha2-agent-btn more" data-ha2-picker title="' +
+      esc(t('ha2PickAgent', '选择 Agent')) +
+      '">···</button><button type="button" class="ha2-send" data-ha2-send ' +
+      (sendOk ? '' : 'disabled') +
       ' title="' +
+      esc(
+        sendOk
+          ? t('ha2Send', '发送')
+          : !(snap.targetContext && snap.targetContext.projectPath)
+            ? t('ha2NeedProject', '先选定项目')
+            : t('ha2Send', '发送')
+      ) +
+      '" aria-label="' +
       esc(t('ha2Send', '发送')) +
       '">↑</button></div></section></div>'
     );
   }
 
-  function pickerHtml(snap) {
-    if (!snap.pickerOpen) return '';
+  function agentPickButtons(snap, layout) {
     var catalog = snap.catalog || [];
+    var locked = !!snap.userLocked;
+    return catalog
+      .map(function (a) {
+        var on =
+          layout === 'list'
+            ? locked && a.id === snap.selectedKind
+              ? ' on'
+              : ''
+            : a.id === snap.selectedKind
+              ? ' on'
+              : '';
+        if (layout === 'list') {
+          return (
+            '<button type="button" class="ha2-picker-row' +
+            on +
+            '" role="option" aria-selected="' +
+            (on ? 'true' : 'false') +
+            '" data-ha2-pick="' +
+            esc(a.id) +
+            '">' +
+            iconHtml(a, 'ha2-icon ha2-picker-row-ico') +
+            '<span class="ha2-picker-row-name">' +
+            esc(a.name) +
+            '</span></button>'
+          );
+        }
+        return (
+          '<button type="button" class="' +
+          (on ? 'on' : '') +
+          '" data-ha2-pick="' +
+          esc(a.id) +
+          '">' +
+          iconHtml(a) +
+          esc(a.name) +
+          '</button>'
+        );
+      })
+      .join('');
+  }
+
+  /** Top-right: Soft Pad dark-glass vertical list. Dock: icon grid. Never shared. */
+  function pickerHtml(snap) {
+    if (!snap.pickerOpen || !pickerSurface) return '';
+    if (pickerSurface === 'menu') {
+      var followOn = !snap.userLocked ? ' on' : '';
+      return (
+        '<aside class="ha2-picker is-menu" data-ha2-picker-panel data-ha2-picker-kind="menu" role="listbox" aria-label="' +
+        esc(t('ha2PickAgent', '选择 Agent')) +
+        '"><button type="button" class="ha2-picker-row ha2-picker-follow' +
+        followOn +
+        '" role="option" aria-selected="' +
+        (followOn ? 'true' : 'false') +
+        '" data-ha2-pick-follow>' +
+        esc(t('ha2FollowRecogn', '跟随识别')) +
+        '</button><div class="ha2-picker-divider" aria-hidden="true"></div><div class="ha2-picker-list">' +
+        agentPickButtons(snap, 'list') +
+        '</div></aside>'
+      );
+    }
     return (
-      '<aside class="ha2-picker" data-ha2-picker-panel><div class="ha2-picker-head"><b>' +
+      '<aside class="ha2-picker is-dock" data-ha2-picker-panel data-ha2-picker-kind="dock"><div class="ha2-picker-head"><b>' +
       esc(t('ha2PickTarget', '选择发送目标')) +
       '</b><span>' +
       esc(t('ha2PickHint', '点图标只切换目标')) +
       '</span><button type="button" class="ha2-link" data-ha2-picker-close>×</button></div><div class="ha2-grid">' +
-      catalog
-        .map(function (a) {
-          return (
-            '<button type="button" class="' +
-            (a.id === snap.selectedKind ? 'on' : '') +
-            '" data-ha2-pick="' +
-            esc(a.id) +
-            '">' +
-            iconHtml(a) +
-            esc(a.name) +
-            '</button>'
-          );
-        })
-        .join('') +
+      agentPickButtons(snap, 'grid') +
       '</div></aside>'
     );
+  }
+
+  function openPickerSurface(surface, anchorEl) {
+    var S = store();
+    if (!S) return;
+    var open = S.getSnapshot().pickerOpen;
+    if (open && pickerSurface === surface) {
+      pickerSurface = null;
+      pickerAnchor = null;
+      S.setPickerOpen(false);
+      return;
+    }
+    pickerSurface = surface;
+    pickerAnchor = anchorEl || null;
+    S.setPickerOpen(true);
+    schedulePositionPicker();
+  }
+
+  function closePickerSurface() {
+    pickerSurface = null;
+    pickerAnchor = null;
+    var S = store();
+    if (S) S.setPickerOpen(false);
   }
 
   function ensureShell(snap) {
@@ -511,19 +1720,38 @@
     if (!el) return;
     var key = snap.view + ':' + (snap.view === 'agent' ? snap.selectedKind : 'home');
     if (!force && el.getAttribute('data-ha2-view-key') === key && snap.view === 'home') {
+      var perm = el.querySelector('.ha2-permission');
+      var nextPerm = permissionHtml(snap);
+      if (perm && nextPerm) {
+        var pWrap = document.createElement('div');
+        pWrap.innerHTML = nextPerm;
+        if (pWrap.firstChild) perm.replaceWith(pWrap.firstChild);
+      } else if (perm && !nextPerm) {
+        perm.remove();
+      } else if (!perm && nextPerm) {
+        el.insertAdjacentHTML('afterbegin', nextPerm);
+      }
+      var sit = el.querySelector('[data-ha2-situation]');
+      if (sit) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = situationHtml(snap);
+        var next = wrap.firstChild;
+        if (next) sit.replaceWith(next);
+      }
       var list = el.querySelector('[data-ha2-list]');
       if (list) list.innerHTML = listHtml(snap);
-      var ticket = el.querySelector('[data-ha2-ticket]');
-      if (ticket) ticket.innerHTML = ticketHtml(snap);
-      var receipt = el.querySelector('[data-ha2-receipt]');
-      if (receipt) receipt.innerHTML = receiptHtml(snap);
-      var win = el.querySelector('[data-ha2-win-label]');
-      if (win && store()) win.textContent = store().windowsLabel(currentCat(snap).id);
-      var count = el.querySelector('[data-ha2-active-count]');
-      if (count) {
-        var n = ((store() && store().workRows && store().workRows(3)) || []).length;
-        count.textContent = n + ' ' + t('ha2ActiveCount', '个正在活动');
-      }
+      var doneRec =
+        el.querySelector('[data-ha2-completion-obs]') ||
+        el.querySelector('[data-ha2-done-receipt]');
+      if (doneRec) doneRec.innerHTML = completionObservationHtml(snap);
+      var valHost = el.querySelector('[data-ha2-validation-notice]');
+      if (valHost) valHost.innerHTML = validationNoticeHtml(snap);
+      var deliveryHost =
+        el.querySelector('[data-ha2-delivery-receipt]') ||
+        el.querySelector('[data-ha2-receipt]');
+      if (deliveryHost) deliveryHost.innerHTML = deliveryReceiptHtml(snap);
+      var actionHost = el.querySelector('[data-ha2-action-receipt]');
+      if (actionHost) actionHost.innerHTML = actionReceiptHtml(snap);
       return;
     }
     el.setAttribute('data-ha2-view-key', key);
@@ -534,49 +1762,70 @@
     if (!root) return;
     var dockHost = root.querySelector('[data-ha2-dock-host]');
     if (!dockHost) return;
-    var ta = root.querySelector('[data-ha2-draft]');
-    var focused = ta && document.activeElement === ta;
-    if (focused) {
+    var ta = root.querySelector('.ha2-compose [data-ha2-draft]');
+    var focused = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-ha2-draft]');
+    var focusedEl = focused ? document.activeElement : null;
+    if (focusedEl) {
       try {
-        draftSel.start = ta.selectionStart;
-        draftSel.end = ta.selectionEnd;
+        draftSel.start = focusedEl.selectionStart;
+        draftSel.end = focusedEl.selectionEnd;
       } catch (_) {}
     }
 
     var c = currentCat(snap);
     var chip = root.querySelector('.ha2-chip.target');
     if (chip) {
-      chip.innerHTML = iconHtml(c, 'ha2-chip-icon') + esc(c.name) + '⌄';
+      chip.innerHTML =
+        iconHtml(c, 'ha2-chip-icon') +
+        '<span data-ha2-dest-name>' +
+        esc(c.name) +
+        '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+        esc(targetProjectLabel(snap)) +
+        '</span> ▾';
     }
-    if (ta && !focused) {
-      var next = snap.draft || '';
-      if (ta.value !== next) ta.value = next;
-      ta.placeholder = t('ha2DraftPlaceholder', '写给') + ' ' + c.name + '…';
+    if (!composing && !(store() && store().isComposing())) {
+      syncDraftMirrors(snap.draft || '');
+    }
+    if (ta) {
+      ta.placeholder = t('ha2DraftPlaceholder', '写给') + (c.name ? ' ' + c.name + '…' : '…');
     }
     var attachHost = root.querySelector('[data-ha2-attach-host]');
-    if (attachHost) attachHost.innerHTML = attachmentsHtml(snap);
+    if (attachHost) {
+      var matFocus =
+        document.activeElement &&
+        document.activeElement.matches &&
+        document.activeElement.matches('[data-ha2-mat-text]');
+      // Keep editable paste card focus while typing — don't rebuild the strip.
+      if (!matFocus) attachHost.innerHTML = attachmentsHtml(snap);
+    }
 
     var caps = snap.capabilities || {};
     ['softPad', 'voice', 'camera'].forEach(function (k) {
       var btn = root.querySelector('[data-ha2-cap="' + k + '"]');
-      if (btn) btn.className = capClass(caps[k]);
+      if (btn) btn.className = capClass(caps[k], k);
     });
-    var softChip = root.querySelector('[data-ha2-soft-chip]');
-    if (softChip) softChip.hidden = !(caps.softPad && caps.softPad.state === 'on');
+    var panelEl = root.querySelector('[data-ha2-cap-panel]');
+    if (panelEl) {
+      var panel = capPanelText(caps);
+      panelEl.textContent = panel;
+      panelEl.hidden = !panel;
+      panelEl.classList.toggle('is-show', !!panel);
+    }
 
     var appId = c.appId || '';
     var aim = (snap.aimByAppId && snap.aimByAppId[appId]) || {};
-    var hasAim = !!aim.hasActive;
-    var aimLabel = root.querySelector('[data-ha2-aim-label]');
-    var aimBtn = root.querySelector('[data-ha2-aim]');
-    var aimClear = root.querySelector('[data-ha2-aim-clear]');
-    if (aimLabel) aimLabel.textContent = hasAim ? t('ha2AimCustom', '已自定义') : t('ha2AimDefault', '默认');
-    if (aimBtn) aimBtn.textContent = hasAim ? t('ha2AimChange', '更改位置') : t('ha2AimNow', '现在定位');
-    if (aimClear) aimClear.hidden = !hasAim;
+    syncAimChip(!!aim.hasActive);
 
     var sendBtn = root.querySelector('[data-ha2-send]');
     if (sendBtn) {
-      sendBtn.disabled = !String(snap.draft || (ta && ta.value) || '').trim() && !(snap.materials && snap.materials.length);
+      var draftNow = snap.draft || (ta && ta.value) || '';
+      var ok = canSendNow(snap, draftNow);
+      sendBtn.disabled = !ok;
+      sendBtn.title = ok
+        ? t('ha2Send', '发送')
+        : !(snap.targetContext && snap.targetContext.projectPath)
+          ? t('ha2NeedProject', '先选定项目')
+          : t('ha2Send', '发送');
     }
 
     var quick = root.querySelector('[data-ha2-quick]');
@@ -611,12 +1860,17 @@
 
     var pickerHost = root.querySelector('[data-ha2-picker-host]');
     if (pickerHost) pickerHost.innerHTML = pickerHtml(snap);
+    if (snap.pickerOpen && pickerSurface) schedulePositionPicker();
+    else if (!snap.pickerOpen) {
+      pickerAnchor = null;
+      pickerSurface = null;
+    }
 
-    if (focused && ta) {
+    if (focusedEl && focusedEl.isConnected) {
       try {
-        ta.focus();
-        ta.selectionStart = draftSel.start;
-        ta.selectionEnd = draftSel.end;
+        focusedEl.focus();
+        focusedEl.selectionStart = draftSel.start;
+        focusedEl.selectionEnd = draftSel.end;
       } catch (_) {}
     }
   }
@@ -625,6 +1879,10 @@
 
   function paint(snap) {
     if (!root || !snap) return;
+    if (composing || (store() && store().isComposing())) {
+      // IME composition: do not rebuild Mid/Dock mirrors.
+      return;
+    }
     // Silent sync — never emit from inside a store subscriber paint.
     if (dock() && dock().syncCapabilityStates) {
       dock().syncCapabilityStates({ silent: true });
@@ -646,33 +1904,72 @@
     if (c.appId && D.refreshAim) D.refreshAim(c.appId);
   }
 
+  /** Prefetch every catalog agent's aim so the chip flips correctly on switch. */
+  function refreshAllAgentAims() {
+    var D = dock();
+    if (D && D.refreshAllAims) return D.refreshAllAims();
+    refreshAimForSelected();
+    return Promise.resolve();
+  }
+
+  function applyActionClientEffect(res, agentId) {
+    var effect = res && res.clientEffect;
+    if (!effect) return false;
+    var Effects = global.OneToneAgentClientEffects;
+    var Center = global.OneToneAgentCenter;
+    var apply =
+      (Effects && Effects.apply) || (Center && Center.applyClientEffect) || null;
+    if (!apply) return false;
+    var agent = { agentId: agentId };
+    try {
+      return !!apply(effect, agent);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function dispatch(actionId, agentId) {
     var S = store();
-    S.setReceipt({
+    var snap = S.getSnapshot();
+    var hint =
+      (snap.targetContext && snap.targetContext.projectPath) ||
+      null;
+    S.setActionReceipt({
       phase: 'sending',
-      title: t('ha2ActionSending', '正在执行 Agent 操作'),
+      actionId: actionId,
+      outcome: 'attempted',
+      title: t('ha2ActionSending', '正在尝试 Agent 操作'),
       message: actionId
     });
     return invoke('cmd_agent_center_action', {
       args: {
         agentId: agentId,
         actionId: actionId,
-        projectHint: null,
+        projectHint: hint,
         attemptId: 'home-v2-' + Date.now().toString(36)
       }
     })
       .then(function (res) {
         var failed = !res || res.outcome === 'failed';
-        S.setReceipt({
-          phase: failed ? 'failed' : 'sent',
-          title: failed ? t('ha2ActionFailed', '操作失败') : t('ha2ActionDone', 'Agent 操作已执行'),
-          message: (res && (res.detail || res.error || res.outcome)) || t('ha2NoResult', '未返回结果')
+        var verified = !!(res && String(res.outcome || '').toLowerCase() === 'verified');
+        S.setActionReceipt({
+          actionId: actionId,
+          outcome: failed ? 'failed' : verified ? 'verified' : 'attempted',
+          title: failed
+            ? t('ha2ActionFailed', '操作失败')
+            : verified
+              ? t('ha2ActionVerified', '操作已确认')
+              : t('ha2ActionAttempted', '操作已尝试'),
+          message:
+            (res && (res.detail || res.error || res.outcome)) || t('ha2NoResult', '未返回结果')
         });
+        applyActionClientEffect(res, agentId);
         return S.refresh('action');
       })
       .catch(function (e) {
-        S.setReceipt({
-          phase: 'failed',
+        S.setActionReceipt({
+          actionId: actionId,
+          outcome: 'failed',
           title: t('ha2ActionFailed', '操作失败'),
           message: (e && e.message) || String(e)
         });
@@ -684,10 +1981,27 @@
     var D = dock();
     var snap = S.getSnapshot();
     var c = currentCat(snap);
+    var ctx = snap.targetContext || (S.resolveTargetContext && S.resolveTargetContext()) || {};
+    if (!c.id) {
+      S.setValidationNotice({
+        kind: 'missing_agent',
+        message: t('ha2PickAgent', '选择 Agent')
+      });
+      return;
+    }
     var draft = snap.draft || '';
-    var ta = root && root.querySelector('[data-ha2-draft]');
-    if (ta) draft = ta.value;
+    var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
+    if (dockTa) draft = dockTa.value;
+    S.setDraft(draft, { silent: true });
     if (!String(draft).trim() && !(snap.materials && snap.materials.length)) return;
+
+    if (!ctx.projectPath) {
+      S.setValidationNotice({
+        kind: 'missing_project',
+        message: t('ha2NeedProject', '先选定项目')
+      });
+      return;
+    }
 
     var matching = null;
     for (var i = 0; i < snap.agents.length; i++) {
@@ -696,20 +2010,24 @@
         break;
       }
     }
-    if (!matching) {
-      S.setReceipt({
-        phase: 'failed',
-        title: t('ha2InstallFirst', '安装或打开') + ' ' + c.name + ' ' + t('ha2ThenSend', '后再发'),
-        message: t('ha2NoDeliverable', '未发现可投递的桌面 App 或匹配 CLI')
+    if (!matching || !can(matching.actions, 'agent.focus')) {
+      S.setValidationNotice({
+        kind: 'no_focus_action',
+        message: matching
+          ? t('ha2NoFocusAction', 'Agent Center 未提供可发送动作')
+          : t('ha2NoDeliverable', '未发现可投递的桌面 App 或匹配 CLI')
       });
       return;
     }
 
     var text = D && D.assembledText ? D.assembledText(draft) : draft;
-    S.setReceipt({
+    S.setDeliveryReceipt({
       phase: 'sending',
-      title: t('ha2SendingTo', '正在发送到') + ' ' + c.name,
-      message: S.windowsLabel(c.id)
+      outcome: 'delivery_attempt',
+      title: t('ha2AttemptingTo', '正在尝试投递到') + ' ' + c.name,
+      message: S.windowsLabel(c.id),
+      verified: false,
+      inputConfirmed: false
     });
 
     var clipWrite =
@@ -719,6 +2037,12 @@
 
     clipWrite
       .then(function () {
+        // Inherit this agent's saved composer point — never force re-calibrate on send.
+        if (D && D.ensureAim) {
+          return D.ensureAim(c.id, { force: false }).catch(function () {
+            return null;
+          });
+        }
         if (D && D.calibrateAim) {
           return D.calibrateAim(c.id).catch(function () {
             return null;
@@ -732,56 +2056,112 @@
             agentId: matching.agentId,
             actionId: 'agent.focus',
             pasteClipboard: true,
-            projectHint: null,
+            projectHint: ctx.projectPath,
             attemptId: 'home-v2-send-' + Date.now().toString(36)
           }
         });
       })
       .then(function (res) {
-        var detail = String((res && (res.detail || res.error)) || '');
-        var ok = !!res && res.outcome !== 'failed' && /composer_pasted|chat_pasted/.test(detail);
-        var inputConfirmed = /composer_pasted|ready=composer/.test(detail);
-        if (ok) {
-          S.setReceipt({
-            phase: 'sent',
-            title: inputConfirmed
-              ? t('ha2DeliveredComposer', '已送达') + ' ' + c.name + ' ' + t('ha2InputBox', '输入框')
-              : t('ha2SentUnconfirmed', '已发出 · 未确认进入输入框'),
-            message: inputConfirmed
-              ? t('ha2FgAndComposer', '目标前台与输入框均已确认')
-              : t('ha2FgPasted', '目标已取得前台，粘贴已执行'),
-            inputConfirmed: inputConfirmed
+        var cls = classifyActionResult(res);
+        if (cls.tier === 'verified_paste') {
+          S.setDeliveryReceipt({
+            phase: 'done',
+            outcome: 'pasted_confirmed',
+            title: t('ha2PastedConfirmed', '已确认粘贴到输入框') + ' · ' + c.name,
+            message: t('ha2FgAndComposer', '目标前台与输入框均已确认'),
+            verified: true,
+            inputConfirmed: true
           });
           if (D && D.archiveOnSuccess) D.archiveOnSuccess(c.id);
+          S.setDraft('', { silent: true });
+          syncDraftMirrors('');
+        } else if (cls.tier === 'verified_no_paste') {
+          S.setDeliveryReceipt({
+            phase: 'done',
+            outcome: 'activated_confirmed',
+            title: t('ha2ActivatedConfirmed', '已确认唤起目标') + ' · ' + c.name,
+            message: cls.detail || t('ha2FgOnly', '目标已取得前台 · 未确认粘贴'),
+            verified: true,
+            inputConfirmed: false
+          });
+        } else if (cls.tier === 'attempted') {
+          S.setDeliveryReceipt({
+            phase: 'done',
+            outcome: 'attempted',
+            title: t('ha2AttemptedUnverified', '已尝试，结果未确认'),
+            message: cls.detail || t('ha2DeliveryUnconfirmed', '已尝试投递 · 未确认进入输入框'),
+            verified: false,
+            inputConfirmed: false
+          });
         } else {
-          S.setReceipt({
+          S.setDeliveryReceipt({
             phase: 'failed',
-            title: t('ha2SendFailed', '发送失败'),
-            message: detail || t('ha2ActivateFailed', '无法激活目标或执行粘贴'),
+            outcome: 'failed',
+            title: t('ha2DeliveryFailed', '投递失败'),
+            message: cls.detail || t('ha2ActivateFailed', '无法激活目标或执行粘贴'),
+            verified: false,
             inputConfirmed: false
           });
         }
+        applyActionClientEffect(res, matching.agentId);
       })
       .catch(function (e) {
-        S.setReceipt({
+        S.setDeliveryReceipt({
           phase: 'failed',
-          title: t('ha2SendFailed', '发送失败'),
+          outcome: 'failed',
+          title: t('ha2DeliveryFailed', '投递失败'),
           message: (e && e.message) || String(e),
+          verified: false,
           inputConfirmed: false
         });
       });
   }
 
+  function openAttentionAgent(kind, agentId) {
+    var S = store();
+    if (kind && S && S.setSelected) S.setSelected(kind, { lock: true });
+    var Nav = global.OneToneAgentNavTarget;
+    if (Nav && Nav.open) {
+      Nav.open({
+        view: 'overview',
+        section: 'working',
+        provider: kind || undefined,
+        agentId: agentId || undefined
+      });
+      return;
+    }
+    if (S) S.setView('agent');
+  }
+
+  function syncDraftMirrors(text) {
+    if (!root) return;
+    var active = document.activeElement;
+    var nodes = root.querySelectorAll('[data-ha2-draft]');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i] === active) continue;
+      if (nodes[i].value !== text) nodes[i].value = text;
+    }
+  }
+
   function onInput(e) {
+    var D = dock();
+    if (e.target.matches && e.target.matches('[data-ha2-mat-text]')) {
+      if (composing) return;
+      var mid = e.target.getAttribute('data-ha2-mat-text');
+      if (!mid || !D || !D.updateMaterialContent) return;
+      D.updateMaterialContent(mid, { content: e.target.value }, { skipSync: true });
+      return;
+    }
     if (!e.target.matches || !e.target.matches('[data-ha2-draft]')) return;
+    if (composing) return;
     var val = e.target.value;
     try {
       draftSel.start = e.target.selectionStart;
       draftSel.end = e.target.selectionEnd;
     } catch (_) {}
-    var D = dock();
     if (D && D.syncDraftToPrep) D.syncDraftToPrep(val);
     else if (store()) store().setDraft(val, { lock: true, silent: true });
+    syncDraftMirrors(val);
     var sendBtn = root && root.querySelector('[data-ha2-send]');
     var snap = store() && store().getSnapshot();
     if (sendBtn) {
@@ -789,35 +2169,338 @@
     }
   }
 
-  function onPaste(e) {
-    if (!e.target.matches || !e.target.matches('[data-ha2-draft]')) return;
-    var items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    var D = dock();
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].kind === 'file') {
-        var f = items[i].getAsFile();
-        if (f && D && D.addFiles) {
-          e.preventDefault();
-          D.addFiles([f]);
-        }
+  function onCompositionStart(e) {
+    if (
+      !e.target.matches ||
+      !(e.target.matches('[data-ha2-draft]') || e.target.matches('[data-ha2-mat-text]'))
+    ) {
+      return;
+    }
+    composing = true;
+    if (store() && store().setComposing) store().setComposing(true);
+  }
+
+  function onCompositionEnd(e) {
+    if (
+      !e.target.matches ||
+      !(e.target.matches('[data-ha2-draft]') || e.target.matches('[data-ha2-mat-text]'))
+    ) {
+      return;
+    }
+    composing = false;
+    if (store() && store().setComposing) store().setComposing(false);
+    onInput(e);
+  }
+
+  /** Multi-line / multi-paragraph / medium+ paste → expandable card (not draft). */
+  function isLongMatText(text) {
+    var s = String(text || '');
+    if (!s.trim()) return false;
+    if (s.length >= 48) return true;
+    // \r, \n, or Unicode line/para separators (Word / web paste).
+    if (/[\r\n\u2028\u2029]/.test(s)) return true;
+    return false;
+  }
+
+  function shouldPasteAsTextCard(text) {
+    return isLongMatText(text);
+  }
+
+  /** text/html → plain with paragraph breaks when plain clipboard flattened them. */
+  function htmlToPlainMultiline(html) {
+    var s = String(html || '');
+    if (!s) return '';
+    s = s.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '');
+    s = s.replace(/<br\s*\/?>/gi, '\n');
+    s = s.replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n');
+    s = s.replace(/<(p|div|li|h[1-6]|tr)(?:\s[^>]*)?>/gi, '\n');
+    s = s.replace(/<[^>]+>/g, '');
+    s = s
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&');
+    return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function clipboardPlainText(cd) {
+    var plain = '';
+    try {
+      plain = cd ? String(cd.getData('text/plain') || '') : '';
+    } catch (_) {
+      plain = '';
+    }
+    if (/[\r\n\u2028\u2029]/.test(plain)) return plain;
+    var html = '';
+    try {
+      html = cd ? String(cd.getData('text/html') || '') : '';
+    } catch (_) {
+      html = '';
+    }
+    if (!html) return plain;
+    var fromHtml = htmlToPlainMultiline(html);
+    if (fromHtml && /[\r\n]/.test(fromHtml)) return fromHtml;
+    return plain || fromHtml;
+  }
+
+  function toastMatResult(res, failFallback) {
+    if (!res) return;
+    if (res.message) {
+      toast(res.message);
+      return;
+    }
+    if (res.outcome === 'failed') toast(failFallback || t('ha2MatFailed', '添加材料失败'));
+    else if (res.outcome === 'cancelled') toast(t('ha2MatCancelled', '已取消'));
+  }
+
+  function draftWantsImagePaste(cd) {
+    if (!cd) return false;
+    var i;
+    var items = cd.items;
+    if (items) {
+      for (i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (it && String(it.type || '').indexOf('image/') === 0) return true;
       }
+    }
+    if (cd.files && cd.files.length) {
+      for (i = 0; i < cd.files.length; i++) {
+        var f = cd.files[i];
+        if (f && String(f.type || '').indexOf('image/') === 0) return true;
+        if (f && /\.(png|jpe?g|gif|webp|bmp)$/i.test(String(f.name || ''))) return true;
+      }
+    }
+    return false;
+  }
+
+  function onPaste(e) {
+    // Editing an existing text card — keep native paste; upgrade to expand if multi-para.
+    if (e.target.matches && e.target.matches('[data-ha2-mat-text]')) {
+      var editId = e.target.getAttribute('data-ha2-mat-text');
+      global.requestAnimationFrame(function () {
+        var ta = e.target;
+        if (!ta || !editId) return;
+        var val = String(ta.value || '');
+        var Dk = dock();
+        if (Dk && Dk.updateMaterialContent) {
+          Dk.updateMaterialContent(editId, { content: val }, { skipSync: true });
+        }
+        if (isLongMatText(val) && !matTextExpanded[editId]) expandMatText(editId);
+      });
+      return;
+    }
+    var inDraft =
+      e.target.matches &&
+      (e.target.matches('[data-ha2-draft]') ||
+        (e.target.closest && e.target.closest('[data-ha2-draft]')));
+    if (!inDraft) return;
+    var cd = e.clipboardData;
+    var D = dock();
+    if (!D) return;
+
+    var files = [];
+    var items = cd && cd.items;
+    var i;
+    if (items) {
+      for (i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (!it) continue;
+        var typ = String(it.type || '');
+        var asFile =
+          it.kind === 'file' || typ.indexOf('image/') === 0
+            ? typeof it.getAsFile === 'function'
+              ? it.getAsFile()
+              : null
+            : null;
+        if (asFile) files.push(asFile);
+      }
+    }
+    // Soft Pad path: some WebViews expose image only via files[].
+    if (!files.length && cd && cd.files && cd.files.length) {
+      for (i = 0; i < cd.files.length; i++) {
+        if (cd.files[i]) files.push(cd.files[i]);
+      }
+    }
+    if (files.length && D.addFiles) {
+      e.preventDefault();
+      e.stopPropagation();
+      D.addFiles(files).then(
+        function (res) {
+          // Blob write may be denied on main window — fall back to Win32.
+          if (res && res.outcome === 'failed' && D.pasteImageFromNative) {
+            return D.pasteImageFromNative().then(function (nativeRes) {
+              toastMatResult(nativeRes || res, t('ha2MatImageFailed', '粘贴图片失败'));
+            });
+          }
+          toastMatResult(res, t('ha2MatImageFailed', '粘贴图片失败'));
+        },
+        function () {
+          if (D.pasteImageFromNative) {
+            return D.pasteImageFromNative().then(function (res) {
+              toastMatResult(res, t('ha2MatImageFailed', '粘贴图片失败'));
+            });
+          }
+          toast(t('ha2MatImageFailed', '粘贴图片失败'));
+        }
+      );
+      return;
+    }
+
+    var text = clipboardPlainText(cd);
+    var hintImg = draftWantsImagePaste(cd);
+    var emptyText = !String(text || '').trim();
+    // Explicit image MIME, or empty paste (screenshot often has no text/files in WebView).
+    if ((hintImg || emptyText) && !shouldPasteAsTextCard(text) && D.pasteImageFromNative) {
+      e.preventDefault();
+      e.stopPropagation();
+      D.pasteImageFromNative().then(
+        function (res) {
+          if (res && res.outcome === 'added') {
+            toastMatResult(res);
+            return;
+          }
+          // No image — don't spam on empty Ctrl+V; only toast when MIME hinted image.
+          if (hintImg) toastMatResult(res, t('ha2MatImageFailed', '粘贴图片失败'));
+        },
+        function () {
+          if (hintImg) toast(t('ha2MatImageFailed', '粘贴图片失败'));
+        }
+      );
+      return;
+    }
+    if (!shouldPasteAsTextCard(text) || !D.pasteTextAsMaterial) return;
+    e.preventDefault();
+    e.stopPropagation();
+    D.pasteTextAsMaterial(text).then(
+      function (res) {
+        toastMatResult(res, t('ha2MatFailed', '添加材料失败'));
+        maybeExpandLongMat(res);
+      },
+      function () {
+        toast(t('ha2MatFailed', '添加材料失败'));
+      }
+    );
+  }
+
+  function rebuildAttachments(snap) {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-attach-host]');
+    if (!host) return;
+    snap = snap || (store() && store().getSnapshot());
+    if (!snap) return;
+    // Bypass paint()'s matFocus skip — expand/collapse/new paste must refresh the strip.
+    host.innerHTML = attachmentsHtml(snap);
+  }
+
+  function paintMatsOnly() {
+    if (!root || !store()) return;
+    paint(store().getSnapshot());
+  }
+
+  function expandMatText(id) {
+    id = String(id || '');
+    if (!id) return;
+    // Ghost click after 收起 lands on 展开 at the same spot — ignore briefly.
+    if (matCollapseGuardUntil[id] && Date.now() < matCollapseGuardUntil[id]) return;
+    matTextExpanded[id] = true;
+    var seq = (matTextExpandSeq[id] = (matTextExpandSeq[id] || 0) + 1);
+    rebuildAttachments();
+    global.requestAnimationFrame(function () {
+      if (matTextExpandSeq[id] !== seq || !matTextExpanded[id]) return;
+      var ta = root && root.querySelector('[data-ha2-mat-text="' + id + '"]');
+      if (ta && ta.focus) {
+        try {
+          ta.focus();
+          var len = String(ta.value || '').length;
+          ta.setSelectionRange(len, len);
+        } catch (_) {}
+      }
+    });
+  }
+
+  function maybeExpandLongMat(res) {
+    if (!res || res.outcome !== 'added' || !res.material || !res.material.id) return;
+    var c = String(res.material.content || '');
+    if (isLongMatText(c)) expandMatText(res.material.id);
+  }
+
+  function collapseMatText(id) {
+    id = String(id || '');
+    if (!id) return;
+    matTextExpandSeq[id] = (matTextExpandSeq[id] || 0) + 1;
+    matCollapseGuardUntil[id] = Date.now() + 400;
+    // Flush edits before collapsing (skipSync paint would otherwise lose focus mid-type).
+    var ta = root && root.querySelector('[data-ha2-mat-text="' + id + '"]');
+    var D = dock();
+    if (ta && D && D.updateMaterialContent) {
+      D.updateMaterialContent(id, { content: ta.value }, { skipSync: true });
+    }
+    delete matTextExpanded[id];
+    if (ta && ta.blur) {
+      try {
+        ta.blur();
+      } catch (_) {}
+    }
+    rebuildAttachments();
+  }
+
+  function eventEl(e) {
+    var t = e && e.target;
+    if (t && t.nodeType === 3) t = t.parentElement;
+    return t && t.nodeType === 1 ? t : null;
+  }
+
+  /** Mouse/touch: handle on pointerdown + preventDefault so the follow-up click cannot re-expand. */
+  function onMatTogglePointerDown(e) {
+    if (e.button != null && e.button !== 0) return;
+    var el = eventEl(e);
+    if (!el || !el.closest) return;
+    var tEl = el.closest('[data-ha2-mat-expand],[data-ha2-mat-collapse]');
+    if (!tEl || !root || !root.contains(tEl)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (tEl.hasAttribute('data-ha2-mat-collapse')) {
+      collapseMatText(tEl.getAttribute('data-ha2-mat-collapse'));
+    } else {
+      expandMatText(tEl.getAttribute('data-ha2-mat-expand'));
     }
   }
 
   function onClick(e) {
-    var tEl = e.target.closest(
-      '[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat]'
+    var el = eventEl(e);
+    if (!el || !el.closest) return;
+    var tEl = el.closest(
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse]'
     );
     if (!tEl) return;
     var S = store();
     var D = dock();
+    // Keyboard activation (Enter/Space) lands here; pointer path already handled above.
+    if (tEl.hasAttribute('data-ha2-mat-expand')) {
+      expandMatText(tEl.getAttribute('data-ha2-mat-expand'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-mat-collapse')) {
+      collapseMatText(tEl.getAttribute('data-ha2-mat-collapse'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-menu-picker')) {
+      openPickerSurface('menu', tEl);
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-picker')) {
-      S.setPickerOpen(!S.getSnapshot().pickerOpen);
+      openPickerSurface('dock', tEl);
       return;
     }
     if (tEl.hasAttribute('data-ha2-picker-close')) {
-      S.setPickerOpen(false);
+      closePickerSurface();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-pick-follow')) {
+      if (S && S.clearSelected) S.clearSelected({ closePicker: true });
+      refreshAimForSelected();
       return;
     }
     if (tEl.hasAttribute('data-ha2-pick')) {
@@ -830,6 +2513,11 @@
       S.setView('agent');
       return;
     }
+    if (tEl.hasAttribute('data-ha2-select')) {
+      S.setSelected(tEl.getAttribute('data-ha2-select'), { lock: true, closePicker: true });
+      refreshAimForSelected();
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-home')) {
       S.setView('home');
       return;
@@ -838,13 +2526,45 @@
       dispatch(tEl.getAttribute('data-ha2-action'), tEl.getAttribute('data-agent'));
       return;
     }
+    if (tEl.hasAttribute('data-ha2-go-agent')) {
+      openAttentionAgent(
+        tEl.getAttribute('data-ha2-go-agent'),
+        tEl.getAttribute('data-agent')
+      );
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-habit-hub')) {
+      var NH = global.OneToneNowHome;
+      if (NH && typeof NH.openHabitHub === 'function') NH.openHabitHub();
+      else if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.open) {
+        global.OneToneSettingsDrawer.open({ panel: 'habits' });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-alert-action')) {
+      var rawAct = tEl.getAttribute('data-ha2-alert-action');
+      var WB = global.OneToneHomeWorkbench;
+      try {
+        var act = rawAct ? JSON.parse(rawAct) : null;
+        if (WB && typeof WB.handleAlertAction === 'function') WB.handleAlertAction(act);
+      } catch (_) {}
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-session')) {
+      var expanded = tEl.getAttribute('aria-expanded') === 'true';
+      tEl.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      var meta = tEl.querySelector('.ha2-session-meta');
+      if (meta) meta.hidden = expanded;
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-open-center')) {
       var Nav = global.OneToneAgentNavTarget;
+      var goKind = tEl.getAttribute('data-ha2-go-agent');
       if (Nav && Nav.open) {
         Nav.open({
           view: 'overview',
           section: 'working',
-          provider: S.getSnapshot().selectedKind
+          provider: goKind || S.getSnapshot().selectedKind
         });
       }
       return;
@@ -858,15 +2578,58 @@
       return;
     }
     if (tEl.hasAttribute('data-ha2-remove')) {
-      if (D && D.removeMaterial) D.removeMaterial(tEl.getAttribute('data-ha2-remove'));
+      var rmId = tEl.getAttribute('data-ha2-remove');
+      if (rmId) delete matTextExpanded[rmId];
+      if (D && D.removeMaterial) D.removeMaterial(rmId);
       return;
     }
     if (tEl.hasAttribute('data-ha2-aim-clear')) {
-      if (D) D.clearAim(S.getSnapshot().selectedKind);
+      var clearKind = S.getSnapshot().selectedKind;
+      if (!clearKind) {
+        toast(t('ha2AimNeedTarget', '先选发送目标，再清除对准'));
+        return;
+      }
+      if (!D || !D.clearAim) return;
+      D.clearAim(clearKind).then(function (res) {
+        if (res && res.ok) {
+          toast(t('ha2AimCleared', '已清除对准'));
+          return;
+        }
+        if (res && res.reason === 'no_app_target') {
+          toast(t('ha2AimNeedTarget', '先选发送目标，再清除对准'));
+          return;
+        }
+        // Local state already cleared; IPC miss is non-fatal.
+        toast(t('ha2AimCleared', '已清除对准'));
+      });
       return;
     }
     if (tEl.hasAttribute('data-ha2-aim')) {
-      if (D) D.calibrateAim(S.getSnapshot().selectedKind);
+      var aimKind = S.getSnapshot().selectedKind;
+      if (!aimKind) {
+        toast(t('ha2AimNeedTarget', '先选发送目标，再点「现在定位」'));
+        openPickerSurface(
+          'dock',
+          root.querySelector('.ha2-chip.target[data-ha2-picker]') || tEl
+        );
+        return;
+      }
+      if (!D || !D.calibrateAim) return;
+      D.calibrateAim(aimKind).then(function (res) {
+        if (res && res.ok && res.hasActive) {
+          toast(t('ha2AimLockedToast', '已对准输入框'));
+          return;
+        }
+        if (res && res.reason === 'no_app_target') {
+          toast(t('ha2AimNeedTarget', '先选发送目标，再点「现在定位」'));
+          return;
+        }
+        toast(t('ha2AimFailed', '未能对准输入框，请在目标窗口点一下输入区后重试'));
+      });
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-tm')) {
+      openTimeCapsule();
       return;
     }
     if (tEl.hasAttribute('data-ha2-cap')) {
@@ -884,8 +2647,29 @@
     if (tEl.hasAttribute('data-ha2-mat')) {
       matMenuOpen = false;
       paint(S.getSnapshot());
-      if (D) D.pickMaterial(tEl.getAttribute('data-ha2-mat'));
+      var matKind = tEl.getAttribute('data-ha2-mat');
+      if (!D || !D.pickMaterial) return;
+      Promise.resolve(D.pickMaterial(matKind)).then(
+        function (res) {
+          if (!res) return;
+          if (res.message) {
+            toast(res.message);
+            return;
+          }
+          if (res.outcome === 'failed') toast(t('ha2MatFailed', '添加材料失败'));
+          else if (res.outcome === 'cancelled') toast(t('ha2MatCancelled', '已取消'));
+          else maybeExpandLongMat(res);
+        },
+        function () {
+          toast(t('ha2MatFailed', '添加材料失败'));
+        }
+      );
     }
+  }
+
+  function onPickerReposition() {
+    if (!mounted || !store()) return;
+    if (store().getSnapshot().pickerOpen) positionPickerPanel();
   }
 
   function mount(el) {
@@ -895,8 +2679,19 @@
     if (!S) return;
     S.mount();
     root.addEventListener('click', onClick);
+    root.addEventListener('pointerdown', onMatTogglePointerDown, true);
     root.addEventListener('input', onInput);
-    root.addEventListener('paste', onPaste);
+    root.addEventListener('compositionstart', onCompositionStart);
+    root.addEventListener('compositionend', onCompositionEnd);
+    // Capture so WebView image paste is handled before textarea swallows it.
+    root.addEventListener('paste', onPaste, true);
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    document.addEventListener('keydown', onDocKeyDown, true);
+    if (!global.__ha2PickerPosBound) {
+      global.__ha2PickerPosBound = true;
+      global.addEventListener('resize', onPickerReposition);
+      global.addEventListener('scroll', onPickerReposition, true);
+    }
     root.addEventListener('dragover', function (e) {
       if (e.target.closest('[data-ha2-drop]')) {
         e.preventDefault();
@@ -921,7 +2716,7 @@
     });
     mounted = true;
     paint(S.getSnapshot());
-    refreshAimForSelected();
+    refreshAllAgentAims();
   }
 
   function show() {
@@ -933,10 +2728,12 @@
       S.setVisible(true);
       S.refresh('show');
     }
-    refreshAimForSelected();
+    refreshAllAgentAims();
   }
 
   function hide() {
+    closePickerSurface();
+    closeMatMenu();
     var S = store();
     if (S) S.setVisible(false);
     if (root) {
@@ -962,7 +2759,11 @@
         selected: snap.selectedKind,
         userLocked: snap.userLocked,
         view: snap.view,
-        receipt: snap.receipt
+        targetContext: snap.targetContext || null,
+        deliveryReceipt: snap.deliveryReceipt || null,
+        actionReceipt: snap.actionReceipt || null,
+        validationNotice: snap.validationNotice || null,
+        receipt: snap.deliveryReceipt || snap.receipt || null
       };
     }
   };

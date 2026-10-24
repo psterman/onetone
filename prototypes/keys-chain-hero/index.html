@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>提案 · 按键设置顶部链式 hero + 左轨重构</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --bad:#b91c1c;--bad-soft:#fdecec;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    .top{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px}
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .top .tag{color:#7dd3fc;font-weight:650}
+    .page{width:min(1400px,100%);margin:0 auto;padding:22px 18px 64px}
+
+    .lede{display:grid;grid-template-columns:1.35fr .9fr;gap:14px;margin-bottom:22px}
+    @media(max-width:980px){.lede{grid-template-columns:1fr}}
+    .card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;padding:15px 17px;font-size:13px;color:var(--muted);line-height:1.6}
+    .card h1{margin:0 0 7px;font-size:19px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .card h1 span{color:var(--cyan-ink)}
+    .card p{margin:0 0 8px}
+    .card p:last-child{margin-bottom:0}
+    .card b{color:var(--ink)}
+    .verdict{display:flex;flex-direction:column;gap:9px}
+    .v{display:flex;gap:10px;align-items:flex-start;font-size:12.8px;line-height:1.5}
+    .v i{flex:none;font-style:normal;font-weight:750;font-size:11px;border-radius:6px;padding:2px 7px;margin-top:1px}
+    .v.yes i{background:var(--ok-soft);color:var(--ok)}
+    .v.no  i{background:var(--bad-soft);color:var(--bad)}
+    .v.part i{background:var(--warn-soft);color:var(--warn)}
+    .v span{color:var(--muted)}
+    .v span b{color:var(--ink)}
+
+    h2.sec{margin:30px 0 12px;font-size:16px;font-weight:750;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+    h2.sec small{font-weight:450;color:var(--faint);font-size:12px}
+    .stage{display:grid;grid-template-columns:1fr 330px;gap:14px;align-items:start}
+    @media(max-width:1120px){.stage{grid-template-columns:1fr}}
+
+    /* ── app shell mock ───────────────────────────── */
+    .app{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--wash);box-shadow:0 18px 40px rgba(20,40,60,.10)}
+    .appnav{display:flex;align-items:center;gap:12px;padding:9px 14px;background:#fff;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+    .appnav b{color:var(--ink);font-weight:750}
+    .appnav .sp{flex:1}
+    .chip{background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:650}
+    .chip.ghost{background:#fff;color:var(--muted);border-color:var(--line)}
+    .body{display:grid;grid-template-columns:118px 1fr 62px;min-height:470px}
+    .body.noaside{grid-template-columns:118px 1fr}
+    .lrail{background:var(--rail);border-right:1px solid var(--line);padding:10px 9px;display:flex;flex-direction:column;gap:9px}
+    .lrail .start{background:#fff;border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+    .badge{background:var(--cyan);color:#fff;font-size:9.5px;font-weight:750;border-radius:5px;padding:1px 6px;display:inline-block}
+    .lrail .start .t{font-size:11.5px;font-weight:700;color:var(--ink);margin-top:5px}
+    .lrail .start .st{font-size:10px;color:var(--ok);margin-top:2px}
+    .pill{margin-top:6px;display:flex;align-items:center;gap:6px;background:var(--cyan-soft);border:1px solid var(--cyan-bd);
+      color:var(--cyan-ink);border-radius:9px;padding:6px 8px;font-size:11.5px;font-weight:700;width:100%;justify-content:center}
+    .lrail .hint{font-size:10px;color:var(--faint);text-align:center;margin-top:4px}
+    .dir-lbl{font-size:10.5px;color:var(--faint);letter-spacing:.08em;padding-left:2px}
+    .nav{display:flex;flex-direction:column;gap:2px}
+    .nav div{padding:6px 9px;border-radius:8px;font-size:11.5px;color:var(--muted)}
+    .nav div.on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:750}
+    .spacer{flex:1}
+    .lrail .chanbox{background:#fff;border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+    .lrail .chanbox .h{font-size:10px;color:var(--faint);letter-spacing:.06em;margin-bottom:6px}
+    .chan{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;color:var(--muted)}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);flex:none}
+    .dot.off{background:#fff;border:1.5px solid var(--faint)}
+    .chan .go{margin-left:auto;font-size:9.5px;color:var(--faint)}
+
+    .main{padding:10px 12px;display:flex;flex-direction:column;gap:9px;background:#f7fafc}
+    .chain{display:grid;grid-template-columns:1fr 26px 1fr 26px 1fr;align-items:stretch;gap:0;
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+    .step{min-width:0}
+    .step .k{font-size:10px;color:var(--faint);letter-spacing:.05em}
+    .step .n{font-size:12.5px;font-weight:750;color:var(--ink);margin-top:2px}
+    .cap{margin-top:7px;display:inline-flex;align-items:center;justify-content:center;min-width:82px;height:34px;padding:0 14px;
+      background:#fff;border:1px solid #cfd9e4;border-bottom-width:3px;border-radius:9px;
+      box-shadow:0 2px 0 rgba(20,40,60,.08),0 6px 14px rgba(20,40,60,.07);
+      font-family:var(--mono);font-size:14px;font-weight:650;color:var(--ink)}
+    .cap.pill2{background:var(--cyan-soft);border-color:var(--cyan-bd);font-family:var(--font);font-size:12px;color:var(--cyan-ink)}
+    .cap.muted{color:var(--faint);border-style:dashed;box-shadow:none;font-family:var(--font);font-size:11.5px}
+    .step .d{font-size:10.5px;color:var(--faint);margin-top:6px}
+    .arrow{display:flex;align-items:center;justify-content:center;color:var(--cyan);font-size:15px}
+
+    .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+    .panel h4{margin:0 0 8px;font-size:12px;font-weight:750;color:var(--ink);display:flex;align-items:center;gap:6px}
+    .panel h4 em{font-style:normal;color:var(--faint);font-weight:450;font-size:10.5px}
+    .keyrow{display:flex;align-items:center;gap:10px}
+    .keyrow .cap{margin-top:0}
+    .imes{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+    .ime{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+      background:var(--wash);border:1px solid var(--line);font-size:9px;font-weight:750;color:var(--muted);position:relative}
+    .ime.on{background:var(--cyan-soft);border-color:var(--cyan-bd);color:var(--cyan-ink)}
+    .ime small{position:absolute;bottom:-13px;font-size:8px;color:var(--faint);font-family:var(--mono);white-space:nowrap}
+    .imelab{margin-top:18px;font-size:10.5px;color:var(--faint)}
+    .segs{display:flex;gap:8px;margin-top:2px}
+    .seg{flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:11px;color:var(--muted)}
+    .seg b{display:block;color:var(--ink);font-size:11.5px;margin-bottom:2px}
+    .seg.on{background:var(--cyan-soft);border-color:var(--cyan-bd)}
+    .seg.on b{color:var(--cyan-ink)}
+    .rowline{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:11px;color:var(--muted)}
+    .slider{flex:1;height:4px;background:var(--line);border-radius:99px;position:relative}
+    .slider i{position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--cyan);border-radius:99px}
+    .slider u{position:absolute;left:62%;top:-4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--cyan)}
+
+    .aside{background:var(--wash);border-left:1px solid var(--line);padding:9px 7px}
+    .aside h5{margin:0;font-size:10px;font-weight:750;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:clip}
+    .mini{margin-top:6px;height:34px;border:1px dashed var(--line);border-radius:8px;background:#fff}
+    .aside .mini{margin-top:6px;height:34px;border:1px dashed var(--line);border-radius:8px;background:#fff}
+    .aside .cut{font-size:9px;color:var(--bad);margin-top:5px;line-height:1.35}
+
+    /* annotation overlay */
+    .mock{position:relative}
+    .start,.panel,.lrail,.main,.aside,.chain,.chanbox,.keyrow{position:relative}
+    .pin{position:absolute;width:19px;height:19px;border-radius:50%;background:var(--bad);color:#fff;font-size:11px;font-weight:750;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(185,28,28,.35);z-index:5}
+    .pin.ok{background:var(--ok);box-shadow:0 2px 8px rgba(21,128,61,.35)}
+    .pin.new{background:var(--cyan);box-shadow:0 2px 8px rgba(42,156,196,.35)}
+    .pin.tr{top:-9px;right:-9px}
+    .pin.tl{top:-9px;left:-9px}
+    .pin.bl{bottom:10px;left:10px}
+    .gapline{position:absolute;left:0;right:0;top:118px;border-top:1px dashed rgba(185,28,28,.4);z-index:4;pointer-events:none}
+    .gapline span{position:absolute;right:10px;top:-9px;background:var(--bad-soft);color:var(--bad);
+      font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:99px;border:1px solid rgba(185,28,28,.25)}
+
+    .notes{display:flex;flex-direction:column;gap:9px}
+    .note{background:rgba(255,255,255,.94);border:1px solid var(--line);border-left:3px solid var(--bad);border-radius:10px;padding:10px 12px;font-size:12.2px;line-height:1.55;color:var(--muted)}
+    .note.fix{border-left-color:var(--ok)}
+    .note.new{border-left-color:var(--cyan)}
+    .note b{display:block;color:var(--ink);font-size:12.5px;margin-bottom:3px;font-weight:700}
+    .note code{font-family:var(--mono);font-size:11px;background:var(--wash);padding:1px 4px;border-radius:4px;color:var(--cyan-ink)}
+    .note .m{font-size:11px;color:var(--faint);font-family:var(--mono)}
+
+    table{width:100%;border-collapse:collapse;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.3px}
+    th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top;line-height:1.5}
+    th{background:var(--wash);font-weight:700;color:var(--ink);font-size:11.5px;letter-spacing:.03em}
+    tr:last-child td{border-bottom:none}
+    td b{color:var(--ink)}
+    td .cost{font-family:var(--mono);font-size:11px;color:var(--cyan-ink);white-space:nowrap}
+    .low{color:var(--ok)}.mid{color:var(--warn)}.high{color:var(--bad)}
+    footer{margin-top:26px;font-size:11.5px;color:var(--faint);line-height:1.7}
+  </style>
+</head>
+<body>
+<div class="top">
+  <strong>OneTone · 按键设置</strong>
+  <em>顶部链式 hero + 左轨重构</em>
+  <span class="tag">提案稿</span>
+  <a href="./clear.html" style="margin-left:auto;color:#7dd3fc;font-weight:650;text-decoration:none;border:1px solid rgba(125,211,252,.35);border-radius:8px;padding:4px 10px">逻辑清晰版 →</a>
+  <span style="color:#8293a5">实测 Chrome 1680×1050</span>
+</div>
+
+<div class="page">
+
+  <div class="lede">
+    <div class="card">
+      <h1>要重新构图吗？<span>要，但只重一条带。</span></h1>
+      <p>整页骨架（<b>左轨 + 主区 + 右栏</b>）是健康的，而且软键盘页复用同一套左轨模式，推翻成本高、收益低。</p>
+      <p>真正要重画的是<b>页头状态条下面那条空位</b>：把散在三处的「你按的键 / 帮你打开语音的键 / 说完后」收成一条 01→02→03 的链。左轨则是<b>压缩 + 填充</b>，不是重排。</p>
+      <p>左轨要改两件事：<b>起点卡降级</b>（它已升到顶部做 hero），<b>下半 509px 填上方案通道状态</b>——正好承接「多通道方案」的诉求。</p>
+    </div>
+    <div class="card verdict">
+      <div class="v no"><i>否</i><span><b>整页重新构图</b>：不需要。左轨 + 主区 + 右栏的模式跨页面复用，值得保留。</span></div>
+      <div class="v yes"><i>是</i><span><b>顶部链式 hero</b>：需要新增一条通栏。这是唯一的"新构图"，且是加一条带，不推骨架。</span></div>
+      <div class="v part"><i>半</i><span><b>左轨</b>：要改，但不是重排——<b>起点卡 175px → 摘要行</b>，<b>下半空白填方案通道状态</b>，识别目录 6 项保持竖排不动。</span></div>
+      <div class="v part"><i>半</i><span><b>右栏</b>：94px 必须处理——要么扩到 ≥220px，要么把「本场景动作」并进左轨下半、取消右栏。</span></div>
+      <div class="v yes"><i>是</i><span><b>01 编号</b>：必须回到屏幕。现在 <code>keysFlowNodes</code> 是 <code>hidden</code>，用户从没见过 01。</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">现状 <small>实测：左轨 180×940 · 主区 1138 · 右栏 94 · 主区底部空 300</small></h2>
+  <div class="stage">
+    <div class="mock">
+      <div class="app">
+        <div class="appnav"><b>按键</b><span>/ 正在编辑：通用设置</span><span class="chip">已与前台一致</span><span class="chip ghost">切换 · 通用设置 ▾</span><span class="sp"></span><span class="chip ghost">⋯</span></div>
+        <div class="body">
+          <div class="lrail">
+            <div class="start">
+              <span class="pin tr">1</span>
+              <span class="badge">起点</span>
+              <div class="t">触发键</div>
+              <div class="st">● 已启用</div>
+              <div class="pill">🔊 音量键</div>
+              <div class="hint">点按录制</div>
+            </div>
+            <div class="dir-lbl">识别</div>
+            <div class="nav">
+              <div class="on">输入法</div><div>口头命令</div><div>自定义快捷键</div>
+              <div>应用快捷键</div><div>软键盘</div><div>手势</div>
+            </div>
+            <div class="spacer"></div>
+            <span class="pin bl">3</span>
+          </div>
+          <div class="main">
+            <div class="panel">
+              <span class="pin tr">2</span>
+              <h4>1 听写键 <em>输入法识别键</em></h4>
+              <div style="display:flex;justify-content:center;padding:4px 0 8px"><div class="cap">右 Alt</div></div>
+              <div class="imes">
+                <div class="ime">讯</div><div class="ime">微</div><div class="ime">Ty</div><div class="ime">MS</div>
+                <div class="ime">智</div><div class="ime">千</div><div class="ime">闪</div><div class="ime">搜</div>
+                <div class="ime">百</div><div class="ime">✎</div>
+              </div>
+              <div class="imelab">自定义听写键：右 Alt</div>
+            </div>
+            <div class="panel">
+              <h4>2 说完后</h4>
+              <div class="segs"><div class="seg on"><b>自动发送</b>开麦后等待，再按发送键发出。</div><div class="seg"><b>手动发送</b>只结束听写，发送键自己按。</div></div>
+              <div class="rowline">等待多久 <span class="chip ghost">1s</span><span class="chip ghost">2s</span><span class="chip ghost">3s</span><span class="chip">自定义</span><span class="slider"><i></i><u></u></span><span class="chip ghost">5.0</span></div>
+            </div>
+            <div class="spacer"></div>
+            <span class="pin bl">4</span>
+            <div class="gapline"><span>658px · 两个键帽之间隔着整条 IME 条</span></div>
+          </div>
+          <div class="aside">
+            <h5>本场景动作</h5>
+            <div class="mini"></div>
+            <div class="cut">← 94px，标题被截断</div>
+            <span class="pin" style="bottom:6px;left:6px">5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note"><b>① 起点不是键帽，是胶囊</b>带喇叭图标的浅蓝胶囊（145×49），形态与主区白键帽（148×56）完全不同 → 用户不会把左上角当成"按键"。</div>
+      <div class="note"><b>② 01 从不出现</b><code>keysFlowNodes</code>（"01 / 触发 … 02 / 识别 …"）实测 <code>hidden</code>。屏幕只见 1、2，起点像无编号的边角料。</div>
+      <div class="note"><b>③ 左轨下半 509px 全空</b>6 个目录按钮占 361→587，轨高到 1096。<code>flex:1</code> 撑高、<code>justify-content:flex-start</code> 顶对齐 → 纯闲置。</div>
+      <div class="note"><b>④ 主区底部 300px 空</b>内容只到 y≈720，desk 高 881。收尾卡下方没有落点。</div>
+      <div class="note"><b>⑤ 右栏只有 94px</b>「本场景动作」标题都显示不下，"收起 / ＋新建动作"挤成两行碎字。</div>
+      <div class="note"><b>⑥ 两个键帽相距 658px</b>触发键帽在 x=261，听写键帽在 x=919（卡片 491–1495 的 43%–58%），同一条链的两端分居左右，中间还隔着整条 IME 条。</div>
+    </div>
+  </div>
+
+  <h2 class="sec">提案 <small>顶部一条链 · 左轨压缩 + 填充 · 右栏并入左轨</small></h2>
+  <div class="stage">
+    <div class="mock">
+      <div class="app">
+        <div class="appnav"><b>按键</b><span>/ 正在编辑：MiniMax</span><span class="chip">已与前台一致</span><span class="chip ghost">切换 · MiniMax 场景 ▾</span><span class="sp"></span><span class="chip ghost">⋯</span></div>
+        <div class="body noaside">
+          <div class="lrail">
+            <span class="pin new" style="top:5px;right:5px">B</span>
+            <div class="dir-lbl">识别</div>
+            <div class="nav">
+              <div class="on">输入法</div><div>口头命令</div><div>自定义快捷键</div>
+              <div>应用快捷键</div><div>软键盘</div><div>手势</div>
+            </div>
+            <div class="spacer"></div>
+            <div class="chanbox">
+              <span class="pin new tr">C</span>
+              <div class="h">方案通道 · MiniMax</div>
+              <div class="chan"><span class="dot"></span>按键<span class="go">编辑中</span></div>
+              <div class="chan"><span class="dot off"></span>语音<span class="go">待补</span></div>
+              <div class="chan"><span class="dot off"></span>摄像头<span class="go">待补</span></div>
+              <div class="chan"><span class="dot off"></span>软键盘<span class="go">沿用全局</span></div>
+            </div>
+            <div class="chanbox">
+              <div class="h">本场景动作</div>
+              <div class="mini" style="border-style:solid;background:var(--wash)"></div>
+              <div class="mini" style="border-style:solid;background:var(--wash)"></div>
+              <div class="mini" style="border-style:solid;background:var(--wash)"></div>
+            </div>
+          </div>
+          <div class="main">
+            <div class="chain">
+              <span class="pin new tl">A</span>
+              <div class="step">
+                <div class="k">01 / 起点</div>
+                <div class="n">你按的键</div>
+                <div class="cap pill2">🔊 音量键</div>
+                <div class="d">音量减 / 音量加 · 已启用</div>
+              </div>
+              <div class="arrow">→</div>
+              <div class="step">
+                <div class="k">02 / 识别</div>
+                <div class="n">帮你打开语音</div>
+                <div class="cap">右 Alt</div>
+                <div class="d">输入法键 · 讯飞 F2</div>
+              </div>
+              <div class="arrow">→</div>
+              <div class="step">
+                <div class="k">03 / 收尾</div>
+                <div class="n">说完后</div>
+                <div class="cap">自动发送</div>
+                <div class="d">等 5.0 秒后自动 Enter</div>
+              </div>
+            </div>
+            <div class="panel">
+              <span class="pin new tr">D</span>
+              <h4>听写键 <em>输入法识别键 · 讯飞 F2</em></h4>
+              <div class="keyrow">
+                <div class="cap">右 Alt</div>
+                <div style="font-size:11px;color:var(--faint)">← 键帽与标题同排，不再悬在卡片中间</div>
+              </div>
+              <div class="imes">
+                <div class="ime">讯</div><div class="ime">微</div><div class="ime">Ty</div><div class="ime">MS</div>
+                <div class="ime">智</div><div class="ime">千</div><div class="ime">闪</div><div class="ime">搜</div>
+                <div class="ime">百</div><div class="ime">✎</div>
+              </div>
+              <div class="imelab">每个图标下显示自己的键帽（F2 / Ctrl+Shift+Win / 右Alt / Win+H…）— 数据已在 title 里，只是没显示</div>
+            </div>
+            <div class="panel">
+              <h4>说完后</h4>
+              <div class="segs"><div class="seg on"><b>自动发送</b>开麦后等待，再按发送键发出。</div><div class="seg"><b>手动发送</b>只结束听写，发送键自己按。</div></div>
+              <div class="rowline">等待多久 <span class="chip ghost">1s</span><span class="chip ghost">2s</span><span class="chip ghost">3s</span><span class="chip">自定义</span><span class="slider"><i></i><u></u></span><span class="chip ghost">5.0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note new"><b>A · 顶部链式 hero（新增）</b>一条通栏把 01→02→03 串起来。01 回到屏幕；两个键帽终于是邻居；「你按的键」和「帮你打开语音的键」保持主从关系（→），不做成两个对等大键帽。</div>
+      <div class="note fix"><b>B · 起点卡删除</b>它已升到顶部做 01 槽。左轨从"识别"目录开始，少 175px 白卡。<span class="m">注：① 槽随通道变——口头命令通道显示口头触发键</span></div>
+      <div class="note fix"><b>C · 左轨下半填方案通道</b>509px 闲置正好放「方案通道 · MiniMax」：按键 ● / 语音 ○ / 摄像头 ○ / 软键盘 ○，点即跳对应页。<b>这是"多通道方案"唯一缺的那个并排视图</b>，数据现成（<code>habit-channel-snapshot.js</code>）。</div>
+      <div class="note new"><b>D · 右栏取消，并入左轨下半</b>94px 窄栏放不下任何东西。「本场景动作」列表搬进左轨下半，给足宽度。</div>
+      <div class="note fix"><b>E · IME 图标显性化</b>每个图标的 <code>title</code> 里已经带着自己的键帽（F2 / Ctrl+Shift+Win / 右Alt / Win+H…），直接显示出来即可，命中"多个键帽"的直觉，成本最低。</div>
+    </div>
+  </div>
+
+  <h2 class="sec">改动清单</h2>
+  <table>
+    <thead><tr><th style="width:26%">改动</th><th style="width:44%">解决什么</th><th style="width:16%">代价</th><th style="width:14%">动 schema？</th></tr></thead>
+    <tbody>
+      <tr><td><b>顶部链式 hero</b><br><span class="m">页头状态条下方新增通栏</span></td><td>01 编号回归屏幕；触发键获得键帽视觉待遇；两个键帽相邻成链</td><td><span class="cost low">低</span> · 只动布局+文案</td><td class="low">否</td></tr>
+      <tr><td><b>左轨起点卡 → 删除</b><br><span class="m">175px 白卡下线</span></td><td>消除"胶囊 vs 键帽"两套形态；左轨专注做目录</td><td><span class="cost low">低</span> · 搬 DOM + 改 rail 事件绑定</td><td class="low">否</td></tr>
+      <tr><td><b>左轨下半：方案通道状态</b></td><td>一条方案含 4 通道这件事，第一次被并排看见</td><td><span class="cost mid">中</span> · 快照已有，要接渲染+跳转</td><td class="low">否</td></tr>
+      <tr><td><b>右栏 94px → 取消/并入左轨</b></td><td>修掉标题被截断的坏体验；释放主区宽度</td><td><span class="cost mid">中</span> · 涉及 dock 折叠逻辑</td><td class="low">否</td></tr>
+      <tr><td><b>IME 图标显示各自键帽</b></td><td>命中"多个键帽并存"的直觉</td><td><span class="cost low">低</span> · title 已有</td><td class="low">否</td></tr>
+      <tr><td><b>主区键帽左对齐</b><br><span class="m">从卡片 43%~58% 移到标题旁</span></td><td>键帽不再悬空；与标题同排</td><td><span class="cost low">低</span> · CSS</td><td class="low">否</td></tr>
+      <tr><td><b>「习惯 · 通道」空壳页</b><br><span class="m">keys2CommandCardRoot 实测为空</span></td><td>侧栏里有个点进去什么都没有的入口</td><td><span class="cost low">低</span> · 补内容或先摘掉</td><td class="low">否</td></tr>
+      <tr style="background:var(--bad-soft)"><td><b>多听写目标并行</b><br><span class="m">讯飞F2 + 千问右Alt 同时在</span></td><td><b>只有这个需要动 schema</b>：<code>targetKey</code>/<code>imePresetId</code> 都是单值</td><td><span class="cost high">高</span> · 新字段 + 运行期按前台 IME 匹配</td><td class="high">是</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    实测方式：<code>npm run serve</code> 起静态页 → 无头 Chrome + CDP 打开 <code>src/index.html</code> → 关闭引导层 → 渲染 <code>settingsPanelKeys</code> → 取真实 DOM 与 getBoundingClientRect。Tauri IPC 在浏览器不可用，热键后端行为未验证。<br>
+    结论只覆盖「一条方案含多通道」（数据层已支持，缺并排视图）；「多听写目标并行」是另一个需求，必须扩 schema。
+  </footer>
+</div>
+</body>
+</html>

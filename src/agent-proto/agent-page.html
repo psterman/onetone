@@ -301,8 +301,8 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .id-card .pipe .p i{width:20px;height:20px;border-radius:50%;background:var(--agent);color:#fff;font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 .panel{display:flex;flex-direction:column;min-width:0;background:#fff}
-.subtabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
-@media (max-width:720px){.subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.subtabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
+@media (max-width:900px){.subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:520px){.subtabs{grid-template-columns:1fr 1fr}}
 .subtabs button{
   appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 6px 9px;
@@ -313,6 +313,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .subtabs button .s{font-size:10px;font-weight:650;opacity:.85;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .subtabs button.is-on[data-sub="overview"]{background:var(--agent);border-color:var(--agent);color:#fff}
 .subtabs button.is-on[data-sub="data"]{background:#066a9c;border-color:#066a9c;color:#fff}
+.subtabs button.is-on[data-sub="capsule"]{background:#31556f;border-color:#31556f;color:#fff}
 .subtabs button.is-on[data-sub="float"]{background:var(--float);border-color:var(--float);color:#fff}
 .subtabs button.is-on[data-sub="mini"]{background:var(--mini);border-color:var(--mini);color:#fff}
 .subtabs button.is-on[data-sub="softPad"]{background:var(--lights);border-color:var(--lights);color:#fff}
@@ -322,6 +323,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .workspace.is-overview{grid-template-columns:1fr}
 .workspace.is-overview #detail{display:none !important}
 .workspace.is-overview #dataHost{display:none !important}
+.workspace.is-overview #capsuleHost{display:none !important}
 .workspace.is-overview #workHost{
   display:flex !important;flex:1;min-height:0;width:100%;flex-direction:column;overflow:auto;
   background:var(--paper);padding:4px 12px 16px;box-sizing:border-box;
@@ -330,9 +332,46 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .workspace.is-overview .preview{display:none !important}
 #workHost{display:none;min-height:0}
 
+/* 时间胶囊叶：挂 Soft Pad TM UI（父窗 paint 进 #agentCapsuleDesk） */
+.workspace.is-capsule{grid-template-columns:1fr}
+.workspace.is-capsule #detail,
+.workspace.is-capsule #workHost,
+.workspace.is-capsule #dataHost,
+.workspace.is-capsule .preview{display:none !important}
+.workspace.is-capsule #capsuleHost{
+  --surface:#fff;--surface-soft:#edf2f6;--on-surface:var(--ink);--on-surface-muted:var(--mute);
+  --outline-variant:rgba(15,27,42,.12);--outline:rgba(15,27,42,.24);
+  --primary:#006b9f;--primary-strong:#005981;
+  display:grid !important;grid-template-columns:minmax(300px,360px) minmax(0,1fr);
+  flex:1;min-height:0;gap:10px;align-items:stretch;
+  padding:10px 12px 14px;background:var(--paper);box-sizing:border-box;overflow:hidden;
+}
+#capsuleHost{display:none;min-height:0}
+.agent-capsule-detail{
+  min-width:0;min-height:0;overflow:auto;border:1px solid var(--line);
+  border-radius:14px;background:#fff;grid-column:2;grid-row:1;
+}
+#agentCapsuleDetail .soft-pad-tm-detail{padding:28px 30px}
+#agentCapsuleDetail .soft-pad-tm-now-card,
+#agentCapsuleDetail .soft-pad-tm-impact,
+#agentCapsuleDetail .soft-pad-tm-changes,
+#agentCapsuleDetail .soft-pad-tm-post{max-width:600px;margin-left:0;margin-right:0}
+#agentCapsuleDesk{
+  min-width:0;min-height:0;height:100%;box-shadow:none;
+  grid-column:1;grid-row:1;
+}
+@media (max-width:820px){
+  .workspace.is-capsule #capsuleHost{
+    grid-template-columns:1fr;grid-template-rows:auto minmax(360px,1fr);overflow:auto;
+  }
+  #agentCapsuleDesk{min-height:360px;height:auto;grid-column:1;grid-row:1}
+  .agent-capsule-detail{min-height:280px;overflow:visible;grid-column:1;grid-row:2}
+}
+
 /* 数据叶：左 Soft Pad 对照；右嵌真实 agent-data（覆盖条在中栏可换行，不做左 Dock） */
 .workspace.is-data #detail{display:none !important}
 .workspace.is-data #workHost{display:none !important}
+.workspace.is-data #capsuleHost{display:none !important}
 .workspace.is-data #dataHost{
   display:flex !important;flex:1;min-height:0;flex-direction:column;background:#f3f6fa;
 }
@@ -917,12 +956,17 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             <div class="subtabs" id="subs" role="tablist">
               <button type="button" class="is-on" data-sub="overview" role="tab" aria-selected="true" aria-controls="workHost"><span class="t">总览</span><span class="s">现在 · 注意与控制</span></button>
               <button type="button" data-sub="data" role="tab" aria-selected="false" aria-controls="dataHost"><span class="t">数据</span><span class="s">今日盘点 · 来源</span></button>
+              <button type="button" data-sub="capsule" role="tab" aria-selected="false" aria-controls="capsuleHost"><span class="t">时间胶囊</span><span class="s">Git · 恢复点</span></button>
               <button type="button" data-sub="float" role="tab" aria-selected="false"><span class="t">浮窗</span><span class="s">何时 · 皮肤</span></button>
               <button type="button" data-sub="mini" role="tab" aria-selected="false"><span class="t">迷你栏</span><span class="s">条上留什么</span></button>
               <button type="button" data-sub="softPad" role="tab" aria-selected="false"><span class="t">Soft Pad</span><span class="s">顶栏 · 灯 · 接入 · 数字键</span></button>
             </div>
             <div class="detail" id="detail"></div>
             <div id="workHost" aria-label="Agent 总览" hidden></div>
+            <div id="capsuleHost" class="agent-capsule-host" aria-label="项目时间胶囊" hidden>
+              <aside class="soft-pad-face-tm__detail agent-capsule-detail" id="agentCapsuleDetail" aria-live="polite"></aside>
+              <div class="soft-pad-face-tm__rail soft-pad-tm-desk" id="agentCapsuleDesk" aria-label="项目时间胶囊"></div>
+            </div>
             <div id="dataHost" aria-label="Agent 数据板" hidden>
               <iframe id="agentDataNestFrame" title="Agent 数据" src="agent-data?embed=1&amp;nest=1" loading="lazy"></iframe>
             </div>
@@ -2373,8 +2417,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       if(data.cmd==='setSub'&&data.sub) setSub(String(data.sub), data);
       if(data.cmd==='navigate'&&data.target){
         var navT=data.target||{};
-        var navView=navT.view==='data'?'data':'overview';
-        setSub(navView,{section:navT.section,provider:navT.provider,projectId:navT.projectId,sessionId:navT.sessionId,target:navT});
+        var navView=navT.view==='data'?'data':navT.view==='capsule'?'capsule':'overview';
+        setSub(navView,{
+          section:navT.section,
+          provider:navT.provider,
+          projectId:navT.projectId,
+          sessionId:navT.sessionId,
+          workspace:navT.workspace,
+          target:navT
+        });
       }
       if(data.cmd==='selectAgent'&&(data.app||data.kind)){
         var map={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax'};
@@ -3013,8 +3064,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     b.addEventListener('click',function(){setApp(b.getAttribute('data-app'));});
   });
 
-  function notifyParentSub(id){
-    try{ window.parent.postMessage({ type:'ot-agent-page', event:'sub', sub:id }, '*'); }catch(_){}
+  function notifyParentSub(id, navOpts){
+    try{
+      window.parent.postMessage({
+        type:'ot-agent-page',
+        event:'sub',
+        sub:id,
+        workspace:(navOpts && navOpts.workspace) || null
+      }, '*');
+    }catch(_){}
   }
 
   function mountOverviewIfNeeded(navOpts){
@@ -3047,6 +3105,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(workspace){
       workspace.classList.toggle('is-data',id==='data');
       workspace.classList.toggle('is-overview',id==='overview');
+      workspace.classList.toggle('is-capsule',id==='capsule');
       workspace.classList.toggle('is-work',id==='overview');
     }
     document.querySelectorAll('#subs [data-sub]').forEach(function(b){
@@ -3056,13 +3115,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     });
     var workHost=document.getElementById('workHost');
     var dataHost=document.getElementById('dataHost');
+    var capsuleHost=document.getElementById('capsuleHost');
     if(workHost) workHost.hidden = id!=='overview';
     if(dataHost) dataHost.hidden = id!=='data';
+    if(capsuleHost) capsuleHost.hidden = id!=='capsule';
     if(id==='overview'){
       detail.innerHTML='';
       mountOverviewIfNeeded(navOpts);
       syncGuide();
-      notifyParentSub(id);
+      notifyParentSub(id, navOpts);
       setNav('agent');
       return;
     }
@@ -3071,7 +3132,14 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       setPreviewMode(id);
       syncPreview();
       syncGuide();
-      notifyParentSub(id);
+      notifyParentSub(id, navOpts);
+      setNav('agent');
+      return;
+    }
+    if(id==='capsule'){
+      detail.innerHTML='';
+      syncGuide();
+      notifyParentSub(id, navOpts);
       setNav('agent');
       return;
     }
@@ -3080,7 +3148,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     bindDetail();
     syncPreview();
     syncGuide();
-    notifyParentSub(id);
+    notifyParentSub(id, navOpts);
     setNav('agent');
   }
   document.querySelectorAll('#subs [data-sub]').forEach(function(b){
@@ -3092,7 +3160,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 
   setApp('Cursor', true);
   var deepSub=(/[&?]sub=([^&]+)/.exec(location.search)||[])[1];
-  var allowedDeep={overview:1,data:1,float:1,mini:1,softPad:1,homeRoster:1,work:1};
+  var allowedDeep={overview:1,data:1,capsule:1,float:1,mini:1,softPad:1,homeRoster:1,work:1};
   setSub(allowedDeep[deepSub]?deepSub:'overview');
   document.getElementById('detail').addEventListener('click',function(ev){
     var j=ev.target.closest('[data-sub-jump]');

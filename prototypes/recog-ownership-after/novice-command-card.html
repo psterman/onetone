@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>识别归属 · 小白修改后 · 命令卡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee; --ok-bd:#86efac;
+  --off:#94a3b8; --off-soft:#f1f5f9;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8;
+  --voice:#5b4d8a; --voice-soft:#f0edf7;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --cam:#b45309; --cam-soft:#fff7ed; --cam-bd:#fdba74;
+  --warn:#b45309; --warn-soft:#fff7ed; --warn-bd:#fdba74;
+  --pad-shell:#1a2433; --pad-shell-2:#2a3544;
+  --key-top:#fff; --key-bot:#eef2f6;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 10% -8%,rgba(24,113,68,.1),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(180,83,9,.08),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#86efac;font-weight:650}
+.top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.top a{
+  color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1240px,100%);margin:0 auto;padding:16px 14px 80px}
+
+.brief{
+  background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:92ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-bd);
+}
+.brief .chips span.cam{background:var(--cam-soft);color:var(--cam);border-color:var(--cam-bd)}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);
+}
+
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f4f8fb);
+}
+.scope-bar .brand{font-size:15px;font-weight:800}
+.scope-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.scope-pill b{color:var(--ink);font-weight:800}
+.scope-pill.live{border-color:var(--ok-bd);background:var(--ok-soft);color:var(--ok)}
+.scope-bar .help{margin-left:auto;font-size:11.5px;color:var(--faint);font-weight:650}
+
+.desk{
+  display:grid;grid-template-columns:minmax(220px,268px) minmax(0,1fr);
+  min-height:560px;
+}
+@media(max-width:820px){.desk{grid-template-columns:1fr}}
+
+.rail{
+  background:var(--rail);border-right:1px solid var(--line);
+  padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow:auto;
+}
+.rail .lbl{
+  margin:2px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--faint);
+}
+.cmd{
+  appearance:none;width:100%;text-align:left;border:1px solid transparent;
+  border-radius:12px;padding:10px 11px;background:transparent;font:inherit;cursor:pointer;
+}
+.cmd:hover{background:rgba(255,255,255,.55)}
+.cmd.is-on{
+  background:#fff;border-color:rgba(42,156,196,.35);
+  box-shadow:0 0 0 1px rgba(42,156,196,.12),0 6px 16px rgba(15,27,42,.05);
+}
+.cmd .nm{display:block;font-size:13.5px;font-weight:800;color:var(--ink)}
+.cmd .lights{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.light{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:750;padding:2px 7px;border-radius:999px;
+  background:var(--off-soft);color:var(--off);border:1px solid var(--line);
+}
+.light .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.light.on.pad{background:var(--pad-soft);color:var(--pad);border-color:#86c9a3}
+.light.on.keys{background:var(--keys-soft);color:var(--keys);border-color:#9bc6da}
+.light.on.voice{background:var(--voice-soft);color:var(--voice);border-color:#c4b8e0}
+.light.on.cam{background:var(--cam-soft);color:var(--cam);border-color:var(--cam-bd)}
+.rail .hint{
+  margin:8px 6px 4px;padding:10px;border-radius:10px;background:#fff;
+  border:1px dashed var(--cyan-bd);font-size:11.5px;color:var(--mute);line-height:1.45;
+}
+.rail .hint b{color:var(--cyan-ink)}
+
+.mid{background:var(--wash);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto}
+.hero{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+  display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;
+}
+.hero .ico{
+  width:48px;height:48px;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(180deg,#fff,var(--cyan-soft));
+  border:2px solid rgba(42,156,196,.4);font-weight:800;color:var(--cyan-deep);font-size:12px;
+}
+.hero .meta{flex:1;min-width:180px}
+.hero .meta h2{margin:0 0 2px;font-size:16px;font-weight:800}
+.hero .meta p{margin:0;font-size:12px;color:var(--mute)}
+.hero .ask{
+  font-size:12px;font-weight:750;color:var(--cyan-ink);
+  background:var(--cyan-soft);border:1px solid var(--cyan-bd);
+  border-radius:10px;padding:8px 10px;max-width:28ch;
+}
+
+.lanes{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+}
+@media(max-width:720px){.lanes{grid-template-columns:1fr}}
+
+.lane{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+  display:flex;flex-direction:column;gap:8px;min-height:260px;
+}
+.lane .hd{display:flex;align-items:center;gap:8px}
+.lane .hd h3{margin:0;font-size:13.5px;font-weight:800}
+.lane .q{margin:0;font-size:12px;color:var(--mute);font-weight:650}
+.lane.pad{box-shadow:inset 3px 0 0 var(--pad)}
+.lane.keys{box-shadow:inset 3px 0 0 var(--keys)}
+.lane.voice{box-shadow:inset 3px 0 0 var(--voice)}
+.lane.cam{box-shadow:inset 3px 0 0 var(--cam)}
+.status{
+  display:inline-flex;align-items:center;gap:5px;margin-left:auto;
+  font-size:10.5px;font-weight:750;padding:3px 8px;border-radius:999px;
+}
+.status.on{background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-bd)}
+.status.off{background:var(--off-soft);color:var(--off);border:1px solid var(--line)}
+.status .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.pad-mini{
+  width:100%;max-width:200px;margin:4px auto 0;padding:10px;border-radius:18px;
+  background:linear-gradient(165deg,var(--pad-shell-2),var(--pad-shell));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+}
+.pad-face{background:rgba(248,250,252,.94);border-radius:12px;padding:6px}
+.pad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.pkey{
+  appearance:none;border-radius:8px;border:1px solid rgba(15,27,42,.1);
+  background:linear-gradient(180deg,var(--key-top),var(--key-bot));
+  padding:8px 2px;font:inherit;font-size:10px;font-weight:800;color:var(--mute);
+  cursor:pointer;box-shadow:inset 0 1px 0 #fff;
+}
+.pkey.is-on{
+  border-color:rgba(24,113,68,.5);color:var(--pad);
+  box-shadow:0 0 0 2px rgba(24,113,68,.25),inset 0 1px 0 #fff;
+  background:linear-gradient(180deg,#fff,var(--pad-soft));
+}
+
+.field{
+  display:flex;flex-direction:column;gap:6px;margin-top:2px;
+}
+.field label{font-size:11px;font-weight:750;color:var(--faint)}
+.field input{
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+  font:inherit;font-size:13px;font-weight:700;background:var(--wash);color:var(--ink);
+}
+.field input:focus{outline:2px solid rgba(42,156,196,.35);border-color:var(--cyan-bd);background:#fff}
+.chips-edit{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;
+  background:var(--voice-soft);color:var(--voice);border:1px solid #c4b8e0;
+}
+.chip button{
+  appearance:none;border:0;background:transparent;color:inherit;cursor:pointer;
+  font:inherit;font-weight:800;padding:0 0 0 2px;line-height:1;
+}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:6px}
+.btn{
+  appearance:none;border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink);
+}
+.btn.primary{background:var(--cyan);border-color:transparent;color:#fff}
+.btn.cam{background:var(--cam);border-color:transparent;color:#fff}
+.btn.ghost{background:transparent;color:var(--mute)}
+.lane .empty{
+  margin:8px 0;padding:12px;border-radius:10px;border:1px dashed var(--line);
+  background:var(--wash);font-size:12px;color:var(--mute);text-align:center;font-weight:650;
+}
+
+/* 摄像头栏：小预览 + 手势，不是独立设置页 */
+.cam-row{display:grid;grid-template-columns:112px 1fr;gap:10px;align-items:start}
+@media(max-width:520px){.cam-row{grid-template-columns:1fr}}
+.cam-preview{
+  position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;
+  background:
+    radial-gradient(60% 50% at 50% 42%,rgba(255,255,255,.14),transparent 70%),
+    linear-gradient(160deg,#2a3340,#141a22);
+  border:1px solid rgba(15,27,42,.2);
+}
+.cam-preview .face{
+  position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+  width:42px;height:52px;border-radius:50% 50% 46% 46%;
+  border:2px dashed rgba(253,186,116,.85);
+  opacity:.9;
+}
+.cam-preview .face::after{
+  content:"";position:absolute;left:50%;bottom:-10px;transform:translateX(-50%);
+  width:28px;height:14px;border-radius:0 0 14px 14px;
+  border:2px dashed rgba(253,186,116,.7);border-top:0;
+}
+.cam-preview .badge{
+  position:absolute;left:6px;bottom:6px;right:6px;
+  font-size:9.5px;font-weight:750;color:#fde68a;text-align:center;
+  background:rgba(0,0,0,.45);border-radius:6px;padding:3px 4px;
+}
+.cam-preview.is-live .badge{color:#bbf7d0}
+.cam-preview.is-live .face{border-color:#86efac;animation:facePulse 1.4s ease infinite}
+@keyframes facePulse{
+  0%,100%{opacity:.85}
+  50%{opacity:1;box-shadow:0 0 0 3px rgba(134,239,172,.25)}
+}
+.gestures{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.gbtn{
+  appearance:none;border:1px solid var(--line);border-radius:10px;
+  background:var(--wash);padding:8px 6px;font:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.gbtn .ico{font-size:16px;line-height:1}
+.gbtn .lb{font-size:11px;font-weight:750;color:var(--mute)}
+.gbtn.is-on{
+  border-color:var(--cam-bd);background:var(--cam-soft);
+  box-shadow:0 0 0 2px rgba(180,83,9,.18);
+}
+.gbtn.is-on .lb{color:var(--cam)}
+.cam-note{margin:0;font-size:11px;color:var(--faint);font-weight:650;line-height:1.4}
+
+.sync-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--ok-bd);
+}
+.sync-bar .pulse{
+  width:8px;height:8px;border-radius:50%;background:var(--ok);
+  box-shadow:0 0 0 0 rgba(21,128,61,.45);animation:pulse 1.6s ease infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(21,128,61,.4)}
+  70%{box-shadow:0 0 0 10px rgba(21,128,61,0)}
+  100%{box-shadow:0 0 0 0 rgba(21,128,61,0)}
+}
+.sync-bar strong{font-size:12.5px;font-weight:800;color:var(--ok)}
+.sync-bar span{font-size:12px;color:var(--mute)}
+
+.adv{
+  margin-top:4px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;
+}
+.adv summary{
+  cursor:pointer;padding:10px 12px;font-size:12px;font-weight:750;color:var(--faint);list-style:none;
+}
+.adv summary::-webkit-details-marker{display:none}
+.adv[open] summary{border-bottom:1px solid var(--line);color:var(--mute)}
+.adv .body{padding:10px 12px;font-size:12px;color:var(--mute);display:flex;flex-wrap:wrap;gap:8px}
+.adv .body code{font-family:var(--mono);font-size:11px;background:var(--wash);padding:2px 6px;border-radius:6px}
+
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:#1a2230;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  box-shadow:0 8px 28px rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:.2s;z-index:40;
+  max-width:min(520px,92vw);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>识别归属 · 小白修改后</strong>
+  <em>一条命令 · 四种叫法 · 同屏同步</em>
+  <nav>
+    <a href="./unified-tabs.html">单页三 Tab</a>
+    <a href="./index.html">旧示意（三页）</a>
+    <a href="./compare-wanted-vs-built.html">方案对比</a>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="brief">
+    <h1>我的命令</h1>
+    <p>不问「去哪个设置页」。先选要做什么，再决定怎么触发：屏幕点、实体键按、嘴说、或摄像头手势。四种同屏可见、改完立刻同步。摄像头<strong>不是</strong>第四个示意图设置页——只是本卡里的一栏 + 小预览试手势。</p>
+    <div class="chips">
+      <span>从命令出发</span>
+      <span>灯亮 = 已配好</span>
+      <span>同屏同步 · 不跳页</span>
+      <span class="cam">摄像头 = 第四种叫法</span>
+    </div>
+  </div>
+
+  <section class="frame">
+    <div class="scope-bar">
+      <span class="brand">我的命令</span>
+      <span class="scope-pill live">用于 <b>Cursor · Agent</b></span>
+      <span class="scope-pill">场景 <b>工作</b></span>
+      <span class="help">小白只看「用于哪个应用」——校准 / 设备在高级里</span>
+    </div>
+
+    <div class="desk">
+      <aside class="rail">
+        <div class="lbl">点一条命令</div>
+        <div id="cmdList"></div>
+        <div class="hint">
+          <b>怎么读灯：</b>彩灯 = 已配；灰灯 = 未配。点对应栏在本页补上。摄像头栏选手势即可，不必另开「摄像头设置」。
+        </div>
+      </aside>
+
+      <div class="mid">
+        <div class="hero">
+          <div class="ico" id="heroIco">续</div>
+          <div class="meta">
+            <h2 id="heroTitle">继续回复</h2>
+            <p id="heroSub">让 Agent 接着写。下面四种叫法可以同时开，改完立刻亮灯。</p>
+          </div>
+          <div class="ask" id="heroAsk">现在能怎么触发？看四盏灯。</div>
+        </div>
+
+        <div class="sync-bar" id="syncBar" aria-live="polite">
+          <span class="pulse" aria-hidden="true"></span>
+          <strong>已同步</strong>
+          <span id="syncText">同一条命令 · 四种叫法共用一份配置</span>
+        </div>
+
+        <div class="lanes">
+          <div class="lane pad" data-lane="pad">
+            <div class="hd">
+              <h3>屏幕</h3>
+              <span class="status" id="stPad"><span class="dot"></span><span class="txt">—</span></span>
+            </div>
+            <p class="q">点 Soft Pad 上的哪个键？</p>
+            <div class="pad-mini"><div class="pad-face"><div class="pad-grid" id="padGrid"></div></div></div>
+            <div class="actions">
+              <button type="button" class="btn ghost" data-clear="pad">关掉屏幕触发</button>
+            </div>
+          </div>
+
+          <div class="lane keys" data-lane="keys">
+            <div class="hd">
+              <h3>实体键</h3>
+              <span class="status" id="stKeys"><span class="dot"></span><span class="txt">—</span></span>
+            </div>
+            <p class="q">键盘 / 鼠标上按哪个键？</p>
+            <div class="field">
+              <label for="keyInput">触发键</label>
+              <input id="keyInput" type="text" placeholder="点击后按下实体键…" autocomplete="off" />
+            </div>
+            <div class="empty" id="keysEmpty" hidden>还没录键 · 点「开始录键」后按一下</div>
+            <div class="actions">
+              <button type="button" class="btn primary" id="btnRecordKey">开始录键</button>
+              <button type="button" class="btn ghost" data-clear="keys">清除</button>
+            </div>
+          </div>
+
+          <div class="lane voice" data-lane="voice">
+            <div class="hd">
+              <h3>口头</h3>
+              <span class="status" id="stVoice"><span class="dot"></span><span class="txt">—</span></span>
+            </div>
+            <p class="q">说哪一句就执行？</p>
+            <div class="field">
+              <label>说法</label>
+              <div class="chips-edit" id="phraseChips"></div>
+              <input id="phraseInput" type="text" placeholder="输入新说法，回车添加" autocomplete="off" />
+            </div>
+            <div class="actions">
+              <button type="button" class="btn primary" id="btnAddPhrase">添加说法</button>
+              <button type="button" class="btn ghost" data-clear="voice">清空说法</button>
+            </div>
+          </div>
+
+          <!-- 摄像头：第四种叫法，栏内小预览，不是独立示意图页 -->
+          <div class="lane cam" data-lane="cam">
+            <div class="hd">
+              <h3>摄像头</h3>
+              <span class="status" id="stCam"><span class="dot"></span><span class="txt">—</span></span>
+            </div>
+            <p class="q">用哪个手势 / 眼神触发？</p>
+            <div class="cam-row">
+              <div class="cam-preview" id="camPreview" aria-hidden="true">
+                <div class="face"></div>
+                <div class="badge" id="camBadge">示意预览 · 未试</div>
+              </div>
+              <div>
+                <div class="gestures" id="gestureGrid"></div>
+                <p class="cam-note" style="margin-top:8px">点手势即绑定本命令。小窗只用来「试一下」，不是第四个设置产品。</p>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn cam" id="btnTryGesture">试一下</button>
+              <button type="button" class="btn ghost" data-clear="cam">关掉摄像头触发</button>
+            </div>
+          </div>
+        </div>
+
+        <details class="adv">
+          <summary>高级（小白可忽略）· 编辑态 / 车道 / 引擎 / 摄像头校准</summary>
+          <div class="body">
+            <span>正在编辑 <code>Cursor · Agent</code></span>
+            <span>正在使用 <code>通用</code></span>
+            <span>Soft Pad 车道 <code>Auto · Cursor</code></span>
+            <span>语音引擎 <code>vosk</code></span>
+            <span>摄像头设备 <code>默认</code></span>
+            <span>注视校准 <code>未做 · 需要时再开</code></span>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var PAD_KEYS = ['AG01', 'AG02', 'AG03', '7', '8', '9', '6', 'ESC', 'FN'];
+  var GESTURES = [
+    { id: 'okHand', ico: '👌', lb: 'OK' },
+    { id: 'wave', ico: '👋', lb: '挥手' },
+    { id: 'blink', ico: '👁', lb: '眨眼' },
+    { id: 'openPalm', ico: '🖐', lb: '张开' },
+    { id: 'fist', ico: '✊', lb: '握拳' },
+    { id: 'shake', ico: '🙅', lb: '摇头' }
+  ];
+  var GESTURE_LB = {};
+  GESTURES.forEach(function (g) { GESTURE_LB[g.id] = g.lb; });
+
+  var CMDS = [
+    {
+      id: 'continue',
+      title: '继续回复',
+      short: '续',
+      blurb: '让 Agent 接着写。',
+      pad: 'AG02',
+      key: 'Vol-',
+      phrases: ['继续', '接着写'],
+      cam: 'okHand'
+    },
+    {
+      id: 'new',
+      title: '新建对话',
+      short: '新',
+      blurb: '开一个新的 Agent 会话。',
+      pad: 'AG01',
+      key: '',
+      phrases: ['新建'],
+      cam: ''
+    },
+    {
+      id: 'paste',
+      title: '粘贴发送',
+      short: '贴',
+      blurb: '粘贴剪贴板并发送。',
+      pad: '',
+      key: 'Ctrl+V',
+      phrases: [],
+      cam: 'blink'
+    },
+    {
+      id: 'cancel',
+      title: '取消',
+      short: '消',
+      blurb: '停掉当前操作。',
+      pad: 'ESC',
+      key: 'Esc',
+      phrases: ['取消', '算了'],
+      cam: 'shake'
+    }
+  ];
+
+  var selected = 'continue';
+  var recording = false;
+  var tryTimer = 0;
+
+  function cmd() {
+    return CMDS.find(function (c) { return c.id === selected; }) || CMDS[0];
+  }
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, 2200);
+  }
+
+  function flashSync(msg) {
+    document.getElementById('syncText').textContent = msg;
+    toast(msg);
+  }
+
+  function countOn(c) {
+    return (c.pad ? 1 : 0) + (c.key ? 1 : 0) + (c.phrases.length ? 1 : 0) + (c.cam ? 1 : 0);
+  }
+
+  function lightsHtml(c) {
+    return (
+      '<span class="light' + (c.pad ? ' on pad' : '') + '"><span class="dot"></span>屏幕</span>' +
+      '<span class="light' + (c.key ? ' on keys' : '') + '"><span class="dot"></span>键</span>' +
+      '<span class="light' + (c.phrases.length ? ' on voice' : '') + '"><span class="dot"></span>口头</span>' +
+      '<span class="light' + (c.cam ? ' on cam' : '') + '"><span class="dot"></span>摄像</span>'
+    );
+  }
+
+  function setStatus(elId, on, onText, offText) {
+    var el = document.getElementById(elId);
+    el.className = 'status ' + (on ? 'on' : 'off');
+    el.querySelector('.txt').textContent = on ? onText : offText;
+  }
+
+  function renderList() {
+    document.getElementById('cmdList').innerHTML = CMDS.map(function (c) {
+      return (
+        '<button type="button" class="cmd' + (c.id === selected ? ' is-on' : '') + '" data-cmd="' + c.id + '">' +
+        '<span class="nm">' + c.title + '</span>' +
+        '<span class="lights">' + lightsHtml(c) + '</span>' +
+        '</button>'
+      );
+    }).join('');
+  }
+
+  function renderPad() {
+    var c = cmd();
+    document.getElementById('padGrid').innerHTML = PAD_KEYS.map(function (k) {
+      return (
+        '<button type="button" class="pkey' + (c.pad === k ? ' is-on' : '') + '" data-pad="' + k + '">' + k + '</button>'
+      );
+    }).join('');
+  }
+
+  function renderPhrases() {
+    var c = cmd();
+    var host = document.getElementById('phraseChips');
+    if (!c.phrases.length) {
+      host.innerHTML = '<span style="font-size:12px;color:var(--faint);font-weight:650">还没有说法</span>';
+      return;
+    }
+    host.innerHTML = c.phrases.map(function (p, i) {
+      return (
+        '<span class="chip">' + p +
+        '<button type="button" data-rm-phrase="' + i + '" aria-label="删除">×</button></span>'
+      );
+    }).join('');
+  }
+
+  function renderGestures() {
+    var c = cmd();
+    document.getElementById('gestureGrid').innerHTML = GESTURES.map(function (g) {
+      return (
+        '<button type="button" class="gbtn' + (c.cam === g.id ? ' is-on' : '') + '" data-gesture="' + g.id + '">' +
+        '<span class="ico" aria-hidden="true">' + g.ico + '</span>' +
+        '<span class="lb">' + g.lb + '</span></button>'
+      );
+    }).join('');
+  }
+
+  function renderDetail() {
+    var c = cmd();
+    document.getElementById('heroIco').textContent = c.short;
+    document.getElementById('heroTitle').textContent = c.title;
+    document.getElementById('heroSub').textContent = c.blurb + ' 下面四种叫法可以同时开，改完立刻亮灯。';
+
+    var n = countOn(c);
+    document.getElementById('heroAsk').textContent =
+      n === 0 ? '还不能触发 · 先配一种叫法' :
+      n === 4 ? '四种叫法都开了 · 随便用哪种' :
+      '已开 ' + n + ' 种叫法 · 灰灯的还可以补';
+
+    setStatus('stPad', !!c.pad, c.pad, '未配');
+    setStatus('stKeys', !!c.key, c.key || '已配', '未配');
+    setStatus('stVoice', !!c.phrases.length, c.phrases.length + ' 句', '未配');
+    setStatus('stCam', !!c.cam, GESTURE_LB[c.cam] || '已配', '未配');
+
+    document.getElementById('keyInput').value = c.key || '';
+    document.getElementById('keysEmpty').hidden = !!c.key;
+
+    if (!document.getElementById('camPreview').classList.contains('is-live')) {
+      document.getElementById('camBadge').textContent = c.cam
+        ? ('已绑「' + GESTURE_LB[c.cam] + '」· 可试一下')
+        : '示意预览 · 选手势';
+    }
+
+    renderPad();
+    renderPhrases();
+    renderGestures();
+    renderList();
+  }
+
+  function selectCmd(id) {
+    selected = id;
+    recording = false;
+    document.getElementById('btnRecordKey').textContent = '开始录键';
+    document.getElementById('camPreview').classList.remove('is-live');
+    clearTimeout(tryTimer);
+    renderDetail();
+  }
+
+  document.getElementById('cmdList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cmd]');
+    if (!b) return;
+    selectCmd(b.getAttribute('data-cmd'));
+  });
+
+  document.getElementById('padGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pad]');
+    if (!b) return;
+    var c = cmd();
+    var k = b.getAttribute('data-pad');
+    c.pad = c.pad === k ? '' : k;
+    renderDetail();
+    flashSync(c.pad ? ('屏幕触发 → ' + c.pad + ' · 列表灯已同步') : '已关掉屏幕触发 · 列表灯已同步');
+  });
+
+  document.getElementById('gestureGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-gesture]');
+    if (!b) return;
+    var c = cmd();
+    var g = b.getAttribute('data-gesture');
+    c.cam = c.cam === g ? '' : g;
+    document.getElementById('camPreview').classList.remove('is-live');
+    renderDetail();
+    flashSync(
+      c.cam
+        ? ('摄像头「' + GESTURE_LB[c.cam] + '」→ 本命令 · 不另开设置页')
+        : '已关掉摄像头触发 · 四盏灯同步'
+    );
+  });
+
+  document.querySelector('.desk').addEventListener('click', function (e) {
+    var clear = e.target.closest('[data-clear]');
+    if (clear) {
+      var c = cmd();
+      var which = clear.getAttribute('data-clear');
+      if (which === 'pad') c.pad = '';
+      if (which === 'keys') {
+        c.key = '';
+        recording = false;
+        document.getElementById('btnRecordKey').textContent = '开始录键';
+      }
+      if (which === 'voice') c.phrases = [];
+      if (which === 'cam') {
+        c.cam = '';
+        document.getElementById('camPreview').classList.remove('is-live');
+        clearTimeout(tryTimer);
+      }
+      renderDetail();
+      flashSync('已更新 · 左侧四盏灯同步');
+      return;
+    }
+    var rm = e.target.closest('[data-rm-phrase]');
+    if (rm) {
+      var c2 = cmd();
+      c2.phrases.splice(Number(rm.getAttribute('data-rm-phrase')), 1);
+      renderDetail();
+      flashSync('说法已改 · 口头灯同步');
+    }
+  });
+
+  document.getElementById('btnTryGesture').addEventListener('click', function () {
+    var c = cmd();
+    if (!c.cam) {
+      toast('先点一个手势再试');
+      return;
+    }
+    var preview = document.getElementById('camPreview');
+    var badge = document.getElementById('camBadge');
+    preview.classList.add('is-live');
+    badge.textContent = '识别中 · 做出「' + GESTURE_LB[c.cam] + '」…';
+    clearTimeout(tryTimer);
+    tryTimer = setTimeout(function () {
+      badge.textContent = '已认出「' + GESTURE_LB[c.cam] + '」→ ' + c.title;
+      flashSync('试手势成功 · 绑定留在本命令卡（示意）');
+      setTimeout(function () {
+        preview.classList.remove('is-live');
+        badge.textContent = '已绑「' + GESTURE_LB[c.cam] + '」· 可再试';
+      }, 1600);
+    }, 900);
+  });
+
+  function addPhrase() {
+    var input = document.getElementById('phraseInput');
+    var v = String(input.value || '').trim();
+    if (!v) return;
+    var c = cmd();
+    if (c.phrases.indexOf(v) >= 0) { toast('说法已存在'); return; }
+    c.phrases.push(v);
+    input.value = '';
+    renderDetail();
+    flashSync('口头「' + v + '」已挂上 · 不跳页');
+  }
+
+  document.getElementById('btnAddPhrase').addEventListener('click', addPhrase);
+  document.getElementById('phraseInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); addPhrase(); }
+  });
+
+  document.getElementById('btnRecordKey').addEventListener('click', function () {
+    recording = !recording;
+    this.textContent = recording ? '等待按键…' : '开始录键';
+    if (recording) {
+      document.getElementById('keyInput').focus();
+      toast('示意：按下任意键将写入本命令（不跳到按键设置）');
+    }
+  });
+
+  document.getElementById('keyInput').addEventListener('keydown', function (e) {
+    if (!recording) return;
+    e.preventDefault();
+    var label = e.key === ' ' ? 'Space' : (e.ctrlKey || e.metaKey || e.altKey
+      ? [(e.ctrlKey ? 'Ctrl' : ''), (e.altKey ? 'Alt' : ''), (e.shiftKey ? 'Shift' : ''), e.key].filter(Boolean).join('+')
+      : (e.key.length === 1 ? e.key.toUpperCase() : e.key));
+    var c = cmd();
+    c.key = label;
+    recording = false;
+    document.getElementById('btnRecordKey').textContent = '开始录键';
+    renderDetail();
+    flashSync('实体键 → ' + label + ' · 与屏幕/口头/摄像同条命令');
+  });
+
+  renderDetail();
+})();
+</script>
+</body>
+</html>

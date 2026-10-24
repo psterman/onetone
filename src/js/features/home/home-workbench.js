@@ -323,6 +323,72 @@
     return 'is-warn';
   }
 
+  /**
+   * Unified primary alert for classic workbench + HA2.
+   * Priority: lastStall → repair → needsSetup → pickPrimaryAlert → null.
+   * @returns {null|{kind:string,severity:string,text:string,action:object,actionLabel:string}}
+   */
+  function getPrimaryAlertModel(opts){
+    opts=opts||{};
+    var model=opts.model!=null?opts.model:peekHomeModel();
+    var vm=opts.vm||null;
+    if(!vm&&global.OneToneHomeV9&&typeof global.OneToneHomeV9.buildViewModel==='function'){
+      try{ vm=enrichViewModel(global.OneToneHomeV9.buildViewModel()); }catch(_){ vm=null; }
+    }
+    if(pendingLastStall&&pendingLastStall.code){
+      var stallText=t('homeWbAlertLastStall','上次异常：{code} — {reason}')
+        .replace('{code}',String(pendingLastStall.code||''))
+        .replace('{reason}',String(pendingLastStall.reason||''));
+      return {
+        kind:'last_stall',
+        severity:'is-error',
+        text:stallText,
+        action:{type:'dismissLastStall'},
+        actionLabel:t('homeWbAlertLastStallDismiss','知道了')
+      };
+    }
+    if(model&&model.repair){
+      return {
+        kind:'repair',
+        severity:'is-error',
+        text:model.statusLine||t('homeWbAlertRecogError'),
+        action:{
+          type:'openSettings',
+          panel:model.repair.panel||'debug',
+          debugMode:model.repair.debugMode||'repair'
+        },
+        actionLabel:model.repair.label||t('debugFocusRepair')
+      };
+    }
+    if(model&&model.needsSetup&&model.cta){
+      return {
+        kind:'needs_setup',
+        severity:'is-warn',
+        text:model.statusLine||t('homeSetupStart'),
+        action:{
+          type:'openSettings',
+          panel:model.cta.panel||'keys',
+          focus:model.cta.focus||null
+        },
+        actionLabel:model.cta.label||t('homeSetupStart')
+      };
+    }
+    if(vm){
+      var alertsApi=global.OneToneHomeWorkbenchAlerts;
+      var alert=alertsApi&&alertsApi.pickPrimaryAlert?alertsApi.pickPrimaryAlert(buildAlertInput(vm)):null;
+      if(alert){
+        return {
+          kind:alert.kind,
+          severity:alertSeverity(alert.kind),
+          text:t(alert.textKey),
+          action:alert.action||null,
+          actionLabel:alertActionLabel(alert.action)
+        };
+      }
+    }
+    return null;
+  }
+
   function renderAlerts(vm,model){
     var host=$('wbHomeAlerts');
     if(!host) return;
@@ -336,66 +402,22 @@
         return;
       }
     }catch(_){}
-    // One-shot: last session stall / unclean exit (persisted by Rust watchdog).
-    if(pendingLastStall&&pendingLastStall.code){
-      host.hidden=false;
-      host.className='wb-home-alert is-error';
-      host._lastAlertAction={type:'dismissLastStall'};
-      var stallText=t('homeWbAlertLastStall','上次异常：{code} — {reason}')
-        .replace('{code}',String(pendingLastStall.code||''))
-        .replace('{reason}',String(pendingLastStall.reason||''));
-      host.innerHTML=
-        '<span class="wb-home-alert-text">'+esc(stallText)+'</span>'
-        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
-        +esc(t('homeWbAlertLastStallDismiss','知道了'))+'</button>';
-      return;
-    }
-    // Phase1：model.repair / needsSetup CTA 优先于 alerts 启发式
-    if(model&&model.repair){
-      var repairAction={
-        type:'openSettings',
-        panel:model.repair.panel||'debug',
-        debugMode:model.repair.debugMode||'repair'
-      };
-      host.hidden=false;
-      host.className='wb-home-alert is-error';
-      host._lastAlertAction=repairAction;
-      host.innerHTML=
-        '<span class="wb-home-alert-text">'+esc(model.statusLine||t('homeWbAlertRecogError'))+'</span>'
-        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
-        +esc(model.repair.label||t('debugFocusRepair'))+'</button>';
-      return;
-    }
-    if(model&&model.needsSetup&&model.cta){
-      var setupAction={
-        type:'openSettings',
-        panel:model.cta.panel||'keys',
-        focus:model.cta.focus||null
-      };
-      host.hidden=false;
-      host.className='wb-home-alert is-warn';
-      host._lastAlertAction=setupAction;
-      host.innerHTML=
-        '<span class="wb-home-alert-text">'+esc(model.statusLine||t('homeSetupStart'))+'</span>'
-        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
-        +esc(model.cta.label||t('homeSetupStart'))+'</button>';
-      return;
-    }
-    var alertsApi=global.OneToneHomeWorkbenchAlerts;
-    var alert=alertsApi&&alertsApi.pickPrimaryAlert?alertsApi.pickPrimaryAlert(buildAlertInput(vm)):null;
-    if(!alert){
+    var alertModel=getPrimaryAlertModel({vm:vm,model:model});
+    if(!alertModel){
       host.hidden=true;
       host.innerHTML='';
       host._lastAlertAction=null;
       return;
     }
     host.hidden=false;
-    host.className='wb-home-alert '+alertSeverity(alert.kind);
-    host._lastAlertAction=alert.action||null;
+    host.className='wb-home-alert '+(alertModel.severity||'is-warn');
+    host._lastAlertAction=alertModel.action||null;
     host.innerHTML=
-      '<span class="wb-home-alert-text">'+esc(t(alert.textKey))+'</span>'
-      +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
-      +esc(alertActionLabel(alert.action))+'</button>';
+      '<span class="wb-home-alert-text">'+esc(alertModel.text||'')+'</span>'
+      +(alertModel.actionLabel
+        ?('<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
+          +esc(alertModel.actionLabel)+'</button>')
+        :'');
   }
 
   function renderFinishSummary(vm){
@@ -3089,6 +3111,7 @@
   var NAV_PANEL_MAP={
     habits:'schemes',
     keys:'triggers',
+    keys2:'keys2',
     softPad:'softPad',
     agent:'agent',
     agentData:'agent',
@@ -3464,8 +3487,9 @@
       }
       if(action==='home'){
         try{
-          if(localStorage.getItem('onetone.homeSurface')==='agentV2'){
-            localStorage.setItem('onetone.homeSurface','classic');
+          var surf=localStorage.getItem('onetone.homeSurface');
+          if(surf==='agentV2'||!surf){
+            localStorage.setItem('onetone.homeSurface','focus');
             location.reload();
             return;
           }
@@ -3767,6 +3791,8 @@
     buildHomeWorkbenchModel:function(opts){
       return peekHomeModel(opts);
     },
+    getPrimaryAlertModel:getPrimaryAlertModel,
+    handleAlertAction:handleAlertAction,
     shouldSkipHomeRender:shouldSkipHomeRender,
     forceHomeRender:forceHomeRender,
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,

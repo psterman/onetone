@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 习惯命令 · 通道图标 v2</title>
+  <style>
+    :root {
+      --ink: #1a2330; --muted: #5c6b7a; --faint: #8a97a5; --line: #d5dde6;
+      --panel: #fff; --wash: #eef2f5; --rail: #f7f9fb;
+      --teal: #0f6e6a; --teal-soft: #e3f3f1;
+      --key: #2a5f8f; --key-soft: #e7f0f8;
+      --pad: #5a4d8c; --pad-soft: #efeaf8;
+      --cam: #8a5a28; --cam-soft: #f8efe4;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { background: linear-gradient(165deg, #d5e2e4 0%, #e7ecef 50%, #dce4e8 100%); color: var(--ink); font: 13px/1.45 var(--font); }
+    button, summary { font: inherit; cursor: pointer; }
+    button:focus-visible, summary:focus-visible { outline: 2px solid #16a6a0; outline-offset: 2px; }
+
+    .proto-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px; }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(980px, calc(100% - 28px)); margin: 20px auto 48px; }
+    .stage-head h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage-head p { margin: 6px 0 0; color: var(--muted); max-width: 680px; }
+    .note { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--teal-soft); color: var(--teal); font-size: 12px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
+    .legend .ch { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+    .legend .ch.is-on.voice { color: var(--teal); background: var(--teal-soft); border-color: #b7ddd8; }
+    .legend .ch.is-on.key { color: var(--key); background: var(--key-soft); border-color: #c5d8ea; }
+    .legend .ch.is-on.pad { color: var(--pad); background: var(--pad-soft); border-color: #d4cce8; }
+    .legend .ch.is-on.cam { color: var(--cam); background: var(--cam-soft); border-color: #e8d3b8; }
+    .ch svg, .hcl-ch svg { width: 15px; height: 15px; display: block; }
+
+    .shell { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); min-height: 560px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(20, 40, 50, .12); }
+    .cmds { border-right: 1px solid var(--line); background: #fafbfc; padding: 12px; overflow: auto; }
+    .cmds-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 10px; }
+    .cmds-head strong { font-size: 13px; }
+    .cmds-head span { font-size: 11px; color: var(--muted); }
+
+    .acc { border: 1px solid var(--line); border-radius: 10px; background: #fff; margin: 0 0 8px; overflow: hidden; }
+    .acc > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; user-select: none; }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc-ico { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
+    .acc-ico.input { background: var(--teal); }
+    .acc-ico.agent { background: #3d5a80; }
+    .acc-ico.session { background: #2a6f8f; }
+    .acc-title { font-size: 12px; font-weight: 650; flex: 1; }
+    .acc-count { font-size: 11px; color: var(--muted); }
+    .acc-body { padding: 0 8px 8px; display: grid; gap: 6px; }
+
+    .subhead { margin: 4px 2px 2px; padding: 4px 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; }
+
+    .cmd { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 2px 8px; width: 100%; text-align: left; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: inherit; }
+    .cmd:hover { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); }
+    .cmd.is-on { outline: 2px solid color-mix(in srgb, var(--teal) 50%, transparent); outline-offset: 1px; }
+    .cmd strong { font-size: 13px; grid-column: 1; }
+    .cmd .meta { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+    .kind { display: inline-block; margin-right: 6px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 650; background: var(--wash); color: var(--faint); }
+    .kind.native { background: var(--teal-soft); color: var(--teal); }
+    .kind.agent { background: #e8edf3; color: #3d5a80; }
+    .kind.view { background: var(--key-soft); color: var(--key); }
+    .kind.click { background: var(--pad-soft); color: var(--pad); }
+    .kind.shortcut { background: var(--cam-soft); color: var(--cam); }
+
+    .chs { display: inline-flex; gap: 4px; align-items: center; grid-column: 2; grid-row: 1; flex-wrap: wrap; justify-content: flex-end; }
+    .hcl-ch { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: #9aa3b2; background: #eef1f5; border: 1px solid transparent; }
+    .hcl-ch.is-on.voice { color: var(--teal); background: var(--teal-soft); border-color: #b7ddd8; }
+    .hcl-ch.is-on.key { color: var(--key); background: var(--key-soft); border-color: #c5d8ea; }
+    .hcl-ch.is-on.pad { color: var(--pad); background: var(--pad-soft); border-color: #d4cce8; }
+    .hcl-ch.is-on.cam { color: var(--cam); background: var(--cam-soft); border-color: #e8d3b8; }
+
+    .detail { padding: 14px 16px; background: #fff; min-width: 0; }
+    .detail .zone-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+    .detail h2 { margin: 0 0 4px; font-size: 18px; }
+    .detail .lead { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+    .origin { display: grid; gap: 8px; margin: 0 0 16px; }
+    .origin article { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--rail); }
+    .origin h3 { margin: 0 0 4px; font-size: 12px; }
+    .origin p { margin: 0; font-size: 12px; color: var(--muted); }
+    .origin code { font-size: 11px; color: var(--ink); }
+
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .compare figure { margin: 0; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; background: #fafbfc; }
+    .compare figcaption { font-size: 11px; color: var(--faint); margin-bottom: 8px; font-weight: 650; }
+    .dots { display: inline-flex; gap: 4px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #d7dde7; }
+    .dot.on.v { background: var(--teal); }
+    .dot.on.k { background: var(--key); }
+    .dot.on.p { background: var(--pad); }
+
+    @media (max-width: 800px) { .shell, .compare { grid-template-columns: 1fr; } .cmds { border-right: 0; border-bottom: 1px solid var(--line); } }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="ico-voice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></symbol>
+    <symbol id="ico-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></symbol>
+    <symbol id="ico-pad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></symbol>
+    <symbol id="ico-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></symbol>
+  </svg>
+
+  <div class="proto-bar">
+    <strong>原型 · 通道图标 v2</strong>
+    <em>Agent 五颗粒 · 通道纯图标</em>
+    <span>Cursor · 工作</span>
+    <span class="hint">prototypes/onetone-habit-cmd-channels-v2.html</span>
+  </div>
+
+  <div class="stage">
+    <div class="stage-head">
+      <h1>本习惯 · 命令列表</h1>
+      <p>命令行右侧为<strong>纯图标</strong>通道芯片（口头 / 按键 / Pad / 手势）；「控制当前 Agent」按五类能力颗粒分段，副行写绑定值与类型徽章。</p>
+      <p class="note">Before → After：通道=图标；Agent=五颗粒心智</p>
+    </div>
+
+    <div class="legend" aria-label="通道图例">
+      <span class="ch is-on voice"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg>口头 · Soft Pad 口令</span>
+      <span class="ch is-on key"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg>按键 · Keys 深链</span>
+      <span class="ch is-on pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg>Pad · Soft Pad 键位</span>
+      <span class="ch is-on cam"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg>手势 · 摄像头</span>
+    </div>
+
+    <div class="shell" aria-label="习惯命令通道图标原型">
+      <aside class="cmds" aria-label="命令列表">
+        <div class="cmds-head">
+          <strong>本习惯 · 命令</strong>
+          <span>10 条 · Cursor</span>
+        </div>
+
+        <details class="acc" open data-cat="input">
+          <summary>
+            <span class="acc-ico input">入</span>
+            <span class="acc-title">控制输入</span>
+            <span class="acc-count">2</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd" data-cat="input">
+              <strong>发送</strong>
+              <span class="chs" aria-label="调用通道">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键" aria-label="按键未配置"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind">输入</span>发送 · ACT12</span>
+            </button>
+            <button type="button" class="cmd" data-cat="input">
+              <strong>开始听写</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad" aria-label="Pad 未配置"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind">输入</span>开始 · Vol-</span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" open data-cat="agent">
+          <summary>
+            <span class="acc-ico agent">A</span>
+            <span class="acc-title">控制当前 Agent</span>
+            <span class="acc-count">7</span>
+          </summary>
+          <div class="acc-body">
+            <div class="subhead" data-cat="agent" data-kind="native">原生能力</div>
+            <button type="button" class="cmd" data-cat="agent" data-kind="native">
+              <strong>Soft Pad 灯位</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键" aria-label="按键未配置"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind native">原生</span>soft:slots · AG00</span>
+            </button>
+
+            <div class="subhead" data-cat="agent" data-kind="agent">Agent 能力</div>
+            <button type="button" class="cmd is-on" data-cat="agent" data-kind="agent">
+              <strong>继续</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind agent">Agent</span>继续 · AG02</span>
+            </button>
+            <button type="button" class="cmd" data-cat="agent" data-kind="agent">
+              <strong>中断</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头" aria-label="口头未配置"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad" aria-label="Pad 未配置"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch is-on cam" title="手势" aria-label="手势已绑定"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind agent">Agent</span>Esc · 握拳</span>
+            </button>
+
+            <div class="subhead" data-cat="agent" data-kind="view">查看 / 指令</div>
+            <button type="button" class="cmd" data-cat="agent" data-kind="view">
+              <strong>查看状态</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键" aria-label="按键未配置"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind view">查看</span>查看状态 · AG00 灯位</span>
+            </button>
+            <button type="button" class="cmd" data-cat="agent" data-kind="view">
+              <strong>制定计划</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头" aria-label="口头未配置"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind view">查看</span>Ctrl+Alt+P · PLUS</span>
+            </button>
+            <button type="button" class="cmd" data-cat="agent" data-kind="view">
+              <strong>切换助手</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头" aria-label="口头未配置"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad" aria-label="Pad 未配置"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind view">查看</span>Ctrl+Alt+.</span>
+            </button>
+
+            <div class="subhead" data-cat="agent" data-kind="click">点击执行</div>
+            <button type="button" class="cmd" data-cat="agent" data-kind="click">
+              <strong>回到当前 Agent</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头" aria-label="口头未配置"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键" aria-label="按键未配置"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind click">点击</span>ENC · Pad 主键</span>
+            </button>
+
+            <div class="subhead" data-cat="agent" data-kind="shortcut">快捷键</div>
+            <button type="button" class="cmd" data-cat="agent" data-kind="shortcut">
+              <strong>聚焦 Agent 面板</strong>
+              <span class="chs">
+                <span class="hcl-ch" title="口头" aria-label="口头未配置"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键" aria-label="按键已绑定"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch" title="Pad" aria-label="Pad 未配置"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind shortcut">快捷键</span>Ctrl+L</span>
+            </button>
+          </div>
+        </details>
+
+        <details class="acc" data-cat="session">
+          <summary>
+            <span class="acc-ico session">会</span>
+            <span class="acc-title">会话与状态</span>
+            <span class="acc-count">1</span>
+          </summary>
+          <div class="acc-body">
+            <button type="button" class="cmd" data-cat="session">
+              <strong>新建对话</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头" aria-label="口头已绑定"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch" title="按键" aria-label="按键未配置"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad" aria-label="Pad 已绑定"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势" aria-label="手势未配置"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+              <span class="meta"><span class="kind">会话</span>新建 · AG01</span>
+            </button>
+          </div>
+        </details>
+      </aside>
+
+      <div class="detail">
+        <div class="zone-tag">说明 · Agent 五颗粒来源映射</div>
+        <h2>继续</h2>
+        <p class="lead">同一条命令可来自多通道；列表只投影已绑定通道。Agent 组按能力颗粒分段，而非按英文 action id 堆叠。</p>
+
+        <div class="origin">
+          <article data-kind="native">
+            <h3>原生能力</h3>
+            <p>Soft Pad <code>soft:slots</code>、oral 口令槽；习惯页内联改说法，与 Pad 灯位同源。</p>
+          </article>
+          <article data-kind="agent">
+            <h3>Agent 能力</h3>
+            <p><code>continueReply</code>、<code>agent.interrupt</code> 等推进/打断类；可挂口头、按键、Pad。</p>
+          </article>
+          <article data-kind="view">
+            <h3>查看 / 指令</h3>
+            <p><code>insertOnly</code> 动作表：<code>status</code>、<code>plan</code>、<code>switchAgent</code>；只插入不发送。</p>
+          </article>
+          <article data-kind="click">
+            <h3>点击执行</h3>
+            <p>Pad 主键 UI 点击（<code>pad-primary</code>）；无口头/按键时仍有一键可达。</p>
+          </article>
+          <article data-kind="shortcut">
+            <h3>快捷键</h3>
+            <p>仅 <code>agentBindings</code> key 和弦；习惯页深链 Keys 页录制，列表只显示 chord 文本。</p>
+          </article>
+        </div>
+
+        <div class="compare">
+          <figure>
+            <figcaption>Before · 四色圆点（记顺序）</figcaption>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff">
+              <strong style="font-size:13px">继续</strong>
+              <span class="dots" aria-hidden="true">
+                <span class="dot on v"></span><span class="dot on k"></span><span class="dot on p"></span><span class="dot"></span>
+              </span>
+            </div>
+          </figure>
+          <figure>
+            <figcaption>After · 纯图标通道（本页左侧）</figcaption>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff">
+              <strong style="font-size:13px">继续</strong>
+              <span class="chs">
+                <span class="hcl-ch is-on voice" title="口头"><svg viewBox="0 0 16 16"><use href="#ico-voice"/></svg></span>
+                <span class="hcl-ch is-on key" title="按键"><svg viewBox="0 0 16 16"><use href="#ico-key"/></svg></span>
+                <span class="hcl-ch is-on pad" title="Pad"><svg viewBox="0 0 16 16"><use href="#ico-pad"/></svg></span>
+                <span class="hcl-ch" title="手势"><svg viewBox="0 0 16 16"><use href="#ico-cam"/></svg></span>
+              </span>
+            </div>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

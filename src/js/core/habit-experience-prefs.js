@@ -9,21 +9,13 @@
   }
 
   function getMode(){
-    var s=storage();
-    var value='';
-    try{ value=s?String(s.getItem(MODE_KEY)||''):''; }catch(_){}
-    if(value==='programmer') return 'quick';
-    if(value==='quick') return 'quick';
-    if(value==='novice') return 'novice';
-    if(!value) return 'novice';
-    return 'quick';
+    return 'locator';
   }
 
-  function setMode(mode){
-    var next=mode==='quick'?'quick':'novice';
+  function setMode(){
     var s=storage();
-    try{ if(s) s.setItem(MODE_KEY,next); }catch(_){}
-    return next;
+    try{ if(s) s.setItem(MODE_KEY,'locator'); }catch(_){}
+    return 'locator';
   }
 
   function hasSeenProgrammerIntro(){

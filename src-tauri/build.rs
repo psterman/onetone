@@ -200,6 +200,7 @@ fn main() {
         "cmd_tray_collect_from_soft_pad",
         "cmd_tray_collect_drain",
         "cmd_tray_inbox_write",
+        "cmd_clipboard_read_image",
         "cmd_smart_capture_begin",
         "cmd_smart_capture_get_state",
         "cmd_smart_capture_action",

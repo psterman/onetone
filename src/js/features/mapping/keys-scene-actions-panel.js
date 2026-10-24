@@ -2041,8 +2041,8 @@
         ? '<p class="keys-scene-actions__empty">' +
           esc(emptyHint) +
           '</p>' +
-          '<button type="button" class="keys-scene-actions__habit-link" data-habit-hub="1">' +
-          esc(t('keysSceneActionsHabitLink', '在「我的习惯」查看全部通道 →')) +
+          '<button type="button" class="keys-scene-actions__habit-link" data-channel-map="1">' +
+          esc(t('keysSceneActionsChannelMap', '梳理本习惯：各通道怎么调用命令 →')) +
           '</button>'
         : '<div class="keys-scene-actions__grp" data-group="input">' +
           '<div class="keys-scene-actions__grp-h">' +
@@ -2127,8 +2127,8 @@
             })
             .join('') +
           '</div>' +
-          '<button type="button" class="keys-scene-actions__habit-link" data-habit-hub="1">' +
-          esc(t('keysSceneActionsHabitLink', '在「我的习惯」查看全部通道 →')) +
+          '<button type="button" class="keys-scene-actions__habit-link" data-channel-map="1">' +
+          esc(t('keysSceneActionsChannelMap', '梳理本习惯：各通道怎么调用命令 →')) +
           '</button>';
     dirHost.innerHTML = list;
     var addBtn = $(host.add);
@@ -2163,9 +2163,43 @@
     } catch (_) {}
   }
 
+  /** L-class match editor lives on Habits — native Keys/Voice/Pad keep their own pages. */
+  function openChannelMapSheet() {
+    var mid = String(state.mappingId || '').trim();
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.openHabitsMatch === 'function') {
+      try {
+        Link.openHabitsMatch({
+          mappingId: mid,
+          matchChannel: onVoicePage() ? 'voice' : onSoftPadPage() ? 'softPad' : 'key',
+          openMatchEditor: true,
+          returnPanel: onVoicePage() ? 'voiceWake' : onSoftPadPage() ? 'softPad' : 'keys'
+        });
+        return;
+      } catch (_) {}
+    }
+    try {
+      if (global.OneToneSettingsDrawer && typeof global.OneToneSettingsDrawer.open === 'function') {
+        global.OneToneSettingsDrawer.open({
+          panel: 'habits',
+          mappingId: mid,
+          matchChannel: onVoicePage() ? 'voice' : onSoftPadPage() ? 'softPad' : 'key',
+          openMatchEditor: true
+        });
+        return;
+      }
+    } catch (_) {}
+    openHabitHub();
+  }
+
   function onPanelClick(e) {
     var tEl = e.target;
     if (!tEl) return;
+    if (tEl.closest && tEl.closest('[data-channel-map]')) {
+      e.preventDefault();
+      openChannelMapSheet();
+      return;
+    }
     if (tEl.closest && tEl.closest('[data-habit-hub]')) {
       e.preventDefault();
       openHabitHub();
@@ -2408,13 +2442,21 @@
     if (channel === 'ime') kind = 'ime';
     else if (channel === 'key') kind = 'customKey';
     else if (channel === 'camera') kind = 'gesture';
-    m.captureHeroRef = {
+    var heroRef = {
       channel: channel === 'ime' ? 'key' : channel,
       bindingRef: channel === 'ime' ? 'ime' : bindingRef || actionId,
       actionId: actionId,
       actionInstanceId: '',
       kind: kind
     };
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.setCaptureHero === 'function') {
+      Link.setCaptureHero(m, heroRef);
+    } else {
+      var core = global.OneToneMappingCore;
+      if (core && typeof core.setCaptureHeroRef === 'function') core.setCaptureHeroRef(m, heroRef);
+      else m.captureHeroRef = heroRef;
+    }
     state.mappingId = String(m.id);
     state.highlightId = String(m.id);
     try {

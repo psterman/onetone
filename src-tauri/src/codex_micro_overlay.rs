@@ -208,6 +208,17 @@ pub(crate) fn overlay_runtime_gate_reason_flags(
     }
 }
 
+/// Settings drawer open hides Soft Pad so float never covers OneTone chrome.
+/// Exception: Soft Pad agent (Cursor/Codex/…) is FG and OneTone is not — user
+/// Alt-Tab'd away with the drawer still open; Soft Pad must reclaim.
+pub(crate) fn settings_open_blocks_overlay(
+    settings_open: bool,
+    soft_pad_agent_fg: bool,
+    onetone_main_fg: bool,
+) -> bool {
+    settings_open && !(soft_pad_agent_fg && !onetone_main_fg)
+}
+
 fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
     let (setup_open, settings_open, verify_active, recording_active) =
         overlay_runtime_gate_flags(state);
@@ -225,7 +236,12 @@ fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
         }
         return None;
     }
-    overlay_runtime_gate_reason_flags(setup_open, settings_open, verify_active, recording_active)
+    let settings_blocks = settings_open_blocks_overlay(
+        settings_open,
+        soft_pad_agent_is_foreground(),
+        onetone_main_is_foreground(),
+    );
+    overlay_runtime_gate_reason_flags(setup_open, settings_blocks, verify_active, recording_active)
 }
 
 /// Toggle WS_EX_TRANSPARENT on the overlay HWND (any thread ? does not need the UI loop).
@@ -5973,6 +5989,16 @@ mod tests {
             overlay_runtime_gate_reason_flags(false, false, false, false),
             None
         );
+    }
+
+    #[test]
+    fn settings_open_does_not_block_when_soft_pad_agent_fg() {
+        // Drawer still open in background; Cursor/Codex owns the screen → Soft Pad may show.
+        assert!(!settings_open_blocks_overlay(true, true, false));
+        // OneTone still FG with drawer open → Soft Pad stays hidden over settings.
+        assert!(settings_open_blocks_overlay(true, false, true));
+        assert!(settings_open_blocks_overlay(true, true, true));
+        assert!(!settings_open_blocks_overlay(false, true, false));
     }
 
     #[test]

@@ -196,49 +196,111 @@ pub fn abort_if_open(app: &AppHandle) {
     crate::app_log::early_line("input_aim", "calibrate_abort_for_recording");
 }
 
-/// Prefer the monitor hosting the foreground target (after prepare), not always primary.
-/// Multi-monitor: overlay + tip stay on the screen the user is actually looking at.
-fn cover_target_monitor(win: &WebviewWindow) {
-    let mon = monitor_for_point(win, foreground_window_center())
-        .or_else(|| win.current_monitor().ok().flatten())
-        .or_else(|| win.primary_monitor().ok().flatten());
-    if let Some(mon) = mon {
-        let size = mon.size();
-        let pos = mon.position();
-        let _ = win.set_size(Size::Physical(PhysicalSize::new(size.width, size.height)));
-        let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
-        crate::app_log::early_line(
-            "input_aim",
-            &format!(
-                "calibrate_cover_monitor x={} y={} w={} h={}",
-                pos.x, pos.y, size.width, size.height
-            ),
-        );
-        return;
-    }
-    #[cfg(windows)]
-    {
-        use winapi::um::winuser::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
-        let w = unsafe { GetSystemMetrics(SM_CXSCREEN) }.max(800) as u32;
-        let h = unsafe { GetSystemMetrics(SM_CYSCREEN) }.max(600) as u32;
-        let _ = win.set_size(Size::Physical(PhysicalSize::new(w, h)));
-        let _ = win.set_position(Position::Physical(PhysicalPosition::new(0, 0)));
-    }
+/// Cover the full virtual desktop so multi-monitor targets stay clickable.
+/// Returns (desk, active_monitor) for Esc/tip chrome (never the gap between screens).
+fn cover_target_monitor(
+    win: &WebviewWindow,
+) -> Option<((i32, i32, u32, u32), (i32, i32, u32, u32))> {
+    let monitors: Vec<tauri::Monitor> = win.available_monitors().ok().unwrap_or_default();
+    let desk = virtual_desktop_union(&monitors).or_else(|| {
+        win.primary_monitor()
+            .ok()
+            .flatten()
+            .map(|m| monitor_rect(&m))
+    });
+    let Some(desk) = desk else {
+        #[cfg(windows)]
+        {
+            use winapi::um::winuser::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+            let w = unsafe { GetSystemMetrics(SM_CXSCREEN) }.max(800) as u32;
+            let h = unsafe { GetSystemMetrics(SM_CYSCREEN) }.max(600) as u32;
+            let _ = win.set_size(Size::Physical(PhysicalSize::new(w, h)));
+            let _ = win.set_position(Position::Physical(PhysicalPosition::new(0, 0)));
+        }
+        return None;
+    };
+
+    let _ = win.set_size(Size::Physical(PhysicalSize::new(desk.2, desk.3)));
+    let _ = win.set_position(Position::Physical(PhysicalPosition::new(desk.0, desk.1)));
+
+    let active = monitor_for_point(&monitors, foreground_window_center())
+        .or_else(|| monitor_for_point(&monitors, cursor_pos()))
+        .map(|m| monitor_rect(&m))
+        .unwrap_or(desk);
+
+    inject_active_monitor_chrome(win, desk, active);
+
+    crate::app_log::early_line(
+        "input_aim",
+        &format!(
+            "calibrate_cover_virtual_desktop x={} y={} w={} h={} active=({},{} {}x{})",
+            desk.0, desk.1, desk.2, desk.3, active.0, active.1, active.2, active.3
+        ),
+    );
+    Some((desk, active))
 }
 
-fn monitor_for_point(win: &WebviewWindow, pt: Option<(i32, i32)>) -> Option<tauri::Monitor> {
-    let (cx, cy) = pt?;
-    let monitors = win.available_monitors().ok()?;
+/// (x, y, w, h) in virtual-desktop physical pixels.
+fn monitor_rect(m: &tauri::Monitor) -> (i32, i32, u32, u32) {
+    let pos = m.position();
+    let size = m.size();
+    (pos.x, pos.y, size.width, size.height)
+}
+
+fn virtual_desktop_union(monitors: &[tauri::Monitor]) -> Option<(i32, i32, u32, u32)> {
+    if monitors.is_empty() {
+        return None;
+    }
+    let mut left = i32::MAX;
+    let mut top = i32::MAX;
+    let mut right = i32::MIN;
+    let mut bottom = i32::MIN;
     for m in monitors {
-        let pos = m.position();
-        let size = m.size();
-        let right = pos.x + size.width as i32;
-        let bottom = pos.y + size.height as i32;
-        if cx >= pos.x && cy >= pos.y && cx < right && cy < bottom {
+        let (x, y, w, h) = monitor_rect(m);
+        left = left.min(x);
+        top = top.min(y);
+        right = right.max(x + w as i32);
+        bottom = bottom.max(y + h as i32);
+    }
+    if right <= left || bottom <= top {
+        return None;
+    }
+    Some((left, top, (right - left) as u32, (bottom - top) as u32))
+}
+
+fn monitor_for_point(
+    monitors: &[tauri::Monitor],
+    pt: Option<(i32, i32)>,
+) -> Option<&tauri::Monitor> {
+    let (cx, cy) = pt?;
+    for m in monitors {
+        let (x, y, w, h) = monitor_rect(m);
+        if cx >= x && cy >= y && cx < x + w as i32 && cy < y + h as i32 {
             return Some(m);
         }
     }
     None
+}
+
+fn inject_active_monitor_chrome(
+    win: &WebviewWindow,
+    desk: (i32, i32, u32, u32),
+    active: (i32, i32, u32, u32),
+) {
+    let js = format!(
+        "window.__OT_AIM_DESK__={{x:{dx},y:{dy},w:{dw},h:{dh}}};\
+         window.__OT_AIM_ACTIVE__={{x:{ax},y:{ay},w:{aw},h:{ah}}};\
+         try{{window.__OT_AIM_PLACE_CHROME__&&window.__OT_AIM_PLACE_CHROME__();}}catch(e){{}}",
+        dx = desk.0,
+        dy = desk.1,
+        dw = desk.2,
+        dh = desk.3,
+        ax = active.0,
+        ay = active.1,
+        aw = active.2,
+        ah = active.3
+    );
+    let _ = win.eval(&js);
 }
 
 #[cfg(windows)]
@@ -268,6 +330,24 @@ fn foreground_window_center() -> Option<(i32, i32)> {
 
 #[cfg(not(windows))]
 fn foreground_window_center() -> Option<(i32, i32)> {
+    None
+}
+
+#[cfg(windows)]
+fn cursor_pos() -> Option<(i32, i32)> {
+    use winapi::shared::windef::POINT;
+    use winapi::um::winuser::GetCursorPos;
+    unsafe {
+        let mut pt = POINT { x: 0, y: 0 };
+        if GetCursorPos(&mut pt) == 0 {
+            return None;
+        }
+        Some((pt.x, pt.y))
+    }
+}
+
+#[cfg(not(windows))]
+fn cursor_pos() -> Option<(i32, i32)> {
     None
 }
 
@@ -308,16 +388,24 @@ fn open_calibrate_overlay(app: &AppHandle) {
     };
 
     let _ = crate::overlay_window::configure_transparent_overlay(&win);
-    cover_target_monitor(&win);
+    let chrome = cover_target_monitor(&win);
     let _ = win.show();
     assert_overlay_on_top(&win);
+    // Re-inject after first paint — early eval can race the document load.
+    if let Some((desk, active)) = chrome {
+        inject_active_monitor_chrome(&win, desk, active);
+    }
 
     let win2 = win.clone();
+    let chrome2 = chrome;
     let _ = std::thread::Builder::new()
         .name("aim-cal-ontop".into())
         .spawn(move || {
             std::thread::sleep(Duration::from_millis(120));
             assert_overlay_on_top(&win2);
+            if let Some((desk, active)) = chrome2 {
+                inject_active_monitor_chrome(&win2, desk, active);
+            }
             std::thread::sleep(Duration::from_millis(180));
             assert_overlay_on_top(&win2);
         });

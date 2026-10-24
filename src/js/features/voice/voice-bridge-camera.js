@@ -96,21 +96,45 @@
     }catch(_){}
   }
 
-  function ensureVoice(m,bindKey,phrase){
-    if(!m) return null;
-    var slot='semantic:camera:'+bindKey;
-    var list=m.agentBindings||(m.agentBindings=[]);
-    var ab=list.find(function(b){
-      return b&&b.triggerType==='voice'&&String(b.slotId)===slot;
-    });
-    if(ab){
-      ab.triggerBinding=phrase;
-      ab.enabled=true;
-      return ab;
+  /**
+   * L-class phrase create/edit belongs on Habits (OneToneHabitCommandLink).
+   * Bridge stays read + enable-toggle for existing rows; no new voice bindings here.
+   */
+  function openHabitPhraseEditor(bindKey){
+    var m=currentMapping();
+    var mid=m&&m.id?String(m.id):'';
+    var slot='semantic:camera:'+String(bindKey||pickId||'').trim();
+    var Link=global.OneToneHabitCommandLink;
+    if(Link&&typeof Link.openHabitsMatch==='function'){
+      Link.openHabitsMatch({
+        mappingId:mid,
+        matchChannel:'camera',
+        matchCommand:slot,
+        commandRef:slot,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
     }
-    ab={triggerType:'voice',triggerBinding:phrase,slotId:slot,actionId:bindKey,enabled:true};
-    list.push(ab);
-    return ab;
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&typeof drawer.open==='function'){
+      drawer.open({
+        panel:'habits',
+        mappingId:mid,
+        matchChannel:'camera',
+        matchCommand:slot,
+        commandRef:slot,
+        openMatchEditor:true,
+        returnPanel:'voiceWake'
+      });
+      return true;
+    }
+    return false;
+  }
+
+  function ensureVoice(){
+    // Intentionally no-op create path — sealed in phase-2 (navigate via openHabitPhraseEditor).
+    return null;
   }
 
   function render(){
@@ -199,13 +223,7 @@
           var list=listCameraRows();
           var r=list.find(function(x){ return x.bindKey===pickId; })||list[0];
           if(!r) return;
-          var next=global.prompt('改成你想说的话',String(r.phrase||r.suggest||''));
-          if(next==null) return;
-          next=String(next).trim();
-          if(!next) return;
-          ensureVoice(currentMapping(),r.bindKey,next);
-          persist();
-          render();
+          openHabitPhraseEditor(r.bindKey);
         }
         cap.addEventListener('click',editCamPhrase);
         var editLink=$('btnVoiceCamPhraseEdit');
@@ -227,15 +245,10 @@
             return b.triggerType==='voice'&&String(b.slotId)==='semantic:camera:'+pickId;
           });
           if(!ab){
-            var list=listCameraRows();
-            var r=list.find(function(x){ return x.bindKey===pickId; });
-            var seed=(r&&(r.phrase||r.suggest))||'口令';
-            var next=global.prompt('先写一句口令',seed);
-            if(next==null||!String(next).trim()) return;
-            ensureVoice(cur,pickId,String(next).trim());
-          }else{
-            ab.enabled=ab.enabled===false;
+            openHabitPhraseEditor(pickId);
+            return;
           }
+          ab.enabled=ab.enabled===false;
           persist();
           render();
         });
@@ -275,20 +288,14 @@
     var r=list.find(function(x){ return x.bindKey===pickId; })||list.find(function(x){ return !x.phrase; })||list[0];
     if(!r) return false;
     pickId=r.bindKey;
-    var next=global.prompt('给这个动作写一句口令',String(r.phrase||r.suggest||r.title||''));
-    if(next==null) return true;
-    next=String(next).trim();
-    if(!next) return true;
-    ensureVoice(currentMapping(),r.bindKey,next);
-    persist();
-    render();
-    return true;
+    return openHabitPhraseEditor(r.bindKey);
   }
 
   global.OneToneVoiceBridgeCamera={
     render:render,
     listCameraVoice:listCameraRows,
     addPhrase:addPhrase,
+    openHabitPhraseEditor:openHabitPhraseEditor,
     labelForBindKey:function(key){
       key=String(key||'').trim();
       if(key.indexOf('semantic:camera:')===0) key=key.slice('semantic:camera:'.length);

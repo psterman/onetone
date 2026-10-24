@@ -3623,6 +3623,7 @@
     isAppScope:isAppScope,
     isAppScenario:isAppScenario,
     isSelfForegroundIdentity:isSelfForegroundIdentity,
+    loadHabitForeground:loadHabitForeground,
     isGlobalScope:function(m){ return !isAppScenario(m); },
     touchUpdated:touchUpdated,
     snapshotVoiceOverride:currentVoiceOverride,

@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 按键设置 · 布局架构原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee; --ok-bd:#86efac;
+  --keys:#1d6f9a; --keys-soft:#e5f2f8; --keys-deep:#0e4a6e;
+  --voice:#5b4d8a; --voice-soft:#f0edf7;
+  --pad:#187144; --pad-soft:#e8f5ee;
+  --cam:#a9540f; --cam-soft:#fff3e7;
+  --warn:#b45309; --warn-soft:#fff7ed; --warn-bd:#fdba74;
+  --danger:#b91c1c; --danger-soft:#fef2f2;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --shadow:0 16px 36px rgba(19,32,44,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 6% -10%,rgba(29,111,154,.14),transparent 55%),
+    radial-gradient(700px 280px at 94% 0%,rgba(42,156,196,.07),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit}
+button{touch-action:manipulation;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid rgba(29,111,154,.65);outline-offset:2px;
+}
+a{color:var(--cyan-ink)}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.top a{
+  color:#7dd3fc;font-weight:700;text-decoration:none;
+  border:1px solid rgba(125,211,252,.35);border-radius:9px;padding:6px 11px;
+}
+.top a:hover{background:rgba(125,211,252,.12)}
+
+.page{width:min(1320px,100%);margin:0 auto;padding:16px 14px 96px}
+
+.brief{
+  background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin-bottom:14px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:96ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--keys-soft);color:var(--keys);border:1px solid #9bc6da;
+}
+.brief .chips span.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-bd)}
+.brief .chips span.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-bd)}
+
+.sec-title{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin:20px 0 10px;
+}
+.sec-title h2{margin:0;font-family:var(--display);font-size:18px;font-weight:700}
+.sec-title p{margin:0;color:var(--faint);font-size:12px}
+
+/* ── 问题 / 原则 ── */
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:860px){.split2{grid-template-columns:1fr}}
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;
+  box-shadow:0 10px 24px rgba(19,32,44,.05);
+}
+.card h3{margin:0 0 8px;font-size:14px}
+.card.bad{border-color:var(--warn-bd);background:linear-gradient(180deg,#fff,var(--warn-soft))}
+.card.good{border-color:var(--ok-bd);background:linear-gradient(180deg,#fff,var(--ok-soft))}
+.card ul{margin:0;padding-left:17px;color:var(--mute);font-size:12.5px}
+.card li{margin:4px 0}
+.card .tag{
+  display:inline-block;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+  margin-bottom:6px;
+}
+.card.bad .tag{background:var(--warn-soft);color:var(--warn)}
+.card.good .tag{background:var(--ok-soft);color:var(--ok)}
+
+/* ── 架构条 ── */
+.arch{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+  box-shadow:var(--shadow);
+}
+@media(max-width:900px){.arch{grid-template-columns:1fr 1fr}}
+.arch-cell{
+  border:1px dashed var(--line);border-radius:11px;padding:11px;background:var(--wash);
+}
+.arch-cell.own{border-style:solid;border-color:#9bc6da;background:var(--keys-soft)}
+.arch-cell .k{font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+.arch-cell h4{margin:4px 0 4px;font-size:13px}
+.arch-cell p{margin:0;font-size:11.5px;color:var(--mute)}
+
+/* ── 方案切换 ── */
+.plan-nav{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+}
+.plan-nav button{
+  appearance:none;border:1px solid var(--line);background:#fff;color:var(--mute);
+  border-radius:10px;padding:8px 13px;font-size:12px;font-weight:700;
+}
+.plan-nav button.on{background:var(--keys);border-color:transparent;color:#fff}
+.plan-nav button.alt.on{background:#0f1820}
+
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:var(--shadow);
+}
+.banner{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:9px 12px;border-bottom:1px solid var(--line);background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.banner .back{
+  appearance:none;border:1px solid rgba(255,255,255,.18);background:transparent;color:#c5d0de;
+  border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;
+}
+.banner .back:hover{background:rgba(255,255,255,.08);color:#fff}
+.banner .pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#c5d0de;
+}
+.banner .pill b{color:#fff}
+.banner .pill.edit{border-color:rgba(125,211,252,.4);background:rgba(42,156,196,.18);color:#7dd3fc}
+.banner .note{margin-left:auto;font-size:11px;color:#8293a5}
+
+.scope-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdfe,#f0f6fa);
+}
+.scope-bar .brand{font-size:14.5px;font-weight:800;color:var(--keys-deep)}
+.scope-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--mute);
+}
+.scope-pill b{color:var(--ink)}
+.scope-pill.live{border-color:var(--ok-bd);background:var(--ok-soft);color:var(--ok)}
+.scope-bar .rule{margin-left:auto;font-size:11px;font-weight:650;color:var(--faint);max-width:42ch}
+
+/* ── 新布局 desk ── */
+.desk{
+  display:grid;
+  grid-template-columns:minmax(200px,220px) minmax(0,1fr) minmax(250px,280px);
+  min-height:560px;
+}
+@media(max-width:1000px){.desk{grid-template-columns:1fr}}
+
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:10px 8px;overflow:auto}
+.rail .sec{margin:10px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+.rail .item{
+  appearance:none;display:flex;align-items:flex-start;gap:8px;width:100%;margin:2px 0;
+  padding:9px 10px;border:0;border-radius:10px;background:transparent;
+  font:inherit;font-size:12.5px;font-weight:650;color:var(--mute);text-align:left;
+}
+.rail .item:hover{background:rgba(255,255,255,.55)}
+.rail .item.is-on{background:#fff;color:var(--keys-deep);box-shadow:0 1px 0 var(--line)}
+.rail .item .t{display:block;font-weight:750}
+.rail .item .s{display:block;font-size:11px;font-weight:600;color:var(--faint);margin-top:1px}
+.rail .item.ghost{color:var(--faint)}
+.rail .item.ghost .s{color:#9aa8b6}
+.rail .own{
+  flex:0 0 auto;margin-top:2px;font-size:9.5px;font-weight:750;padding:2px 6px;border-radius:999px;
+}
+.own.keys{background:var(--keys-soft);color:var(--keys)}
+.own.pad{background:var(--pad-soft);color:var(--pad)}
+.own.voice{background:var(--voice-soft);color:var(--voice)}
+.own.cam{background:var(--cam-soft);color:var(--cam)}
+
+.mid{padding:14px 16px;overflow:auto;background:#fff}
+.hero-trigger{
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;
+  padding:14px;border:1px solid #9bc6da;border-radius:14px;
+  background:linear-gradient(180deg,#fff,var(--keys-soft));
+  margin-bottom:12px;
+}
+.keycap{
+  width:88px;height:64px;border-radius:12px;
+  background:linear-gradient(180deg,#fff,#e8eef3);
+  border:1px solid #c5d0da;box-shadow:0 4px 0 #c5d0da,0 8px 16px rgba(15,27,42,.08);
+  display:grid;place-items:center;font-family:var(--mono);font-size:15px;font-weight:700;
+  color:var(--keys-deep);user-select:none;
+}
+.keycap.is-rec{
+  border-color:var(--warn);box-shadow:0 4px 0 #fdba74,0 0 0 3px rgba(180,83,9,.15);
+  animation:rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes rec-pulse{50%{transform:scale(.98)}}
+.hero-trigger h3{margin:0;font-size:15px}
+.hero-trigger p{margin:3px 0 0;font-size:12px;color:var(--mute)}
+.hero-trigger .acts{display:flex;flex-direction:column;gap:6px}
+.btn{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:7px 11px;font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap;
+}
+.btn:hover{border-color:#9bc6da;color:var(--keys)}
+.btn.primary{background:var(--keys);border-color:transparent;color:#fff}
+.btn.primary:hover{background:var(--keys-deep);color:#fff}
+.btn.ghost{background:transparent}
+.btn.warn{background:var(--warn-soft);border-color:var(--warn-bd);color:var(--warn)}
+.btn.danger{background:var(--danger-soft);border-color:#fecaca;color:var(--danger)}
+
+.mode-row{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;
+}
+.mode-row button{
+  appearance:none;border:1px solid var(--line);background:var(--wash);color:var(--mute);
+  border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:700;
+}
+.mode-row button.on{background:var(--keys-soft);border-color:#9bc6da;color:var(--keys-deep)}
+
+.conflict{
+  display:none;align-items:flex-start;gap:10px;
+  padding:10px 12px;border-radius:11px;margin-bottom:12px;
+  background:var(--danger-soft);border:1px solid #fecaca;color:var(--danger);
+  font-size:12px;
+}
+.conflict.show{display:flex}
+.conflict b{display:block;margin-bottom:2px}
+
+.bind-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin:4px 0 8px;
+}
+.bind-head h4{margin:0;font-size:13px}
+.bind-list{display:flex;flex-direction:column;gap:7px}
+.bind-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--wash);
+  text-align:left;width:100%;
+}
+.bind-row:hover{border-color:#9bc6da;background:#fff}
+.bind-row.is-on{border-color:#9bc6da;background:var(--keys-soft);box-shadow:0 0 0 1px rgba(29,111,154,.1)}
+.bind-row .name{font-size:13px;font-weight:750;color:var(--ink)}
+.bind-row .meta{font-size:11.5px;color:var(--mute);margin-top:2px}
+.bind-row .chord{
+  font-family:var(--mono);font-size:12px;font-weight:700;padding:5px 9px;border-radius:8px;
+  background:#fff;border:1px solid var(--line);color:var(--keys-deep);
+}
+.bind-row .chord.empty{color:var(--faint);font-weight:650}
+
+.aside{border-left:1px solid var(--line);background:rgba(250,252,253,.92);padding:14px;overflow:auto}
+.aside h4{margin:0 0 4px;font-size:13px}
+.aside .sub{margin:0 0 12px;color:var(--mute);font-size:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--faint);margin-bottom:4px}
+.field .box{
+  border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;font-size:12.5px;
+}
+.aside .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rule-box{
+  margin-top:14px;padding:10px;border-radius:10px;background:var(--keys-soft);
+  border:1px solid #9bc6da;font-size:11.5px;color:var(--keys-deep);
+}
+.rule-box b{display:block;margin-bottom:3px}
+
+.foot-strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 14px;border-top:1px solid var(--line);background:#f8fbfd;font-size:12px;
+}
+.foot-strip .lbl{font-weight:750;color:var(--faint);font-size:11px}
+.foot-chip{
+  appearance:none;display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--mute);
+}
+.foot-chip:hover{border-color:#9bc6da;color:var(--keys)}
+.foot-chip .dot{width:7px;height:7px;border-radius:50%}
+.foot-chip .dot.pad{background:var(--pad)}
+.foot-chip .dot.voice{background:var(--voice)}
+.foot-chip .dot.cam{background:var(--cam)}
+.foot-chip .dot.off{background:#d5dde5}
+
+/* ── 旧布局对照（简化） ── */
+.old-desk{
+  display:grid;grid-template-columns:200px 1fr 240px;min-height:480px;
+}
+@media(max-width:1000px){.old-desk{grid-template-columns:1fr}}
+.old-rail{background:#f3f0ea;border-right:1px solid var(--line);padding:10px 8px}
+.old-rail .warn-banner{
+  margin:0 4px 10px;padding:8px;border-radius:9px;background:var(--warn-soft);
+  border:1px solid var(--warn-bd);font-size:11px;color:var(--warn);font-weight:650;
+}
+.old-main{padding:14px;background:#fafafa}
+.old-main .fake{
+  border:1px dashed #c8b89a;border-radius:12px;padding:16px;color:var(--mute);
+  background:#fff;min-height:200px;
+}
+.old-aside{border-left:1px solid var(--line);padding:12px;background:#f7f7f5}
+.strike{text-decoration:line-through;opacity:.55}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);
+  background:#0f1820;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  font-weight:650;opacity:0;pointer-events:none;transition:.2s ease;z-index:80;
+  max-width:min(90vw,420px);text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.legend{
+  margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.9);
+  border:1px solid var(--line);font-size:12px;color:var(--mute);
+}
+.legend b{color:var(--ink)}
+
+.foot-nav{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.foot-nav a{
+  text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:8px 12px;font-size:12px;font-weight:700;color:var(--cyan-ink);
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>按键设置 · 布局架构</strong>
+  <em>L1 权威面 · 只编硬件触发 · 不做六通道混搭</em>
+  <nav>
+    <a href="./voice-page-layout.html">语音页布局</a>
+    <a href="./four-channel-ia.html">四通道规划</a>
+    <a href="./abc-channel-bridge.html">A/B/C</a>
+    <a href="./command-library.html">命令库</a>
+  </nav>
+</header>
+
+<main class="page">
+  <section class="brief">
+    <h1>按键设置页：重新布局</h1>
+    <p>
+      现状左轨把「输入法 / 口头 / 自定义键 / 应用快捷键 / Soft Pad / 手势」六条识别并排，
+      把按键页做成了伪中枢。重构目标：<b>本页只做实体按键权威</b>——触发键、我录的键、应用自带快捷键、冲突与按法；
+      Soft Pad / 语音 / 摄像头以只读入口出现，日常四通道绑定回命令中枢。
+    </p>
+    <div class="chips">
+      <span class="ok">本页权威 = 硬件键</span>
+      <span>触发键置顶</span>
+      <span>识别列表只留按键家族</span>
+      <span class="warn">去掉伪六通道 tab</span>
+      <span>跨通道只读 + 回中枢</span>
+    </div>
+  </section>
+
+  <div class="sec-title">
+    <h2>1. 改什么 · 不改什么</h2>
+    <p>对照现网 keys-page-body--three-col</p>
+  </div>
+  <div class="split2">
+    <article class="card bad">
+      <span class="tag">现状问题</span>
+      <h3>左轨「识别」六 tab 混搭</h3>
+      <ul>
+        <li>口头 / Soft Pad / 手势不该在按键页可编</li>
+        <li>触发键挤在左上，主画布被通道 picker 淹没</li>
+        <li>用户以为「按键设置 = 全部识别配置」</li>
+        <li>与命令中枢职责打架</li>
+      </ul>
+    </article>
+    <article class="card good">
+      <span class="tag">新架构原则</span>
+      <h3>触发置顶 · 按键家族 · 跨通道只读</h3>
+      <ul>
+        <li><b>上</b>：场景条 + 大触发键英雄区</li>
+        <li><b>左</b>：本页可编（听写键 / 我录的键 / 应用快捷键）</li>
+        <li><b>中</b>：选中项详情 + 录键 / 按法</li>
+        <li><b>右</b>：本场景「按键通道」动作列表</li>
+        <li><b>底</b>：其它通道只读芯片 → 中枢 / 深页</li>
+      </ul>
+    </article>
+  </div>
+
+  <div class="sec-title">
+    <h2>2. 本页信息架构（四块）</h2>
+    <p>只有蓝底是本页权威写权限</p>
+  </div>
+  <div class="arch" aria-label="按键页 IA">
+    <div class="arch-cell own">
+      <div class="k">A · Hero</div>
+      <h4>触发键</h4>
+      <p>录制起点键、按法（点按/按住）、冲突提示</p>
+    </div>
+    <div class="arch-cell own">
+      <div class="k">B · 本页列表</div>
+      <h4>按键家族绑定</h4>
+      <p>听写键 · 我录的键 · 应用自带快捷键</p>
+    </div>
+    <div class="arch-cell own">
+      <div class="k">C · 详情</div>
+      <h4>录键工作台</h4>
+      <p>选中一条 → 录制 / 清除 / 试一下 / 检测</p>
+    </div>
+    <div class="arch-cell">
+      <div class="k">D · 只读</div>
+      <h4>跨通道引用</h4>
+      <p>Soft Pad / 语音 / 摄像头 → 中枢或权威深页</p>
+    </div>
+  </div>
+
+  <div class="sec-title">
+    <h2>3. 可点线框</h2>
+    <p>示意交互 · 不写真实配置</p>
+  </div>
+  <div class="plan-nav" role="tablist" aria-label="布局方案">
+    <button type="button" class="on" data-plan="new" role="tab" aria-selected="true">方案 · 新布局（推荐）</button>
+    <button type="button" class="alt" data-plan="old" role="tab" aria-selected="false">对照 · 现状骨架</button>
+  </div>
+
+  <div class="frame" id="stage" aria-live="polite"></div>
+
+  <p class="legend">
+    <b>读图：</b>左轨「本页可编辑」三项是按键家族；带所有者标签的灰项不可在此页改。
+    点底部芯片可模拟跳中枢。录键按钮会进入示意录制态。
+  </p>
+
+  <div class="foot-nav">
+    <a href="./four-channel-ia.html">← 四通道总规划</a>
+    <a href="./abc-channel-bridge.html">命令中枢方案 B →</a>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var plan = 'new';
+  var selected = 'ime';
+  var recording = false;
+  var triggerKey = 'Vol-';
+  var triggerMode = 'hold';
+
+  var BINDS = {
+    ime: {
+      title: '听写键',
+      meta: '按住说话 · 松手结束（输入法通道）',
+      chord: 'F8',
+      action: '开始听写',
+      help: '本页权威：录一条实体键作为听写起点。与上方「触发键」可相同或分开。'
+    },
+    custom: {
+      title: '继续回复',
+      meta: '我录的键 · 绑到命令',
+      chord: 'F9',
+      action: 'agent.continue',
+      help: '自定义快捷键只在本页录制和弦；命令内容在中枢维护。'
+    },
+    custom2: {
+      title: '粘贴发送',
+      meta: '我录的键 · 绑到命令',
+      chord: '',
+      action: 'input.send',
+      help: '尚未录键。点右侧「开始录键」写入本条。'
+    },
+    cursor: {
+      title: '接受修改',
+      meta: '应用自带 · Cursor',
+      chord: 'Ctrl+Enter',
+      action: 'agent.accept',
+      help: '软件自带快捷键：可改映射到本场景命令，或保留原和弦。'
+    }
+  };
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  function scopeBar() {
+    return '<div class="scope-bar">'
+      + '<span class="brand">按键设置</span>'
+      + '<span class="scope-pill">正在编辑 · <b>Cursor · Agent</b></span>'
+      + '<span class="scope-pill live">正在使用 · <b>通用</b></span>'
+      + '<span class="rule">L1 权威：实体触发 · 跨通道只读</span>'
+      + '</div>';
+  }
+
+  function banner() {
+    return '<div class="banner">'
+      + '<button type="button" class="back" data-act="hub">← 命令中枢</button>'
+      + '<span class="pill edit">L1 · 按键权威面</span>'
+      + '<span class="pill">场景 <b>工作</b></span>'
+      + '<span class="note">示意布局 · 不写配置</span>'
+      + '</div>';
+  }
+
+  function bindRow(id, title, meta, chord, on) {
+    return '<button type="button" class="bind-row' + (on ? ' is-on' : '') + '" data-pick="' + id + '">'
+      + '<span><span class="name">' + esc(title) + '</span>'
+      + '<span class="meta">' + esc(meta) + '</span></span>'
+      + '<span class="chord' + (chord ? '' : ' empty') + '">' + esc(chord || '未录') + '</span>'
+      + '</button>';
+  }
+
+  function renderNew() {
+    var b = BINDS[selected] || BINDS.ime;
+    var chord = selected === 'ime' ? b.chord : b.chord;
+
+    return banner() + scopeBar()
+      + '<div class="desk">'
+      + '<aside class="rail">'
+      + '<div class="sec">本页可编辑</div>'
+      + '<button type="button" class="item' + (selected === 'ime' ? ' is-on' : '') + '" data-pick="ime">'
+      + '<span class="own keys">键</span><span><span class="t">听写键</span><span class="s">输入法识别起点</span></span></button>'
+      + '<button type="button" class="item' + (selected === 'custom' || selected === 'custom2' ? ' is-on' : '') + '" data-pick="custom">'
+      + '<span class="own keys">键</span><span><span class="t">我录的键</span><span class="s">自定义快捷键 → 命令</span></span></button>'
+      + '<button type="button" class="item' + (selected === 'cursor' ? ' is-on' : '') + '" data-pick="cursor">'
+      + '<span class="own keys">键</span><span><span class="t">应用自带</span><span class="s">Cursor 快捷键</span></span></button>'
+      + '<div class="sec">其它通道（只读）</div>'
+      + '<button type="button" class="item ghost" data-act="pad"><span class="own pad">Pad</span><span><span class="t">Soft Pad 盘面</span><span class="s">去 Soft Pad 深页 →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="voice"><span class="own voice">语</span><span><span class="t">口头说法</span><span class="s">去语音深页 →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="cam"><span class="own cam">摄</span><span><span class="t">手势触发</span><span class="s">去摄像头深页 →</span></span></button>'
+      + '<button type="button" class="item ghost" data-act="hub"><span class="own keys">中枢</span><span><span class="t">四通道同屏</span><span class="s">回命令中枢 →</span></span></button>'
+      + '</aside>'
+
+      + '<section class="mid">'
+      + '<div class="hero-trigger">'
+      + '<div class="keycap' + (recording ? ' is-rec' : '') + '" id="keycap" data-act="record-trigger">' + esc(recording ? '…' : triggerKey) + '</div>'
+      + '<div><h3>触发键 · 起点</h3>'
+      + '<p>' + (recording ? '请按下要用作起点的实体键…' : '按住此键说话 / 点按开始。本页最重要的一颗键。') + '</p></div>'
+      + '<div class="acts">'
+      + '<button type="button" class="btn primary" data-act="record-trigger">' + (recording ? '录制中…' : '重新录制') + '</button>'
+      + '<button type="button" class="btn ghost" data-act="probe">按键没反应？</button>'
+      + '</div></div>'
+
+      + '<div class="mode-row" role="group" aria-label="触发方式">'
+      + '<button type="button"' + (triggerMode === 'tap' ? ' class="on"' : '') + ' data-mode="tap">点按开始</button>'
+      + '<button type="button"' + (triggerMode === 'hold' ? ' class="on"' : '') + ' data-mode="hold">按住说话</button>'
+      + '<button type="button"' + (triggerMode === 'toggle' ? ' class="on"' : '') + ' data-mode="toggle">切换开关</button>'
+      + '</div>'
+
+      + '<div class="conflict' + (triggerKey === 'RAlt' ? ' show' : '') + '" id="conflict">'
+      + '<div><b>触发键冲突</b>右 Alt 常被系统占用。建议改用音量减或 F13–F24。</div>'
+      + '<button type="button" class="btn warn" data-act="fix-trigger">用推荐键</button>'
+      + '</div>'
+
+      + '<div class="bind-head"><h4>按键家族 · 绑到命令</h4>'
+      + '<button type="button" class="btn" data-act="add-custom">＋ 录新键</button></div>'
+      + '<div class="bind-list">'
+      + bindRow('ime', '听写键', '输入法 · 按住听写', BINDS.ime.chord, selected === 'ime')
+      + bindRow('custom', '继续回复', '我录的键 → agent.continue', BINDS.custom.chord, selected === 'custom')
+      + bindRow('custom2', '粘贴发送', '我录的键 → input.send', BINDS.custom2.chord || '', selected === 'custom2')
+      + bindRow('cursor', '接受修改', '应用自带 · Cursor', BINDS.cursor.chord, selected === 'cursor')
+      + '</div>'
+      + '</section>'
+
+      + '<aside class="aside">'
+      + '<h4>' + esc(b.title) + '</h4>'
+      + '<p class="sub">' + esc(b.help) + '</p>'
+      + '<div class="field"><label>当前和弦</label><div class="box">' + esc(chord || '尚未录制') + '</div></div>'
+      + '<div class="field"><label>落到命令</label><div class="box">' + esc(b.action) + '</div></div>'
+      + '<div class="field"><label>通道</label><div class="box">实体按键（本页权威）</div></div>'
+      + '<div class="acts">'
+      + '<button type="button" class="btn primary" data-act="record-bind">开始录键</button>'
+      + '<button type="button" class="btn" data-act="test">试一下</button>'
+      + '<button type="button" class="btn danger" data-act="clear">清除</button>'
+      + '</div>'
+      + '<div class="rule-box"><b>归属</b>改说法 / 盘面 / 手势请回中枢或对应深页。本检查器只写硬件触发。</div>'
+      + '</aside></div>'
+
+      + '<div class="foot-strip">'
+      + '<span class="lbl">同命令其它叫法</span>'
+      + '<button type="button" class="foot-chip" data-act="pad"><i class="dot pad"></i>Soft Pad · AG02</button>'
+      + '<button type="button" class="foot-chip" data-act="voice"><i class="dot voice"></i>口头 · “继续”</button>'
+      + '<button type="button" class="foot-chip" data-act="cam"><i class="dot cam"></i>摄像 · OK</button>'
+      + '<button type="button" class="foot-chip" data-act="hub"><i class="dot off"></i>在中枢同屏看 →</button>'
+      + '</div>';
+  }
+
+  function renderOld() {
+    return banner().replace('L1 · 按键权威面', '对照 · 现网骨架')
+      + '<div class="scope-bar"><span class="brand">按键</span>'
+      + '<span class="scope-pill">现状三栏</span>'
+      + '<span class="rule">左轨六条识别 tab = 混搭根因</span></div>'
+      + '<div class="old-desk">'
+      + '<aside class="old-rail">'
+      + '<div class="warn-banner">问题区：识别六 tab</div>'
+      + '<div class="sec" style="margin:0 6px 6px;font-size:10px;font-weight:750;color:var(--faint)">起点</div>'
+      + '<div style="margin:0 4px 10px;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line)">'
+      + '<div style="font-size:11px;color:var(--faint)">触发键</div>'
+      + '<div style="font-family:var(--mono);font-weight:700;margin-top:4px">Vol-</div></div>'
+      + '<div class="sec" style="margin:8px 6px 4px;font-size:10px;font-weight:750;color:var(--faint)">识别（混搭）</div>'
+      + ['输入法', '口头命令', '自定义快捷键', '应用快捷键', '软键盘', '手势'].map(function (label, i) {
+        var bad = i === 1 || i === 4 || i === 5;
+        return '<div style="margin:2px 4px;padding:8px 10px;border-radius:8px;background:'
+          + (i === 0 ? '#fff' : 'transparent') + ';font-size:12px;font-weight:650;color:var(--mute)">'
+          + (bad ? '<span class="strike">' + label + '</span> ← 不该在此可编' : label)
+          + '</div>';
+      }).join('')
+      + '</aside>'
+      + '<section class="old-main"><div class="fake">'
+      + '<b style="color:var(--ink)">主画布</b><br/><br/>'
+      + '通道 picker / 听写键详情 / 识别键帽……内容堆在中间，'
+      + '触发键却缩在左上角小卡里。<br/><br/>'
+      + '<span style="color:var(--warn);font-weight:700">重构时：触发键升为英雄区；六 tab 砍到按键家族三项。</span>'
+      + '</div></section>'
+      + '<aside class="old-aside">'
+      + '<div style="font-size:11px;font-weight:750;color:var(--faint);margin-bottom:8px">本场景动作</div>'
+      + '<div style="padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line);margin-bottom:6px;font-size:12px">继续回复</div>'
+      + '<div style="padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line);font-size:12px">粘贴发送</div>'
+      + '</aside></div>';
+  }
+
+  function render() {
+    document.getElementById('stage').innerHTML = plan === 'old' ? renderOld() : renderNew();
+    document.querySelectorAll('.plan-nav button').forEach(function (btn) {
+      var on = btn.getAttribute('data-plan') === plan;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  document.querySelector('.plan-nav').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-plan]');
+    if (!btn) return;
+    plan = btn.getAttribute('data-plan');
+    recording = false;
+    render();
+  });
+
+  document.getElementById('stage').addEventListener('click', function (e) {
+    var pick = e.target.closest('[data-pick]');
+    if (pick && plan === 'new') {
+      selected = pick.getAttribute('data-pick');
+      recording = false;
+      render();
+      return;
+    }
+    var mode = e.target.closest('[data-mode]');
+    if (mode) {
+      triggerMode = mode.getAttribute('data-mode');
+      toast('触发方式 → ' + ({ tap: '点按开始', hold: '按住说话', toggle: '切换开关' })[triggerMode]);
+      render();
+      return;
+    }
+    var act = e.target.closest('[data-act]');
+    if (!act) return;
+    var a = act.getAttribute('data-act');
+    if (a === 'record-trigger') {
+      if (recording) {
+        recording = false;
+        triggerKey = 'Vol-';
+        toast('已录制触发键 · Vol-');
+      } else {
+        recording = true;
+        toast('录制中：请按实体键（示意）');
+        setTimeout(function () {
+          if (!recording) return;
+          recording = false;
+          triggerKey = 'Vol-';
+          toast('示意完成 · 触发键 Vol-');
+          render();
+        }, 1400);
+      }
+      render();
+      return;
+    }
+    if (a === 'fix-trigger') {
+      triggerKey = 'Vol-';
+      toast('已改为推荐键 Vol-');
+      render();
+      return;
+    }
+    if (a === 'record-bind') {
+      var row = BINDS[selected];
+      if (row) {
+        row.chord = row.chord || 'F13';
+        toast('已录制「' + row.title + '」→ ' + row.chord);
+        render();
+      }
+      return;
+    }
+    if (a === 'clear') {
+      if (BINDS[selected]) BINDS[selected].chord = '';
+      toast('已清除和弦（示意）');
+      render();
+      return;
+    }
+    if (a === 'add-custom') {
+      selected = 'custom2';
+      toast('新建我录的键 · 请录制');
+      render();
+      return;
+    }
+    if (a === 'test') { toast('试一下 · 模拟触发（示意）'); return; }
+    if (a === 'probe') { toast('打开录制检测面板（示意）'); return; }
+    if (a === 'hub') { toast('→ 命令中枢（四通道同屏）'); return; }
+    if (a === 'pad') { toast('→ Soft Pad 深页'); return; }
+    if (a === 'voice') { toast('→ 语音深页'); return; }
+    if (a === 'cam') { toast('→ 摄像头深页'); return; }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

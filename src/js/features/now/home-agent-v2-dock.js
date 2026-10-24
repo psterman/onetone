@@ -76,24 +76,61 @@
   function syncCapabilityStates(opts) {
     opts = opts || {};
     var silent = !!opts.silent;
+    // configOn = preference/forced; runtimeReady = actually usable now (same probe for Soft Pad open).
     var soft = softPadOn();
     var curSoft = capState('softPad');
     if (curSoft.state !== 'pending') {
-      setCap('softPad', { state: soft ? 'on' : 'off', error: null }, { silent: silent });
+      setCap(
+        'softPad',
+        {
+          state: soft ? 'on' : 'off',
+          configOn: soft,
+          runtimeReady: soft && !!(global.OneToneSoftPadHub || global.OneToneSoftPadHubUi),
+          error: null
+        },
+        { silent: silent }
+      );
     }
     var vOn = voiceOn();
     var curV = capState('voice');
     if (curV.state !== 'pending') {
-      setCap('voice', { state: vOn ? 'on' : 'off', error: null }, { silent: silent });
+      var Live = global.OneToneHomeLive;
+      var engineLive = false;
+      try {
+        engineLive = !!(Live && Live.voiceEngineOn && Live.voiceEngineOn() !== 'off');
+      } catch (_) {}
+      setCap(
+        'voice',
+        {
+          state: vOn ? 'on' : 'off',
+          configOn: vOn,
+          runtimeReady: !!(vOn && engineLive),
+          error: null
+        },
+        { silent: silent }
+      );
     }
     var Cam = global.OneToneCameraPresenceActions;
     if (!Cam) {
-      setCap('camera', { state: 'unavailable', error: 'camera_unavailable' }, { silent: silent });
+      setCap(
+        'camera',
+        { state: 'unavailable', configOn: false, runtimeReady: false, error: 'camera_unavailable' },
+        { silent: silent }
+      );
     } else {
       var curC = capState('camera');
       if (curC.state !== 'pending') {
         var enabled = cameraOn();
-        setCap('camera', { state: enabled ? 'on' : 'off', error: null }, { silent: silent });
+        setCap(
+          'camera',
+          {
+            state: enabled ? 'on' : 'off',
+            configOn: enabled,
+            runtimeReady: enabled,
+            error: null
+          },
+          { silent: silent }
+        );
       }
     }
   }
@@ -210,18 +247,143 @@
     return { ok: true, Prep: Prep };
   }
 
+  function mapInboxErr(err) {
+    var msg = String((err && err.message) || err || '');
+    if (/denied|not allowed|forbidden|permission/i.test(msg)) {
+      return '应用权限未开放剪贴板读图，请重启应用后再试';
+    }
+    if (msg === 'too_large') return '图片过大（上限 12MB）';
+    if (msg === 'bad_base64' || msg === 'read_failed') return '无法解码剪贴板图片';
+    if (msg === 'empty' || msg === 'no_path' || msg === 'no_image') return '剪贴板里没有图片';
+    if (msg === 'clipboard_busy') return '剪贴板正忙，请再试一次';
+    if (msg === 'ipc_unavailable' || msg === 'unsupported') return '桌面通道未就绪，无法保存图片';
+    if (!msg || msg === 'Error') return '粘贴图片失败';
+    return msg;
+  }
+
+  /** Native Win32 clipboard image → inbox path → material card. */
+  function pasteImageFromNative() {
+    var began = prepBegin();
+    if (!began.ok) {
+      return Promise.resolve({
+        outcome: 'failed',
+        message: began.reason === 'busy' ? '正在交接，暂不能改材料' : '材料收集未就绪'
+      });
+    }
+    return invoke('cmd_clipboard_read_image', {})
+      .then(function (path) {
+        var p = String(path || '').trim();
+        if (!p) throw new Error('no_path');
+        return began.Prep.collectMaterial('attach', {
+          path: p,
+          name: 'clipboard.png',
+          source: '剪贴板'
+        });
+      })
+      .then(function (res) {
+        if (store() && store().syncMaterialsFromPrep) store().syncMaterialsFromPrep();
+        return res;
+      })
+      .catch(function (err) {
+        return { outcome: 'failed', message: mapInboxErr(err) };
+      });
+  }
+
+  function pasteFromClipboard() {
+    var began = prepBegin();
+    if (!began.ok) {
+      return Promise.resolve({
+        outcome: 'failed',
+        message: began.reason === 'busy' ? '正在交接，暂不能改材料' : '材料收集未就绪'
+      });
+    }
+    var Prep = began.Prep;
+    var clip = global.navigator && global.navigator.clipboard;
+    function finish(res) {
+      if (store() && store().syncMaterialsFromPrep) store().syncMaterialsFromPrep();
+      return res;
+    }
+    function asTextPaste(text) {
+      return Prep.collectMaterial('paste', { text: String(text || '') }).then(finish);
+    }
+    function pasteImageBlob(blob, mime) {
+      if (!blob) {
+        return Promise.resolve({ outcome: 'cancelled', message: '剪贴板为空' });
+      }
+      var hint = 'clipboard.png';
+      var t = String(mime || blob.type || '');
+      if (t.indexOf('jpeg') >= 0 || t.indexOf('jpg') >= 0) hint = 'clipboard.jpg';
+      else if (t.indexOf('gif') >= 0) hint = 'clipboard.gif';
+      else if (t.indexOf('webp') >= 0) hint = 'clipboard.webp';
+      // Image ingest errors must NOT fall through to text clipboard fallback.
+      return ingestBlobFile(blob, hint).then(finish, function (err) {
+        // WebView blob path failed — try native Win32 clipboard.
+        return pasteImageFromNative();
+      });
+    }
+    function afterJsClipMiss() {
+      // Screenshots often invisible to navigator.clipboard — native Win32 next.
+      return pasteImageFromNative().then(function (res) {
+        if (res && res.outcome === 'added') return res;
+        if (clip && typeof clip.readText === 'function') {
+          return clip.readText().then(asTextPaste).catch(function () {
+            return res && res.message
+              ? res
+              : { outcome: 'failed', message: '无法读取剪贴板' };
+          });
+        }
+        return res && res.message
+          ? res
+          : { outcome: 'failed', message: '无法读取剪贴板' };
+      });
+    }
+    // Prefer image (browser copy), else native Win32, else text.
+    if (clip && typeof clip.read === 'function') {
+      return clip
+        .read()
+        .then(
+          function (items) {
+            var list = items || [];
+            var i;
+            var j;
+            for (i = 0; i < list.length; i++) {
+              var types = (list[i] && list[i].types) || [];
+              for (j = 0; j < types.length; j++) {
+                var mime = String(types[j] || '');
+                if (mime.indexOf('image/') === 0) {
+                  return list[i].getType(mime).then(function (blob) {
+                    return pasteImageBlob(blob, mime);
+                  });
+                }
+              }
+            }
+            return afterJsClipMiss();
+          },
+          function () {
+            return afterJsClipMiss();
+          }
+        );
+    }
+    return afterJsClipMiss();
+  }
+
   function pickMaterial(kind) {
     kind = String(kind || 'file');
     if (kind === 'screenshot' || kind === 'capture') {
       return captureScreen();
     }
+    if (kind === 'paste') {
+      return pasteFromClipboard();
+    }
     var began = prepBegin();
     if (!began.ok) {
-      return Promise.resolve({ outcome: 'failed', message: began.reason });
+      return Promise.resolve({
+        outcome: 'failed',
+        message: began.reason === 'busy' ? '正在交接，暂不能改材料' : '材料收集未就绪'
+      });
     }
     var Prep = began.Prep;
-    var collectKind =
-      kind === 'paste' ? 'paste' : kind === 'image' ? 'image' : kind === 'file' ? 'file' : 'attach';
+    var collectKind = kind === 'image' ? 'image' : kind === 'file' ? 'file' : 'attach';
     return Prep.collectMaterial(collectKind).then(function (res) {
       if (store() && store().syncMaterialsFromPrep) store().syncMaterialsFromPrep();
       return res;
@@ -257,35 +419,92 @@
     return (cat && cat.appId) || '';
   }
 
-  function calibrateAim(target) {
+  /** Real composer aim only — never treat slot index `active` as locked. */
+  function aimPointActive(st) {
+    if (!st) return false;
+    if (st.hasActive === true || st.confirmed === true) return true;
+    return st.x != null && st.y != null && isFinite(Number(st.x)) && isFinite(Number(st.y));
+  }
+
+  /**
+   * Per-app composer memory (composer_anchors[appTargetId]).
+   * force=false: inherit saved point (send path).
+   * force=true: reopen calibrate (「现在定位」).
+   */
+  function ensureAim(target, opts) {
+    opts = opts || {};
+    var force = !!opts.force;
     var appId = appIdForTarget(target);
     if (!appId) return Promise.resolve({ ok: false, reason: 'no_app_target' });
     var Policy = global.OneToneHomeActionPolicy;
     var S = store();
     if (S && S.setAim) {
-      S.setAim(appId, { pending: true, hasActive: !!(S.getSnapshot().aimByAppId[appId] || {}).hasActive });
+      S.setAim(appId, {
+        pending: true,
+        hasActive: !!(S.getSnapshot().aimByAppId[appId] || {}).hasActive
+      });
     }
     var p =
       Policy && typeof Policy.ensureComposerAim === 'function'
-        ? Policy.ensureComposerAim(appId, {})
-        : invoke('cmd_input_aim_calibrate_start', { appTargetId: appId });
+        ? Policy.ensureComposerAim(appId, { force: force, wait: opts.wait !== false })
+        : force
+          ? invoke('cmd_input_aim_calibrate_begin', { appTargetId: appId })
+          : invoke('cmd_input_aim_ensure', { appTargetId: appId, force: false });
     return Promise.resolve(p)
-      .then(function () {
-        return refreshAim(appId);
+      .then(function (ens) {
+        return refreshAim(appId).then(function (r) {
+          var has = !!(r && r.hasActive) || !!(ens && ens.hasActive);
+          if (S && S.setAim) {
+            S.setAim(appId, {
+              hasActive: has,
+              pending: false,
+              error: has ? null : 'aim_not_confirmed',
+              raw: (r && r.raw) || ens
+            });
+          }
+          return { ok: has, hasActive: has, reason: has ? null : 'aim_not_confirmed' };
+        });
       })
       .catch(function (e) {
-        if (S && S.setAim) S.setAim(appId, { hasActive: false, error: String((e && e.message) || e) });
+        if (S && S.setAim) {
+          S.setAim(appId, {
+            hasActive: false,
+            pending: false,
+            error: String((e && e.message) || e)
+          });
+        }
         return { ok: false, error: e };
       });
   }
 
+  /** Homepage「现在定位」— always re-open calibrate for this agent only. */
+  function calibrateAim(target) {
+    return ensureAim(target, { force: true });
+  }
+
+  /** Load aim status for every catalog app so switching agents keeps the right chip. */
+  function refreshAllAims() {
+    var S = store();
+    var list = S && typeof S.catalogList === 'function' ? S.catalogList() : [];
+    var seen = {};
+    var jobs = [];
+    for (var j = 0; j < list.length; j++) {
+      var appId = list[j] && list[j].appId;
+      if (!appId || seen[appId]) continue;
+      seen[appId] = true;
+      jobs.push(refreshAim(appId));
+    }
+    return Promise.all(jobs);
+  }
+
   function clearAim(target) {
     var appId = appIdForTarget(target);
-    if (!appId) return Promise.resolve({ ok: false });
-    return invoke('cmd_input_aim_calibrate_clear', { appTargetId: appId, slot: 'active' })
+    if (!appId) return Promise.resolve({ ok: false, reason: 'no_app_target' });
+    var S = store();
+    // Optimistic UI — slot must be usize (or omitted); string 'active' used to break IPC.
+    if (S && S.setAim) S.setAim(appId, { hasActive: false, pending: false, raw: null });
+    return invoke('cmd_input_aim_calibrate_clear', { appTargetId: appId })
       .then(function () {
-        var S = store();
-        if (S && S.setAim) S.setAim(appId, { hasActive: false });
         return { ok: true };
       })
       .catch(function (e) {
@@ -296,7 +515,7 @@
   function refreshAim(appId) {
     return invoke('cmd_input_aim_calibrate_status', { appTargetId: appId })
       .then(function (s) {
-        var has = !!(s && (s.hasActive || s.active || s.confirmed));
+        var has = aimPointActive(s);
         var S = store();
         if (S && S.setAim) S.setAim(appId, { hasActive: has, raw: s });
         return { ok: true, hasActive: has, raw: s };
@@ -363,20 +582,37 @@
       else name = 'clipboard.png';
     }
     return new Promise(function (resolve, reject) {
+      if (!blob) {
+        reject(new Error('empty'));
+        return;
+      }
       var r = new FileReader();
       r.onload = function () {
         var dataUrl = String(r.result || '');
         var b64 = dataUrl.replace(/^data:[^;]+;base64,/, '');
+        if (!b64) {
+          reject(new Error('empty'));
+          return;
+        }
         invoke('cmd_tray_inbox_write', { name: name, bytesBase64: b64 })
           .then(function (path) {
             var p = String(path || '').trim();
             if (!p) throw new Error('no_path');
             var began = prepBegin();
             if (!began.ok) throw new Error(began.reason || 'prep');
-            return began.Prep.collectMaterial('attach', { path: p, name: name });
+            return began.Prep.collectMaterial('attach', {
+              path: p,
+              name: name,
+              source: '剪贴板',
+              previewDataUrl: isImg ? dataUrl : ''
+            });
           })
           .then(resolve)
-          .catch(reject);
+          .catch(function (err) {
+            var raw = err && (err.message || err);
+            // Tauri often returns plain string errors (too_large / bad_base64).
+            reject(new Error(String(raw || 'inbox_write_failed')));
+          });
       };
       r.onerror = function () {
         reject(new Error('read_failed'));
@@ -393,13 +629,26 @@
         var path = (f && f.path && String(f.path).trim()) || '';
         if (path) {
           var began = prepBegin();
-          if (!began.ok) return { outcome: 'failed', message: began.reason };
+          if (!began.ok) {
+            return {
+              outcome: 'failed',
+              message: began.reason === 'busy' ? '正在交接，暂不能改材料' : '材料收集未就绪'
+            };
+          }
           return began.Prep.collectMaterial('attach', {
             path: path,
             name: f.name || path.split(/[\\/]/).pop()
           });
         }
-        return ingestBlobFile(f, f && f.name);
+        return ingestBlobFile(f, f && f.name).then(null, function (err) {
+          var msg = String((err && err.message) || err || '');
+          if (msg === 'too_large') msg = '图片过大（上限 12MB）';
+          else if (msg === 'bad_base64' || msg === 'read_failed') msg = '无法解码剪贴板图片';
+          else if (msg === 'empty' || msg === 'no_path') msg = '剪贴板图片为空';
+          else if (msg === 'ipc_unavailable') msg = '桌面通道未就绪，无法保存图片';
+          else if (!msg || msg === 'Error') msg = '粘贴图片失败';
+          return { outcome: 'failed', message: msg };
+        });
       });
     });
     return chain.then(function (last) {
@@ -416,6 +665,37 @@
     return res;
   }
 
+  function updateMaterialContent(id, patch, opts) {
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || !Prep.updateMaterialContent || !id) return null;
+    var res = Prep.updateMaterialContent(id, patch || {}, opts || {});
+    // Typing in card: refresh store refs without forcing a full emit thrash.
+    if (store() && store().syncMaterialsFromPrep) {
+      store().syncMaterialsFromPrep({ emit: !(opts && opts.skipSync) });
+    }
+    return res;
+  }
+
+  /** Plain / large clipboard text → material card (not the draft textarea). */
+  function pasteTextAsMaterial(text, opts) {
+    opts = opts || {};
+    var began = prepBegin();
+    if (!began.ok) {
+      return Promise.resolve({
+        outcome: 'failed',
+        message: began.reason === 'busy' ? '正在交接，暂不能改材料' : '材料收集未就绪'
+      });
+    }
+    return began.Prep.collectMaterial('paste', {
+      text: String(text || ''),
+      source: opts.source || '剪贴板',
+      name: opts.name
+    }).then(function (res) {
+      if (store() && store().syncMaterialsFromPrep) store().syncMaterialsFromPrep();
+      return res;
+    });
+  }
+
   global.OneToneHomeDockBridge = {
     getCapabilityState: getCapabilityState,
     toggleSoftPad: toggleSoftPad,
@@ -423,15 +703,20 @@
     toggleCamera: toggleCamera,
     pickMaterial: pickMaterial,
     captureScreen: captureScreen,
+    ensureAim: ensureAim,
     calibrateAim: calibrateAim,
     clearAim: clearAim,
     refreshAim: refreshAim,
+    refreshAllAims: refreshAllAims,
     syncDraftToPrep: syncDraftToPrep,
     assembledText: assembledText,
     archiveOnSuccess: archiveOnSuccess,
     addFiles: addFiles,
     ingestBlobFile: ingestBlobFile,
     removeMaterial: removeMaterial,
+    updateMaterialContent: updateMaterialContent,
+    pasteTextAsMaterial: pasteTextAsMaterial,
+    pasteImageFromNative: pasteImageFromNative,
     syncCapabilityStates: syncCapabilityStates,
     appIdForTarget: appIdForTarget
   };

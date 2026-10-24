@@ -956,6 +956,31 @@
       if (cs && cs.name) return cs.name;
       return slotId;
     }
+    var id = String(slotId || '').trim();
+    // soft:stopOrSend → 发送 (avoid raw English ids on captions / key titles)
+    if (id.indexOf('soft:') === 0 || id.indexOf('prompt:') === 0) {
+      var Oral = global.OneToneOralCommandUi;
+      if (Oral && Array.isArray(Oral.ORAL_SOFT_SLOTS)) {
+        var si;
+        for (si = 0; si < Oral.ORAL_SOFT_SLOTS.length; si++) {
+          var soft = Oral.ORAL_SOFT_SLOTS[si];
+          if (soft && soft.id === id && soft.name) return soft.name;
+        }
+      }
+      var bare = id.slice(id.indexOf(':') + 1);
+      var Asoft = agent();
+      if (Asoft && Asoft.slotById) {
+        var softSlot = Asoft.slotById(bare);
+        if (softSlot) {
+          var enSoft = lang().toLowerCase().indexOf('en') === 0;
+          return enSoft ? softSlot.labelEn || softSlot.labelZh : softSlot.labelZh || softSlot.labelEn;
+        }
+      }
+      if (Asoft && Asoft.labelForActionId) {
+        var softLab = Asoft.labelForActionId(bare);
+        if (softLab && softLab !== bare) return softLab;
+      }
+    }
     var A = agent();
     if (A && A.labelForSlotForMapping && m) {
       var mapped = A.labelForSlotForMapping(m, slotId);
@@ -8539,7 +8564,7 @@
     } catch (_2) {}
   }
 
-  /** Stamp Soft Pad habit last-scheme so Keys「本场景动作」lists this channel pick. */
+  /** Stamp Soft Pad habit last-scheme so Keys「本场景动作」lists this channel pick. L2 → Habit/MappingCore. */
   function stampSoftPadSceneHero(m, opts) {
     if (!m) return;
     opts = opts || {};
@@ -8553,13 +8578,24 @@
       else if (channel === 'camera') kind = 'gesture';
       else kind = 'action';
     }
-    m.captureHeroRef = {
+    var ref = {
       channel: channel === 'ime' ? 'key' : channel,
       bindingRef: channel === 'ime' ? 'ime' : bindingRef,
       actionId: actionId,
       actionInstanceId: String(opts.actionInstanceId || ''),
       kind: kind
     };
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.setCaptureHero === 'function') {
+      Link.setCaptureHero(m, ref);
+      return;
+    }
+    var core = global.OneToneMappingCore;
+    if (core && typeof core.setCaptureHeroRef === 'function') {
+      core.setCaptureHeroRef(m, ref);
+      return;
+    }
+    m.captureHeroRef = ref;
   }
 
   function bindImePresetToPadKey(m, preset) {
@@ -9664,31 +9700,42 @@
       keyB.executionMode = 'execute';
       keyB.activationScope = scope;
     }
-    var voiceB = agentBindingFor(m, id, 'voice');
-    if (phrases) {
-      if (!voiceB) {
-        m.agentBindings.push({
-          slotId: id,
-          actionId: 'app.shortcut',
-          actionInstanceId: id,
-          actionArgs: { chord: chord },
-          triggerType: 'voice',
-          triggerBinding: phrases,
-          enabled: true,
-          executionMode: 'execute',
-          activationScope: scope
-        });
-      } else {
-        voiceB.actionId = 'app.shortcut';
-        voiceB.actionInstanceId = id;
-        voiceB.actionArgs = { chord: chord };
-        voiceB.triggerBinding = phrases;
-        voiceB.enabled = true;
-        voiceB.activationScope = scope;
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.syncSlotVoicePhrase === 'function') {
+      Link.syncSlotVoicePhrase(m, id, phrases, {
+        actionId: 'app.shortcut',
+        actionInstanceId: id,
+        actionArgs: { chord: chord },
+        executionMode: 'execute',
+        activationScope: scope
+      });
+    } else {
+      var voiceB = agentBindingFor(m, id, 'voice');
+      if (phrases) {
+        if (!voiceB) {
+          m.agentBindings.push({
+            slotId: id,
+            actionId: 'app.shortcut',
+            actionInstanceId: id,
+            actionArgs: { chord: chord },
+            triggerType: 'voice',
+            triggerBinding: phrases,
+            enabled: true,
+            executionMode: 'execute',
+            activationScope: scope
+          });
+        } else {
+          voiceB.actionId = 'app.shortcut';
+          voiceB.actionInstanceId = id;
+          voiceB.actionArgs = { chord: chord };
+          voiceB.triggerBinding = phrases;
+          voiceB.enabled = true;
+          voiceB.activationScope = scope;
+        }
+      } else if (voiceB) {
+        voiceB.enabled = false;
+        voiceB.triggerBinding = '';
       }
-    } else if (voiceB) {
-      voiceB.enabled = false;
-      voiceB.triggerBinding = '';
     }
   }
 
@@ -17784,24 +17831,33 @@
       keyB.enabled = true;
       if (chord) keyB.triggerBinding = chord;
     }
-    var voiceB = agentBindingFor(m, id, 'voice');
-    if (!voiceB) {
-      if (phrases) {
-        m.agentBindings.push({
-          slotId: id,
-          actionId: slot ? slot.actionId : id,
-          triggerType: 'voice',
-          triggerBinding: phrases,
-          enabled: true,
-          executionMode: (act && act.mode) || 'execute',
-          activationScope: scope
-        });
-      }
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.syncSlotVoicePhrase === 'function') {
+      Link.syncSlotVoicePhrase(m, id, phrases, {
+        actionId: slot ? slot.actionId : id,
+        executionMode: (act && act.mode) || 'execute',
+        activationScope: scope
+      });
     } else {
-      voiceB.enabled = !!phrases;
-      voiceB.triggerBinding = phrases;
-      voiceB.activationScope = scope;
-      if (slot) voiceB.actionId = slot.actionId;
+      var voiceB = agentBindingFor(m, id, 'voice');
+      if (!voiceB) {
+        if (phrases) {
+          m.agentBindings.push({
+            slotId: id,
+            actionId: slot ? slot.actionId : id,
+            triggerType: 'voice',
+            triggerBinding: phrases,
+            enabled: true,
+            executionMode: (act && act.mode) || 'execute',
+            activationScope: scope
+          });
+        }
+      } else {
+        voiceB.enabled = !!phrases;
+        voiceB.triggerBinding = phrases;
+        voiceB.activationScope = scope;
+        if (slot) voiceB.actionId = slot.actionId;
+      }
     }
   }
 
@@ -18235,39 +18291,38 @@
     renderCapabilityList(m);
   }
 
-  /** Soft Pad mid-panel: open shared action picker (advanced / modal only — not mid path). */
+  /** Soft Pad mid-panel: L3 match → Habits (picker only used as fallback). */
   function openSoftPadSemanticPick(m) {
-    if (!global.OneToneSemanticActionPicker) return;
     var live = (editDraft && !editDraft.__catalogOnly && editDraft.mapping) || m || softPadPreviewMapping;
+    var keyId =
+      (editDraft && editDraft.microKeyId) ||
+      (typeof focusedSoftPadKeyId === 'function' ? focusedSoftPadKeyId() : '');
+    var Link = global.OneToneHabitCommandLink;
+    var ui = global.OneToneState && global.OneToneState.ui;
+    if (ui && keyId) ui.habitMatchPadMicroKey = keyId;
+    if (Link && typeof Link.openHabitsMatch === 'function') {
+      Link.openHabitsMatch({
+        mappingId: live && live.id ? String(live.id) : '',
+        matchChannel: 'softPad',
+        matchCommand: keyId ? 'pad:' + keyId : '',
+        commandRef: keyId ? 'pad:' + keyId : '',
+        openMatchEditor: true,
+        returnPanel: 'softPad'
+      });
+      return;
+    }
+    if (!global.OneToneSemanticActionPicker) return;
     global.OneToneSemanticActionPicker.open({
       mappingId: live && live.id,
       channel: 'softPad',
       placement: 'softPad',
       onSelect: function (sel) {
         if (!sel || !sel.actionId) return;
-        var adapters = global.OneToneActionBindingAdapters;
-        var microKeyId = editDraft && editDraft.microKeyId;
-        function applySlot(sid) {
-          applySoftPadCapabilityPick(live, sid);
-        }
-        if (adapters && adapters.softPad && adapters.softPad.upsert) {
-          adapters.softPad
-            .upsert(live.id, sel.actionId, { microKeyId: microKeyId || '' }, null)
-            .then(function (res) {
-              applySlot((res && res.slotId) || (global.OneToneSemanticActionStore
-                ? global.OneToneSemanticActionStore.semanticSlotId('softPad', sel.actionId)
-                : 'semantic:softPad:' + sel.actionId));
-            })
-            .catch(function (err) {
-              toast(String(err && err.message ? err.message : err));
-            });
-          return;
-        }
         var sid =
           (global.OneToneSemanticActionStore &&
             global.OneToneSemanticActionStore.semanticSlotId('softPad', sel.actionId)) ||
           ('semantic:softPad:' + sel.actionId);
-        applySlot(sid);
+        applySoftPadCapabilityPick(live, sid);
       }
     });
   }
@@ -18417,55 +18472,37 @@
       toast(t('softPadLayoutPickKey', '先点左侧键盘上的一个键，再在右侧换功能'));
       return;
     }
-    ensurePad(m, { persist: false });
-    var pad = m.codexMicroPad;
-    if (!pad) return;
+    // L3 command×Pad match writes via Habits; Soft Pad keeps look/layout (P-class) locally.
     var id = String(slotId || '').trim();
-    // Bind onto the blue-framed key directly. Catalog paint clears editDraft,
-    // so a click must not wait for the inline form to exist.
-    if (id) {
-      var other = findMicroKeyForSlot(m, id);
-      if (other && other !== keyId) {
-        upsertRoute(m, pad, other, { slotId: '', enabled: false }, { skipPersist: true });
-      }
+    var Link = global.OneToneHabitCommandLink;
+    var ui = global.OneToneState && global.OneToneState.ui;
+    if (ui) ui.habitMatchPadMicroKey = keyId;
+    if (Link && typeof Link.openHabitsMatch === 'function') {
+      Link.openHabitsMatch({
+        mappingId: String(m.id || ''),
+        matchChannel: 'softPad',
+        matchCommand: id || ('pad:' + keyId),
+        commandRef: id || ('pad:' + keyId),
+        openMatchEditor: true,
+        returnPanel: 'softPad'
+      });
+      toast(t('softPadHabitMatchRedirect', '命令绑定已改到习惯页编辑'));
+      return;
     }
-    var icon = id && SLOT_DEFAULT_ICON[id] ? SLOT_DEFAULT_ICON[id] : '';
-    upsertRoute(m, pad, keyId, {
-      slotId: id,
-      enabled: !!id,
-      uiIconId: icon || undefined
-    }, { skipPersist: true });
-    if (id) ensureAgentKeyBinding(m, id);
-    markSoftPadPreviewFocus(keyId);
-    persistLayoutNow(m);
-    try {
-      var host = softPadLayoutEditorHost();
-      if (host) {
-        renderEditKeycapEditor(host, m, keyId, { mode: 'inline' });
-      }
-    } catch (_) {}
-    if (editDraft && !editDraft.__catalogOnly && editDraft.microKeyId === keyId) {
-      editDraft.slotId = id;
-      if (icon) editDraft.uiIconId = icon;
+    if (Link && typeof Link.setSoftPadBinding === 'function') {
+      Promise.resolve(Link.setSoftPadBinding(m, id || ('semantic:softPad:' + keyId), id ? keyId : '')).then(
+        function () {
+          markSoftPadPreviewFocus(keyId);
+          try {
+            var HubPick = global.OneToneSoftPadHub;
+            if (HubPick && typeof HubPick.schedulePreviewPaint === 'function') {
+              HubPick.schedulePreviewPaint({ mapping: m });
+            }
+          } catch (_) {}
+        }
+      );
+      return;
     }
-    ensureSoftPadFnCatalogPainted(m);
-    try {
-      var HubPick = global.OneToneSoftPadHub;
-      if (HubPick && typeof HubPick.schedulePreviewPaint === 'function') {
-        HubPick.schedulePreviewPaint({ mapping: m });
-      }
-    } catch (_) {}
-    try {
-      if (id) {
-        stampSoftPadSceneHero(m, {
-          channel: 'softPad',
-          bindingRef: id,
-          actionId: id,
-          kind: 'action'
-        });
-        refreshSoftPadSceneDock(m);
-      }
-    } catch (_) {}
   }
 
   function renderCapabilityList(m) {
