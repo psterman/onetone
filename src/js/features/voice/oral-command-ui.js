@@ -108,7 +108,7 @@
       name: '继续',
       desc: '让 Agent 接着上一轮继续干',
       auto: '继续',
-      core: false,
+      core: true,
       needsComposer: true
     },
     {
@@ -118,7 +118,7 @@
       name: '新建对话',
       desc: '开一条新的 Agent 线程',
       auto: '新会话、新建',
-      core: false,
+      core: true,
       needsComposer: true
     },
     {

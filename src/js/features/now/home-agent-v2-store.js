@@ -1352,16 +1352,81 @@
     } catch (_) {}
   }
 
+  /** Last non-OneTone catalog FG (Cursor/Codex/…). Survives opening the homepage. */
+  var lastExternalSendKind = null;
+
+  function isSelfFgIdentity(id) {
+    if (!id) return true;
+    var exe = String(id.exeName || id.exe_name || '').toLowerCase();
+    if (exe.indexOf('onetone') >= 0) return true;
+    var path = String(id.fullPath || id.full_path || '').toLowerCase();
+    return path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0;
+  }
+
+  /** FG / Focus app → catalog kind (cursor-chat → cursor). Soft Pad host is not this. */
+  function foregroundSendKind() {
+    var dto = state.focusDto;
+    var appId =
+      (dto && dto.foreground && (dto.foreground.appId || dto.foreground.app_id)) || '';
+    if (appId) {
+      var fromFocus = resolveKind(appId);
+      if (fromFocus && catalog(fromFocus)) {
+        lastExternalSendKind = fromFocus;
+        return fromFocus;
+      }
+    }
+    try {
+      var rt = global.OneToneRuntimeHabitControl;
+      var id = rt && rt.foregroundIdentity ? rt.foregroundIdentity() : null;
+      if (!id) {
+        var nav = global.OneToneHabitLayerNav;
+        id = nav && nav.getForegroundIdentity ? nav.getForegroundIdentity() : null;
+      }
+      // Homepage FG = OneTone: ignore self, keep last Cursor/Codex from when user operated there.
+      if (id && !isSelfFgIdentity(id)) {
+        var aid =
+          id.matchedPresetAppId ||
+          id.matched_preset_app_id ||
+          id.appId ||
+          id.app_id ||
+          '';
+        var fromRt = resolveKind(aid);
+        if (fromRt && catalog(fromRt)) {
+          lastExternalSendKind = fromRt;
+          return fromRt;
+        }
+      }
+    } catch (_) {}
+    return lastExternalSendKind;
+  }
+
+  function targetByKind(kindId) {
+    for (var i = 0; i < state.targets.length; i++) {
+      if (state.targets[i] && state.targets[i].kind === kindId) return state.targets[i];
+    }
+    return null;
+  }
+
   function pickDefaultSelected() {
     if (state.userLocked && state.selectedKind) return;
     var i;
     var t;
     var rows = workRows(5);
-    // 1) Live work first: needs → working (never continue-only for a closed agent).
+    var fgKind = foregroundSendKind();
+    // 1) Live work: needs → working (Soft Pad / attention — not process presence).
     for (i = 0; i < rows.length; i++) {
       if (rows[i] && isNeedsStatus(rows[i].status)) {
         state.selectedKind = rows[i].kind;
         return;
+      }
+    }
+    // Prefer FG when it is the one working (Cursor FG must not lose to stale Codex).
+    if (fgKind) {
+      for (i = 0; i < rows.length; i++) {
+        if (rows[i] && rows[i].kind === fgKind && isWorkingStatus(rows[i].status)) {
+          state.selectedKind = fgKind;
+          return;
+        }
       }
     }
     for (i = 0; i < rows.length; i++) {
@@ -1370,22 +1435,16 @@
         return;
       }
     }
-    // 2) Inventory: running (+ canSend) before mere canSend / discovered.
-    for (i = 0; i < state.targets.length; i++) {
-      t = state.targets[i];
-      if (t && t.running && t.canSend) {
-        state.selectedKind = t.kind;
+    // 2) Operated agent = live FG or sticky last external FG (homepage self).
+    // ChatGPT/Codex may be startup-running in background — that is NOT "user is in Codex".
+    if (fgKind) {
+      t = targetByKind(fgKind);
+      if (t && (t.running || t.canSend || t.discovered)) {
+        state.selectedKind = fgKind;
         return;
       }
     }
-    for (i = 0; i < state.targets.length; i++) {
-      t = state.targets[i];
-      if (t && t.running) {
-        state.selectedKind = t.kind;
-        return;
-      }
-    }
-    // Do not default to mere discovered / canSend (often closed Codex) — Dock stays "选 Agent".
+    // No FG / no live work → Dock "选 Agent". Never invent from inventory.running.
     state.selectedKind = null;
   }
 
@@ -1397,10 +1456,10 @@
       pickDefaultSelected();
       return;
     }
-    var inv = inventoryDiscovery(invRowForKind(kind));
     var rows = workRows(5);
     var row = null;
-    for (var i = 0; i < rows.length; i++) {
+    var i;
+    for (i = 0; i < rows.length; i++) {
       if (rows[i] && rows[i].kind === kind) {
         row = rows[i];
         break;
@@ -1408,8 +1467,20 @@
     }
     var live = row && (isNeedsStatus(row.status) || isWorkingStatus(row.status));
     if (live) return;
-    if (inv.running) return;
-    // Idle / Continue-only / mere discovered → do not keep as default send target.
+    var fgKind = foregroundSendKind();
+    // Keep only if this is still the operated FG (or sticky after opening homepage).
+    if (fgKind && fgKind === kind) {
+      var keepT = targetByKind(fgKind);
+      var keepInv = inventoryDiscovery(invRowForKind(fgKind));
+      if (
+        (keepT && (keepT.running || keepT.canSend || keepT.discovered)) ||
+        keepInv.running ||
+        keepInv.discovered
+      ) {
+        return;
+      }
+    }
+    // Wrong agent, or only background process presence — re-pick (may clear).
     state.selectedKind = null;
     pickDefaultSelected();
   }
@@ -1896,6 +1967,10 @@
       enrichLivingNarration: enrichLivingNarration,
       pickDefaultSelected: pickDefaultSelected,
       sanitizeSelectedKind: sanitizeSelectedKind,
+      foregroundSendKind: foregroundSendKind,
+      setLastExternalSendKind: function (k) {
+        lastExternalSendKind = k || null;
+      },
       UNKNOWN_PROMPT_SUMMARY: UNKNOWN_PROMPT_SUMMARY,
       inventoryDiscovery: inventoryDiscovery,
       projectTargets: projectTargets,

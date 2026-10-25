@@ -114,6 +114,19 @@ assert.ok(
 const router = read('src-tauri/src/voice_command_router.rs');
 assert.ok(router.includes('soft_oral_default_on'), 'router soft defaults helper');
 assert.ok(router.includes('oral_item_enabled(scheme.as_ref(), &id, false)'), 'prompt/bind default off');
+assert.ok(
+  /"continue"\s*\|\s*"newThread"\s*\|\s*"cancelListen"/.test(router)
+    || /"continue"[\s\S]{0,80}"newThread"/.test(router),
+  'soft oral defaults include continue/newThread (ARM_HINT)'
+);
+assert.ok(
+  !/need_composer_aim\(\)[\s\S]{0,280}return Some\(skip\("请先圈选/.test(router),
+  'oral continue/send must not hard-skip on need_composer_aim'
+);
+assert.ok(
+  /need_composer_aim\(\)[\s\S]{0,500}abort_if_open/.test(router),
+  'need_composer_aim clears calibrate cover then aims'
+);
 
 const session = read('src-tauri/src/voice_command_session.rs');
 assert.ok(session.includes('soft_oral_default_on'), 'session soft defaults');

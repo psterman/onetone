@@ -104,7 +104,8 @@
     }
     const btnSettingsGlobal=$('btnSettings');
     if(btnSettingsGlobal){
-      btnSettingsGlobal.hidden=!!(focusMode&&!ui.drawerOpen);
+      // Keep gear visible in focus mode — click expands side nav + opens 设置 (see app-shell-bindings).
+      btnSettingsGlobal.hidden=false;
     }
     const leftNav=$('wbLeftNav');
     if(leftNav){

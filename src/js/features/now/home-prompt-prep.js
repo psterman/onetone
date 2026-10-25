@@ -1127,15 +1127,48 @@
     var excluded = model.materials.filter(function (m) {
       return m.included === false || m.citeMode === 'skip';
     });
-    var title =
-      (model.draft && model.draft.title) ||
-      (model.materials[0] && model.materials[0].name) ||
-      '首次沟通简报';
     var body = (model.draft && model.draft.body) || '';
     var downgraded = [];
     var truncated = false;
     var reason = null;
 
+    // Draft only — no materials: send plain text. Never invent「首次沟通简报」wrapper.
+    if (!included.length && !excluded.length) {
+      var plain = String(body || '');
+      var mdPlain = plain ? (plain.endsWith('\n') ? plain : plain + '\n') : '\n';
+      var charsPlain = mdPlain.length;
+      model.assembledMd = mdPlain;
+      model.assembledAt = nowIso();
+      model.assembledRevision = model.contentRevision || 0;
+      model.lastAssembleSize = {
+        chars: charsPlain,
+        truncated: false,
+        downgradedMaterialIds: [],
+        reason: null
+      };
+      model.assemblyMeta = {
+        collected: 0,
+        included: 0,
+        excluded: 0,
+        chars: charsPlain,
+        tokensApprox: Math.max(1, Math.round(charsPlain / 4)),
+        truncated: false
+      };
+      setPhase('ASSEMBLED');
+      schedulePublishTray();
+      return {
+        md: mdPlain,
+        truncated: false,
+        downgradedMaterialIds: [],
+        reason: null,
+        chars: charsPlain
+      };
+    }
+
+    var title =
+      (model.draft && model.draft.title) ||
+      (model.materials[0] && model.materials[0].name) ||
+      '材料装订';
     function build(withFull) {
       var parts = [];
       parts.push('# ' + title);

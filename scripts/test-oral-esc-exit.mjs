@@ -46,7 +46,7 @@ check('force_cancel syncs Esc capture', /fn force_cancel[\s\S]{0,1600}sync_oral_
 check('temp engine for oral when global off', /ensure_oral_temp_engine/.test(sess));
 check(
   'temp engine before resume_listen path',
-  /ensure_oral_temp_engine[\s\S]{0,600}resume_listen/.test(sess)
+  /ensure_oral_temp_engine[\s\S]{0,1600}resume_listen/.test(sess)
 );
 check(
   'soft resume keeps listening engine',
@@ -71,10 +71,21 @@ check(
 check('clears asr quiet on oral arm', /settings_asr_quiet[\s\S]{0,80}store\(false/.test(sess));
 check('sync_oral_esc_capture', /sync_oral_esc_capture/.test(sess));
 check(
-  'temp engine flips strategy not only desired_engine',
-  /apply_voice_listening_strategy\([\s\S]*resourceSaver/.test(sess)
+  'temp engine flips strategy to auto/Vosk (STT preview)',
+  /apply_voice_listening_strategy\([\s\S]*"auto"/.test(sess)
 );
-check('temp engine restores off', /apply_voice_listening_strategy\([\s\S]*"off"/.test(sess));
+check(
+  'temp engine remembers prior strategy',
+  /ORAL_TEMP_PREV_STRATEGY/.test(sess)
+);
+check(
+  'temp engine restores prior strategy',
+  /oral_temp_engine restore strategy=/.test(sess)
+);
+check(
+  'borrowed vosk forces activate (not keep-KWS)',
+  /borrowed_vosk/.test(sess) && /oral arm force engine after vosk borrow/.test(sess)
+);
 check('flow hint mentions Esc', /Esc/.test(sess) && /listen_flow_hint/.test(sess));
 check('force_cancel helper', /pub fn force_cancel/.test(sess));
 check(
@@ -83,7 +94,7 @@ check(
 );
 check(
   'temp borrow path still may force:oral_arm',
-  /fn ensure_oral_temp_engine[\s\S]{0,2500}force:oral_arm/.test(sess)
+  /borrowed_vosk[\s\S]{0,400}force:oral_arm/.test(sess)
 );
 check(
   'oral engine ready gate exists',
@@ -159,16 +170,16 @@ check(
 );
 check(
   'refuse_wrong_fg uses oral Soft Pad FG identity',
-  /fn refuse_wrong_fg[\s\S]{0,700}oral_arm_foreground_identity/.test(sess)
+  /fn refuse_wrong_fg[\s\S]{0,1400}oral_arm_foreground_identity/.test(sess)
 );
 check(
   'refuse_wrong_fg allows OneTone/Soft Pad self FG',
-  /fn refuse_wrong_fg[\s\S]{0,500}foreground_is_self/.test(sess)
+  /fn refuse_wrong_fg[\s\S]{0,1200}foreground_is_self/.test(sess)
 );
 check(
   'oral temp gen guards late oral_end',
   /ORAL_TEMP_GEN/.test(sess) &&
-    /fn restore_oral_temp_engine[\s\S]{0,500}ORAL_TEMP_GEN/.test(sess)
+    /fn restore_oral_temp_engine[\s\S]{0,900}ORAL_TEMP_GEN/.test(sess)
 );
 
 const beg = read('src-tauri/src/cursor_beginner.rs');
@@ -269,7 +280,7 @@ check(
 );
 check(
   'oral arm stops IME before resume',
-  /fn begin_session[\s\S]{0,1200}reclaim_mic_from_voice_ime/.test(sess)
+  /fn begin_session[\s\S]{0,4000}reclaim_mic_from_voice_ime/.test(sess)
 );
 check(
   'enter_dictating notes IME ownership',
@@ -351,7 +362,7 @@ check(
 );
 check(
   'home nudge skips when oralArmed',
-  /maybeNudgeVoskOnHome[\s\S]{0,200}oralArmed/.test(
+  /maybeNudgeVoskOnHome[\s\S]{0,500}oralArmed/.test(
     read('src/js/features/voice/voice-wake.js')
   )
 );

@@ -1419,6 +1419,18 @@
 
   function onDocKeyDown(e) {
     if (!mounted || !e) return;
+    // Ctrl/Cmd+Enter in draft → aim + paste send (same as ↑).
+    if (
+      (e.key === 'Enter' || e.key === 'NumpadEnter') &&
+      (e.ctrlKey || e.metaKey) &&
+      e.target &&
+      e.target.matches &&
+      e.target.matches('[data-ha2-draft]')
+    ) {
+      e.preventDefault();
+      send();
+      return;
+    }
     if (e.key !== 'Escape') return;
     var S = store();
     var snap = S && S.getSnapshot ? S.getSnapshot() : null;
@@ -1485,8 +1497,22 @@
       !!String(draft || '').trim() || !!(snap && snap.materials && snap.materials.length);
     var ctx = snap && snap.targetContext;
     var hasAgent = !!(ctx && ctx.kind);
-    var hasProject = !!(ctx && ctx.projectPath);
-    return hasContent && hasAgent && hasProject;
+    // Project is a handoff hint only — composer aim + paste must not wait on it.
+    return hasContent && hasAgent;
+  }
+
+  /** Center row agentId, or synthetic kind:… when inventory/FG picked an agent with no row. */
+  function sendAgentIdFor(kind, snap) {
+    var list = (snap && snap.agents) || [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && list[i].kind === kind && list[i].agentId) return list[i].agentId;
+    }
+    var Policy = global.OneToneHomeActionPolicy;
+    if (Policy && typeof Policy.syntheticAgentId === 'function') {
+      return Policy.syntheticAgentId(kind === 'codex' ? 'chatgpt' : kind);
+    }
+    return kind ? 'kind:' + kind : '';
   }
 
   function dockStaticHtml(snap) {
@@ -1577,10 +1603,10 @@
       ' title="' +
       esc(
         sendOk
-          ? t('ha2Send', '发送')
-          : !(snap.targetContext && snap.targetContext.projectPath)
-            ? t('ha2NeedProject', '先选定项目')
-            : t('ha2Send', '发送')
+          ? t('ha2SendHint', '发送（Ctrl+Enter）')
+          : !c.id
+            ? t('ha2PickAgent', '选择 Agent')
+            : t('ha2SendNeedDraft', '先写一句再发送')
       ) +
       '" aria-label="' +
       esc(t('ha2Send', '发送')) +
@@ -1822,10 +1848,10 @@
       var ok = canSendNow(snap, draftNow);
       sendBtn.disabled = !ok;
       sendBtn.title = ok
-        ? t('ha2Send', '发送')
-        : !(snap.targetContext && snap.targetContext.projectPath)
-          ? t('ha2NeedProject', '先选定项目')
-          : t('ha2Send', '发送');
+        ? t('ha2SendHint', '发送（Ctrl+Enter）')
+        : !c.id
+          ? t('ha2PickAgent', '选择 Agent')
+          : t('ha2SendNeedDraft', '先写一句再发送');
     }
 
     var quick = root.querySelector('[data-ha2-quick]');
@@ -1995,14 +2021,6 @@
     S.setDraft(draft, { silent: true });
     if (!String(draft).trim() && !(snap.materials && snap.materials.length)) return;
 
-    if (!ctx.projectPath) {
-      S.setValidationNotice({
-        kind: 'missing_project',
-        message: t('ha2NeedProject', '先选定项目')
-      });
-      return;
-    }
-
     var matching = null;
     for (var i = 0; i < snap.agents.length; i++) {
       if (snap.agents[i].kind === c.id) {
@@ -2010,12 +2028,25 @@
         break;
       }
     }
-    if (!matching || !can(matching.actions, 'agent.focus')) {
+    var agentId = sendAgentIdFor(c.id, snap);
+    var appId =
+      c.appId ||
+      (D && typeof D.appIdForTarget === 'function' ? D.appIdForTarget(c.id) : '') ||
+      '';
+    // Desktop catalog target can hand off even when Center row is missing / focus disabled.
+    if (!appId && (!matching || !can(matching.actions, 'agent.focus'))) {
       S.setValidationNotice({
         kind: 'no_focus_action',
         message: matching
           ? t('ha2NoFocusAction', 'Agent Center 未提供可发送动作')
           : t('ha2NoDeliverable', '未发现可投递的桌面 App 或匹配 CLI')
+      });
+      return;
+    }
+    if (!agentId) {
+      S.setValidationNotice({
+        kind: 'no_focus_action',
+        message: t('ha2NoDeliverable', '未发现可投递的桌面 App 或匹配 CLI')
       });
       return;
     }
@@ -2037,26 +2068,23 @@
 
     clipWrite
       .then(function () {
-        // Inherit this agent's saved composer point — never force re-calibrate on send.
+        // Ensure composer memory (inherit or first-use calibrate), then paste.
         if (D && D.ensureAim) {
-          return D.ensureAim(c.id, { force: false }).catch(function () {
-            return null;
-          });
+          return D.ensureAim(c.id, { force: false });
         }
-        if (D && D.calibrateAim) {
-          return D.calibrateAim(c.id).catch(function () {
-            return null;
-          });
-        }
-        return null;
+        return { ok: !!appId, reason: appId ? null : 'no_app_target' };
       })
-      .then(function () {
+      .then(function (aim) {
+        if (aim && aim.reason === 'no_app_target') {
+          throw new Error(t('ha2AimNeedTarget', '先选发送目标，再发送'));
+        }
+        // aim_not_confirmed: still paste — Rust falls back to profile / layout anchors.
         return invoke('cmd_agent_center_action', {
           args: {
-            agentId: matching.agentId,
+            agentId: agentId,
             actionId: 'agent.focus',
             pasteClipboard: true,
-            projectHint: ctx.projectPath,
+            projectHint: ctx.projectPath || undefined,
             attemptId: 'home-v2-send-' + Date.now().toString(36)
           }
         });
@@ -2103,7 +2131,7 @@
             inputConfirmed: false
           });
         }
-        applyActionClientEffect(res, matching.agentId);
+        applyActionClientEffect(res, agentId);
       })
       .catch(function (e) {
         S.setDeliveryReceipt({

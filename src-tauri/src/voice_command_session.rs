@@ -13,8 +13,10 @@ static SESSION_ARMED: AtomicBool = AtomicBool::new(false);
 static SESSION_OWNED_ENGINES: AtomicBool = AtomicBool::new(false);
 /// True when this session flipped soft_pad_force_open on (must restore on end).
 static SESSION_OWNED_FORCE_OPEN: AtomicBool = AtomicBool::new(false);
-/// Oral arm forced a temp wake engine because global listening strategy was off.
+/// Oral arm forced a temp wake engine because global listen lacked Vosk STT.
 static SESSION_OWNED_TEMP_ENGINE: AtomicBool = AtomicBool::new(false);
+/// Strategy to restore when SESSION_OWNED_TEMP_ENGINE ends (off / resourceSaver / …).
+static ORAL_TEMP_PREV_STRATEGY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 /// Bumps on each temp arm/restore so a late `force:oral_end` cannot kill a newer arm.
 static ORAL_TEMP_GEN: AtomicU64 = AtomicU64::new(0);
 /// Soft 槽「说话」/ Soft Pad ACT10 may start Cursor IME while oral is armed.
@@ -260,7 +262,10 @@ fn armed_mapping<'a>(
 }
 
 fn soft_oral_default_on(slot_id: &str) -> bool {
-    matches!(slot_id, "pushToTalk" | "stopOrSend" | "cancelListen")
+    matches!(
+        slot_id,
+        "pushToTalk" | "stopOrSend" | "continue" | "newThread" | "cancelListen"
+    )
 }
 
 fn oral_item_on(scheme: Option<&crate::config::OralCommandScheme>, id: &str) -> bool {
@@ -330,6 +335,21 @@ fn oral_app_target_id(cfg: &crate::config::VoiceConfig, mapping_id: &str) -> Str
     String::new()
 }
 
+/// Soft Pad oral armed: composer punch target for「继续/发送」(Codex / Cursor / …).
+/// None when not oral-armed or mapping has no known chat profile.
+pub fn oral_composer_app_target(state: &crate::AppState) -> Option<String> {
+    if !is_armed() {
+        return None;
+    }
+    let cfg = state.cfg.lock();
+    let tid = oral_app_target_id(&cfg, &armed_mapping_id());
+    if tid.is_empty() || crate::app_chat_workflow::profile_for(&tid).is_none() {
+        None
+    } else {
+        Some(tid)
+    }
+}
+
 fn has_calibrated_composer(cfg: &crate::config::VoiceConfig, app_target_id: &str) -> bool {
     crate::input_aim_calibrate::has_active_composer(cfg, app_target_id)
 }
@@ -386,17 +406,12 @@ pub fn init_composer_on_oral_arm(state: &Arc<AppState>, app: &AppHandle, mapping
     }
 }
 
-/// Soft Pad caption: 「口头收听中 · 可说：…」from oral scheme (Soft + scheme items).
-pub fn listen_hint(cfg: &crate::config::VoiceConfig) -> String {
+/// Soft Pad oral caption hint. Wave badge + chips own status/sayables; only aim prompt remains.
+pub fn listen_hint(_cfg: &crate::config::VoiceConfig) -> String {
     if need_composer_aim() {
-        return "口头收听中 · 请先圈选 Agent 输入框（首次对准）".into();
+        return "请先圈选 Agent 输入框（首次对准）".into();
     }
-    let says = listen_say_list(cfg, 10);
-    if says.is_empty() {
-        "口头收听中 · 请说话令".into()
-    } else {
-        format!("口头收听中 · 可说：{}", says.join("、"))
-    }
+    String::new()
 }
 
 /// Enabled oral phrases for Soft Pad / settings strip (Soft defaults + scheme overrides).
@@ -592,9 +607,10 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
         .spawn(move || {
             let reclaimed_ime =
                 reclaim_mic_from_voice_ime(&state_eng, Some(&app_eng), duration_ms, "oral_arm");
-            // Global wake off → borrow resourceSaver so resume_listen activates KWS.
-            ensure_oral_temp_engine(&state_eng, &app_eng);
-            if reclaimed_ime {
+            // Soft Pad oral needs Vosk partials (STT preview + free-say match).
+            // KWS/off alone opens listen chrome with no transcript and weak routing.
+            let borrowed_vosk = ensure_oral_temp_engine(&state_eng);
+            if reclaimed_ime || borrowed_vosk {
                 crate::voice_bootstrap::activate_desired_engine(
                     &app_eng,
                     &state_eng,
@@ -603,7 +619,11 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
                 crate::app_log::log_line(
                     &state_eng,
                     "voice_command",
-                    "oral arm force engine after IME reclaim",
+                    if reclaimed_ime {
+                        "oral arm force engine after IME reclaim"
+                    } else {
+                        "oral arm force engine after vosk borrow"
+                    },
                 );
             } else if !was_paused && wake_engine_is_listening(state_eng.as_ref()) {
                 ORAL_ENGINE_READY.store(true, Ordering::SeqCst);
@@ -707,23 +727,29 @@ fn sync_oral_esc_capture(state: &Arc<AppState>) {
     }
 }
 
-/// When global listening is off, borrow KWS for the oral window so「取消」is heard.
-fn ensure_oral_temp_engine(state: &Arc<AppState>, app: &AppHandle) {
-    let need = {
+/// Soft Pad oral listen needs Vosk for live STT + free-say routing.
+/// Returns true when this call flipped strategy to `auto` (caller must force-activate).
+fn ensure_oral_temp_engine(state: &Arc<AppState>) -> bool {
+    let (need, prev) = {
         let cfg = state.cfg.lock();
-        crate::scene_config::idle_desired_voice_engine(&cfg)
-            == crate::scene_config::DesiredVoiceEngine::None
+        let eng = crate::scene_config::idle_desired_voice_engine(&cfg);
+        let need = !matches!(eng, crate::scene_config::DesiredVoiceEngine::Vosk);
+        let prev = crate::scene_config::voice_listening_strategy(&cfg).to_string();
+        (need, prev)
     };
     if !need {
         SESSION_OWNED_TEMP_ENGINE.store(false, Ordering::SeqCst);
         // Invalidate any in-flight oral_end from a prior Esc.
         ORAL_TEMP_GEN.fetch_add(1, Ordering::SeqCst);
-        return;
+        return false;
     }
     {
         let mut cfg = state.cfg.lock();
-        // idle_desired short-circuits on strategy "off" — must flip strategy too.
-        crate::config::apply_voice_listening_strategy(&mut cfg, "resourceSaver");
+        // Same as home speak channel: auto → Vosk (not resourceSaver/KWS-only).
+        crate::config::apply_voice_listening_strategy(&mut cfg, "auto");
+    }
+    if let Ok(mut g) = ORAL_TEMP_PREV_STRATEGY.lock() {
+        *g = prev.clone();
     }
     SESSION_OWNED_TEMP_ENGINE.store(true, Ordering::SeqCst);
     let gen = ORAL_TEMP_GEN.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
@@ -731,30 +757,35 @@ fn ensure_oral_temp_engine(state: &Arc<AppState>, app: &AppHandle) {
     crate::app_log::log_line(
         state,
         "voice_command",
-        "oral_temp_engine borrow resourceSaver/kws (global listen was off)",
+        &format!("oral_temp_engine borrow auto/vosk (was strategy={prev})"),
     );
-    let app_h = app.clone();
-    let state_h = Arc::clone(state);
-    std::thread::spawn(move || {
-        if ORAL_TEMP_GEN.load(Ordering::SeqCst) != gen {
-            return;
-        }
-        crate::voice_bootstrap::activate_desired_engine(&app_h, &state_h, "force:oral_arm");
-    });
+    true
 }
 
 fn restore_oral_temp_engine(state: &Arc<AppState>, app: &AppHandle) {
+    let prev = ORAL_TEMP_PREV_STRATEGY
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    let restore = if prev.is_empty() { "off" } else { prev.as_str() };
     {
         let mut cfg = state.cfg.lock();
-        // Only restore if we still look like the temp borrow.
+        // Only unwind if we still look like the temp borrow (auto/Vosk).
         let strat = crate::scene_config::voice_listening_strategy(&cfg);
-        if strat == "resourceSaver" || strat == "auto" {
-            crate::config::apply_voice_listening_strategy(&mut cfg, "off");
+        if strat == "auto" || strat == "enhanced" {
+            crate::config::apply_voice_listening_strategy(&mut cfg, restore);
         }
+    }
+    if let Ok(mut g) = ORAL_TEMP_PREV_STRATEGY.lock() {
+        g.clear();
     }
     let gen = ORAL_TEMP_GEN.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
     ORAL_TEMP_GEN.store(gen, Ordering::SeqCst);
-    crate::app_log::log_line(state, "voice_command", "oral_temp_engine restore off");
+    crate::app_log::log_line(
+        state,
+        "voice_command",
+        &format!("oral_temp_engine restore strategy={restore}"),
+    );
     let app_h = app.clone();
     let state_h = Arc::clone(state);
     std::thread::spawn(move || {
@@ -922,7 +953,7 @@ mod tests {
     use crate::config::{OralCommandItem, OralCommandScheme, VoiceConfig};
 
     #[test]
-    fn listen_hint_uses_scheme_say_and_soft_defaults() {
+    fn listen_hint_empty_when_chips_cover_sayables() {
         let mut cfg = VoiceConfig::default();
         let mid = cfg.mappings[0].id.clone();
         cfg.mappings[0].oral_command_scheme = Some(OralCommandScheme {
@@ -945,11 +976,8 @@ mod tests {
         let hint = listen_hint(&cfg);
         let cards = listen_command_cards(&cfg);
         SESSION_ARMED.store(false, Ordering::SeqCst);
-        assert!(hint.contains("发出去"), "custom say: {hint}");
-        assert!(
-            hint.contains("继续") || hint.contains("麦克风") || hint.contains("取消"),
-            "defaults: {hint}"
-        );
+        assert!(hint.is_empty(), "status prose belongs to wave badge, got: {hint}");
+        assert!(!hint.contains("口头收听"), "no 口头收听中 status copy");
         assert!(cards.iter().any(|(_, say, _)| say == "发出去"));
         let keys = listen_micro_keys(&cfg);
         assert!(keys.iter().any(|k| k == "ACT12"));

@@ -47,6 +47,25 @@ check('bindNav optimistic navKey before channel open', /syncNavActiveState\(row\
 check('bindNav re-syncs after channel open', /openHabitChannelChip\(ch\);\s*\r?\n\s*syncNavActiveState\(row\.panel\)/.test(wb));
 check('softPad focus nav sync guards settingsPanel', /settingsPanel==='softPad'&&global\.OneToneHomeWorkbench/.test(drawer));
 check('wb-nav-item[hidden] forces display:none', /wb-nav-item\[hidden\][\s\S]*display:\s*none\s*!important/.test(css));
+check(
+  'focus-mode keeps homeV2 visible',
+  /is-focus-mode[\s\S]*data-wb-nav="home"\)[\s\S]*:not\(\[data-wb-nav="homeV2"\]\)/.test(css) ||
+    /:not\(\[data-wb-nav="home"\]\):not\(\[data-wb-nav="homeV2"\]\)/.test(css)
+);
+check(
+  'agentV2 surface unlocks advanced (no sticky focus fold)',
+  /onetone\.homeSurface/.test(runtime) && /agentV2/.test(runtime) &&
+    /isHomeAdvancedUnlocked[\s\S]{0,500}agentV2/.test(runtime)
+);
+check(
+  'gear expands focus nav instead of onboarding hijack',
+  /btnSettings[\s\S]{0,500}expandHomeFocusNav/.test(
+    readFileSync(join(root, 'src/js/features/settings/app-shell-bindings.js'), 'utf8')
+  ) &&
+    !/btnSettings[\s\S]{0,400}OneToneOnboarding\.open/.test(
+      readFileSync(join(root, 'src/js/features/settings/app-shell-bindings.js'), 'utf8')
+    )
+);
 
 const indexHtml = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('数据 left-nav directory removed', !/id="wbNavAgentData"|data-wb-nav="agentData"/.test(indexHtml));

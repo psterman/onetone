@@ -7761,9 +7761,9 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   }
 }
 
-/* Focus mode：首跑侧栏收敛 */
+/* Focus mode：首跑侧栏收敛（保留当前首页入口 home / homeV2） */
 .app-left-nav.is-focus-mode .wb-nav-section,
-.app-left-nav.is-focus-mode .wb-nav-item[data-wb-nav]:not([data-wb-nav="home"]),
+.app-left-nav.is-focus-mode .wb-nav-item[data-wb-nav]:not([data-wb-nav="home"]):not([data-wb-nav="homeV2"]),
 .app-left-nav.is-focus-mode .wb-command-search {
   display: none;
 }

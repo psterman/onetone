@@ -976,10 +976,11 @@ pub fn focus_composer_for_send(
                 "focusedXRatio": low.focused_x_ratio,
             }),
         );
-        if (low.ok || can_blind(&low))
-            && !looks_like_editor_document(&low.focused_name)
+        if !looks_like_editor_document(&low.focused_name)
             && !looks_like_editor_document(&low.best_name)
-            && cursor_focus_acceptable(profile.id, &low)
+            && (cursor_focus_acceptable(profile.id, &low)
+                || can_blind(&low)
+                || cursor_empty_edit_after_right_click(&low))
         {
             probe = low;
             uia_ok = true;
@@ -1027,10 +1028,11 @@ pub fn focus_composer_for_send(
         }
         if !uia_ok && profile.id == CURSOR_APP_TARGET_ID && screen_ok {
             let low = uia_focus_chat_input_probe(hwnd, 10);
-            if (low.ok || can_blind(&low))
-                && !looks_like_editor_document(&low.focused_name)
+            if !looks_like_editor_document(&low.focused_name)
                 && !looks_like_editor_document(&low.best_name)
-                && cursor_focus_acceptable(profile.id, &low)
+                && (cursor_focus_acceptable(profile.id, &low)
+                    || can_blind(&low)
+                    || cursor_empty_edit_after_right_click(&low))
             {
                 probe = low;
                 uia_ok = true;
@@ -1056,7 +1058,11 @@ pub fn focus_composer_for_send(
                 "uiaOk": low.ok,
             }),
         );
-        if force_ok && (can_blind(&low) || cursor_focus_acceptable(profile.id, &low)) {
+        if force_ok
+            && (can_blind(&low)
+                || cursor_focus_acceptable(profile.id, &low)
+                || cursor_empty_edit_after_right_click(&low))
+        {
             probe = low;
             uia_ok = true;
             click_via = "force_right";
@@ -1354,6 +1360,18 @@ fn cursor_focus_acceptable(profile_id: &str, probe: &UiaFocusProbe) -> bool {
     probe
         .focused_x_ratio
         .is_some_and(|x| x >= CURSOR_AGENT_MIN_X_RATIO)
+}
+
+/// After a right-panel punch, Cursor Agent Edit often has empty name + null x-ratio
+/// while keyboard focus is already on the box (score≈10). Rejecting that used to
+/// abort「继续」after the user already saw the aim click.
+#[cfg(windows)]
+fn cursor_empty_edit_after_right_click(probe: &UiaFocusProbe) -> bool {
+    probe.has_keyboard_focus
+        && probe.focused_score >= 10
+        && probe.focused_name.trim().is_empty()
+        && !looks_like_editor_document(&probe.best_name)
+        && !looks_like_scm_input(&probe.best_name)
 }
 
 #[cfg(windows)]

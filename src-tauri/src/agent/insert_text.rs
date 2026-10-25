@@ -31,6 +31,11 @@ pub fn insert_text_no_enter(text: &str, key_press_duration_ms: u32) -> Result<()
     }
     #[cfg(windows)]
     {
+        // Short prompts (继续/Continue): unicode SendInput — Ctrl+V often lands in
+        // Cursor chrome after Soft Pad punch (same rule as electron_replace_paste).
+        if trimmed.chars().count() <= 32 && crate::keyboard::send_text(trimmed) {
+            return Ok(());
+        }
         insert_text_windows(trimmed, key_press_duration_ms)
     }
     #[cfg(not(windows))]

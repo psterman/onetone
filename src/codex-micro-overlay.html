@@ -232,7 +232,10 @@
               </div>
             </div>
             <button type="button" class="overlay-key-caption is-clickable" id="overlayKeyCaption" aria-live="polite" data-act="usage-caption">
-              <span class="overlay-key-caption__badge" data-cap-badge hidden>口头收听中</span>
+              <span class="overlay-key-caption__badge" data-cap-badge hidden aria-label="口头收听中">
+                <span class="overlay-key-caption__wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              </span>
+              <span class="overlay-key-caption__heard" data-cap-heard hidden aria-live="polite"></span>
               <span class="overlay-key-caption__name" data-cap-name>悬停按键查看名称</span>
               <span class="overlay-key-caption__cmds" data-cap-cmds hidden></span>
               <span class="overlay-key-caption__chord" data-cap-chord></span>
@@ -1994,7 +1997,9 @@
     function applyMiniChromeVoiceChip(s){
       if(!miniBeginnerListenChip||!miniBeginnerListenChipText) return;
       var chromeV=miniChromeOf(s);
-      if(!chromeV.voiceChipEnabled){
+      var oralOn=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
+      // Oral listen always shows the mic halo (live STT cue); chrome flag only gates beginner/hub.
+      if(!oralOn&&!chromeV.voiceChipEnabled){
         miniBeginnerListenChip.hidden=true;
         return;
       }
@@ -2002,7 +2007,7 @@
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
       var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
       var hubOn=!!(s&&(s.activationHubActive||s.activation_hub_active));
-      var show=hubOn||(mode&&probeOk&&armed);
+      var show=oralOn||hubOn||(mode&&probeOk&&armed);
       if(show){
         miniBeginnerListenChip.hidden=false;
         /* 图标在 HTML；不写「听」字，避免盖住相邻元素 */
@@ -2179,11 +2184,10 @@
         var slotId=String((c&&(c.slotId||c.slot_id))||'').trim();
         if(!name&&!say) return '';
         var isCancel=slotId==='cancelListen'||name==='取消'||say==='取消';
-        var tag=isCancel?'button':'span';
-        var typeAttr=isCancel?' type="button"':'';
         var slotAttr=slotId?' data-oral-slot="'+escHtml(slotId)+'"':'';
         var cancelClass=isCancel?' is-cancel':'';
-        return '<'+tag+typeAttr+' class="oral-cmd-chip'+cancelClass+'"'+slotAttr+' title="'+escHtml(name)+'"><b>'+escHtml(say)+'</b>'+(name&&name!==say?' <em>'+escHtml(name)+'</em>':'')+'</'+tag+'>';
+        // All chips are buttons — click works when ASR is cold; voice still preferred.
+        return '<button type="button" class="oral-cmd-chip'+cancelClass+'"'+slotAttr+' title="'+escHtml(name||say)+'"><b>'+escHtml(say)+'</b>'+(name&&name!==say?' <em>'+escHtml(name)+'</em>':'')+'</button>';
       }).filter(Boolean).join('');
     }
 
@@ -2191,11 +2195,16 @@
       if(!root||root.__oralChipBound) return;
       root.__oralChipBound=true;
       root.addEventListener('click',function(e){
-        var chip=e.target&&e.target.closest&&e.target.closest('[data-oral-slot="cancelListen"],.oral-cmd-chip.is-cancel');
+        var chip=e.target&&e.target.closest&&e.target.closest('[data-oral-slot],.oral-cmd-chip');
         if(!chip) return;
         e.preventDefault();
         e.stopPropagation();
-        exitOralListen('chip');
+        var slot=String(chip.getAttribute('data-oral-slot')||'').trim();
+        if(!slot||slot==='cancelListen'||chip.classList.contains('is-cancel')){
+          exitOralListen('chip');
+          return;
+        }
+        runBeginnerSlot(slot, true, beginnerMicroKey(slot, ''));
       });
     }
 
@@ -2217,6 +2226,18 @@
       });
     }
 
+    function ensureOralWaveBadge(badge){
+      if(!badge) return;
+      badge.setAttribute('aria-label','口头收听中');
+      if(!badge.querySelector('.overlay-key-caption__wave')){
+        badge.innerHTML='<span class="overlay-key-caption__wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>';
+      }
+      // Drop any leftover text node from older overlay HTML (stale webview).
+      Array.prototype.slice.call(badge.childNodes).forEach(function(n){
+        if(n.nodeType===3&&String(n.textContent||'').trim()) n.textContent='';
+      });
+    }
+
     function applyOralListenMini(s){
       var oralArmed=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
       // Recording gate already sets visible=false; also mute sticky oral chrome if a
@@ -2234,20 +2255,23 @@
       var cap=document.getElementById('overlayKeyCaption');
       var capCmds=cap&&cap.querySelector('[data-cap-cmds]');
       var capBadge=cap&&cap.querySelector('[data-cap-badge]');
+      var capHeard=cap&&cap.querySelector('[data-cap-heard]');
       if(!oralArmed){
+        if(capHeard){ capHeard.textContent=''; capHeard.hidden=true; }
         if(cap){
           cap.classList.remove('is-oral-arm-caption');
           if(!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)&&(s.cursorBeginnerArmed||s.cursor_beginner_armed))){
             cap.classList.remove('is-beginner-arm-caption');
           }
-          // Backend may already be disarmed while caption text still says「口头收听中」
+          // Backend may already be disarmed while caption still shows oral chrome
           // (skip_serializing + early return used to leave textContent sticky).
           if(!keyHoverActive){
             var nameEl=cap.querySelector('[data-cap-name]');
             var chordEl=cap.querySelector('[data-cap-chord]');
             var armTxt=String((nameEl&&nameEl.textContent)||'');
-            if(armTxt.indexOf('口头收听')>=0||armTxt.indexOf('可说：')>=0){
-              if(nameEl) nameEl.textContent='';
+            var wasOralCap=cap.classList.contains('is-oral-arm-caption');
+            if(wasOralCap||armTxt.indexOf('口头收听')>=0||armTxt.indexOf('可说：')>=0||armTxt.indexOf('请先圈选')>=0){
+              if(nameEl){ nameEl.textContent=''; nameEl.classList.remove('is-live'); }
               if(chordEl){ chordEl.textContent=''; chordEl.hidden=true; }
               cap.classList.remove('is-active','is-usage-sub','is-oral-arm-caption','is-beginner-arm-caption');
             }
@@ -2279,26 +2303,35 @@
         });
       });
       var armHint=String((s&&(s.oralListenHint||s.oral_listen_hint||s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
-      if(!armHint) armHint='口头收听中 · 请说话令';
       var flowHint=String((s&&(s.oralListenFlowHint||s.oral_listen_flow_hint||s.cursorBeginnerFlowHint||s.cursor_beginner_flow_hint))||'').trim();
       if(!flowHint) flowHint='发送→右侧框+Enter · 侧键结束收听';
+      var vPartial=String((s&&(s.voiceHeardPartial||s.voice_heard_partial))||'').trim();
+      var vFinal=String((s&&(s.voiceHeardFinal||s.voice_heard_final))||'').trim();
+      var vHeard=vPartial||vFinal;
       var chips=oralCmdCardsHtml(s);
-      if(cap&&!keyHoverActive){
+      var needAim=armHint.indexOf('请先圈选')>=0;
+      // ASR text owns __heard (never blocked by key-hover). Aim prompt can use name.
+      if(capHeard){
+        capHeard.textContent=vHeard||'';
+        capHeard.hidden=!vHeard;
+        capHeard.classList.toggle('is-live',!!vHeard);
+      }
+      if(capBadge){
+        ensureOralWaveBadge(capBadge);
+        capBadge.hidden=false;
+      }
+      if(capCmds){
+        capCmds.innerHTML=chips;
+        capCmds.hidden=!chips;
+        bindOralCmdChipClicks(capCmds);
+      }
+      if(cap){
         var nameEl=cap.querySelector('[data-cap-name]');
         var chordEl=cap.querySelector('[data-cap-chord]');
-        if(capBadge) capBadge.hidden=false;
-        // Badge = status; chips = sayables; flow = Esc/发送. Don't repeat「可说：…」in the name line.
-        if(nameEl){
-          var needAim=armHint.indexOf('请先圈选')>=0;
-          var captionName=chips
-            ?(needAim?armHint:'')
-            :armHint;
-          nameEl.textContent=captionName;
-        }
-        if(capCmds){
-          capCmds.innerHTML=chips;
-          capCmds.hidden=!chips;
-          bindOralCmdChipClicks(capCmds);
+        // Don't let key-hover steal the oral strip; only paint aim into name.
+        if(nameEl&&!keyHoverActive){
+          nameEl.textContent=needAim?armHint:'';
+          nameEl.classList.remove('is-live');
         }
         if(chordEl){
           chordEl.textContent=flowHint;
@@ -2328,11 +2361,14 @@
         applyMiniToolsRow(s);
         return;
       }
+      var oralOn=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
       var msg=String((s&&s.cursorBeginnerProbeMessage)||(s&&s.cursor_beginner_probe_message)||'').trim();
       var armHint=String((s&&s.cursorBeginnerArmHint)||(s&&s.cursor_beginner_arm_hint)||'').trim();
-      if(!armHint&&armed) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
+      // Oral owns the caption (wave + ASR). Don't paint「口头收听中 · 可说：…」into the name line.
+      if(oralOn) armHint='';
+      if(!armHint&&armed&&!oralOn) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
       var flowHint=String((s&&s.cursorBeginnerFlowHint)||(s&&s.cursor_beginner_flow_hint)||'').trim();
-      if(!flowHint&&armed) flowHint='发送→右侧框+Enter · 取消→退出聆听并停生成';
+      if(!flowHint&&armed&&!oralOn) flowHint='发送→右侧框+Enter · 取消→退出聆听并停生成';
       if(miniBeginnerHint){
         if(!probeOk&&msg){
           miniBeginnerHint.hidden=false;
@@ -2354,7 +2390,7 @@
       if(typeof applyCursorBeginnerMini.__lastArmed==='undefined') applyCursorBeginnerMini.__lastArmed=false;
       applyCursorBeginnerMini.__lastArmed=armed;
       var cap=document.getElementById('overlayKeyCaption');
-      if(armed&&probeOk&&armHint&&!keyHoverActive){
+      if(armed&&probeOk&&armHint&&!keyHoverActive&&!oralOn){
         // One strip only — do not also toast (that stacked a second dark pill under caption).
         var nameEl=cap&&cap.querySelector('[data-cap-name]');
         var chordEl=cap&&cap.querySelector('[data-cap-chord]');
@@ -2454,22 +2490,33 @@
       miniBeginnerListenBanner.classList.toggle('is-soft-close', softClose);
 
       var armHint=String((s&&(s.oralListenHint||s.oral_listen_hint||s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
-      if(!armHint&&(beginnerOn||oralOn)) armHint=oralOn?'口头收听中':'聆听中 · 可说：发送、继续、新建、麦克风、取消';
+      if(!armHint&&beginnerOn) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
       var flowHint=String((s&&(s.oralListenFlowHint||s.oral_listen_flow_hint||s.cursorBeginnerFlowHint||s.cursor_beginner_flow_hint))||'').trim();
       if(!flowHint&&beginnerOn) flowHint='发送→右侧框+Enter · 取消→退出聆听并停生成';
-      if(!flowHint&&oralOn) flowHint='发送→右侧框+Enter · 取消→退出收听';
-      var text=vHeard||(hubOn?hubPhaseLabel(phase, beginnerOn):(oralOn?'口头收听中':(armHint||'')));
-      if(miniBeginnerListenText) miniBeginnerListenText.textContent=text;
+      if(!flowHint&&oralOn) flowHint='Esc / 说「取消」「退出」→ 退出收听 · 发送→右侧框+Enter';
+      // Oral: wave chip = status; text slot = live ASR only (no「口头收听中」/「正在听…」filler).
+      // Beginner/hub: keep prior status-line behavior.
+      var needAim=oralOn&&armHint.indexOf('请先圈选')>=0;
+      var text=vHeard
+        ||(needAim?armHint
+          :(oralOn?''
+            :(hubOn?hubPhaseLabel(phase, beginnerOn):(armHint||''))));
+      if(miniBeginnerListenText){
+        miniBeginnerListenText.textContent=text;
+        miniBeginnerListenText.classList.toggle('is-live',!!vHeard);
+        miniBeginnerListenText.classList.toggle('is-waiting',!!(oralOn&&!vHeard&&!needAim));
+      }
       var chips=oralOn?oralCmdCardsHtml(s):'';
       if(miniOralCmdStrip){
+        // Keep say-chips while waiting; hide once live transcript owns the line.
         var showCmds=oralOn&&!vHeard&&!!chips;
         miniOralCmdStrip.innerHTML=showCmds?chips:'';
         miniOralCmdStrip.hidden=!showCmds;
         if(showCmds) bindOralCmdChipClicks(miniOralCmdStrip);
       }
       if(miniBeginnerListenFlow){
-        var showFlow=(beginnerOn||oralOn)&&!vHeard&&!hubOn&&!!flowHint;
-        if(hubOn&&(beginnerOn||oralOn)&&!vHeard&&flowHint){
+        var showFlow=(beginnerOn||oralOn)&&!hubOn&&!!flowHint;
+        if(hubOn&&(beginnerOn||oralOn)&&flowHint){
           showFlow=true;
         }
         miniBeginnerListenFlow.hidden=!showFlow;
@@ -2634,6 +2681,8 @@
       lastSnap.voice_heard_partial='';
       lastSnap.voiceHeardMatched=false;
       lastSnap.voice_heard_matched=false;
+      var heardEl=document.querySelector('#overlayKeyCaption [data-cap-heard]');
+      if(heardEl){ heardEl.textContent=''; heardEl.hidden=true; }
       // Oral borrowed beginner captions — clear sticky skip_serializing leftovers.
       var arm=String(lastSnap.cursorBeginnerArmHint||lastSnap.cursor_beginner_arm_hint||'');
       if(arm.indexOf('口头收听')>=0||arm.indexOf('可说：')>=0){
@@ -3416,15 +3465,21 @@
       setKeyCaption(name, chord);
     }
 
+    function oralListenOwnsCaption(){
+      return !!(wrap&&wrap.classList.contains('is-oral-listen'));
+    }
+
     function bindKeyCaption(){
       if(!grid || grid.__capBound) return;
       grid.__capBound=true;
       grid.addEventListener('pointerover',function(e){
+        if(oralListenOwnsCaption()) return;
         var el=e.target&&e.target.closest&&e.target.closest('[data-micro-key]');
         if(!el || !grid.contains(el)) return;
         captionFromKeyEl(el);
       });
       grid.addEventListener('pointerout',function(e){
+        if(oralListenOwnsCaption()) return;
         var to=e.relatedTarget;
         if(to && grid.contains(to)) return;
         if(activePtr){
@@ -3434,10 +3489,12 @@
         setKeyCaption('', '');
       });
       grid.addEventListener('focusin',function(e){
+        if(oralListenOwnsCaption()) return;
         var el=e.target&&e.target.closest&&e.target.closest('[data-micro-key]');
         if(el) captionFromKeyEl(el);
       });
       grid.addEventListener('focusout',function(e){
+        if(oralListenOwnsCaption()) return;
         var to=e.relatedTarget;
         if(to && grid.contains(to)) return;
         if(!activePtr) setKeyCaption('', '');

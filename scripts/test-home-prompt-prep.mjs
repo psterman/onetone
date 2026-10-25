@@ -284,6 +284,20 @@ function matchAttrSel(node, sel) {
   assert.equal(m.assemblyMeta.included, 1);
   assert.ok(m.assemblyMeta.chars > 0);
   assert.ok(m.assemblyMeta.tokensApprox > 0);
+  // Draft only — no briefing template / materials section.
+  API._setModel({
+    phase: 'EMPTY',
+    materials: [],
+    draft: { title: '', body: '只发这一句给 Cursor' },
+    channel: null,
+    receipt: null,
+    assembledMd: '',
+    contentRevision: 1,
+    assembledRevision: -1
+  });
+  const plain = API.assembleMarkdown();
+  assert.equal(String(plain).trim(), '只发这一句给 Cursor');
+  assert.doesNotMatch(plain, /首次沟通简报|已带入的材料|机械装订/);
   API._setModel({
     phase: 'EMPTY',
     materials: [],

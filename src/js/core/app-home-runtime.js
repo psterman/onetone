@@ -45,7 +45,10 @@
   function isHomeAdvancedUnlocked(){
     if(hooks().state().firstSuccess||isFirstSuccessDone()) return true;
     if(global.OneToneOnboarding&&global.OneToneOnboarding.isV2Done&&global.OneToneOnboarding.isV2Done()) return true;
-    try{ return localStorage.getItem('vp_onboarding_v2_done')==='1'; }catch(_){ return false; }
+    try{ if(localStorage.getItem('vp_onboarding_v2_done')==='1') return true; }catch(_){}
+    // 新首页 / Soft Pad 试验用户：已过首跑收敛，勿再折叠 Soft Pad·按键等入口。
+    try{ if(localStorage.getItem('onetone.homeSurface')==='agentV2') return true; }catch(_){}
+    return false;
   }
 
   function isHomeFirstRunFocusMode(){

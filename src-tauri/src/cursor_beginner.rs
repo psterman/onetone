@@ -720,7 +720,9 @@ pub fn run_slot(
             "slotId": def.slot_id
         });
     }
-    if !probe_ok() {
+    // Oral Soft Pad may be Codex (etc.): Cursor probe alone must not gate「继续/发送」.
+    let oral_app = crate::voice_command_session::oral_composer_app_target(state.as_ref());
+    if !probe_ok() && oral_app.is_none() {
         return serde_json::json!({
             "ok": false,
             "reason": "probe_failed",
@@ -728,11 +730,19 @@ pub fn run_slot(
             "slotId": def.slot_id
         });
     }
-    let mapping_id = {
-        let cfg = state.cfg.lock();
-        cursor_chat_mapping_id(&cfg).unwrap_or_default()
+    let (mapping_id, app_target) = {
+        if let Some(tid) = oral_app.clone() {
+            let mid = crate::voice_command_session::armed_mapping_id();
+            (mid, tid)
+        } else {
+            let cfg = state.cfg.lock();
+            (
+                cursor_chat_mapping_id(&cfg).unwrap_or_default(),
+                CURSOR_APP_TARGET_ID.to_string(),
+            )
+        }
     };
-    if mapping_id.is_empty() {
+    if mapping_id.is_empty() && oral_app.is_none() {
         return serde_json::json!({
             "ok": false,
             "reason": "probe_failed",
@@ -746,8 +756,10 @@ pub fn run_slot(
     if def.slot_id == "newThread" {
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
         let focused =
-            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms)
-                .is_ok();
+            app_chat_workflow::focus_composer_for_send(&app, &app_target, duration_ms).is_ok();
+        if focused {
+            crate::voice_command_session::clear_need_composer_aim();
+        }
         if !focused {
             crate::app_log::log_line(
                 state.as_ref(),
@@ -787,6 +799,7 @@ pub fn run_slot(
                 "slotId": def.slot_id,
                 "microKeyId": def.micro_key_id,
                 "mappingId": mapping_id,
+                "appTargetId": app_target,
             }),
         );
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
@@ -800,8 +813,11 @@ pub fn run_slot(
             );
         }
         let focus_res =
-            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
+            app_chat_workflow::focus_composer_for_send(&app, &app_target, duration_ms);
         let focused = focus_res.is_ok();
+        if focused {
+            crate::voice_command_session::clear_need_composer_aim();
+        }
         if let Err(err) = &focus_res {
             crate::app_log::cursor_send_oplog(
                 "abort_no_commit",
@@ -881,6 +897,7 @@ pub fn run_slot(
                 "slotId": def.slot_id,
                 "microKeyId": def.micro_key_id,
                 "mappingId": mapping_id,
+                "appTargetId": app_target,
             }),
         );
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
@@ -893,8 +910,11 @@ pub fn run_slot(
             );
         }
         let focus_res =
-            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
+            app_chat_workflow::focus_composer_for_send(&app, &app_target, duration_ms);
         let focused = focus_res.is_ok();
+        if focused {
+            crate::voice_command_session::clear_need_composer_aim();
+        }
         if let Err(err) = &focus_res {
             crate::app_log::cursor_send_oplog(
                 "abort_no_commit",
@@ -1471,19 +1491,23 @@ mod tests {
         assert!(src.contains("slot_id == \"continue\""));
         assert!(src.contains("continue_prompt_text"));
         assert!(src.contains("insert_text_no_enter"));
+        assert!(src.contains("oral_composer_app_target"));
         // Dedicated branch must not fall through to focus_composer_only for continue.
         let cont_at = src
             .find("if def.slot_id == \"continue\"")
             .expect("continue branch");
-        let next_generic = src[cont_at..]
-            .find("focus_composer_only")
-            .expect("generic focus after continue");
-        let cont_end = src[cont_at..]
-            .find("if let Err(err) = app_chat_workflow::focus_composer_only")
-            .expect("fallthrough focus_composer_only");
+        let cont_chunk = &src[cont_at..];
+        let cont_return = cont_chunk
+            .find("continue sent")
+            .expect("continue success return");
+        let call_in_branch = cont_chunk[..cont_return].contains("focus_composer_only(&");
         assert!(
-            next_generic >= cont_end,
+            !call_in_branch,
             "continue branch must not call focus_composer_only"
+        );
+        assert!(
+            cont_chunk[..cont_return].contains("focus_composer_for_send(&app, &app_target"),
+            "continue must punch oral/app_target (Codex Soft Pad oral)"
         );
         let def = slot_def("continue").unwrap();
         assert_eq!(def.micro_key_id, "AG02");

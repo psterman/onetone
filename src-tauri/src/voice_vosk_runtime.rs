@@ -19,6 +19,23 @@ use crate::AppState;
 
 static OVERLAY_VOICE_NUDGE: std::sync::OnceLock<parking_lot::Mutex<(Instant, String)>> =
     std::sync::OnceLock::new();
+/// Oral Soft Pad: Detected + Final for the same「继续」used to spawn two run_slot
+/// threads that fight over composer focus — aim click lands, insert/Enter aborted.
+static ORAL_SOFT_DEDUP: std::sync::OnceLock<parking_lot::Mutex<(Instant, String)>> =
+    std::sync::OnceLock::new();
+
+fn oral_soft_dispatch_dup(phrase: &str) -> bool {
+    const GAP: Duration = Duration::from_millis(1400);
+    let slot = ORAL_SOFT_DEDUP
+        .get_or_init(|| parking_lot::Mutex::new((Instant::now() - GAP, String::new())));
+    let mut gate = slot.lock();
+    let same = gate.1 == phrase && gate.0.elapsed() < GAP;
+    if !same {
+        gate.0 = Instant::now();
+        gate.1 = phrase.to_string();
+    }
+    same
+}
 
 fn maybe_nudge_overlay_for_voice(app: &AppHandle, state: &AppState, text: &str) {
     const MIN: Duration = Duration::from_millis(120);
@@ -584,7 +601,9 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
                     continue;
                 }
                 *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
-                *state.voice_vosk_last_final.lock() = text;
+                *state.voice_vosk_last_final.lock() = text.clone();
+                // Soft Pad oral caption needs a nudge — Detected can fire without a Final emit.
+                maybe_nudge_overlay_for_voice(app, state, &text);
                 process_detected(state, app, &phrase);
             }
         }
@@ -613,6 +632,10 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     // Side-key RAlt / 「说话」arms that gap and used to drop 继续/截图/退出.
     // Latch oral_armed at detect time — hold_up may clear is_armed before the spawn runs.
     if crate::voice_command_session::is_armed() {
+        // Keep wake-key bypass, but collapse Detected+Final for the same say.
+        if oral_soft_dispatch_dup(phrase) {
+            return;
+        }
         *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
         let state2 = Arc::clone(state);
         let app2 = app.clone();

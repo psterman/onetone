@@ -29,19 +29,39 @@
     } catch (_) {}
   }
 
+  /** Cached oral-command listen arm (not dictation / wake assist). */
+  var oralArmed = false;
+  var oralArmBound = false;
+
   function voiceOn() {
+    return !!oralArmed;
+  }
+
+  function bindOralArmEvents() {
+    if (oralArmBound || typeof global.addEventListener !== 'function') return;
+    oralArmBound = true;
+    global.addEventListener('ot:runtime-event', function (ev) {
+      var evt = ev && ev.detail;
+      if (!evt || typeof evt !== 'object') return;
+      var source = String(evt.source || evt.Source || '').toLowerCase();
+      var kind = String(evt.kind || evt.Kind || '').toLowerCase();
+      if (source !== 'voice_command') return;
+      if (kind === 'session_begin') {
+        oralArmed = true;
+        syncCapabilityStates({ silent: false });
+      } else if (kind === 'session_end') {
+        oralArmed = false;
+        syncCapabilityStates({ silent: false });
+      }
+    });
+  }
+
+  function selectedMappingId() {
     try {
-      var Live = global.OneToneHomeLive;
-      if (Live && typeof Live.voiceEngineOn === 'function') {
-        return Live.voiceEngineOn() !== 'off';
-      }
-      var c = cfg();
-      if (global.OneToneVoiceSurfaceCopy && global.OneToneVoiceSurfaceCopy.assistEnabled) {
-        return !!global.OneToneVoiceSurfaceCopy.assistEnabled(c);
-      }
-      return !!c.voiceAssistEnabled;
+      var st = global.OneToneState;
+      return String((st && st.selectedMappingId) || '').trim();
     } catch (_) {
-      return false;
+      return '';
     }
   }
 
@@ -91,20 +111,16 @@
         { silent: silent }
       );
     }
+    bindOralArmEvents();
     var vOn = voiceOn();
     var curV = capState('voice');
     if (curV.state !== 'pending') {
-      var Live = global.OneToneHomeLive;
-      var engineLive = false;
-      try {
-        engineLive = !!(Live && Live.voiceEngineOn && Live.voiceEngineOn() !== 'off');
-      } catch (_) {}
       setCap(
         'voice',
         {
           state: vOn ? 'on' : 'off',
           configOn: vOn,
-          runtimeReady: !!(vOn && engineLive),
+          runtimeReady: vOn,
           error: null
         },
         { silent: silent }
@@ -171,29 +187,46 @@
       });
   }
 
+  /** Soft Pad oral needs Vosk STT (preview + free-say). Same as old home speak channel. */
+  function ensureOralVoiceEngine() {
+    var vw = global.OneToneVoiceWake;
+    try {
+      if (vw && typeof vw.unparkHomeAsrQuiet === 'function') vw.unparkHomeAsrQuiet();
+    } catch (_) {}
+    if (!vw || typeof vw.switchListeningStrategy !== 'function') {
+      return Promise.resolve();
+    }
+    return Promise.resolve(vw.switchListeningStrategy('auto', { force: true })).catch(function () {});
+  }
+
   function toggleVoice() {
     setCap('voice', { state: 'pending', error: null });
-    var Actions = global.OneToneHomeLiveActions;
-    try {
-      if (Actions && typeof Actions.homeToggleVoiceWake === 'function') {
-        Actions.homeToggleVoiceWake();
-      } else {
-        throw new Error('voice_unavailable');
-      }
-    } catch (e) {
-      setCap('voice', {
-        state: voiceOn() ? 'on' : 'off',
-        error: String((e && e.message) || e || 'voice_failed')
+    var mid = selectedMappingId();
+    var arming = !oralArmed;
+    var prep = arming ? ensureOralVoiceEngine() : Promise.resolve();
+    return prep
+      .then(function () {
+        return invoke('cmd_voice_command_session_toggle', { mappingId: mid || null });
+      })
+      .then(function (res) {
+        // Toggle may no-op on wrong_fg / recording; trust backend armed flag.
+        var on = !!(res && res.armed);
+        oralArmed = on;
+        setCap('voice', {
+          state: on ? 'on' : 'off',
+          configOn: on,
+          runtimeReady: on,
+          error: null
+        });
+        return { ok: !(res && res.ok === false), enabled: on, armed: on };
+      })
+      .catch(function (e) {
+        setCap('voice', {
+          state: voiceOn() ? 'on' : 'off',
+          error: String((e && e.message) || e || 'voice_failed')
+        });
+        return { ok: false, error: e, enabled: voiceOn() };
       });
-      return Promise.resolve({ ok: false, error: e });
-    }
-    return new Promise(function (resolve) {
-      global.setTimeout(function () {
-        var on = voiceOn();
-        setCap('voice', { state: on ? 'on' : 'off', error: null });
-        resolve({ ok: true, enabled: on });
-      }, 180);
-    });
   }
 
   function toggleCamera() {

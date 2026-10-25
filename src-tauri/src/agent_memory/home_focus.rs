@@ -191,13 +191,24 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
 }
 
 fn read_foreground() -> HomeFocusForeground {
+    // Opening OneTone homepage makes FG = self. Dock/send target must still see the
+    // last external app (Cursor) — same sticky as habit / cmd_foreground_context_snapshot.
+    // Live-only FG left app_id empty → inventory defaulted to Codex while workspace
+    // still showed「Cursor 可观察」.
     let live = app_identity::foreground_app_identity();
+    let self_fg = live
+        .as_ref()
+        .is_some_and(|id| app_identity::is_self_identity(id));
+    let sticky = if self_fg {
+        app_identity::capture_tray_foreground_identity()
+    } else {
+        None
+    };
+    let id = sticky.as_ref().or(live.as_ref());
     HomeFocusForeground {
-        app_id: live
-            .as_ref()
-            .and_then(|id| id.matched_preset_app_id.clone()),
-        app_name: live.as_ref().map(app_identity::identity_display_name),
-        window_title: live.as_ref().map(|id| id.window_title.clone()),
+        app_id: id.and_then(|i| i.matched_preset_app_id.clone()),
+        app_name: id.map(app_identity::identity_display_name),
+        window_title: id.map(|i| i.window_title.clone()),
     }
 }
 

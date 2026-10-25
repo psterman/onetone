@@ -2788,11 +2788,13 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
     if snapshot.pad_status.trim().is_empty() || snapshot.pad_status == "idle" {
         snapshot.pad_status = "listening".into();
     }
-    // Prefer oral caption over beginner arm copy when both could show.
-    if !snapshot.oral_listen_hint.is_empty() {
+    // Oral owns caption chrome (wave + ASR). Flow hint still mirrors for shared strip cleanup.
+    snapshot.cursor_beginner_flow_hint = snapshot.oral_listen_flow_hint.clone();
+    snapshot.cursor_beginner_armed = true;
+    if snapshot.oral_listen_hint.is_empty() {
+        snapshot.cursor_beginner_arm_hint.clear();
+    } else {
         snapshot.cursor_beginner_arm_hint = snapshot.oral_listen_hint.clone();
-        snapshot.cursor_beginner_flow_hint = snapshot.oral_listen_flow_hint.clone();
-        snapshot.cursor_beginner_armed = true;
     }
 }
 
@@ -2829,7 +2831,14 @@ fn now_epoch_ms() -> u64 {
 
 fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState) {
     let partial = state.voice_vosk_last_partial.lock().clone();
-    let final_text = state.voice_vosk_last_final.lock().clone();
+    let mut final_text = state.voice_vosk_last_final.lock().clone();
+    // Grammar Detected often sets phrase without a free-mode Final — still show it on Soft Pad.
+    if final_text.trim().is_empty() {
+        let detected = state.voice_vosk_last_detected_phrase.lock().clone();
+        if !detected.trim().is_empty() {
+            final_text = detected;
+        }
+    }
     snapshot.voice_heard_partial = partial.clone();
     snapshot.voice_heard_final = final_text.clone();
     let heard = if !partial.trim().is_empty() {

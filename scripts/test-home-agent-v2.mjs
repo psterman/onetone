@@ -101,6 +101,15 @@ assert.match(dockSrc, /function ensureAim/);
 assert.match(dockSrc, /function refreshAllAims/);
 assert.match(shell, /ensureAim\(c\.id,\s*\{\s*force:\s*false/);
 assert.doesNotMatch(shell, /clipWrite[\s\S]{0,200}calibrateAim\(c\.id\)/);
+// Send must call ensureAim (not swallow) then agent.focus+paste; project is not a gate.
+assert.match(shell, /Project is a handoff hint only/);
+assert.match(shell, /function sendAgentIdFor/);
+assert.match(shell, /pasteClipboard:\s*true/);
+assert.match(shell, /Ctrl\/Cmd\+Enter|ctrlKey \|\| e\.metaKey/);
+assert.doesNotMatch(
+  shell,
+  /function send\([\s\S]*?if\s*\(!ctx\.projectPath\)/
+);
 assert.match(storeSrc, /icons\/app-target\/kimi\.png/);
 assert.match(storeSrc, /icons\/app-target\/pi\.png/);
 assert.match(storeSrc, /icons\/app-target\/openclaw\.png/);
@@ -196,6 +205,10 @@ assert.match(dockSrc, /OneToneHomeDockBridge/);
 assert.match(dockSrc, /configOn/);
 assert.match(dockSrc, /runtimeReady/);
 assert.match(dockSrc, /cmd_soft_pad_force_open/);
+assert.match(dockSrc, /cmd_voice_command_session_toggle/);
+assert.match(dockSrc, /ot:runtime-event/);
+assert.match(dockSrc, /ensureOralVoiceEngine|switchListeningStrategy\('auto'/);
+assert.doesNotMatch(dockSrc, /homeToggleVoiceWake/);
 
 assert.match(shell, /OneToneHomeAgentV2Store/);
 assert.match(shell, /cmd_agent_center_action/);
@@ -612,6 +625,101 @@ assert.equal(rows[0].line, 'refactor home dock');
   );
   assert.equal(Store.__testOnly.workRows(5).length, 0);
   assert.equal(Store.__testOnly.getState().selectedKind, null);
+
+  // Cursor FG + workspace observable, Codex listed first / still "running" → dock = Cursor.
+  st2.focusDto = {
+    foreground: { appId: 'cursor-chat', appName: 'Cursor', windowTitle: 'voice-pilot - Cursor' }
+  };
+  st2.focusVm = {
+    mode: 'attention',
+    desk: { needsYouRows: [], livingRows: [{ title: 'Cursor 可观察', provider: 'Cursor' }], continueCard: null }
+  };
+  st2.inventory = {
+    agents: [
+      { kind: 'codex', presence: 'cli', confidence: 'high', running: true },
+      { kind: 'cursor', presence: 'desktop', confidence: 'high', running: true }
+    ]
+  };
+  st2.inventoryLoaded = true;
+  st2.userLocked = false;
+  st2.selectedKind = 'codex';
+  Store.__testOnly.applyAgentSnap(
+    {
+      agents: [
+        {
+          agentId: 'kind:codex',
+          runtimeKind: 'codex',
+          recentPrompt: '',
+          observedStatus: { value: 'idle', source: 'inferred' },
+          actions: [{ id: 'agent.focus', enabled: true }]
+        },
+        {
+          agentId: 'kind:cursor',
+          runtimeKind: 'cursor',
+          recentPrompt: '',
+          observedStatus: { value: 'idle', source: 'inferred' },
+          actions: [{ id: 'agent.focus', enabled: true }]
+        }
+      ]
+    },
+    {}
+  );
+  Store.__testOnly.sanitizeSelectedKind();
+  assert.equal(
+    Store.__testOnly.getState().selectedKind,
+    'cursor',
+    'Cursor FG must win dock over stale Codex running'
+  );
+
+  // Enter homepage → live FG is OneTone (no appId). Sticky last Cursor must keep dock.
+  st2.focusDto = { foreground: { appId: null, appName: 'OneTone', windowTitle: 'OneTone' } };
+  st2.selectedKind = 'codex';
+  Store.__testOnly.sanitizeSelectedKind();
+  assert.equal(
+    Store.__testOnly.getState().selectedKind,
+    'cursor',
+    'opening homepage (self FG) must keep last Cursor send target, not flip to Codex'
+  );
+
+  // ChatGPT/Codex startup-running in background, no FG / no live work → do not invent dock.
+  Store.__testOnly.setLastExternalSendKind(null);
+  st2.focusDto = { foreground: { appId: null, appName: 'OneTone', windowTitle: 'OneTone' } };
+  st2.inventory = {
+    agents: [
+      { kind: 'codex', presence: 'cli', confidence: 'high', running: true },
+      { kind: 'cursor', presence: 'desktop', confidence: 'high', running: true }
+    ]
+  };
+  st2.focusVm = { mode: 'quiet', desk: { needsYouRows: [], livingRows: [], continueCard: null } };
+  st2.userLocked = false;
+  st2.selectedKind = 'codex';
+  Store.__testOnly.applyAgentSnap(
+    {
+      agents: [
+        {
+          agentId: 'kind:codex',
+          runtimeKind: 'codex',
+          recentPrompt: '',
+          observedStatus: { value: 'idle', source: 'inferred' },
+          actions: [{ id: 'agent.focus', enabled: true }]
+        },
+        {
+          agentId: 'kind:cursor',
+          runtimeKind: 'cursor',
+          recentPrompt: '',
+          observedStatus: { value: 'idle', source: 'inferred' },
+          actions: [{ id: 'agent.focus', enabled: true }]
+        }
+      ]
+    },
+    {}
+  );
+  Store.__testOnly.sanitizeSelectedKind();
+  assert.equal(
+    Store.__testOnly.getState().selectedKind,
+    null,
+    'background Codex running must not become dock default without FG or live work'
+  );
 }
 
 // inventory discovery — no installed field

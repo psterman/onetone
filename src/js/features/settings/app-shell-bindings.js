@@ -13,8 +13,20 @@
     var t=hooks.t;
     var vpInvoke=hooks.vpInvoke;
     bindClick('btnSettings',function(){
+      // 首跑收敛时：展开侧栏并进设置，勿劫持到引导（否则「其他设置」永远进不去）。
       if(hooks.isHomeFirstRunFocusMode()&&!ui.drawerOpen){
-        if(window.OneToneOnboarding) window.OneToneOnboarding.open(true);
+        try{
+          if(global.OneToneAppHomeRuntime&&typeof global.OneToneAppHomeRuntime.expandHomeFocusNav==='function'){
+            global.OneToneAppHomeRuntime.expandHomeFocusNav();
+          }
+          if(global.OneToneHomeShell&&typeof global.OneToneHomeShell.render==='function'){
+            global.OneToneHomeShell.render();
+          }
+        }catch(_){}
+        if(hooks.openSettings) hooks.openSettings({panel:'basic'});
+        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:'basic'});
+        }
         return;
       }
       if(ui.drawerOpen) hooks.closeDrawer();

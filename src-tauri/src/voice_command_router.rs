@@ -226,9 +226,12 @@ fn oral_item_enabled(
     }
 }
 
-/// Soft core (说话/发送/取消) default on; continue/newThread require explicit enable.
+/// Soft Pad beginner slots default on (matches ARM_HINT / Soft Pad chips).
 fn soft_oral_default_on(slot_id: &str) -> bool {
-    matches!(slot_id, "pushToTalk" | "stopOrSend" | "cancelListen")
+    matches!(
+        slot_id,
+        "pushToTalk" | "stopOrSend" | "continue" | "newThread" | "cancelListen"
+    )
 }
 
 fn oral_split_say(raw: &str) -> Vec<String> {
@@ -373,14 +376,17 @@ fn try_route_oral_armed(
                 ..Default::default()
             });
         }
-        // First-use aim still open: block composer-dependent slots until user finishes.
+        // First-use calibrate still pending: do NOT hard-skip. User said 继续/发送 —
+        // close the circle overlay and let run_slot punch the composer (profile default
+        // if no memory point yet). Old skip left ASR「继续」with zero aim.
         if crate::voice_command_session::need_composer_aim()
             && matches!(
                 slot_id,
                 "stopOrSend" | "continue" | "newThread" | "pushToTalk"
             )
         {
-            return Some(skip("请先圈选 Agent 输入框完成首次对准，再说口令。".into()));
+            crate::voice_command_session::clear_need_composer_aim();
+            crate::input_aim_calibrate::abort_if_open(app);
         }
         let window = crate::ipc::get_main_window(app)
             .or_else(|| app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label))?;
@@ -398,7 +404,13 @@ fn try_route_oral_armed(
                 ..Default::default()
             });
         }
-        return Some(skip(format!("口头 Soft 槽未执行（{}）", slot_id)));
+        let detail = out
+            .get("message")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("口头 Soft 槽未执行（{}）", slot_id));
+        return Some(skip(detail));
     }
 
     // 一词注入 peers (say on peer wake; scheme = enabled only).
@@ -716,11 +728,13 @@ mod tests {
     #[test]
     fn oral_item_enabled_defaults() {
         assert!(oral_item_enabled(None, "soft:stopOrSend", true));
-        assert!(!oral_item_enabled(
+        assert!(oral_item_enabled(
             None,
             "soft:continue",
             soft_oral_default_on("continue")
         ));
+        assert!(soft_oral_default_on("continue"));
+        assert!(soft_oral_default_on("newThread"));
         assert!(oral_item_enabled(
             None,
             "soft:pushToTalk",
@@ -735,6 +749,14 @@ mod tests {
             },
         );
         assert!(!oral_item_enabled(Some(&scheme), "soft:stopOrSend", true));
+        // Explicit off still wins over Soft default-on.
+        scheme.items.insert(
+            "soft:continue".into(),
+            crate::config::OralCommandItem {
+                say: None,
+                enabled: Some(false),
+            },
+        );
         assert!(!oral_item_enabled(
             Some(&scheme),
             "soft:continue",
