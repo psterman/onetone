@@ -577,9 +577,34 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     if !reason.starts_with("degrade:") {
         clear_degrade_status(state);
     }
-    let cfg = state.cfg.lock().clone();
     let resource_dir = app.path().resource_dir().ok();
-    let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, resource_dir.as_deref());
+    // Unpinned advanced wake: prefer proven SAPI zh (or Vosk if installed). Never trigger download.
+    // Cache only — never CoCreate SAPI / FS-probe under ACTIVATE_LOCK (cold probe →
+    // voiceStatusPoll held multi-second / UI_HB_STALL / 进入假死).
+    {
+        let cfg_snap = state.cfg.lock().clone();
+        if crate::voice_capability::cfg_wake_unpinned(&cfg_snap) {
+            if let Some(cap) = crate::voice_capability::cached_voice_capability() {
+                let mut cfg = state.cfg.lock();
+                if crate::voice_capability::apply_recommended_wake_if_unpinned(
+                    &mut cfg,
+                    cap.recommended_wake,
+                ) {
+                    crate::app_log::log_line(
+                        state,
+                        "voice",
+                        &format!(
+                            "voice_bootstrap applied recommended_wake={:?} (unpinned advanced, cached)",
+                            cap.recommended_wake
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    let cfg = state.cfg.lock().clone();
+    // Cached readiness only — FS probe under this lock hung activate + status IPC.
+    let kws_ready = crate::voice_kws_runtime::kws_readiness_cached(state, &cfg);
     let desired = resolve_supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
     let from = observe_running_engine(state);
     let now = onetone_logic::runtime_event::now_ms();
@@ -603,6 +628,11 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                     prev.detail()
                 ),
             );
+        }
+        // Level-monitor cpal must drop the endpoint before SAPI SetInput — otherwise
+        // start_self sapi stalls (no "start self sapi ok") and voiceStatusPoll 假死.
+        if matches!(prev, onetone_logic::mic_owner::MicOwner::LevelMonitor { .. }) {
+            stop_mic_monitor_and_release(state, "activate_claim_wake");
         }
     } else {
         let _ = state.mic_owner.release(
@@ -1257,6 +1287,10 @@ pub fn supervisor_status_json(state: &AppState) -> serde_json::Value {
     let active = observe_running_engine(state);
     let degraded = *state.voice_degraded.lock();
     let degraded_reason = state.voice_degraded_reason.lock().clone();
+    // Soft Pad oral / auto: surface flag from degrade reason (no FS probe on hot status path).
+    let need_vosk_download = matches!(strategy, "auto" | "enhanced")
+        && (degraded_reason.contains("vosk_model_missing")
+            || degraded_reason.contains("model_missing"));
     serde_json::json!({
         "desiredEngine": engine_label(desired),
         "listeningStrategy": strategy,
@@ -1264,6 +1298,7 @@ pub fn supervisor_status_json(state: &AppState) -> serde_json::Value {
         "degraded": degraded,
         "degradedReason": degraded_reason,
         "activateBusy": activate_busy(),
+        "needVoskDownload": need_vosk_download,
     })
 }
 

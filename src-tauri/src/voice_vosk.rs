@@ -169,11 +169,50 @@ pub fn vosk_resources_dir(resource_dir: Option<&Path>) -> PathBuf {
     resolve_vosk_dll_dir(resource_dir)
 }
 
-pub fn vosk_model_download_url(preset: &str) -> Option<&'static str> {
+/// Ordered download URLs (China-friendly first). Callers try until one succeeds.
+///
+/// Release installers already bundle models under `resources/vosk/`; these URLs are
+/// only for missing/corrupt installs and Soft Pad download CTA.
+pub fn vosk_model_download_urls(preset: &str) -> Vec<&'static str> {
     match preset.trim() {
-        "cn-light" => Some("https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip"),
-        "en-light" => Some("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"),
-        _ => Some("https://alphacephei.com/vosk/models"),
+        "cn-light" => vec![
+            // hf-mirror.com is reachable from mainland China; alphacephei often is not.
+            "https://hf-mirror.com/rhasspy/vosk-models/resolve/main/zh/vosk-model-small-cn-0.22.zip",
+            "https://huggingface.co/rhasspy/vosk-models/resolve/main/zh/vosk-model-small-cn-0.22.zip",
+            "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip",
+            "https://archive.org/download/vosk-models-small/vosk-model-small-cn-0.22.zip",
+        ],
+        "en-light" => vec![
+            "https://hf-mirror.com/rhasspy/vosk-models/resolve/main/en/vosk-model-small-en-us-0.15.zip",
+            "https://huggingface.co/rhasspy/vosk-models/resolve/main/en/vosk-model-small-en-us-0.15.zip",
+            "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+            "https://archive.org/download/vosk-models-small/vosk-model-small-en-us-0.15.zip",
+        ],
+        _ => vec!["https://alphacephei.com/vosk/models"],
+    }
+}
+
+pub fn vosk_model_download_url(preset: &str) -> Option<&'static str> {
+    vosk_model_download_urls(preset).into_iter().next()
+}
+
+#[cfg(test)]
+mod download_url_tests {
+    use super::vosk_model_download_urls;
+
+    #[test]
+    fn cn_urls_prefer_china_mirror() {
+        let urls = vosk_model_download_urls("cn-light");
+        assert!(urls.len() >= 3);
+        assert!(urls[0].contains("hf-mirror.com"));
+        assert!(urls.iter().any(|u| u.contains("alphacephei.com")));
+    }
+
+    #[test]
+    fn en_urls_prefer_china_mirror() {
+        let urls = vosk_model_download_urls("en-light");
+        assert!(urls[0].contains("hf-mirror.com"));
+        assert!(urls.iter().any(|u| u.contains("vosk-model-small-en-us-0.15")));
     }
 }
 

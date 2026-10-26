@@ -17,7 +17,7 @@ assert.ok(A && T);
 // scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 29);
+assert.equal(keyBindings.length, A.SLOTS.length);
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
@@ -45,7 +45,7 @@ assert.equal(A.defaultKeyForSlot('focusBrowserAddressBar'), 'Ctrl+L');
 assert.equal(A.insertTextForSlot('openReviewTab'), '');
 assert.equal(A.insertTextForSlot('review'), '/review');
 keyBindings.forEach(function (b) {
-  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel' || b.slotId === 'pasteAndSend' || b.slotId === 'runTargetSequence') {
+  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel' || b.slotId === 'pasteAndSend' || b.slotId === 'runTargetSequence' || b.slotId === 'toggleVoiceKeyless') {
     assert.equal(b.triggerBinding, '', b.slotId + ' uses focus workflow, no chord');
     return;
   }
@@ -56,6 +56,7 @@ keyBindings.forEach(function (b) {
 assert.equal(A.defaultKeyForSlot('summonCodex'), '');
 assert.equal(A.defaultKeyForSlot('claudeModel'), '');
 assert.equal(A.defaultKeyForSlot('pasteAndSend'), '');
+assert.equal(A.defaultKeyForSlot('toggleVoiceKeyless'), '');
 assert.equal(A.defaultKeyForSlot('commandPalette'), 'Ctrl+K');
 
 var voiceOn = allKeys.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
@@ -140,7 +141,7 @@ assert.ok(T.hasCodexPack(empty));
 assert.equal(empty.triggerKey, 'VolUp');
 assert.equal(empty.targetKey, 'Ctrl+Win');
 empty.agentBindings.filter(function (x) { return x.triggerType === 'key'; }).forEach(function (x) {
-  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel' || x.slotId === 'pasteAndSend' || x.slotId === 'runTargetSequence') {
+  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel' || x.slotId === 'pasteAndSend' || x.slotId === 'runTargetSequence' || x.slotId === 'toggleVoiceKeyless') {
     assert.equal(x.triggerBinding, '', x.slotId + ' seeded empty (focus workflow)');
     return;
   }
@@ -151,6 +152,142 @@ var emptyVoiceOn = empty.agentBindings.filter(function (x) {
   return x.triggerType === 'voice' && x.enabled;
 });
 assert.equal(emptyVoiceOn.length, A.essentialSlots().length);
+
+// MiniMax gets the same VS Code lineage pack (keys + voice essentials)
+assert.ok(A.isVscodeLineageApp('minimax-chat'), 'minimax is vscode lineage');
+var mxKeys = A.defaultKeyMapForApp('minimax-chat');
+assert.equal(mxKeys.summonCodex, 'Alt+A', 'MiniMax Mini Chat = Alt+A');
+assert.equal(mxKeys.commandPalette, 'Ctrl+K', 'MiniMax global search');
+assert.equal(mxKeys.quickSearch, 'Ctrl+G', 'MiniMax search tasks');
+assert.equal(mxKeys.openTerminal, 'Ctrl+J', 'MiniMax terminal (not Ctrl+`)');
+assert.equal(mxKeys.newThread, 'Ctrl+N');
+assert.equal(mxKeys.toggleSidebar, 'Ctrl+B');
+assert.equal(mxKeys.openSettings, 'Ctrl+,');
+var mx = { id: 'm-minimax', appTargetId: 'minimax-chat', agentBindings: [] };
+T.ensurePackForMapping(mx, { persist: false });
+assert.ok(T.hasVscodePack(mx), 'minimax pack stamped');
+assert.ok(mx.agentBindings.some(function (b) {
+  return b.triggerType === 'voice' && b.enabled && String(b.triggerBinding || '').trim();
+}), 'minimax has oral phrases');
+assert.ok(mx.agentBindings.some(function (b) {
+  return b.slotId === 'summonCodex' && b.triggerType === 'key' && b.triggerBinding === 'Alt+A';
+}), 'minimax summon = Mini Chat');
+assert.ok(mx.agentBindings.some(function (b) {
+  return b.slotId === 'commandPalette' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+K';
+}), 'minimax palette = global search');
+assert.equal(A.labelForSlotForMapping(mx, 'commandPalette'), '全局搜索');
+assert.equal(A.labelForSlotForMapping(mx, 'summonCodex'), '显示 Mini Chat');
+
+// WorkBuddy desktop chords (not CodeBuddy / not VS Code)
+assert.ok(A.isVscodeLineageApp('workbuddy-chat'), 'workbuddy is vscode lineage pack path');
+var wbKeys = A.defaultKeyMapForApp('workbuddy-chat');
+assert.equal(wbKeys.summonCodex, 'Ctrl+Space', 'WorkBuddy wake');
+assert.equal(wbKeys.commandPalette, 'Ctrl+K', 'WorkBuddy global search');
+assert.equal(wbKeys.quickSearch, 'Ctrl+K');
+assert.equal(wbKeys.quickChat, 'Ctrl+Alt+W', 'WorkBuddy quick new chat');
+assert.equal(wbKeys.pasteAndSend, 'Ctrl+Shift+V', 'WorkBuddy paste and ask');
+assert.equal(wbKeys.navBack, 'Ctrl+[', 'WorkBuddy previous task');
+assert.equal(wbKeys.navForward, 'Ctrl+]');
+assert.equal(wbKeys.pushToTalk, '', 'WorkBuddy oral stays OneTone');
+assert.equal(wbKeys.newThread, 'Ctrl+N');
+var wb = { id: 'm-workbuddy', appTargetId: 'workbuddy-chat', agentBindings: [] };
+T.ensurePackForMapping(wb, { persist: false });
+assert.ok(T.hasVscodePack(wb), 'workbuddy pack stamped');
+assert.ok(wb.agentBindings.some(function (b) {
+  return b.slotId === 'summonCodex' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+Space';
+}), 'workbuddy summon = Ctrl+Space');
+assert.ok(wb.agentBindings.some(function (b) {
+  return b.slotId === 'commandPalette' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+K';
+}), 'workbuddy palette = Ctrl+K');
+assert.ok(wb.agentBindings.some(function (b) {
+  return b.slotId === 'pasteAndSend' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+Shift+V';
+}), 'workbuddy pasteAndSend');
+assert.equal(A.labelForSlotForMapping(wb, 'summonCodex'), '呼出 WorkBuddy');
+assert.equal(A.labelForSlotForMapping(wb, 'commandPalette'), '全局搜索');
+assert.equal(A.labelForSlotForMapping(wb, 'navBack'), '上一任务');
+assert.equal(A.labelForSlotForMapping(wb, 'pasteAndSend'), '粘贴并询问');
+// Legacy sparse pack: empty chords heal via fillEmptyKeyDefaults
+var wbLegacy = {
+  id: 'm-wb-legacy',
+  appTargetId: 'workbuddy-chat',
+  agentTemplateId: A.TEMPLATE_ID,
+  agentBindings: [
+    { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: '', enabled: true },
+    { slotId: 'commandPalette', actionId: 'commandPalette', triggerType: 'key', triggerBinding: '', enabled: true },
+    { slotId: 'navForward', actionId: 'navForward', triggerType: 'key', triggerBinding: '', enabled: true }
+  ]
+};
+assert.equal(T.fillEmptyKeyDefaults(wbLegacy), true);
+assert.equal(wbLegacy.agentBindings[0].triggerBinding, 'Ctrl+Space');
+assert.equal(wbLegacy.agentBindings[1].triggerBinding, 'Ctrl+K');
+assert.equal(wbLegacy.agentBindings[2].triggerBinding, 'Ctrl+]');
+
+// Qoder IDE chords (docs.qoder.com/user-guide/keyboard-shortcuts)
+assert.ok(A.isVscodeLineageApp('qoder-chat'), 'qoder is vscode lineage');
+var qdKeys = A.defaultKeyMapForApp('qoder-chat');
+assert.equal(qdKeys.summonCodex, 'Ctrl+L', 'Qoder open/close chat');
+assert.equal(qdKeys.quickChat, 'Ctrl+L');
+assert.equal(qdKeys.cancel, 'Ctrl+Backspace', 'Qoder reject-all');
+assert.equal(qdKeys.commandPalette, 'Ctrl+Shift+P');
+assert.equal(qdKeys.openSettings, 'Ctrl+,');
+assert.equal(qdKeys.pushToTalk, '', 'Qoder oral stays OneTone');
+assert.equal(qdKeys.openTerminal, 'Ctrl+`');
+var qd = { id: 'm-qoder', appTargetId: 'qoder-chat', agentBindings: [] };
+T.ensurePackForMapping(qd, { persist: false });
+assert.ok(T.hasVscodePack(qd), 'qoder pack stamped');
+assert.ok(qd.agentBindings.some(function (b) {
+  return b.slotId === 'summonCodex' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+L';
+}), 'qoder summon = Ctrl+L');
+assert.ok(qd.agentBindings.some(function (b) {
+  return b.slotId === 'cancel' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+Backspace';
+}), 'qoder cancel = reject-all');
+assert.equal(A.labelForSlotForMapping(qd, 'summonCodex'), '打开/关闭聊天');
+assert.equal(A.labelForSlotForMapping(qd, 'quickChat'), '打开/关闭聊天');
+assert.equal(A.labelForSlotForMapping(qd, 'cancel'), '拒绝全部建议');
+// Legacy Escape cancel → heal to Ctrl+Backspace
+var qdLegacy = {
+  id: 'm-qd-legacy',
+  appTargetId: 'qoder-chat',
+  agentTemplateId: A.TEMPLATE_ID,
+  agentBindings: [
+    { slotId: 'cancel', actionId: 'cancel', triggerType: 'key', triggerBinding: 'Escape', enabled: true },
+    { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: '', enabled: true }
+  ]
+};
+assert.equal(T.fillEmptyKeyDefaults(qdLegacy), true);
+assert.equal(qdLegacy.agentBindings[0].triggerBinding, 'Ctrl+Backspace');
+assert.equal(qdLegacy.agentBindings[1].triggerBinding, 'Ctrl+L');
+
+// Trae IDE / Trae Work (docs.trae.cn/ide_keyboard-shortcuts)
+assert.ok(A.isVscodeLineageApp('trae-work'), 'trae-work lineage');
+assert.ok(A.isVscodeLineageApp('trae-code'), 'trae-code lineage');
+var trKeys = A.defaultKeyMapForApp('trae-work');
+assert.equal(trKeys.summonCodex, 'Ctrl+U', 'Trae side chat');
+assert.equal(trKeys.quickChat, 'Ctrl+U');
+assert.equal(trKeys.commandPalette, 'Ctrl+Shift+P');
+assert.equal(trKeys.pushToTalk, '', 'Trae oral stays OneTone');
+assert.equal(A.defaultKeyMapForApp('trae-code').quickChat, 'Ctrl+U');
+assert.equal(A.defaultKeyMapForApp('trae-chat').summonCodex, 'Ctrl+U', 'legacy trae-chat');
+var tr = { id: 'm-trae', appTargetId: 'trae-work', agentBindings: [] };
+T.ensurePackForMapping(tr, { persist: false });
+assert.ok(T.hasVscodePack(tr), 'trae pack stamped');
+assert.ok(tr.agentBindings.some(function (b) {
+  return b.slotId === 'summonCodex' && b.triggerType === 'key' && b.triggerBinding === 'Ctrl+U';
+}), 'trae summon = Ctrl+U');
+assert.equal(A.labelForSlotForMapping(tr, 'summonCodex'), '打开侧边对话');
+assert.equal(A.labelForSlotForMapping(tr, 'quickChat'), '侧边对话');
+var trLegacy = {
+  id: 'm-tr-legacy',
+  appTargetId: 'trae-code',
+  agentTemplateId: A.TEMPLATE_ID,
+  agentBindings: [
+    { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: '', enabled: true },
+    { slotId: 'quickChat', actionId: 'quickChat', triggerType: 'key', triggerBinding: 'Ctrl+L', enabled: true }
+  ]
+};
+assert.equal(T.fillEmptyKeyDefaults(trLegacy), true);
+assert.equal(trLegacy.agentBindings[0].triggerBinding, 'Ctrl+U');
+assert.equal(trLegacy.agentBindings[1].triggerBinding, 'Ctrl+U', 'stale Ctrl+L heals to side chat');
 
 // summonCodex empty chord is intentional — fillEmptyKeyDefaults must not invent Ctrl+Shift+P
 var legacy = {
@@ -1317,6 +1454,10 @@ assert.ok(commitEditFn.indexOf('schedulePreviewPaint') >= 0 || commitEditFn.inde
 
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN includes cursor');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN includes minimax');
+assert.ok(
+  /appId === 'minimax-chat'/.test(softPadHubSrc) && /ensurePackForMapping/.test(softPadHubSrc),
+  'Soft Pad hub runs ensurePackForMapping for MiniMax'
+);
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(softPadHubSrc), 'BUILTIN includes workbuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(softPadHubSrc), 'BUILTIN includes trae-work');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(softPadHubSrc), 'BUILTIN includes trae-code');

@@ -1134,7 +1134,8 @@
       if (appId === 'cursor-chat' || appId === 'workbuddy-chat' ||
           appId === 'trae-work' || appId === 'trae-chat' || appId === 'trae-code' ||
           appId === 'windsurf-chat' ||
-          appId === 'qoder-chat') {
+          appId === 'qoder-chat' ||
+          appId === 'minimax-chat') {
         var Tcur = global.OneToneAgentScenarioTemplate;
         if (Tcur && Tcur.ensurePackForMapping) {
           Tcur.ensurePackForMapping(existing, { persist: true });
@@ -5522,6 +5523,24 @@
     }
   }
 
+  /**
+   * Gaze / auto attention: switch Soft Pad kind without marking a manual pin.
+   * Honors the same "user picked another agent" guard as foreground follow.
+   */
+  function followGazeKind(kind) {
+    kind = String(kind || '').trim();
+    if (!kind || !isHubSoftPadKind(kind)) return { ok: false, reason: 'bad_kind' };
+    if (scopePickedByUser && String(selectedScopeId || '') !== SOFT_PAD_UNIVERSAL_KIND
+        && String(selectedScopeId || '') !== kind) {
+      return { ok: false, reason: 'user_pinned_scope' };
+    }
+    if (String(selectedScopeId || '') === kind) return { ok: true, reason: 'already' };
+    var scope = findScope(kind);
+    if (!scope || String(scope.id) !== kind) return { ok: false, reason: 'no_scope' };
+    selectScope(kind, { fromForeground: true, resetView: false });
+    return { ok: true, reason: 'switched' };
+  }
+
   function selectScope(scopeId, opts) {
     opts = opts || {};
     var scope = findScope(scopeId);
@@ -6810,6 +6829,7 @@
     openDetail: openDetail,
     selectScheme: selectScheme,
     selectScope: selectScope,
+    followGazeKind: followGazeKind,
     getSoftPadFace: function () {
       return softPadFace;
     },

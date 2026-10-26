@@ -179,7 +179,7 @@ check(
 check(
   'oral temp gen guards late oral_end',
   /ORAL_TEMP_GEN/.test(sess) &&
-    /fn restore_oral_temp_engine[\s\S]{0,900}ORAL_TEMP_GEN/.test(sess)
+    /fn restore_oral_temp_engine[\s\S]{0,1200}ORAL_TEMP_GEN/.test(sess)
 );
 
 const beg = read('src-tauri/src/cursor_beginner.rs');

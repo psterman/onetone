@@ -1,235 +1,352 @@
-﻿# 一声 OneTone
+# 每日图片站
 
-官网：**https://www.onetone.app**
+把 `见闻 / 见她 / 见笑` 三个文件夹的每日图片，转成可在微信里直接浏览的公开网页。
 
-桌面应用之间的自然交互中间层 · *bridge every trigger to every app*
+- **页面**：Cloudflare Pages（静态 + Pages Function 图片代理）
+- **图片**：Cloudflare R2 私有 bucket，经 Function 代理读取 —— 不进 git 历史，可随时整目录撤回
+- **更新**：每天一个独立日期页（`/2026-10-25/`），历史全部保留
 
-[English](README.en.md) | 中文
+---
 
-[![Release](https://img.shields.io/github/v/release/psterman/onetone)](https://github.com/psterman/onetone/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/psterman/onetone/release.yml)](https://github.com/psterman/onetone/actions)
-[![Stars](https://img.shields.io/github/stars/psterman/onetone)](https://github.com/psterman/onetone/stargazers)
+## 现状
 
-> v1.0.0 未做代码签名。Windows SmartScreen 可能在首次安装时拦截，请点击 **更多信息** -> **仍要运行**。
+已用 2026-10-25 的真实数据（245 张 / 28.91 MB）完整跑通并验证：
 
-## 它是什么
-
-OneTone 是 Windows 桌面上的**应用自然交互中间层**。它不替换输入法、不替代听写引擎，也不替代任何 Agent。
-
-它做的事是把桌面上的所有触发来源——**声音、按键、摄像头、外设、虚拟面板、Agent 状态灯**——统一成一个执行层，接到**你正在操作的任意桌面应用**里。
-
-**不依赖 AutoHotkey，不依赖任何宿主应用。**
-
-## 它解决什么问题
-
-桌面工作流已经被切碎：
-
-- 一个 AI 编程 Agent 一套快捷键、一套 Composer 入口
-- 一套习惯对应一套按键，切换应用 = 重新记一遍快捷键 + 重新对准输入框
-- Agent 在后台跑的时候，没法在桌面上"看一眼它卡在哪了"
-- 摄像头、麦克风、鼠标侧键、手柄这些触发介质互不打通
-
-OneTone 把这条链路统一成：
-
-```text
-voice / keys / softPad / camera  ->  OneTone  ->  任何桌面应用
-                                          |
-                                          └─  PadStatus 状态灯  ->  Agent Hook 反馈
-```
-
-## 核心架构
-
-| 维度 | 内容 |
+| 指标 | 实测值 |
 |---|---|
-| **四通道输入** | voice / keys / softPad / camera，触发同一组能力卡（`slotId`），统一 dispatch |
-| **应用适配** | 17+ 个 `AppChatProfile`：Cursor、Codex、Claude、Trae、Windsurf、Qoder、Roo、Aider、Cline、Copilot …… |
-| **状态灯** | `PadStatus` × Agent Hook：Codex 单灯、Claude 自建多灯聚合 |
-| **定制工作流** | habit / scene / `agentBindings` / `semantic_action` / `app-behavior-rules` |
-| **本地优先** | KWS、摄像头、视觉触发都在本机；不上传 OneTone 服务器 |
+| 首屏可交互 | 94 ms |
+| 移动端首屏图片请求 | 171 次，0 失败 |
+| 控制台错误 | 0 |
+| 全尺寸 WebP | 15.33 MB（压缩比 1:1.89） |
+| 缩略图 | 4.76 MB（平均 19.2 KB/张） |
+| 页面体积 | 55 KB/天（HTML 37 + CSS 8.6 + JS 9.2） |
+| 转码耗时 | 245 张约 4 分钟 |
+| Functions 单元测试 | 18/18 通过 |
 
-## 四通道
+站点名称：**大脑请批阅**，页头 logo 为 `site/assets/logo.webp`，
+分享卡片封面为 `site/assets/logo.jpg`（640×640）。
 
-四通道不是四个并列功能，而是**同一组能力卡的四种触发方式**。Hook 决定"现在什么态"，每一态高亮哪些能力卡可说 / 可按。
+---
 
-### voice（语音）
+## 微信群分享：怎么保证群友在手机上能看
 
-- **闭集口令**：本地 KWS（Vosk）exact match；grammar 按 Hook 态过滤
-- **长内容听写**：走第三方输入法（PTT），与口令分层，不抢同一 decoder
-- **声学命令**：取消词、结束词、说完、丢本轮
-- **本地引擎**：Windows SAPI、离线 Vosk、KWS
+### 一、技术上必须满足的条件（已全部实现）
 
-### keys（按键）
-
-- 键盘、鼠标侧键、音量键、组合键、手柄、轨迹球、蓝牙戒指 / 外设等 Windows 可识别输入
-- Windows 低级钩子 + Raw Input + RegisterHotKey
-- 与 voice / softPad 同一 `slotId`，可复用同一动作
-
-### softPad（虚拟面板）
-
-- 屏幕上的能力卡面板——**看得见、按得着、点得到**
-- 与口令、实体键**同一槽位**——按 Pad = 喊口令 = 按实体键
-- 迷你栏 = Pad 的条形投影，chip 与 Pad 键共享 `slotId`
-
-### camera（摄像头）
-
-- MediaPipe face landmarker，本地推理
-- 触发类型：离席 / 回席、摇头、长眨、OK 手势、五指摊开、握拳、双眨、视线三区 / 9 宫格停留
-- 典型动作：离席 → 暂停语音 + 隐私屏；摇头 → 取消；长眨 → 激活；OK → 确认
-- 不把摄像头当精确鼠标；区域停留运行时本轮不接
-
-## 应用适配（AppChatProfile）
-
-`src-tauri/src/app_chat_workflow.rs` 维护了一组应用 profile，每个都有：进程名、路径标记、激活键、Composer 锚点、UIA 兼容性。
-
-```text
-Cursor · Codex · Claude · MiniMax · Workbuddy
-Trae (Work / Code / Chat) · Windsurf · Qoder
-Gemini CLI · Cline · Roo · OpenCode
-Copilot (CLI / VSCode) · Aider · ……
-```
-
-每个应用还配 Hook（Cursor / Codex / Claude / Copilot / Aider 等）和 `semantic_action`。
-
-新增应用 = 新增一个 `AppChatProfile`，不改 dispatch 主体。
-
-## 状态灯（PadStatus）
-
-OneTone 在 Soft Pad 上提供状态灯，与 Agent 联动：
-
-- **Codex Hook** → 主 `PadStatus` 单灯（`slotId=status`；无则 fallback AG00）
-- **Claude Hook** → **Claude Agent Activity Pad**：`claude_lights` 自建多灯（agent 活动灯 + OneTone 自建聚合）
-- Loopback 监听 `127.0.0.1:8796`：`POST /api/codex-app/state` 等
-
-Agent 在跑、停、等输入、有 diff——不用切回 Agent 窗口，看一眼 Pad 上的灯就行。
-
-## 定制工作流
-
-每一张能力卡都有四重绑定：
-
-| 绑定 | 内容 |
+| 条件 | 做法 |
 |---|---|
-| 视觉 | Pad 键帽 + 迷你栏 chip |
-| 按键 | Soft Pad 一键 |
-| 口令 | 固定口令（如「定计划」「发送」） |
-| 应用 | 快捷键 / 聚焦 / Hook 反馈 |
+| HTTPS + 公网域名 | Cloudflare Pages 自带证书；建议绑自有域名，别用 `*.pages.dev` |
+| 分享卡片有标题 | `<title>` = `大脑请批阅 · 2026-10-25`，微信聊天卡片直接取它 |
+| 分享卡片有封面 | `og:image` → 640×640 logo。微信爬虫**不执行 JS**，所以 og 标签必须是静态 HTML（已经是） |
+| 打开要快 | 首屏只拉缩略图（19 KB/张），实测首屏 94 ms |
+| 微信 X5 兼容 | 懒加载 / viewport / srcset 全部按 X5 规则处理，见下表 |
+| 不触发风控 | 无诱导分享、无强制跳外部浏览器、无下载行为 |
+| 大图可保存 | 查看器用原生 `<img>`，微信内长按可存相册 |
 
-存储：`agentBindings` 中同一 `slotId` 可同时有 `triggerType: softPad | voice | key`。
+### 二、运营上怎么发链接
 
-按应用 / 场景分别保存为 **habit（习惯）** 和 **scene（情景）**，横向切换。
-
-**输入瞄准：** `input_focus_aim` 共享层——任何通道在注入文本前，都先对准目标应用的输入框（探测 → 激活 → 聚焦 → 安全写入），失败时主动拒绝（fail-closed）。
-
-## 快速上手
-
-1. 从 [GitHub Releases](https://github.com/psterman/onetone/releases) 下载 Windows 安装包
-2. 首次安装若出现 SmartScreen，点击 **更多信息** -> **仍要运行**
-3. 打开 OneTone，完成首次引导（或首页 **快速入门**）
-4. 选一个应用（推荐先从 Cursor / Codex / Claude 开始），录入激活键
-5. 在 Pad 上点一张能力卡，或喊口令，或按侧键——触发完成
-6. 按需开启摄像头通道、状态灯、定制工作流
-
-## 系统要求
-
-- Windows 10 / 11（x64）
-- 可选：麦克风（语音唤醒、KWS、声学命令）
-- 可选：摄像头（MediaPipe，本地推理）
-- 可选：鼠标 / 手柄 / 蓝牙戒指等外设
-
-## 安装与更新
-
-- 安装包：[GitHub Releases](https://github.com/psterman/onetone/releases)
-- 启动后检查更新；只替换程序文件，不覆盖本地配置
-
-配置位置：
+**1. 发固定入口，不要发每天的日期链接**
 
 ```
-%APPDATA%\onetone\config\settings.json
+https://daily.onetone.app/          ← 归档页，列出所有日期，群友收藏这一个就够
+https://daily.onetone.app/2026-10-25/  ← 当天页
 ```
 
-首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录旧配置存在，会自动迁移。
+理由：微信会缓存链接卡片。发固定入口，标题和封面只抓一次，
+而且群友收藏一次就能天天看。日期页留给「回看昨天」。
 
-## 开发
+**2. 卡片长什么样**
 
-技术栈：
+- 标题：`大脑请批阅 · 2026-10-25`
+- 封面：粉红火烈鸟 logo（640×640）
+- 描述：`见闻 · 见她 · 见笑，每日一阅。`
 
-- 前端：`src/` 原生 HTML / CSS / JavaScript（首页 workbench + 设置页）
-- 后端：Rust + Tauri 2（`src-tauri/`，含 `onetone-logic` 等 crate）
-- 触发层：Windows 低级钩子 + Raw Input + RegisterHotKey
-- 语音：SAPI / Vosk / KWS + 声学命令运行时
-- 视觉：MediaPipe face landmarker（本地）
+**3. 新域名首次打开可能有提示**
 
-环境：
+微信对**任何**新域名首次打开都会弹「非微信官方网页」的反钓鱼提示，
+点「继续访问」即可。这是微信的通用策略，不是站点问题。
+域名有正常访问量、用户习惯之后出现频率会下降。
 
-- [Rust](https://rustup.rs/)（含 `cargo`）
-- [Tauri CLI](https://v2.tauri.app/)：`cargo install tauri-cli`
+**4. 底部有「使用其他浏览器打开」**
 
-```powershell
-cd src-tauri
-cargo tauri dev
-```
+这是微信的默认行为，无法去掉，也不影响在微信里正常浏览。
 
-构建发布版：
-
-```powershell
-npm run build
-
-# 或
-.\run_onetone.ps1
-.\run_onetone.ps1 -Rebuild
-
-# NSIS 安装包
-cd src-tauri
-cargo clean -p onetone
-cargo tauri build --bundles nsis
-```
-
-产物：
-
-- `src-tauri/target/release/onetone.exe`
-- `src-tauri/target/release/bundle/nsis/*-setup.exe`
-
-本地构建若缺少 `TAURI_SIGNING_PRIVATE_KEY`，安装包仍可生成；updater 签名需在配置 Secrets 的 CI 中产出。发布前请在仓库 Secrets 配置：
+### 三、如果开了访问口令，分享链接必须带 `?k=`
 
 ```
-TAURI_SIGNING_PRIVATE_KEY
-TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+https://daily.onetone.app/2026-10-25/?k=XXXX
 ```
 
-私钥须与 `src-tauri/tauri.conf.json` 中的 updater 公钥匹配。
+群友点开 → 服务端校验 → 下发 cookie → 302 跳到干净 URL → 图片正常加载。
+卡片仍然有标题和封面，因为页面 HTML 保持公开（见下一节）。
+
+没带口令直接打开：页面框架和标题正常，图片加载失败，
+前端会弹一条「图片未能加载，请向发送者索取带口令的完整链接」——不会白屏。
+
+### 四、如果要在公众号里推
+
+- 把入口链接配到公众号**自定义菜单**，用户点菜单直达
+- 需要「每天推送一条提醒」就得接公众号 API（当前未做，属于额外工作量）
+
+---
 
 ## 目录结构
 
 ```
-onetone/
-├── assets/              # 品牌图标源文件
-├── src/                 # 桌面前端（首页 / 设置 / 托盘 / HUD）
-├── src-tauri/           # Rust 后端与 Tauri 配置
-│   ├── crates/          # 逻辑与共享 crate
-│   ├── src/             # 热键、语音运行时、IPC、AppChatProfile、PadStatus
-│   └── tauri.conf.json
-├── website/             # 官网
-├── docs/                # 隐私、条款、发布说明、能力卡契约
-├── package.json
-├── run_onetone.ps1
-└── Start-OneTone.vbs
+daily-image-site/
+├── site/                      # 前端模板（要改样式改这里）
+│   ├── template.html
+│   ├── app.css
+│   ├── app.js
+│   └── assets/                # logo（logo.jpg 640 / logo.webp 96）
+├── tools/
+│   ├── setup-cloudflare.ps1  # 一次性配置：凭据 / bucket / 口令
+│   ├── build.mjs              # 扫描 → 转码 → 生成 manifest → 出页面
+│   ├── upload-r2.mjs          # 上传图片到 R2（纯 REST，不依赖 wrangler）
+│   ├── publish.ps1            # 一键：build → upload → deploy
+│   ├── make-logo.mjs          # 由源图生成两套 logo 尺寸
+│   ├── dev-server.mjs         # 本地预览
+│   ├── verify.mjs             # 移动端 + 微信 UA 自动验证
+│   └── test-functions.mjs     # Function 单元测试
+├── functions/
+│   ├── _middleware.js         # 可选访问口令（默认关闭）
+│   └── api/img/[[path]].js    # 图片代理（R2 → 浏览器）
+├── r2/<date>/<tab>/*.webp      # 转码产物，待上传
+├── published/                 # 页面产物，待部署
+├── .env.local                 # Cloudflare 凭据（已 gitignore）
+└── wrangler.toml
 ```
 
-## 从牛马仓库迁出
+---
 
-本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/onetone**
+## 一次性配置
 
-旧 AHK 实现仅作历史参考，不在此仓库内。
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\voice-pilot\daily-image-site\tools\setup-cloudflare.ps1
+```
 
-## 法律信息
+### ⚠️ 第一步：去 Dashboard 启用 R2（必须手动做一次）
 
-- [隐私政策](docs/PRIVACY.md)
-- [服务条款](docs/TERMS.md)
-- [更新日志](CHANGELOG.md)
-- [参与贡献](CONTRIBUTING.md)
+Cloudflare 的 R2 默认是关闭的，没启用的话所有 R2 接口都会返回 **错误码 10042**
+（`Please enable R2 through the Cloudflare Dashboard`）。
 
-## 许可证
+1. Cloudflare Dashboard → 左侧 **R2**
+2. 点 **Enable R2 / 启用 R2**，同意条款
+3. 免费额度 10GB/月，可能要求绑一张卡（不扣费）
 
-MIT License — 详见 [LICENSE](LICENSE)。
+不启用 R2 的话：**Pages 部署正常，但图片上传会失败**，页面能打开却看不到图。
 
-Copyright (c) 2026 psterman
+### 然后跑配置脚本
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\voice-pilot\daily-image-site\tools\setup-cloudflare.ps1
+```
+
+脚本会按顺序做四件事：
+
+| 步骤 | 内容 |
+|---|---|
+| 1/4 认证 | 优先 `npx wrangler login`（**浏览器点一次「允许」就行，不用手填 Token**）；Account ID 会用 Token 自动查出来，不用手填 |
+| 2/4 R2 bucket | 自动创建 `daily-images`，并**实测一次上传**确认有写权限 |
+| 3/4 Pages 项目 | 首次部署时 wrangler 自动创建，不用管 |
+| 4/4 访问口令 | 可选，见下文 |
+
+### 如果手动填 Token，需要勾这三项权限
+
+My Profile → API Tokens → Create Token：
+
+| 权限 | 用途 |
+|---|---|
+| Account → Workers R2 Storage → Edit | 上传图片 |
+| Account → Cloudflare Pages → Edit | 部署页面 |
+| Account → Workers Scripts → Edit | 部署 Function |
+
+填错时脚本会明确告诉你原因：404 = Account ID 拼错、401 = Token 过期、403 = 权限不够。
+
+### 如果脚本提示「当前凭据没有 R2 写权限」
+
+有些账号的 OAuth 权限不覆盖 R2 对象写入。脚本会引导你去
+**R2 → Manage R2 API Tokens → Create API Token**，权限选 Object Read & Write、
+范围只选 `daily-images` 这个 bucket，把生成的 Token 粘贴回去即可。
+（这个 Token 只能上传图片，Pages 部署仍走 wrangler 登录态，不冲突。）
+
+### 绑域名（可选）
+
+Pages 项目 → Custom domains → 加 `daily.onetone.app`。
+图片走同一域名的 `/img/*`，由 Function 代理，**不需要第二个域名**。
+
+**域名要和构建时的一致** —— `og:image` 用的是绝对地址，域名写错会导致微信分享卡片没有封面：
+
+```powershell
+node tools/build.mjs --site-url https://你的域名
+# 或设环境变量 SITE_URL，publish.ps1 会自动带上
+```
+
+---
+
+## 改站点名称 / logo
+
+- **标题**：改 `tools/build.mjs` 里的 `SITE_TITLE`（当前「大脑请批阅」）
+- **logo**：把新图放到 `site/assets/logo-source.jpg`，然后
+  ```powershell
+  node tools/make-logo.mjs
+  ```
+  会生成 `logo.jpg`（640×640，给分享卡片）和 `logo.webp`（96×96，给页头图标）。
+  每次构建会自动把这两个文件复制到 `published/assets/`。
+
+---
+
+## 日常使用
+
+图片人工放进 `C:\Users\pstem\Downloads\<日期>\`：
+
+```
+C:\Users\pstem\Downloads\2026-10-25\
+├── 见闻\    20 张
+├── 见她\    71 张
+└── 见笑\   154 张
+```
+
+然后一条命令：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\voice-pilot\daily-image-site\tools\setup-cloudflare.ps1
+```
+
+它会依次：转码 → 上传 R2 → 部署 Pages。全量 245 张约 4–5 分钟。
+
+它会依次：转码 → 上传 R2 → 部署 Pages。全量 245 张约 4–5 分钟。
+
+访问口令是**一次性设置**在 Pages 项目上的（`wrangler pages secret put GATE_TOKEN`），
+之后每次发布都会自动生效，publish.ps1 不需要额外传参。
+
+单独跑某一步：
+
+```powershell
+node tools/build.mjs                       # 只构建
+node tools/build.mjs --date 2026-10-25     # 指定日期
+node tools/build.mjs --no-convert          # 复用已转码图片，只重建页面
+node tools/upload-r2.mjs 2026-10-25        # 只上传某天
+node tools/upload-r2.mjs --dry             # 只看计划不真传
+node tools/dev-server.mjs 8788             # 本地预览
+node tools/verify.mjs                      # 移动端 + 微信 UA 自动验证
+```
+
+---
+
+## 图片处理规格
+
+| | 原始 | 全尺寸 | 缩略图 |
+|---|---|---|---|
+| 宽度上限 | — | 1080px | 400px |
+| 格式 | jpg/gif/png | WebP q80–86 | WebP q72 |
+| 缩放 | — | 等比，永不放大 | 等比，永不放大 |
+
+- 源文件里的 GIF **全部是单帧**，转 WebP 无动画损失
+- 见闻（新闻截图，文字密）q86、见笑（梗图，带字幕）q84、见她（照片）q80
+- 只设宽度上限、不设高度上限 —— 竖长截图（见闻最高 3136px）保持原比例，不做无意义的二次缩小
+- 缩略图按真实宽高比预占位（padding-top 百分比），**零布局抖动**
+
+---
+
+## 微信端兼容要点
+
+已在 `site/app.css` / `site/app.js` 里处理：
+
+| 问题 | 处理 |
+|---|---|
+| X5 内核忽略 `loading="lazy"` | 全部改用 IntersectionObserver 手写懒加载 |
+| X5 对 `gap` / `aspect-ratio` 支持差 | 间距用 margin / column-gap，比例用 padding-top 百分比占位 |
+| 微信劫持 `<meta viewport>` | 硬编码 `maximum-scale=1, user-scalable=no` |
+| 微信忽略 `srcset` / `sizes` | 图片一律走 `<img src>` |
+| 微信缓存顽固 | 资源路径含日期，前端文件名带内容 hash |
+| 首屏白闪 | 关键背景色内联在 `<head>` |
+| 长按保存 | 大图查看器用原生 `<img>`，微信可长按保存到相册 |
+
+---
+
+## 访问口令（可选，默认关闭）
+
+「见她」是写真类内容。**公开域名 = 公开传播**，一旦被爬虫或搜索引擎收录，
+即使之后删掉 R2 对象，已被抓走的副本也收不回来。
+
+如果需要「可随时撤回」，启用口令层：
+
+```powershell
+npx wrangler pages secret put GATE_TOKEN --project-name daily-image-site
+```
+
+**保护范围是「图片」，不是「整个站点」** —— 这是为了微信分享卡片考虑：
+
+| 路径 | 是否需要口令 | 原因 |
+|---|---|---|
+| `/2026-10-25/` 等页面 HTML | **公开** | 微信爬虫要靠它生成带标题和封面的卡片 |
+| `/assets/logo.jpg` | **公开** | logo 就是分享封面 |
+| `/img/**` | **需要** | 真正要保护的内容在这里 |
+
+所以：
+- 分享链接带 `?k=口令` → 群友点开自动获得 cookie → 图片正常
+- **轮换 `GATE_TOKEN` = 瞬间收回所有人的图片访问权**，比逐个删 R2 对象干净得多
+- 不带口令访问：页面框架正常、图片为空，并弹出明确提示条（不会白屏）
+
+不设置 `GATE_TOKEN` 就是完全公开（当前默认）。
+
+---
+
+## 撤回内容
+
+| 想撤什么 | 怎么做 |
+|---|---|
+| 某一天的全部图片 | R2 里删掉 `<日期>/` 前缀；Pages 里删 `published/<日期>/` 后重新部署 |
+| 全部收回访问权 | 轮换 `GATE_TOKEN`，或删掉 R2 里的对象 |
+| 某个分类 | R2 里删 `<日期>/<分类>/` 前缀，再重新构建部署该日页面 |
+
+---
+
+## 定时自动发布（可选）
+
+Windows 任务计划程序，每天 23:30 执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\voice-pilot\daily-image-site\tools\publish.ps1
+```
+
+任务计划跑的是新会话，环境变量读不到 —— 但 `.env.local` 会被自动加载，不受影响。
+
+---
+
+## 改脚本时注意（一个真实的坑）
+
+**`.ps1` 文件必须存成 UTF-8 with BOM。**
+
+Windows 自带的 PowerShell 5.1 读取「UTF-8 无 BOM + 中文」时，会按 ANSI/GBK 解码，
+多字节序列被拆开后可能变成孤立的引号，导致脚本**在解析阶段就报错、一个字都跑不了**
+（实测报「语句块或类型定义中缺少右 }」「字符串缺少终止符」）。
+
+本项目的两个 `.ps1` 已经加好 BOM。以后用编辑器改完，如果出现莫名其妙的语法错误，
+先确认编码是 **UTF-8 with BOM**。
+
+一键自检：
+
+```powershell
+powershell -NoProfile -Command "Get-ChildItem E:\voice-pilot\daily-image-site\tools -Filter *.ps1 | ForEach-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $t=$null;$e=$null; [System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e)|Out-Null; '{0}  BOM={1}  解析错误={2}' -f $_.Name, ($b[0] -eq 0xEF), $e.Count }"
+```
+
+`.js` / `.mjs` / `.css` / `.html` 不受影响（Node 与浏览器都按 UTF-8 处理，HTML 里有 `<meta charset>`）。
+
+---
+
+## 部署完成后你的链接长什么样
+
+| 用途 | 链接 |
+|---|---|
+| **发到微信群（推荐，固定不变）** | `https://daily.onetone.app/` |
+| 当天页 | `https://daily.onetone.app/2026-10-25/` |
+| 开了口令时的当天页 | `https://daily.onetone.app/2026-10-25/?k=你的口令` |
+
+域名以 `.env.local` 里的 `SITE_URL` 为准；换域名后重跑 `publish.ps1` 即可同步 og 标签。
+
+- **微信内跳转**：需要公众号时，把日期页链接配到公众号自定义菜单即可；本项目不做公众号 API 对接。
+- **国内访问速度**：Cloudflare 默认节点在国内时延一般。首屏只加载缩略图（19 KB/张），
+  实测首屏可交互 104 ms，日常够用。若要更快，可把图片改挂阿里云 OSS + 国内 CDN。
+- **不做历史清理**：`published/` 和 R2 会随天数线性增长。R2 免费额度 10 GB，
+  按 20 MB/天算够用一年多；Pages 静态文件不占 R2 额度。

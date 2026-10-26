@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tauri::Manager;
+
 use crate::ipc::core::{build_runtime_snapshot, emit_to_js_main, mvp_init_payload, push_runtime};
 use crate::AppState;
 
@@ -14,6 +16,11 @@ pub fn cmd_ready(
     let payload = mvp_init_payload(&state, &mode);
     emit_to_js_main(&window, payload.clone());
     push_runtime(&state, &window, "config_push", "");
+    // Soft Pad: first WebView create only after main FE is alive (see OVERLAY_BOOT_HOLD).
+    crate::codex_micro_overlay::release_overlay_boot_hold(
+        &window.app_handle(),
+        state.inner(),
+    );
     crate::app_log::log_line(&state, "ipc", "cmd_ready complete");
     payload
 }
@@ -28,8 +35,9 @@ pub async fn cmd_request_runtime(
 ) -> Result<serde_json::Value, String> {
     let state_arc = Arc::clone(state.inner());
     let app_clone = app.clone();
+    // Guard on the async side so timeout clears ipc-held (blocking task may still run).
+    let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("request_runtime");
     let join = tauri::async_runtime::spawn_blocking(move || {
-        let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("request_runtime");
         build_runtime_snapshot(&app_clone, &state_arc)
     });
     let snapshot = match tokio::time::timeout(std::time::Duration::from_millis(2000), join).await {

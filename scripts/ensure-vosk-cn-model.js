@@ -17,20 +17,31 @@ const ROOT = path.join(__dirname, '..');
 const VOSK_DIR = path.join(ROOT, 'src-tauri', 'resources', 'vosk');
 const DOWNLOAD_DIR = path.join(VOSK_DIR, 'downloads');
 
-/** @type {{ id: string, dirName: string, zipName: string, url: string, approx: string }[]} */
+/** @type {{ id: string, dirName: string, zipName: string, urls: string[], approx: string }[]} */
 const MODELS = [
   {
     id: 'cn-light',
     dirName: 'vosk-model-small-cn-0.22',
     zipName: 'vosk-model-small-cn-0.22.zip',
-    url: 'https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip',
+    // China-friendly first (hf-mirror), then HF / alphacephei / archive.org.
+    urls: [
+      'https://hf-mirror.com/rhasspy/vosk-models/resolve/main/zh/vosk-model-small-cn-0.22.zip',
+      'https://huggingface.co/rhasspy/vosk-models/resolve/main/zh/vosk-model-small-cn-0.22.zip',
+      'https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip',
+      'https://archive.org/download/vosk-models-small/vosk-model-small-cn-0.22.zip',
+    ],
     approx: '~42 MB',
   },
   {
     id: 'en-light',
     dirName: 'vosk-model-small-en-us-0.15',
     zipName: 'vosk-model-small-en-us-0.15.zip',
-    url: 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip',
+    urls: [
+      'https://hf-mirror.com/rhasspy/vosk-models/resolve/main/en/vosk-model-small-en-us-0.15.zip',
+      'https://huggingface.co/rhasspy/vosk-models/resolve/main/en/vosk-model-small-en-us-0.15.zip',
+      'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip',
+      'https://archive.org/download/vosk-models-small/vosk-model-small-en-us-0.15.zip',
+    ],
     approx: '~40 MB',
   },
 ];
@@ -148,8 +159,25 @@ async function ensureModel(m) {
     return;
   }
   const zipPath = path.join(DOWNLOAD_DIR, m.zipName);
+  const urls = Array.isArray(m.urls) && m.urls.length ? m.urls : m.url ? [m.url] : [];
+  if (!urls.length) throw new Error(m.id + ' has no download urls');
   log('Downloading ' + m.dirName + ' (' + m.approx + ')…');
-  await downloadFile(m.url, zipPath);
+  var lastErr = null;
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      log('try mirror[' + i + '] ' + urls[i]);
+      await downloadFile(urls[i], zipPath);
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      try {
+        fs.unlinkSync(zipPath);
+      } catch (_) {}
+      log('mirror[' + i + '] failed: ' + (err && err.message ? err.message : err));
+    }
+  }
+  if (lastErr) throw lastErr;
   log('Extracting ' + m.dirName + '…');
   installModel(m, zipPath);
   if (!modelReady(m)) throw new Error(m.id + ' install verification failed');

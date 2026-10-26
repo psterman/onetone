@@ -11,11 +11,9 @@ pub async fn cmd_voice_kws_status(
 ) -> Result<serde_json::Value, String> {
     let state = Arc::clone(state.inner());
     let resource_dir = app.path().resource_dir().ok();
+    let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("voice_kws_status");
     let join = tauri::async_runtime::spawn_blocking(move || {
-        crate::ui_heartbeat::note_ipc_enter("voice_kws_status");
-        let v = crate::voice_kws_runtime::voice_kws_status(&state, resource_dir);
-        crate::ui_heartbeat::note_ipc_exit("voice_kws_status");
-        v
+        crate::voice_kws_runtime::voice_kws_status(&state, resource_dir)
     });
     match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
         Ok(Ok(v)) => Ok(v),

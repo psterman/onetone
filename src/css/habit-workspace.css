@@ -484,16 +484,16 @@ details.hcl-acc[open]>summary.hcl-sec-h::before{content:"▾"}
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   color:#3a4454;opacity:.92;pointer-events:none
 }
-.hcl-softpad-host .hcl-pk-dot{
-  position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;
-  background:#5a4d8c;box-shadow:0 0 0 2px rgba(90,77,140,.18);pointer-events:none
+/* Occupied keys: mute only — no purple badge. */
+.hcl-softpad-host .micro-hw__key.is-taken:not(.is-focused){
+  opacity:.58
+}
+.hcl-softpad-host .micro-hw__key.is-taken:not(.is-focused) .hcl-pk-lab{
+  color:#6b7280;font-weight:600;opacity:.9
 }
 .hcl-softpad-host .micro-hw__key.is-focused{
   outline:2px solid #0071e3;outline-offset:1px;
   box-shadow:0 0 0 3px rgba(0,113,227,.2)
-}
-.hcl-softpad-host .micro-hw__key.is-taken:not(.is-focused){
-  box-shadow:0 0 0 1px rgba(90,77,140,.12)
 }
 .hcl-softpad-host .hcl-softpad-cap,
 .hcl-softpad-host .soft-pad-key-caption{

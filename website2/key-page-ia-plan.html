@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 按键页面目录规划</title>
+<style>
+:root{--bg:#f4f8fb;--ink:#17324a;--muted:#6f8293;--line:#d5e1ea;--blue:#0797e3;--blue2:#dff3ff;--green:#168753;--card:#fff;--shadow:0 14px 35px #224a6512}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font:14px/1.5 Arial,"Microsoft YaHei",sans-serif}.top{height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 22px;font-weight:700}.top small{font-weight:400;color:#63798c;background:#f4f7fa;padding:5px 9px;border-radius:8px}.badge{color:var(--green);background:#e8f7ef;padding:5px 9px;border-radius:8px;font-size:12px}.switch{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 12px;color:var(--ink);font-weight:600}.layout{display:grid;grid-template-columns:205px 1fr;min-height:calc(100vh - 58px)}aside{border-right:1px solid var(--line);background:#f7fafc;padding:16px 10px}.side-title{font-size:12px;color:#73899a;margin:0 8px 14px;font-weight:700}.group{margin-bottom:18px}.group-label{font-size:11px;color:#8fa0ad;margin:0 8px 6px}.nav{display:block;border:0;background:transparent;width:100%;text-align:left;padding:11px 9px;border-radius:10px;color:#405d73;font-weight:600}.nav.active{background:#d8effc;color:#0584cc}.nav .count{float:right;color:#97a8b5;font-size:11px;font-weight:400}.main{padding:28px 34px;max-width:1100px}.crumb{color:#758b9d;font-size:12px;margin-bottom:14px}.title-row{display:flex;justify-content:space-between;align-items:end;margin-bottom:24px}.title-row h1{font-size:25px;margin:0 0 4px;letter-spacing:-.03em}.title-row p{margin:0;color:var(--muted)}.hint{background:#edf8ff;border:1px solid #bfe5f8;color:#28749a;border-radius:10px;padding:9px 12px;font-size:12px}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px}.card h2{font-size:16px;margin:0 0 5px}.desc{color:var(--muted);font-size:12px;margin:0 0 18px}.flow{display:flex;align-items:center;gap:10px;margin:18px 0 23px}.node{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:#fbfdff;min-width:125px}.node strong{display:block;font-size:13px}.node span{font-size:11px;color:var(--muted)}.node.main{border-color:#75c7ef;background:#effaff}.arrow{color:#9cb3c1;font-size:18px}.section{border-top:1px solid #e7eef3;padding:17px 0 2px}.section:first-of-type{border-top:0;padding-top:0}.section h3{font-size:14px;margin:0 0 5px}.section p{color:var(--muted);font-size:12px;margin:0}.keep{display:flex;gap:10px;align-items:start;padding:12px;border-radius:11px;background:#f8fbfd;margin-bottom:9px;border:1px solid #e6eef3}.keep b{font-size:12px}.keep span{display:block;color:var(--muted);font-size:11px;margin-top:2px}.mark{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;background:var(--blue2);color:var(--blue);font-weight:700}.callout{margin-top:16px;border-left:3px solid var(--blue);background:#f0f9fe;padding:13px 14px;color:#41677d;font-size:12px}.callout strong{display:block;color:#1f536e;margin-bottom:4px}.foot{margin-top:18px;color:#8194a2;font-size:11px}@media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.main{padding:22px 16px}.grid{grid-template-columns:1fr}.flow{flex-wrap:wrap}.arrow{display:none}.title-row{display:block}.hint{display:inline-block;margin-top:14px}}
+</style>
+</head>
+<body>
+<header class="top"><span>按键 / 正在编辑：Cursor</span><small>前台：Cursor</small><span class="badge">● 已与前台一致</span><button class="switch">切换 · Cursor 场景⌄</button></header>
+<div class="layout">
+<aside>
+  <div class="group"><div class="side-title">按键配置</div><button class="nav active">触发键 <span class="count">起点</span></button></div>
+  <div class="group"><div class="group-label">输入方式</div><button class="nav">触发方式 <span class="count">3</span></button><button class="nav">Softpad <span class="count">4</span></button></div>
+  <div class="group"><div class="group-label">低频设置</div><button class="nav">更多 <span class="count">⌄</span></button><button class="nav" style="padding-left:24px">手势</button></div>
+</aside>
+<main class="main">
+  <div class="crumb">按键配置　/　目录规划预览</div>
+  <div class="title-row"><div><h1>按键页面应该如何规划？</h1><p>按键页只管理“怎么触发”，完整的动作通路继续由“习惯”负责。</p></div><div class="hint">建议：保留现有能力，减少一级菜单</div></div>
+  <div class="grid">
+    <section class="card"><h2>推荐目录</h2><p class="desc">将当前目录从 6 个并列入口收敛为 3 个核心入口。</p>
+      <div class="flow"><div class="node main"><strong>触发键</strong><span>键盘按键 / 起始配置</span></div><div class="arrow">→</div><div class="node"><strong>触发方式</strong><span>输入法 · 口令 · 快捷键</span></div><div class="arrow">→</div><div class="node"><strong>Softpad</strong><span>软键盘布局</span></div></div>
+      <div class="section"><h3>触发键</h3><p>保留你现在的页面作为“起点”：选择监听键、录制按键、显示当前绑定。</p></div>
+      <div class="section"><h3>触发方式</h3><p>把原来的“输入法、口头命令、自定义快捷键、应用快捷键”合并为一个目录，页内用 Tab 或卡片区分。</p></div>
+      <div class="section"><h3>Softpad</h3><p>只配置软键盘按键布局和显示内容，不再重复配置习惯动作。</p></div>
+      <div class="callout"><strong>边界原则</strong>习惯 = 触发后做什么；按键 = 用什么方式触发。两边不要重复出现同一条通路。</div>
+    </section>
+    <section class="card"><h2>现有内容如何归位</h2><p class="desc">已有功能不删除，只调整入口。</p>
+      <div class="keep"><div class="mark">1</div><div><b>输入法</b><span>归入「触发方式」→ 选择输入法</span></div></div>
+      <div class="keep"><div class="mark">2</div><div><b>口头命令</b><span>归入「触发方式」→ 口令</span></div></div>
+      <div class="keep"><div class="mark">3</div><div><b>自定义快捷键</b><span>归入「触发方式」→ 快捷键</span></div></div>
+      <div class="keep"><div class="mark">4</div><div><b>应用快捷键</b><span>归入「触发方式」→ 应用覆盖</span></div></div>
+      <div class="keep"><div class="mark">5</div><div><b>手势</b><span>放入「更多」，低频使用时不打扰主流程</span></div></div>
+      <div class="foot">顶部的 Cursor 前台状态继续保留，它是当前作用域，不属于目录。</div>
+    </section>
+  </div>
+</main></div>
+</body></html>

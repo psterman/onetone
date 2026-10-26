@@ -727,14 +727,32 @@ fn sync_oral_esc_capture(state: &Arc<AppState>) {
     }
 }
 
-/// Soft Pad oral listen needs Vosk for live STT + free-say routing.
-/// Returns true when this call flipped strategy to `auto` (caller must force-activate).
+/// Soft Pad oral: Vosk STT only — SAPI/KWS must not participate in free-say 转写.
+/// Returns true when this call flipped engine (caller must force-activate).
 fn ensure_oral_temp_engine(state: &Arc<AppState>) -> bool {
+    let vosk_ok = {
+        let cfg = state.cfg.lock();
+        crate::voice_vosk::vosk_resource_issue(&crate::voice_vosk::probe_vosk_resources(
+            &cfg.voice_vosk,
+            None,
+        ))
+        .is_none()
+    };
+    if !vosk_ok {
+        SESSION_OWNED_TEMP_ENGINE.store(false, Ordering::SeqCst);
+        ORAL_TEMP_GEN.fetch_add(1, Ordering::SeqCst);
+        crate::app_log::log_line(
+            state,
+            "voice_command",
+            "oral_temp_engine skip: vosk missing (no sapi/kws fallback)",
+        );
+        return false;
+    }
     let (need, prev) = {
         let cfg = state.cfg.lock();
         let eng = crate::scene_config::idle_desired_voice_engine(&cfg);
-        let need = !matches!(eng, crate::scene_config::DesiredVoiceEngine::Vosk);
         let prev = crate::scene_config::voice_listening_strategy(&cfg).to_string();
+        let need = !matches!(eng, crate::scene_config::DesiredVoiceEngine::Vosk);
         (need, prev)
     };
     if !need {
@@ -745,7 +763,6 @@ fn ensure_oral_temp_engine(state: &Arc<AppState>) -> bool {
     }
     {
         let mut cfg = state.cfg.lock();
-        // Same as home speak channel: auto → Vosk (not resourceSaver/KWS-only).
         crate::config::apply_voice_listening_strategy(&mut cfg, "auto");
     }
     if let Ok(mut g) = ORAL_TEMP_PREV_STRATEGY.lock() {
@@ -770,9 +787,13 @@ fn restore_oral_temp_engine(state: &Arc<AppState>, app: &AppHandle) {
     let restore = if prev.is_empty() { "off" } else { prev.as_str() };
     {
         let mut cfg = state.cfg.lock();
-        // Only unwind if we still look like the temp borrow (auto/Vosk).
+        // Unwind oral auto/Vosk borrow (legacy advanced/SAPI borrow still recognized).
         let strat = crate::scene_config::voice_listening_strategy(&cfg);
-        if strat == "auto" || strat == "enhanced" {
+        let eng = crate::scene_config::idle_desired_voice_engine(&cfg);
+        let looks_like_borrow = matches!(strat, "auto" | "enhanced")
+            || (strat == "advanced"
+                && matches!(eng, crate::scene_config::DesiredVoiceEngine::Sapi));
+        if looks_like_borrow {
             crate::config::apply_voice_listening_strategy(&mut cfg, restore);
         }
     }

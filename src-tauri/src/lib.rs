@@ -102,6 +102,7 @@ pub mod voice_acoustic_command;
 pub mod voice_acoustic_record;
 pub mod voice_acoustic_runtime;
 mod voice_bootstrap;
+mod voice_capability;
 mod voice_command_router;
 mod voice_command_session;
 mod voice_end_runtime;
@@ -649,13 +650,9 @@ pub fn run() {
                     &format!("codex micro overlay setup: {err}"),
                 );
             } else {
+                // Do not push Soft Pad here — second WebView2 during main boot 假死'd UI.
+                // First show is gated by OVERLAY_BOOT_HOLD until cmd_ready (+ delay).
                 app_log::log_line(&app_state, "startup", "codex micro overlay initialized");
-                let app_overlay_init = app.handle().clone();
-                let state_overlay_init = app_state.clone();
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(Duration::from_millis(950)).await;
-                    codex_micro_overlay::push_state(&app_overlay_init, &state_overlay_init);
-                });
             }
 
             let app_hud = app.handle().clone();
@@ -1123,6 +1120,7 @@ pub fn run() {
             ipc::cmd_mic_monitor_start,
             ipc::cmd_mic_monitor_stop,
             ipc::cmd_mic_get_level,
+            ipc::cmd_voice_capability_probe,
             ipc::cmd_voice_sapi_status,
             ipc::cmd_voice_sapi_set_enabled,
             ipc::cmd_voice_sapi_set_phrases,

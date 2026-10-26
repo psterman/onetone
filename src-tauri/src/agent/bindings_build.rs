@@ -93,31 +93,41 @@ pub fn is_chordless_soft_pad_slot(slot_id: &str) -> bool {
     ) || slot_id.trim().starts_with("custom_")
 }
 
-/// Trae IDE: side chat is Ctrl+U (docs.trae.cn). Inline Ctrl+I is not the pad default.
+/// Trae IDE / Trae Work: docs.trae.cn/ide_keyboard-shortcuts.
+/// Soft Pad summon+quickChat → side chat Ctrl+U; inline Ctrl+I is not a pad slot.
 pub fn default_trae_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
-        "quickChat" => "Ctrl+U",
+        "summonCodex" | "quickChat" => "Ctrl+U",
+        "pushToTalk" => "",
         _ => default_vscode_key_for_slot(slot_id),
     }
 }
 
-/// Qoder IDE: chat panel Ctrl+L; reject-all Ctrl+Backspace (docs.qoder.com).
+/// Qoder IDE / Qoder CN: docs.qoder.com/user-guide/keyboard-shortcuts.
+/// Soft Pad mic stays empty (OneTone oral); inline Ctrl+I is not quickChat.
 pub fn default_qoder_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
-        "quickChat" => "Ctrl+L",
+        "summonCodex" | "quickChat" => "Ctrl+L",
         "cancel" => "Ctrl+Backspace",
+        "pushToTalk" => "",
         _ => default_vscode_key_for_slot(slot_id),
     }
 }
 
 /// WorkBuddy desktop (WorkBuddy.exe), not CodeBuddy IDE / not a VS Code fork.
-/// Wake Ctrl+Space is global — do not inject from the pad.
+/// Soft Pad summon may inject Ctrl+Space; keep pushToTalk empty (OneTone oral).
 pub fn default_workbuddy_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
+        "summonCodex" => "Ctrl+Space",
         "stopOrSend" => "Enter",
+        "pasteAndSend" => "Ctrl+Shift+V",
         "cancel" => "Escape",
         "newThread" => "Ctrl+N",
         "undo" => "Ctrl+Z",
+        "quickSearch" | "commandPalette" => "Ctrl+K",
+        "quickChat" => "Ctrl+Alt+W",
+        "navBack" => "Ctrl+[",
+        "navForward" => "Ctrl+]",
         _ => "",
     }
 }
@@ -362,7 +372,23 @@ mod tests {
         assert_eq!(default_vscode_key_for_slot("quickChat"), "");
         assert_eq!(
             default_key_for_scenario("workbuddy-chat", "commandPalette"),
-            ""
+            "Ctrl+K"
+        );
+        assert_eq!(
+            default_key_for_scenario("workbuddy-chat", "summonCodex"),
+            "Ctrl+Space"
+        );
+        assert_eq!(
+            default_key_for_scenario("workbuddy-chat", "quickChat"),
+            "Ctrl+Alt+W"
+        );
+        assert_eq!(
+            default_key_for_scenario("workbuddy-chat", "pasteAndSend"),
+            "Ctrl+Shift+V"
+        );
+        assert_eq!(
+            default_key_for_scenario("workbuddy-chat", "navBack"),
+            "Ctrl+["
         );
         assert_eq!(
             default_key_for_scenario("workbuddy-chat", "newThread"),
@@ -372,12 +398,28 @@ mod tests {
         assert_eq!(default_key_for_scenario("trae-code", "quickChat"), "Ctrl+U");
         assert_eq!(default_key_for_scenario("trae-chat", "quickChat"), "Ctrl+U");
         assert_eq!(
+            default_key_for_scenario("trae-work", "summonCodex"),
+            "Ctrl+U"
+        );
+        assert_eq!(
+            default_key_for_scenario("trae-code", "commandPalette"),
+            "Ctrl+Shift+P"
+        );
+        assert_eq!(
             default_key_for_scenario("qoder-chat", "cancel"),
             "Ctrl+Backspace"
         );
         assert_eq!(
             default_key_for_scenario("qoder-chat", "quickChat"),
             "Ctrl+L"
+        );
+        assert_eq!(
+            default_key_for_scenario("qoder-chat", "summonCodex"),
+            "Ctrl+L"
+        );
+        assert_eq!(
+            default_key_for_scenario("qoder-chat", "commandPalette"),
+            "Ctrl+Shift+P"
         );
         assert_eq!(
             default_key_for_scenario("cursor-chat", "pushToTalk"),

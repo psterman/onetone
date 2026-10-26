@@ -110,3 +110,6 @@ scripts/hang-dumps/procdump64.exe
 # Local test scratch (do NOT ignore whole output/ — 81 tracked files live there)
 /test-output/
 /output/test-output/
+
+# 每日图片站的本地项目，不进 onetone 仓库，也不跟着仓库走
+daily-image-site/

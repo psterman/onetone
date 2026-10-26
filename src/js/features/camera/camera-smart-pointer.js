@@ -49,6 +49,8 @@
       feel:'balanced',
       setupConfirmed:false,
       lastPositions:{},
+      /** When gaze stably lands on a monitor, switch Soft Pad to the unique Agent on that screen. */
+      agentFollow:false,
       assessment:emptyAssessment()
     };
   }
@@ -149,6 +151,7 @@
       feel:FEEL_IDS.indexOf(String(raw.feel||''))>=0?String(raw.feel):'',
       setupConfirmed:!!raw.setupConfirmed,
       lastPositions:normalizeLastPositions(raw.lastPositions),
+      agentFollow:!!raw.agentFollow,
       assessment:assessment
     };
     draft.mode=coerceMode(draft.mode, draft);
@@ -213,6 +216,10 @@
     lastAction:null,
     /** Monitor id we last successfully landed on — prevents re-jump jitter. */
     landedMonitorId:null,
+    /** Last monitor we already tried agent-follow for (stick until gaze leaves). */
+    agentFollowMonitorId:null,
+    agentFollowInFlight:false,
+    lastAgentFollowAt:0,
     assessmentSession:null,
     /** Confirm/Ctrl + auto (quality===good) moves enabled. */
     autoMoveEnabled:true,
@@ -340,6 +347,86 @@
         }
       }catch(_){}
     },1200);
+  }
+
+  /**
+   * Pure: among windows on monitorId, resolve Soft Pad kinds; return kind only if unique.
+   * resolveKind(window) → kind string or ''.
+   */
+  function pickUniqueAgentKindFromWindows(windows, monitorId, resolveKind){
+    monitorId=String(monitorId||'').trim();
+    if(!monitorId||typeof resolveKind!=='function') return '';
+    var list=Array.isArray(windows)?windows:[];
+    var kinds={};
+    var order=[];
+    for(var i=0;i<list.length;i++){
+      var w=list[i];
+      if(!w) continue;
+      if(String(w.monitorId||w.monitor_id||'').trim()!==monitorId) continue;
+      var kind=String(resolveKind(w)||'').trim();
+      if(!kind) continue;
+      if(!kinds[kind]){
+        kinds[kind]=1;
+        order.push(kind);
+      }
+    }
+    return order.length===1?order[0]:'';
+  }
+
+  function resolveAgentKindFromWorkspaceWindow(w){
+    if(!w) return '';
+    var Hub=global.OneToneHabitHub;
+    var Pad=global.OneToneSoftPadHub;
+    if(!Hub||!Hub.findAppScenarioForIdentity||!Pad||!Pad.kindForAppId) return '';
+    var identity={
+      exeName:String(w.processName||w.process_name||'').trim(),
+      fullPath:String(w.fullPath||w.full_path||'').trim(),
+      displayName:String(w.displayName||w.display_name||'').trim()
+    };
+    if(!identity.exeName) return '';
+    var m=null;
+    try{ m=Hub.findAppScenarioForIdentity(identity); }catch(_){ m=null; }
+    if(!m||!m.appTargetId) return '';
+    return String(Pad.kindForAppId(m.appTargetId)||'').trim();
+  }
+
+  /**
+   * After gaze dwells on a monitor: if exactly one Agent window lives there, switch Soft Pad.
+   * Does not inject keys / openAgent — Target only. Respects Soft Pad manual scope pick.
+   */
+  function maybeFollowAgent(settings, result, now){
+    settings=normalizeSmartPointer(settings);
+    if(!settings.enabled||!settings.agentFollow) return;
+    if(rt.agentFollowInFlight) return;
+    if(!result||!result.monitorId) return;
+    if(!rt.stability||rt.stability.monitorId!==result.monitorId) return;
+    if((rt.stability.stableMs|0)<(settings.dwellMs|0)) return;
+    if(asNum(result.confidence)<settings.minConfidence) return;
+    if(rt.agentFollowMonitorId&&String(rt.agentFollowMonitorId)===String(result.monitorId)) return;
+    if(rt.lastAgentFollowAt&&(now-rt.lastAgentFollowAt)<settings.cooldownMs) return;
+
+    var Pad=global.OneToneSoftPadHub;
+    if(!Pad||typeof Pad.followGazeKind!=='function') return;
+
+    rt.agentFollowInFlight=true;
+    var mon=String(result.monitorId);
+    invokeIpc('cmd_workspace_list_windows',{}).then(function(windows){
+      var kind=pickUniqueAgentKindFromWindows(windows, mon, resolveAgentKindFromWorkspaceWindow);
+      rt.lastAgentFollowAt=Date.now();
+      rt.agentFollowMonitorId=mon;
+      if(!kind) return null;
+      var out=Pad.followGazeKind(kind);
+      if(out&&out.ok&&out.reason==='switched'){
+        rt.lastAction=t('cameraSmartPointerAgentFollowed','已跟随 Agent')+' · '+kind;
+        try{ syncUi(); }catch(_){}
+      }
+      return out;
+    }).catch(function(){
+      rt.agentFollowMonitorId=mon;
+      rt.lastAgentFollowAt=Date.now();
+    }).then(function(){
+      rt.agentFollowInFlight=false;
+    });
   }
 
   /**
@@ -522,10 +609,16 @@
     rt.stability=Clf.updateStability(rt.stability, result, now);
     result=Object.assign({},result,{stableMs:rt.stability.stableMs|0});
     rt.lastResult=result;
+    if(rt.agentFollowMonitorId
+      &&(!rt.stability.monitorId||String(rt.stability.monitorId)!==String(rt.agentFollowMonitorId))){
+      rt.agentFollowMonitorId=null;
+    }
 
     // Preview never moves. Confirm (Ctrl) / auto handled in maybeMoveCursor.
     // While Snap Window is mid title-bar hold, do not steal the cursor — that
     // breaks caption hit-testing and prevents the held window from moving.
+    // Agent follow works in preview too (Target only; no cursor warp required).
+    maybeFollowAgent(settings, result, now);
     if(settings.mode!=='preview'){
       var snap=global.OneToneCameraSnapWindow;
       if(snap&&((snap.isPointerFrozen&&snap.isPointerFrozen())||(snap.isTitleBarDragActive&&snap.isTitleBarDragActive()))){
@@ -584,6 +677,9 @@
     rt.lastMoveAt=0;
     rt.lastAction=null;
     rt.landedMonitorId=null;
+    rt.agentFollowMonitorId=null;
+    rt.agentFollowInFlight=false;
+    rt.lastAgentFollowAt=0;
     rt.moveInFlight=false;
     rt.ctrlCache={at:0,down:false};
   }
@@ -965,6 +1061,7 @@
   function syncUi(){
     var settings=getSettings();
     setToggle('cameraSmartPointerToggle',settings.enabled);
+    setToggle('cameraSmartPointerAgentFollowToggle',!!settings.agentFollow);
     var pill=$('cameraSmartPointerStatusText');
     if(pill) pill.textContent=statusPillText(settings);
     syncModeButtons(settings);
@@ -1090,7 +1187,10 @@
         var cur=getSettings();
         var mode=cur.mode&&cur.mode!=='off'?cur.mode:'auto';
         if(next&&(mode==='off'||!mode)) mode='auto';
-        if(!next) rt.landedMonitorId=null;
+        if(!next){
+          rt.landedMonitorId=null;
+          rt.agentFollowMonitorId=null;
+        }
         patchSettings({
           enabled:next,
           mode:next?mode:'auto',
@@ -1103,6 +1203,21 @@
         });
         notifyPreviewLandmarker();
         if(rt.panelVisible) startUiTimers();
+      });
+    }
+    var agentFollowToggle=$('cameraSmartPointerAgentFollowToggle');
+    if(agentFollowToggle){
+      agentFollowToggle.addEventListener('click',function(e){
+        e.preventDefault();
+        var next=!agentFollowToggle.classList.contains('is-on');
+        if(!next) rt.agentFollowMonitorId=null;
+        var patch={agentFollow:next};
+        if(next&&!getSettings().enabled){
+          patch.enabled=true;
+          patch.mode=getSettings().mode&&getSettings().mode!=='off'?getSettings().mode:'auto';
+        }
+        patchSettings(patch);
+        if(next) notifyPreviewLandmarker();
       });
     }
     var seg=$('cameraSmartPointerModeSeg');
@@ -1243,6 +1358,9 @@
     coerceMode:coerceMode,
     shouldAttemptMove:shouldAttemptMove,
     maybeMoveCursor:maybeMoveCursor,
+    maybeFollowAgent:maybeFollowAgent,
+    pickUniqueAgentKindFromWindows:pickUniqueAgentKindFromWindows,
+    resolveAgentKindFromWorkspaceWindow:resolveAgentKindFromWorkspaceWindow,
     getCtrlDownCached:getCtrlDownCached,
     setAutoMoveEnabled:function(on){ rt.autoMoveEnabled=!!on; },
     isAutoMoveEnabled:function(){ return !!rt.autoMoveEnabled; },

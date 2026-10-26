@@ -338,7 +338,7 @@ const boardMatrix = Api.renderMatrixHtml(mapping);
 assert.ok(/data-hcl-softpad-board="1"/.test(boardMatrix), 'soft pad float board host');
 assert.ok(/hcl-softpad-host/.test(boardMatrix) && /data-micro-key="AG02"/.test(boardMatrix), 'mini keyboard keys');
 assert.ok(!/data-hcl-pad-pill=/.test(boardMatrix), 'board path skips AG/ACT pills');
-assert.ok(/点键帽绑定/.test(boardMatrix), 'board bind hint');
+assert.ok(/点键帽绑定/.test(boardMatrix) && /占位键需确认/.test(boardMatrix), 'board bind hint + steal confirm');
 assert.ok(lastPadOpts && lastPadOpts.showNavigationPad === false, 'habit board hides NAV arrows');
 assert.ok(/data-soft-pad-caption/.test(boardMatrix) && /悬停键帽看说明/.test(boardMatrix), 'key caption under board');
 assert.ok(
@@ -353,6 +353,36 @@ assert.ok(
   ) && /hcl-pk-lab/.test(readFileSync(join(root, 'src/css/habit-workspace.css'), 'utf8')),
   'pad key title + occupancy decorate'
 );
+assert.equal(typeof Api.confirmStealPadKey, 'function');
+{
+  let asked = 0;
+  context.OneToneConfirm = {
+    ask(msg) {
+      asked += 1;
+      assert.ok(/已占用此键/.test(String(msg || '')), 'steal confirm names occupancy');
+      return Promise.resolve(false);
+    }
+  };
+  const deny = await Api.confirmStealPadKey(
+    mapping,
+    'semantic:softPad:pasteSend',
+    'AG02'
+  );
+  assert.equal(deny, false, 'steal denied');
+  assert.equal(asked, 1, 'confirm asked once for taken key');
+  asked = 0;
+  const free = await Api.confirmStealPadKey(mapping, 'semantic:softPad:pasteSend', 'AG09');
+  assert.equal(free, true, 'empty key skips confirm');
+  assert.equal(asked, 0, 'no dialog for free key');
+  const own = await Api.confirmStealPadKey(
+    mapping,
+    'semantic:softPad:continueReply',
+    'AG02'
+  );
+  assert.equal(own, true, 'own key skips confirm');
+  assert.equal(asked, 0, 'no dialog for own key');
+  delete context.OneToneConfirm;
+}
 delete context.OneToneCodexMicroPadUi;
 assert.ok(/本页改完即生效/.test(matrix), 'auto-write copy');
 assert.equal(typeof Api.actionCtaLabel, 'function');

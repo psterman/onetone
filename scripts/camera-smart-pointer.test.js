@@ -491,6 +491,28 @@ wait(80).then(function(){
   var move=ipcLog.filter(function(e){ return e.cmd==='cmd_gaze_move_cursor_to_monitor'; })[0];
   assert.ok(move,'center land still moves');
   assert.strictEqual(move.args.preferred,null,'center preference ignores lastPositions');
+
+  // --- agent follow: unique kind on monitor ---
+  var pick=Sp.pickUniqueAgentKindFromWindows;
+  assert.strictEqual(typeof pick,'function','pickUniqueAgentKindFromWindows exported');
+  function kindFrom(w){ return w._kind||''; }
+  assert.strictEqual(pick([
+    {monitorId:'monitor-0',_kind:'cursor'},
+    {monitorId:'monitor-1',_kind:'codex'}
+  ],'monitor-0',kindFrom),'cursor');
+  assert.strictEqual(pick([
+    {monitorId:'monitor-0',_kind:'cursor'},
+    {monitorId:'monitor-0',_kind:'codex'}
+  ],'monitor-0',kindFrom),'','ambiguous → empty');
+  assert.strictEqual(pick([
+    {monitorId:'monitor-0',_kind:'cursor'},
+    {monitorId:'monitor-0',_kind:'cursor'}
+  ],'monitor-0',kindFrom),'cursor','same kind twice still unique');
+  assert.strictEqual(pick([],'monitor-0',kindFrom),'');
+
+  var norm=Sp.normalizeSmartPointer({enabled:true,agentFollow:1});
+  assert.strictEqual(norm.agentFollow,true,'agentFollow normalized');
+
   console.log('camera-smart-pointer.test.js OK');
 }).catch(function(err){
   console.error(err);

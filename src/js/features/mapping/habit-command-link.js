@@ -391,6 +391,68 @@
     return fallbackActionLabel(inner) || fallbackActionLabel(id) || '';
   }
 
+  /** Soft Pad micro → owning slotId (enabled route only). */
+  function padKeyOwnerSlot(mapping, microKeyId) {
+    var micro = String(microKeyId || '').trim();
+    if (!micro) return '';
+    var keys =
+      mapping && mapping.codexMicroPad && Array.isArray(mapping.codexMicroPad.keys)
+        ? mapping.codexMicroPad.keys
+        : [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (!k || k.enabled === false) continue;
+      if (String(k.microKeyId || '').trim() !== micro) continue;
+      var sid = String(k.slotId || '').trim();
+      if (sid) return sid;
+    }
+    return '';
+  }
+
+  function padBindDisplayName(mapping, slotOrRef) {
+    var ref = String(slotOrRef || '').trim();
+    if (!ref) return '';
+    var cmd = resolveCommandRef(mapping, ref);
+    if (cmd) {
+      var lab =
+        asPlainLabel(cmd.label) ||
+        softSlotDisplayName(cmd.padSlotId || cmd.slotId) ||
+        actionLabel(cmd.actionId);
+      if (lab && !looksTechLabel(lab)) return lab;
+    }
+    return softSlotDisplayName(ref) || actionLabel(ref) || '';
+  }
+
+  /**
+   * Confirm only when stealing a micro from another command.
+   * Empty key / own key / clear → resolve true without dialog.
+   */
+  function confirmStealPadKey(mapping, focusSlot, microKeyId) {
+    var micro = String(microKeyId || '').trim();
+    var focus = String(focusSlot || '').trim();
+    if (!micro || !focus) return Promise.resolve(true);
+    var owner = padKeyOwnerSlot(mapping, micro);
+    if (!owner || owner === focus) return Promise.resolve(true);
+    var focusCmd = resolveCommandRef(mapping, focus);
+    var focusPad = String(
+      (focusCmd && (focusCmd.padSlotId || focusCmd.slotId)) || focus
+    ).trim();
+    if (owner === focusPad) return Promise.resolve(true);
+    var fromName = padBindDisplayName(mapping, owner) || '其它命令';
+    var toName = padBindDisplayName(mapping, focus) || '当前命令';
+    var msg = '「' + fromName + '」已占用此键。改绑给「' + toName + '」？';
+    var confirmApi = global.OneToneConfirm;
+    if (confirmApi && typeof confirmApi.ask === 'function') {
+      return confirmApi.ask(msg, { title: '替换 Soft Pad 键', fallback: msg });
+    }
+    try {
+      return Promise.resolve(!!global.confirm(msg));
+    } catch (_) {
+      return Promise.resolve(false);
+    }
+  }
+
   function toastMsg(msg) {
     try {
       if (global.OneToneAppToast && typeof global.OneToneAppToast.show === 'function') {
@@ -2332,7 +2394,7 @@
       '<span class="soft-pad-key-caption__name" data-cap-name>悬停键帽看说明</span>' +
       '<span class="soft-pad-key-caption__chord" data-cap-chord hidden></span>' +
       '</div></div>' +
-      '<p class="hcl-pad-hint">点键帽绑定 · 再点已绑键可清除</p>'
+      '<p class="hcl-pad-hint">点键帽绑定 · 占位键需确认 · 再点已绑键可清除</p>'
     );
   }
 
@@ -2438,17 +2500,9 @@
         el.appendChild(lab);
       }
       lab.textContent = shortPadKeyLabel(name);
-      var dot = el.querySelector('.hcl-pk-dot');
-      if (taken) {
-        if (!dot) {
-          dot = document.createElement('span');
-          dot.className = 'hcl-pk-dot';
-          dot.setAttribute('aria-hidden', 'true');
-          el.appendChild(dot);
-        }
-      } else if (dot) {
-        dot.remove();
-      }
+      // Occupancy: CSS mutes .is-taken — no corner badge.
+      var staleDot = el.querySelector('.hcl-pk-dot');
+      if (staleDot) staleDot.remove();
     });
   }
 
@@ -2742,7 +2796,10 @@
         (editBoard && editBoard.getAttribute('data-hcl-edit'));
       if (!boardSlot) return;
       if (padBoardKey.classList.contains('is-focused')) boardMicro = '';
-      setSoftPadBinding(m, boardSlot, boardMicro).then(afterSave);
+      confirmStealPadKey(m, boardSlot, boardMicro).then(function (ok) {
+        if (!ok) return;
+        setSoftPadBinding(m, boardSlot, boardMicro).then(afterSave);
+      });
       return;
     }
     var padPill = t.closest('[data-hcl-pad-pill]');
@@ -2754,7 +2811,10 @@
       if (!padSlot) return;
       var micro = padPill.getAttribute('data-hcl-pad-pill') || '';
       if (padPill.classList.contains('is-on')) micro = '';
-      setSoftPadBinding(m, padSlot, micro).then(afterSave);
+      confirmStealPadKey(m, padSlot, micro).then(function (ok) {
+        if (!ok) return;
+        setSoftPadBinding(m, padSlot, micro).then(afterSave);
+      });
       return;
     }
     var gestPill = t.closest('[data-hcl-gest-pill]');
@@ -2801,6 +2861,7 @@
     setCommandKeyChord: setCommandKeyChord,
     setSoftPadBinding: setSoftPadBinding,
     setGestureBinding: setGestureBinding,
+    confirmStealPadKey: confirmStealPadKey,
     undoLastBind: undoLastBind,
     setCaptureHero: setCaptureHero,
     syncSlotVoicePhrase: syncSlotVoicePhrase,

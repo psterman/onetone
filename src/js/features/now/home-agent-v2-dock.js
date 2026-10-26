@@ -187,12 +187,15 @@
       });
   }
 
-  /** Soft Pad oral needs Vosk STT (preview + free-say). Same as old home speak channel. */
+  /** Soft Pad oral needs Vosk STT (preview + free-say). Probe first — never silent-download. */
   function ensureOralVoiceEngine() {
     var vw = global.OneToneVoiceWake;
     try {
       if (vw && typeof vw.unparkHomeAsrQuiet === 'function') vw.unparkHomeAsrQuiet();
     } catch (_) {}
+    if (vw && typeof vw.ensureOralWithCapability === 'function') {
+      return Promise.resolve(vw.ensureOralWithCapability()).catch(function () {});
+    }
     if (!vw || typeof vw.switchListeningStrategy !== 'function') {
       return Promise.resolve();
     }

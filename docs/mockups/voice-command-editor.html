@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>一声 · 语音命令</title>
+  <style>
+    :root{--ink:#23302d;--muted:#78827d;--line:#dfe6e1;--paper:#f7f8f4;--panel:#fff;--green:#2f6f5e;--mint:#e6f0ea;--orange:#bc7049;--shadow:0 18px 50px #27413912}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 Inter,"Microsoft YaHei",sans-serif}
+    button,input,select,textarea{font:inherit} button{cursor:pointer}.app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    aside{background:#eef3ee;border-right:1px solid var(--line);padding:28px 18px}.brand{font-size:20px;font-weight:750;margin:0 10px 28px}.brand small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:3px}
+    .list-head{display:flex;align-items:center;justify-content:space-between;padding:0 10px 10px;color:var(--muted);font-size:12px}.new{border:0;background:var(--green);color:#fff;border-radius:8px;padding:7px 10px}.command{width:100%;text-align:left;border:0;background:transparent;border-radius:10px;padding:13px 12px;margin:3px 0;color:var(--ink)}.command:hover,.command.active{background:#fff;box-shadow:0 5px 18px #2741390b}.command strong{display:block;font-weight:650}.command span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}
+    main{padding:42px clamp(24px,6vw,90px);max-width:1000px;width:100%}.eyebrow{color:var(--orange);font-weight:700;font-size:12px}.hero{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:26px}.hero h1{font-size:32px;letter-spacing:-.04em;margin:6px 0}.hero p{color:var(--muted);margin:0}.status{color:var(--green);font-size:12px}
+    .flow{display:grid;gap:14px}.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}.step-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}.num{width:25px;height:25px;border-radius:50%;background:var(--mint);color:var(--green);display:grid;place-items:center;font-weight:700}.step h2{font-size:16px;margin:0}.hint{font-size:12px;color:var(--muted);margin:2px 0 0}.field{display:grid;gap:7px}.field label{font-size:12px;color:var(--muted);font-weight:650}.input,.select,.textarea{width:100%;border:1px solid var(--line);background:#fbfcfa;border-radius:9px;padding:11px 12px;color:var(--ink);outline:none}.input:focus,.select:focus,.textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--mint)}.textarea{min-height:100px;resize:vertical}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.action-box{margin-top:13px;padding:14px;background:#f2f6f2;border-left:3px solid var(--green);border-radius:8px}.action-title{font-weight:700;margin-bottom:10px}.footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px}.test{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:11px 15px}.save{border:0;background:var(--green);color:#fff;border-radius:9px;padding:11px 20px;font-weight:700}.save:hover,.new:hover{background:#245747}.preview{margin-top:18px;color:var(--muted);font-size:12px}.preview b{color:var(--ink)}
+    @media(max-width:760px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:18px}.command-list{display:flex;gap:6px;overflow:auto}.command{min-width:170px}main{padding:28px 18px}.hero{align-items:start;gap:18px;flex-direction:column}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">一声<small>让一句话变成一个动作</small></div>
+      <div class="list-head"><span>我的语音命令</span><button class="new" type="button">＋ 新建</button></div>
+      <div class="command-list">
+        <button class="command active" type="button"><strong><i class="dot"></i>帮我总结</strong><span>使用「会议总结」模板</span></button>
+        <button class="command" type="button"><strong><i class="dot"></i>打开工作台</strong><span>打开应用 · 当前习惯</span></button>
+        <button class="command" type="button"><strong><i class="dot"></i>发出去</strong><span>发送当前输入内容</span></button>
+      </div>
+    </aside>
+    <main>
+      <header class="hero"><div><div class="eyebrow">语音命令 · 当前习惯</div><h1>帮我总结</h1><p>说出这句话后，一声会使用对应模板处理当前内容。</p></div><span class="status">● 已启用</span></header>
+      <section class="flow">
+        <article class="step"><div class="step-head"><span class="num">1</span><div><h2>你要说什么？</h2><p class="hint">可以添加几种不同说法，意思相同即可。</p></div></div><div class="field"><label for="phrase">主要说法</label><input class="input" id="phrase" value="帮我总结" /></div><div class="chips"><button class="chip" type="button">总结一下</button><button class="chip" type="button">整理重点</button><button class="chip" type="button">＋ 添加说法</button></div></article>
+        <article class="step"><div class="step-head"><span class="num">2</span><div><h2>它要做什么？</h2><p class="hint">先选动作，再填写这个动作需要的内容。</p></div></div><div class="field"><label for="action">执行方式</label><select class="select" id="action"><option>使用一个模板</option><option>按下快捷键</option><option>发送一段文字</option><option>打开应用</option></select></div><div class="action-box"><div class="action-title">使用模板</div><div class="grid"><div class="field"><label for="template">选择模板</label><select class="select" id="template"><option>会议总结</option><option>润色文字</option><option>提取待办</option></select></div><div class="field"><label for="write">写入方式</label><select class="select" id="write"><option>写入当前输入框</option><option>写入并发送</option><option>复制到剪贴板</option></select></div></div><div class="field" style="margin-top:13px"><label for="prompt">模板内容（高级）</label><textarea class="textarea" id="prompt">请总结下面的内容，提取 3 个重点，并列出下一步行动。</textarea></div></div></article>
+        <article class="step"><div class="step-head"><span class="num">3</span><div><h2>什么时候生效？</h2><p class="hint">不确定时，保持“当前习惯”即可。</p></div></div><div class="grid"><div class="field"><label for="scope">生效范围</label><select class="select" id="scope"><option>当前习惯</option><option>所有习惯</option><option>仅当前应用</option></select></div><div class="field"><label for="toggle">命令状态</label><select class="select" id="toggle"><option>已启用</option><option>暂时停用</option></select></div></div></article>
+      </section>
+      <div class="footer"><button class="test" type="button">◉ 试说一次</button><button class="save" type="button">保存命令</button></div><p class="preview">实际效果：说 <b>“帮我总结”</b> → 使用 <b>“会议总结”</b> → <b>写入当前输入框</b></p>
+    </main>
+  </div>
+</body>
+</html>

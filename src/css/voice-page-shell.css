@@ -2625,6 +2625,39 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   color: color-mix(in srgb, var(--on-surface) 68%, transparent);
 }
 
+.voice-capability-strip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  background: color-mix(in srgb, var(--surface-high, var(--surface)) 92%, transparent);
+}
+
+.voice-capability-strip[hidden] {
+  display: none !important;
+}
+
+.voice-capability-summary {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.voice-capability-reason {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--on-surface) 70%, transparent);
+}
+
+.voice-capability-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* Demote peer tabs — App entered via secondary CTA */
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs--demoted {
   position: absolute;

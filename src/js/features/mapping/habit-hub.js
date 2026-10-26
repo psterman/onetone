@@ -2679,7 +2679,7 @@
             'scheme'
           );
         }
-        if(appId==='codex-chat'||appId==='cursor-chat'||appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'){
+        if(appId==='codex-chat'||appId==='cursor-chat'||appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'||appId==='minimax-chat'){
           var Texist=global.OneToneAgentScenarioTemplate;
           if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingPreset,{persist:true});
         }
@@ -2764,7 +2764,7 @@
           persist:false
         });
       }
-    } else if(appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'){
+    } else if(appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'||appId==='minimax-chat'){
       var Tvseed=global.OneToneAgentScenarioTemplate;
       if(Tvseed&&Tvseed.applyVscodePackToMapping){
         Tvseed.applyVscodePackToMapping(m,{

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 习惯页 · 输入法归位</title>
+  <style>
+    :root {
+      --ink: #1a2330; --muted: #5c6b7a; --faint: #8a97a5; --line: #d5dde6;
+      --panel: #fff; --wash: #eef2f5; --rail: #f4f6f8;
+      --teal: #0f6e6a; --teal-soft: #e3f3f1;
+      --key: #2a5f8f; --ok: #1a7a4c;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d5e2e4 0%, #e7ecef 55%, #dce4e8 100%);
+      color: var(--ink); font: 13px/1.45 var(--font);
+    }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #16a6a0; outline-offset: 2px; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1080px, calc(100% - 28px)); margin: 18px auto 40px; }
+    .stage h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .stage .lede { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
+    .rule {
+      margin: 12px 0 16px; padding: 10px 12px; border-radius: 8px;
+      background: var(--teal-soft); color: var(--teal); font-size: 12px; font-weight: 650;
+    }
+
+    .shell {
+      display: grid; grid-template-rows: auto 1fr auto;
+      min-height: 620px; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+
+    /* —— 顶栏：对齐现有 Cursor 场景 —— */
+    .top {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fafbfc;
+    }
+    .top .title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22a05a; }
+    .top .sub { color: var(--muted); font-size: 12px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 650;
+      background: #e8f6ee; color: var(--ok); border: 1px solid #b7e0c6;
+    }
+    .top .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .ghost {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 6px 10px; color: var(--muted); font-size: 12px;
+    }
+
+    .body { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); min-height: 0; }
+
+    /* —— 左栏 —— */
+    .left {
+      border-right: 1px solid var(--line); background: #fafbfc;
+      padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 10px;
+    }
+    .left-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .left-head strong { font-size: 13px; }
+    .left-head span { font-size: 11px; color: var(--muted); }
+    .search {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+      background: #fff; color: var(--faint); font-size: 12px;
+    }
+
+    .chan-row { display: flex; gap: 6px; }
+    .chan {
+      width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+      background: #fff; color: #7a8796; display: grid; place-items: center;
+    }
+    .chan svg { width: 16px; height: 16px; }
+    .chan.is-on { background: #1e293b; color: #fff; border-color: #1e293b; }
+
+    .acc {
+      border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden;
+    }
+    .acc-h {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      font-size: 12px; font-weight: 650;
+    }
+    .acc-h span { margin-left: auto; color: var(--muted); font-weight: 500; font-size: 11px; }
+    .acc-ico {
+      width: 20px; height: 20px; border-radius: 5px; background: var(--wash);
+      display: grid; place-items: center; font-size: 10px; color: var(--muted);
+    }
+
+    /* —— 右栏：输入法主配置 —— */
+    .right { padding: 16px 18px; background: #fff; min-width: 0; overflow: auto; }
+    .zone-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 6px;
+    }
+    .right h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+    .right .desc { margin: 0 0 14px; color: var(--muted); font-size: 12px; max-width: 52ch; }
+
+    .ime-card {
+      border: 1px solid var(--line); border-radius: 14px; background: #fbfcfd;
+      padding: 14px; box-shadow: 0 8px 20px rgba(20, 40, 50, .04);
+    }
+    .ime-card h3 { margin: 0 0 4px; font-size: 14px; }
+    .ime-card .hint { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+
+    .ime-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ime {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      min-width: 132px; text-align: left; color: inherit;
+    }
+    .ime:hover { border-color: #9bd5d1; }
+    .ime.is-on {
+      border-color: #7bc4bf; background: var(--teal-soft);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 18%, transparent);
+    }
+    .ime .logo {
+      width: 28px; height: 28px; border-radius: 7px; background: var(--wash);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--key);
+    }
+    .ime .name { font-size: 12px; font-weight: 650; }
+    .ime .chord { font-size: 10px; color: var(--muted); }
+
+    .confirm {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+      background: #e8f6ee; border: 1px solid #b7e0c6; color: var(--ok);
+      font-size: 12px; font-weight: 650;
+    }
+    .confirm code {
+      font-family: ui-monospace, Consolas, monospace; font-weight: 700;
+      background: rgba(255,255,255,.65); padding: 1px 5px; border-radius: 4px;
+    }
+
+    .bridges {
+      margin-top: 16px; display: grid; gap: 8px;
+    }
+    .bridge {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border: 1px dashed #c5d0d8; border-radius: 10px; background: #f7f9fb;
+      color: var(--muted); font-size: 12px;
+    }
+    .bridge strong { color: var(--ink); font-weight: 650; }
+    .bridge .go {
+      margin-left: auto; border: 0; background: transparent; color: var(--teal);
+      font-weight: 700; font-size: 12px; white-space: nowrap;
+    }
+
+    .compare {
+      margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 820px) { .compare { grid-template-columns: 1fr; } .body { grid-template-columns: 1fr; } }
+    .cmp {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fff;
+    }
+    .cmp h4 { margin: 0 0 6px; font-size: 12px; }
+    .cmp.bad h4 { color: #a33; }
+    .cmp.good h4 { color: var(--teal); }
+    .cmp ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+    .cmp li { margin: 3px 0; }
+
+    .keep {
+      border-top: 1px solid var(--line); padding: 10px 16px; background: var(--rail);
+      font-size: 11px; color: var(--faint); font-weight: 650; letter-spacing: .02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型</strong>
+    <em>习惯页 = 输入法唯一配置点</em>
+    <span>按键 / 语音 / Soft Pad 只读摘要 + 跳转</span>
+    <span class="hint">file: prototypes/onetone-habit-ime-home.html</span>
+  </div>
+
+  <div class="stage">
+    <h1>输入法归位 · 习惯页</h1>
+    <p class="lede">对齐你截图里的 Cursor 场景壳：命令列表仍在左栏；输入法方案提到本习惯主配置，不再在各通道重复摆 strip。</p>
+    <p class="rule">规则：一个习惯只选一次输入法 → 写入 <code>imePresetId</code> / 听写键；通道页消费结果，不各自再配。</p>
+
+    <div class="shell">
+      <header class="top">
+        <div class="title"><span class="dot" aria-hidden="true"></span> Cursor 场景</div>
+        <div class="sub">AutoTrigger → RAlt · 13 个动作</div>
+        <span class="pill">✓ 前台 · Cursor</span>
+        <div class="actions">
+          <button type="button" class="ghost">近 7 天用了 30 次</button>
+          <button type="button" class="ghost">查看记录</button>
+          <button type="button" class="ghost">导出文档</button>
+        </div>
+      </header>
+
+      <div class="body">
+        <aside class="left">
+          <div class="left-head">
+            <strong>本习惯 · 命令</strong>
+            <span>27 条</span>
+          </div>
+          <div class="search">搜索命令、说法、和弦…</div>
+          <div class="chan-row" aria-label="通道视图">
+            <button type="button" class="chan" title="命令列表" aria-label="命令">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <button type="button" class="chan" title="语音" aria-label="语音">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"/></svg>
+            </button>
+            <button type="button" class="chan" title="按键" aria-label="按键">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+            </button>
+            <button type="button" class="chan" title="Soft Pad" aria-label="Soft Pad">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button type="button" class="chan" title="摄像头" aria-label="摄像头">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.5-2.5v9L15 14"/><rect x="3" y="7" width="12" height="10" rx="2"/></svg>
+            </button>
+            <button type="button" class="chan is-on" title="输入法（本习惯）" aria-label="输入法" aria-current="page">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>
+            </button>
+          </div>
+
+          <div class="acc">
+            <div class="acc-h"><span class="acc-ico">听</span> 听写 <span>8</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-h"><span class="acc-ico">话</span> 对话中 <span>7</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-h"><span class="acc-ico">控</span> 控 AGENT <span>3</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-h"><span class="acc-ico">找</span> 找入口 <span>4</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-h"><span class="acc-ico">本</span> 本应用 <span>5</span></div>
+          </div>
+        </aside>
+
+        <main class="right">
+          <div class="zone-tag">本习惯 · 落地</div>
+          <h2>输入法</h2>
+          <p class="desc">决定听写激活键发给谁。改这里即可；按键 / 语音 / Soft Pad 会跟着用同一套。</p>
+
+          <section class="ime-card" aria-labelledby="imePickTitle">
+            <h3 id="imePickTitle">选择语音输入法</h3>
+            <p class="hint">点选后自动填入默认快捷键；也可稍后在按键页只改激活键，不必重选品牌。</p>
+            <div class="ime-strip" role="listbox" aria-label="输入法方案">
+              <button type="button" class="ime is-on" role="option" aria-selected="true">
+                <span class="logo">TL</span>
+                <span><span class="name">Typeless</span><br><span class="chord">RAlt</span></span>
+              </button>
+              <button type="button" class="ime" role="option" aria-selected="false">
+                <span class="logo">讯</span>
+                <span><span class="name">讯飞</span><br><span class="chord">F2</span></span>
+              </button>
+              <button type="button" class="ime" role="option" aria-selected="false">
+                <span class="logo">微</span>
+                <span><span class="name">微信</span><br><span class="chord">Ctrl+Shift+Win</span></span>
+              </button>
+              <button type="button" class="ime" role="option" aria-selected="false">
+                <span class="logo">MS</span>
+                <span><span class="name">微软</span><br><span class="chord">Win+H</span></span>
+              </button>
+              <button type="button" class="ime" role="option" aria-selected="false">
+                <span class="logo">+</span>
+                <span><span class="name">自定义</span><br><span class="chord">自己录制</span></span>
+              </button>
+            </div>
+            <div class="confirm">已选用 Typeless · 听写激活键 <code>RAlt</code>（与顶栏 AutoTrigger 一致）</div>
+          </section>
+
+          <div class="bridges" aria-label="通道只读桥接">
+            <div class="bridge">
+              <strong>按键页</strong>
+              <span>只显示「当前 = Typeless · RAlt」</span>
+              <button type="button" class="go">打开按键摘要 →</button>
+            </div>
+            <div class="bridge">
+              <strong>语音页</strong>
+              <span>不再放第二套 preset strip</span>
+              <button type="button" class="go">去语音 · 听写 →</button>
+            </div>
+            <div class="bridge">
+              <strong>Soft Pad</strong>
+              <span>口头听写跟本习惯输入法，无独立配置</span>
+              <button type="button" class="go">去 Soft Pad →</button>
+            </div>
+          </div>
+
+          <div class="compare">
+            <div class="cmp bad">
+              <h4>现在（分散）</h4>
+              <ul>
+                <li>按键页「输入法」完整 strip</li>
+                <li>语音页再一套 strip</li>
+                <li>Soft Pad 仅跳转</li>
+                <li>习惯页几乎看不到选方案</li>
+              </ul>
+            </div>
+            <div class="cmp good">
+              <h4>提案（归位）</h4>
+              <ul>
+                <li>习惯左栏多一个「输入法」视图</li>
+                <li>唯一可改 preset / 听写键</li>
+                <li>通道只读 + 跳回习惯</li>
+                <li>摄像头不出现输入法</li>
+              </ul>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <footer class="keep">各通道底层能力 (KEEP) · 输入法方案不属于通道能力，属于本习惯落地</footer>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var strip = document.querySelector('.ime-strip');
+      if (!strip) return;
+      strip.addEventListener('click', function (e) {
+        var btn = e.target.closest('.ime');
+        if (!btn) return;
+        strip.querySelectorAll('.ime').forEach(function (el) {
+          el.classList.toggle('is-on', el === btn);
+          el.setAttribute('aria-selected', el === btn ? 'true' : 'false');
+        });
+        var name = btn.querySelector('.name');
+        var chord = btn.querySelector('.chord');
+        var box = document.querySelector('.confirm');
+        if (box && name && chord) {
+          box.innerHTML =
+            '已选用 ' + name.textContent + ' · 听写激活键 <code>' + chord.textContent + '</code>（与顶栏 AutoTrigger 一致）';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

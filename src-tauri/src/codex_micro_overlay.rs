@@ -16,6 +16,13 @@ use crate::AppState;
 
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
+/// Hold Soft Pad off the screen until after main FE ready + wake settle — creating a
+/// second WebView2 during boot / SAPI SetInput 假死'd the UI (Responding=false).
+static OVERLAY_BOOT_HOLD: AtomicBool = AtomicBool::new(true);
+static OVERLAY_BOOT_SHOW_SCHEDULED: AtomicBool = AtomicBool::new(false);
+/// First Soft Pad show after cmd_ready waits so wake engine can finish SetInput first.
+const OVERLAY_POST_READY_DELAY_MS: u64 = 4500;
+
 const OVERLAY_WIDTH: f64 = 432.0;
 /// Extra logical width when Soft Pad materials rail is open (pad | vertical list).
 const OVERLAY_WIDTH_MATS_EXTRA: f64 = 252.0;
@@ -220,6 +227,9 @@ pub(crate) fn settings_open_blocks_overlay(
 }
 
 fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
+    if OVERLAY_BOOT_HOLD.load(Ordering::SeqCst) {
+        return Some("boot_hold");
+    }
     let (setup_open, settings_open, verify_active, recording_active) =
         overlay_runtime_gate_flags(state);
     // 「请按下快捷键」owns the wire — hide Soft Pad even if oral is still armed
@@ -472,6 +482,44 @@ fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySn
 
 pub fn soft_pad_overlay_visible() -> bool {
     *last_visible().lock()
+}
+
+pub fn overlay_boot_hold_active() -> bool {
+    OVERLAY_BOOT_HOLD.load(Ordering::SeqCst)
+}
+
+/// Called from `cmd_ready`: schedule Soft Pad first show after wake settles.
+/// Hold stays active until the delay elapses — clearing early lets maybe_tick create
+/// the WebView immediately and defeat the delay.
+pub fn release_overlay_boot_hold(app: &AppHandle, state: &Arc<AppState>) {
+    if OVERLAY_BOOT_SHOW_SCHEDULED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if !OVERLAY_BOOT_HOLD.load(Ordering::SeqCst) {
+        return;
+    }
+    crate::app_log::log_line(
+        state.as_ref(),
+        "codex_overlay",
+        &format!(
+            "overlay boot_hold scheduled; first show in {}ms",
+            OVERLAY_POST_READY_DELAY_MS
+        ),
+    );
+    let app = app.clone();
+    let state = Arc::clone(state);
+    let _ = std::thread::Builder::new()
+        .name("soft-pad-boot-show".into())
+        .spawn(move || {
+            std::thread::sleep(Duration::from_millis(OVERLAY_POST_READY_DELAY_MS));
+            OVERLAY_BOOT_HOLD.store(false, Ordering::SeqCst);
+            crate::app_log::log_line(
+                state.as_ref(),
+                "codex_overlay",
+                "overlay boot_hold cleared; pushing Soft Pad",
+            );
+            push_state(&app, state.as_ref());
+        });
 }
 
 fn last_visible() -> &'static ParkingMutex<bool> {

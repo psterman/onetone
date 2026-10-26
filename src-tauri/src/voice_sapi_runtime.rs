@@ -117,8 +117,37 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, app: &AppHandle) {
                 if final_result {
                     *state.voice_sapi_last_heard.lock() = text.clone();
                     crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
+                    // Soft Pad oral free-say: SAPI dictation finals are not wake Detected
+                    // hits — feed oral router while armed (Vosk-missing fallback path).
+                    // Latch oral_armed at Heard time (hold_up may clear is_armed before spawn).
+                    let oral_armed = crate::voice_command_session::is_armed();
+                    if oral_armed && !text.trim().is_empty() {
+                        *state.voice_vosk_last_final.lock() = text.clone();
+                        let route_text = resolve_sapi_oral_phrase(state, text.trim());
+                        let detection = crate::voice_command_router::VoiceDetection::wake(
+                            "sapi",
+                            &route_text,
+                            None,
+                        );
+                        let state2 = Arc::clone(state);
+                        let app2 = app.clone();
+                        std::thread::spawn(move || {
+                            let result = crate::voice_command_router::handle_detection_ex(
+                                &state2, &app2, &detection, true,
+                            );
+                            if result.skipped {
+                                *state2.voice_sapi_last_skip.lock() = result.skip_reason;
+                            } else if result.handled {
+                                *state2.voice_sapi_last_skip.lock() = String::new();
+                                *state2.voice_sapi_last_trigger.lock() = result.trigger_label;
+                            }
+                        });
+                    }
                 } else {
                     *state.voice_sapi_last_heard.lock() = format!("{text}（还在听…）");
+                    if crate::voice_command_session::is_armed() {
+                        *state.voice_vosk_last_partial.lock() = text.clone();
+                    }
                 }
             }
             VoiceSapiEvent::Trace(message) => {
@@ -142,6 +171,30 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, app: &AppHandle) {
     tick_cooldown_state(state);
 }
 
+/// Map SAPI dictation text onto Soft Pad oral whitelist (fuzzy), else keep raw.
+fn resolve_sapi_oral_phrase(state: &Arc<AppState>, text: &str) -> String {
+    let text = text.trim();
+    if text.is_empty() {
+        return String::new();
+    }
+    let says = {
+        let cfg = state.cfg.lock();
+        crate::voice_command_session::listen_say_list(&cfg, 32)
+    };
+    for say in &says {
+        if crate::config::phrases_fuzzy_match(text, say) {
+            return say.clone();
+        }
+    }
+    if crate::cursor_beginner::is_disarm_phrase(text)
+        || crate::cursor_beginner::is_beginner_voice_phrase(text)
+        || crate::cursor_beginner::matches_beginner_phrase(text).is_some()
+    {
+        return text.to_string();
+    }
+    text.to_string()
+}
+
 fn process_detected(
     state: &Arc<AppState>,
     app: &AppHandle,
@@ -149,6 +202,34 @@ fn process_detected(
     confidence: f32,
     exact: bool,
 ) {
+    // Soft Pad oral: bypass wake cooldown / min_confidence — same latch as Vosk.
+    if crate::voice_command_session::is_armed() {
+        *state.voice_sapi_last_heard.lock() = phrase.to_string();
+        *state.voice_vosk_last_final.lock() = phrase.to_string();
+        let state2 = Arc::clone(state);
+        let app2 = app.clone();
+        let detection =
+            crate::voice_command_router::VoiceDetection::wake("sapi", phrase, Some(confidence));
+        std::thread::spawn(move || {
+            let result = crate::voice_command_router::handle_detection_ex(
+                &state2, &app2, &detection, true,
+            );
+            *state2.voice_sapi_state.lock() = if result.handled {
+                "triggered".into()
+            } else {
+                "listening".into()
+            };
+            if result.skipped {
+                *state2.voice_sapi_last_skip.lock() = result.skip_reason;
+            } else if result.handled {
+                *state2.voice_sapi_last_skip.lock() = String::new();
+                *state2.voice_sapi_last_trigger.lock() = result.trigger_label;
+                *state2.voice_sapi_last_error.lock() = String::new();
+            }
+        });
+        return;
+    }
+
     let (min_confidence, duration_ms, cooldown_ms) = {
         let cfg = state.cfg.lock();
         (

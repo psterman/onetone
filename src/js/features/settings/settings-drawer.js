@@ -1286,6 +1286,15 @@
                 global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
               }
             }catch(_){}
+            // Capability strip (SAPI zh / Vosk) — deferred so it does not stack with settings_park.
+            setTimeout(function(){
+              if(voiceOpenStale()) return;
+              try{
+                if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.refreshVoiceCapabilityStrip==='function'){
+                  global.OneToneVoiceWake.refreshVoiceCapabilityStrip({ applyDefault:true });
+                }
+              }catch(_){}
+            }, 900);
           }catch(err){
             console.error('voice panel deferred paint',err);
             voiceHbClear('voiceOpen:chrome');

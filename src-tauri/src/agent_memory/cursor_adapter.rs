@@ -117,6 +117,19 @@ fn truncate_cursor_json(v: &Value) -> String {
     s
 }
 
+/// Byte-cap a display title without splitting a multibyte char (Cursor titles are often CN).
+fn truncate_title(s: &str, max_bytes: usize) -> String {
+    let t = s.trim();
+    if t.len() <= max_bytes {
+        return t.to_string();
+    }
+    let mut end = max_bytes;
+    while end > 0 && !t.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &t[..end])
+}
+
 struct HeaderHit {
     composer_id: String,
     title: Option<String>,
@@ -165,14 +178,7 @@ fn list_headers(conn: &Connection) -> Result<(Vec<HeaderHit>, String), ProbeStat
                 .get("name")
                 .or_else(|| o.get("title"))
                 .and_then(|x| x.as_str())
-                .map(|s| {
-                    let t = s.trim();
-                    if t.len() > 120 {
-                        format!("{}…", &t[..120])
-                    } else {
-                        t.to_string()
-                    }
-                })
+                .map(|s| truncate_title(s, 120))
                 .filter(|s| !s.is_empty());
             let mut created = None;
             let mut updated = None;
@@ -605,4 +611,19 @@ fn save_probe_not_found() {
         .map_err(|e| e.to_string())?;
         Ok(())
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_title;
+
+    #[test]
+    fn truncate_title_respects_utf8_boundary() {
+        // "测" is 3 bytes; cutting at 4 must not panic mid-char.
+        let s = "测试标题过长需要截断ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789测试标题过长需要截断ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789更多";
+        assert!(s.len() > 120);
+        let out = truncate_title(s, 120);
+        assert!(out.ends_with('…'));
+        assert!(out.is_char_boundary(out.len() - '…'.len_utf8()));
+    }
 }

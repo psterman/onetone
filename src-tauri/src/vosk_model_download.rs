@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tauri::AppHandle;
 use zip::ZipArchive;
 
-use crate::voice_vosk::{model_dir_valid, vosk_model_download_url, vosk_resources_dir};
+use crate::voice_vosk::{model_dir_valid, vosk_model_download_urls, vosk_resources_dir};
 use crate::AppState;
 
 static DOWNLOAD_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -36,6 +36,17 @@ pub fn start_vosk_model_download(
     preset: String,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
+    start_vosk_model_download_opts(app, state, preset, resource_dir, false)
+}
+
+/// `force`: remove existing model dir and re-download (replay / repair).
+pub fn start_vosk_model_download_opts(
+    app: AppHandle,
+    state: Arc<AppState>,
+    preset: String,
+    resource_dir: Option<PathBuf>,
+    force: bool,
+) -> Result<serde_json::Value, String> {
     let preset = preset.trim().to_string();
     if preset.is_empty() {
         return Err("preset required".into());
@@ -49,11 +60,12 @@ pub fn start_vosk_model_download(
     let cfg = state.cfg.lock().voice_vosk.clone();
     let probe = crate::voice_vosk::probe_vosk_resources(&cfg, resource_dir.as_deref());
     let present = model_dir_valid(&dest) || probe.model_exists;
-    if present {
+    if present && !force {
         crate::voice_vosk_runtime::refresh_vosk_probe_cache(
             state.as_ref(),
             resource_dir.as_deref(),
         );
+        crate::voice_capability::invalidate_capability_cache();
         // Do not activate here — frontend finishAfter issues a single force:retry.
         // Activating in both places thrash-restarts Vosk before model load finishes.
         return Ok(serde_json::json!({
@@ -68,8 +80,10 @@ pub fn start_vosk_model_download(
         }));
     }
 
-    let url = vosk_model_download_url(&preset)
-        .ok_or_else(|| format!("no download url for preset: {preset}"))?;
+    let urls = vosk_model_download_urls(&preset);
+    if urls.is_empty() {
+        return Err(format!("no download url for preset: {preset}"));
+    }
 
     if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
         return Ok(serde_json::json!({
@@ -83,10 +97,13 @@ pub fn start_vosk_model_download(
     std::thread::Builder::new()
         .name("vosk-model-download".into())
         .spawn(move || {
+            if force && dest.exists() {
+                let _ = fs::remove_dir_all(&dest);
+            }
             let result = download_and_install(
                 &app2,
                 &preset_for_thread,
-                url,
+                &urls,
                 dir_name,
                 resource_dir.as_deref(),
             );
@@ -107,6 +124,7 @@ pub fn start_vosk_model_download(
                         state.as_ref(),
                         resource_dir.as_deref(),
                     );
+                    crate::voice_capability::invalidate_capability_cache();
                     // Frontend finishAfterVoskModelReady performs the single force restart.
                 }
                 Err(err) => {
@@ -138,7 +156,7 @@ pub fn start_vosk_model_download(
 fn download_and_install(
     app: &AppHandle,
     preset: &str,
-    url: &str,
+    urls: &[&str],
     dir_name: &str,
     resource_dir: Option<&Path>,
 ) -> Result<PathBuf, String> {
@@ -165,7 +183,38 @@ fn download_and_install(
         }),
     );
 
-    download_file(app, url, &zip_path, preset)?;
+    let mut last_err = String::from("no download urls");
+    let mut ok = false;
+    for (i, url) in urls.iter().enumerate() {
+        emit_download(
+            app,
+            serde_json::json!({
+                "type": "mvp_vosk_download",
+                "phase": "downloading",
+                "ok": true,
+                "preset": preset,
+                "percent": 0,
+                "mirrorIndex": i,
+                "url": url,
+            }),
+        );
+        match download_file(app, url, &zip_path, preset) {
+            Ok(()) => {
+                ok = true;
+                break;
+            }
+            Err(e) => {
+                last_err = format!("mirror[{i}] {url}: {e}");
+                let _ = fs::remove_file(&zip_path);
+            }
+        }
+    }
+    if !ok {
+        return Err(format!(
+            "all mirrors failed (tried {}): {last_err}",
+            urls.len()
+        ));
+    }
 
     emit_download(
         app,
@@ -206,6 +255,8 @@ fn download_and_install(
 fn download_file(app: &AppHandle, url: &str, dest: &Path, preset: &str) -> Result<(), String> {
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(600))
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .user_agent("OneTone/vosk-model-download")
         .build()
         .map_err(|e| e.to_string())?;
     let mut response = client.get(url).send().map_err(|e| e.to_string())?;

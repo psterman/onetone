@@ -11,17 +11,14 @@ pub async fn cmd_voice_vosk_status(
 ) -> Result<serde_json::Value, String> {
     let state = Arc::clone(state.inner());
     let resource_dir = app_resource_dir(&app);
-    // Off UI thread + hard timeout — stuck FS/probe used to hold ipc ~60s (未响应).
+    // Off UI thread + hard timeout. Guard on async side so timeout clears ipc-held.
+    let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("voice_vosk_status");
     let join = tauri::async_runtime::spawn_blocking(move || {
-        crate::ui_heartbeat::note_ipc_enter("voice_vosk_status");
-        let v = crate::voice_vosk_runtime::voice_vosk_status(&state, resource_dir);
-        crate::ui_heartbeat::note_ipc_exit("voice_vosk_status");
-        v
+        crate::voice_vosk_runtime::voice_vosk_status(&state, resource_dir)
     });
     match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
         Ok(Ok(v)) => Ok(v),
         Ok(Err(e)) => Err(format!("vosk status task failed: {e}")),
-        // Leave note_ipc to the still-running worker; hang panel shows truth until exit.
         Err(_) => Err("vosk status timeout".into()),
     }
 }
@@ -103,16 +100,18 @@ pub fn cmd_vosk_download_model(
     state: tauri::State<Arc<AppState>>,
     app: tauri::AppHandle,
     preset: Option<String>,
+    force: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     let cfg = state.cfg.lock();
     let p = preset
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| cfg.voice_vosk.model_preset.clone());
     drop(cfg);
-    crate::vosk_model_download::start_vosk_model_download(
+    crate::vosk_model_download::start_vosk_model_download_opts(
         app.clone(),
         Arc::clone(state.inner()),
         p,
         super::sapi::app_resource_dir(&app),
+        force.unwrap_or(false),
     )
 }

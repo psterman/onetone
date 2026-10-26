@@ -12,6 +12,10 @@ const { MODELS } = require('./ensure-vosk-cn-model.js');
 
 assert.ok(MODELS.some((m) => m.id === 'cn-light'), 'cn-light in ensure list');
 assert.ok(MODELS.some((m) => m.id === 'en-light'), 'en-light in ensure list');
+const cn = MODELS.find((m) => m.id === 'cn-light');
+assert.ok(Array.isArray(cn.urls) && cn.urls[0].includes('hf-mirror.com'), 'CN prefers hf-mirror');
+const en = MODELS.find((m) => m.id === 'en-light');
+assert.ok(Array.isArray(en.urls) && en.urls[0].includes('hf-mirror.com'), 'EN prefers hf-mirror');
 
 const tauriConf = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'src-tauri', 'tauri.conf.json'), 'utf8')

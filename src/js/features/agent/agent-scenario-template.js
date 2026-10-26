@@ -160,7 +160,13 @@
       A.CURSOR_DEFAULT_KEY_BY_SLOT || {},
       A.TRAE_DEFAULT_KEY_BY_SLOT || {},
       A.QODER_DEFAULT_KEY_BY_SLOT || {},
-      A.WORKBUDDY_DEFAULT_KEY_BY_SLOT || {}
+      A.WORKBUDDY_DEFAULT_KEY_BY_SLOT || {},
+      A.MINIMAX_DEFAULT_KEY_BY_SLOT || {},
+      // Prior wrong MiniMax seed (VS Code Ctrl+L) — heal toward real MiniMax defaults.
+      { quickChat: 'Ctrl+L', commandPalette: 'Ctrl+Shift+P', openTerminal: 'Ctrl+`' },
+      // Prior sparse WorkBuddy seed left these empty; fillEmptyKeyDefaults covers that.
+      // If a pack was wrongly stamped with VS Code palette/chat chords, realign here.
+      { commandPalette: 'Ctrl+Shift+P', quickChat: 'Ctrl+L', quickSearch: 'Ctrl+F' }
     ];
     var changed = false;
     m.agentBindings.forEach(function (b) {
@@ -199,7 +205,8 @@
     return app === 'cursor-chat' || app === 'workbuddy-chat' ||
       app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' ||
       app === 'windsurf-chat' ||
-      app === 'qoder-chat';
+      app === 'qoder-chat' ||
+      app === 'minimax-chat';
   }
 
   function hasVscodePack(m) {

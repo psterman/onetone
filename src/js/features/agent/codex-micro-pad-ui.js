@@ -2149,7 +2149,8 @@
     return app === 'cursor-chat' || app === 'workbuddy-chat' ||
       app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' ||
       app === 'windsurf-chat' ||
-      app === 'qoder-chat';
+      app === 'qoder-chat' ||
+      app === 'minimax-chat';
   }
 
   function isSoftPadInsertOnlySlot(slotId, m) {
@@ -2258,6 +2259,9 @@
     var id = String(slotId || '').trim();
     if (!id) return '';
     if (id === 'summonCodex') {
+      if (String((m && m.appTargetId) || '').trim() === 'minimax-chat') {
+        return en ? 'MiniMax Mini Chat' : 'MiniMax Mini Chat';
+      }
       return en ? 'OneTone focus' : 'OneTone 聚焦操作';
     }
     if (isVscodeSoftPadMapping(m)) {
@@ -2269,6 +2273,7 @@
         : app === 'windsurf-chat' ? (en ? 'Windsurf shortcut' : 'Windsurf 快捷键')
         : app === 'qoder-chat' ? (en ? 'Qoder shortcut' : 'Qoder 快捷键')
         : app === 'workbuddy-chat' ? (en ? 'WorkBuddy shortcut' : 'WorkBuddy 快捷键')
+        : app === 'minimax-chat' ? (en ? 'MiniMax shortcut' : 'MiniMax 快捷键')
         : (en ? 'IDE shortcut' : 'IDE 快捷键');
       if (id === 'pushToTalk') {
         return en ? 'OneTone voice' : 'OneTone 语音';
@@ -2279,7 +2284,8 @@
       if (id === 'commandPalette' || id === 'newThread' || id === 'quickChat' || id === 'quickSearch'
         || id === 'undo' || id === 'toggleSidebar' || id === 'openSettings'
         || id === 'navBack' || id === 'navForward'
-        || id === 'openTerminal' || id === 'newBrowserTab' || id === 'cancel' || id === 'stopOrSend') {
+        || id === 'openTerminal' || id === 'newBrowserTab' || id === 'cancel' || id === 'stopOrSend'
+        || id === 'summonCodex') {
         return brand;
       }
       return en ? 'Soft Pad action' : 'Soft Pad 动作';

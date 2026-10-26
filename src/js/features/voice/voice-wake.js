@@ -1125,6 +1125,13 @@
     return true;
   }
 
+  /** SAPI/KWS transitional or live — do not stomp with set_listening_strategy. */
+  function wakeEngineBusyOrLive(res){
+    if(!res) return false;
+    var st=String(res.state||'').trim().toLowerCase();
+    return st==='starting'||st==='listening'||st==='running'||st==='cooldown'||st==='triggered'||st==='stopping';
+  }
+
   function voskModelPresent(res){
     if(!res) return false;
     if(res.modelExists===true&&res.dllExists!==false) return true;
@@ -1979,17 +1986,24 @@
     wake=wake||{};
     var sup=wake.supervisor||{};
     var vosk=wake.vosk||{};
-    var desired=String(sup.desiredEngine||vosk.desiredEngine||'').trim().toLowerCase();
+    var desired=String(sup.desiredEngine||vosk.desiredEngine||(wake.sapi&&wake.sapi.desiredEngine)||'').trim().toLowerCase();
     var active=String(sup.activeEngine||vosk.activeEngine||'').trim().toLowerCase();
     if(!desired||desired==='none') return false;
+    if(sup.activateBusy===true) return false;
     if(desired==='vosk'){
-      if(voskListeningOk(vosk)) return false;
+      if(voskListeningOk(vosk)||wakeEngineBusyOrLive(vosk)) return false;
       return active!=='vosk'||String(vosk.state||'').trim()==='stopped'||String(vosk.state||'').trim()==='error';
     }
     if(desired==='kws'){
       var kws=wake.kws||{};
-      if(isKwsNativeListening(kws,wake)) return false;
+      if(isKwsNativeListening(kws,wake)||wakeEngineBusyOrLive(kws)) return false;
       return active!=='kws';
+    }
+    if(desired==='sapi'){
+      var sapi=wake.sapi||{};
+      // starting/listening: never mismatch — re-activate stomps SetInput and 假死's UI.
+      if(wakeEngineBusyOrLive(sapi)||active==='sapi') return false;
+      return true;
     }
     return desired!==active;
   }
@@ -2090,11 +2104,17 @@
     if(strategy==='off') return;
     var wakeOral=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
     var voskOral=wakeOral.vosk||{};
+    var sapiOral=wakeOral.sapi||{};
+    var kwsOral=wakeOral.kws||{};
     if(voskOral.oralArmed||voskOral.oral_armed) return;
     if(voskListeningOk(voskOral)){
       noteVoskRetrySuccess();
       return;
     }
+    // Advanced/SAPI (or any non-vosk desired): never re-enter set_listening_strategy while
+    // the engine is starting/live — that stop+restart under SetInput 假死'd the UI.
+    if(wakeEngineBusyOrLive(sapiOral)||wakeEngineBusyOrLive(kwsOral)||wakeEngineBusyOrLive(voskOral)) return;
+    if(wakeOral.supervisor&&wakeOral.supervisor.activateBusy===true) return;
     var st=String(voskOral.state||'').trim();
     if(st==='starting'||st==='stopping') return;
     var issue=String(voskOral.resourceIssue||'').trim();
@@ -2107,6 +2127,13 @@
     if(opts.force) unparkHomeAsrQuiet();
     if(strategy==='enhanced'||strategy==='auto'||strategy==='resourceSaver'){
       retryVoskStartOnce();
+    }else if(strategy==='advanced'){
+      // Light activate only — full strategy IPC re-saves config + stop_sync peers.
+      var eng=String(
+        (sapiOral&&sapiOral.desiredEngine)||(wakeOral.supervisor&&wakeOral.supervisor.desiredEngine)||'sapi'
+      ).trim().toLowerCase();
+      if(eng!=='sapi'&&eng!=='vosk'&&eng!=='kws') eng='sapi';
+      global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:eng}).catch(function(){});
     }else{
       global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).catch(function(){});
     }
@@ -2171,6 +2198,12 @@
     // voiceWake: never status IPC — openDrawer +200ms used to stack vosk_status onto
     // settings_park stop and leave ipc held≈165s / UI_HB_STALL_5S.
     if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return;
+    // Soft Pad boot_hold / first create: skip 4-way status IPC so SAPI SetInput isn't stacked.
+    try{
+      var wakeSnap0=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+      var sap0=wakeSnap0.sapi||{};
+      if(String(sap0.state||'')==='starting') return;
+    }catch(_){}
     if(!voiceStatusPollNeeded()) return;
     if(voiceStatusPollInFlight) return;
     voiceStatusPollInFlight=true;
@@ -2210,7 +2243,12 @@
     const needKws=(!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel)||practiceOpen)&&!(wakePanel&&voskLiveDesired);
     function __pollOne(need,cmd){
       if(!need) return Promise.resolve(null);
-      return global.OneToneIpc.invoke(cmd,{}).catch(function(){return null;});
+      // Cap each leg so a wedged spawn_blocking cannot hold voiceStatusPoll tag → UI_HB_STALL.
+      var inv=global.OneToneIpc.invoke(cmd,{}).catch(function(){return null;});
+      return Promise.race([
+        inv,
+        new Promise(function(resolve){ setTimeout(function(){ resolve(null); },1800); })
+      ]);
     }
     const pEnd=__pollOne(needEnd,'cmd_voice_end_status');
     const pSapi=__pollOne(needSapi,'cmd_voice_sapi_status');
@@ -3598,6 +3636,116 @@
     downloadVoskModel();
   }
 
+  var lastVoiceCapabilityFp='';
+  var voiceCapabilityInFlight=null;
+
+  function probeVoiceCapability(opts){
+    opts=opts||{};
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+      return Promise.resolve(null);
+    }
+    if(voiceCapabilityInFlight&&!opts.force) return voiceCapabilityInFlight;
+    voiceCapabilityInFlight=global.OneToneIpc.invoke('cmd_voice_capability_probe',{
+      forceRefresh:!!opts.force,
+      applyDefault:!!opts.applyDefault
+    }).then(function(res){
+      voiceCapabilityInFlight=null;
+      var cap=res&&res.capability?res.capability:res;
+      if(cap){
+        try{ hooks().voiceUiSnapshot=hooks().voiceUiSnapshot||{}; hooks().voiceUiSnapshot.capability=cap; }catch(_){}
+      }
+      return cap||null;
+    }).catch(function(){
+      voiceCapabilityInFlight=null;
+      return null;
+    });
+    return voiceCapabilityInFlight;
+  }
+
+  function bindVoiceCapabilityActions(){
+    var dl=$('btnVoiceCapDownload');
+    if(dl&&!dl._otCapBound){
+      dl._otCapBound=true;
+      dl.addEventListener('click',function(e){
+        if(e){ e.preventDefault(); e.stopPropagation(); }
+        downloadVoskModelGuide();
+      });
+    }
+    var setup=$('btnVoiceCapSpeechSetup');
+    if(setup&&!setup._otCapBound){
+      setup._otCapBound=true;
+      setup.addEventListener('click',function(e){
+        if(e){ e.preventDefault(); e.stopPropagation(); }
+        if(global.OneToneIpc&&global.OneToneIpc.invoke){
+          global.OneToneIpc.invoke('cmd_open_windows_speech_setup').catch(function(){});
+        }
+      });
+    }
+  }
+
+  function renderVoiceCapabilityStrip(cap){
+    var strip=$('voiceCapabilityStrip');
+    if(!strip) return;
+    var Plan=global.OneToneVoiceCapabilityPlan;
+    var plan=Plan&&Plan.capabilityStripPlan?Plan.capabilityStripPlan(cap):null;
+    if(!cap||!plan){
+      strip.hidden=true;
+      return;
+    }
+    var fp=[cap.recommendedWake,cap.voskInstalled?1:0,cap.needVoskDownload?1:0,plan.reasonKey].join('|');
+    if(fp===lastVoiceCapabilityFp&&!strip.hidden) return;
+    lastVoiceCapabilityFp=fp;
+    strip.hidden=false;
+    var summary=$('voiceCapabilitySummary');
+    var reason=$('voiceCapabilityReason');
+    if(summary) summary.textContent=t(plan.summaryKey);
+    if(reason){
+      reason.textContent=plan.reasonKey?t(plan.reasonKey):'';
+      reason.hidden=!plan.reasonKey;
+    }
+    var dl=$('btnVoiceCapDownload');
+    if(dl){
+      dl.hidden=!plan.showDownload;
+      dl.textContent=t('voiceCapDownloadCta');
+    }
+    var setup=$('btnVoiceCapSpeechSetup');
+    if(setup){
+      setup.hidden=!plan.showSpeechSetup;
+      setup.textContent=t('voiceCapSpeechSetupCta');
+    }
+    bindVoiceCapabilityActions();
+  }
+
+  function refreshVoiceCapabilityStrip(opts){
+    if(!(ui().drawerOpen&&ui().settingsPanel==='voiceWake')) return Promise.resolve(null);
+    return probeVoiceCapability(opts||{ applyDefault:true }).then(function(cap){
+      renderVoiceCapabilityStrip(cap);
+      return cap;
+    });
+  }
+
+  /** Soft Pad oral: Vosk STT only (SAPI/KWS do not participate). */
+  function ensureOralWithCapability(){
+    try{ unparkHomeAsrQuiet(); }catch(_){}
+    var Plan=global.OneToneVoiceCapabilityPlan;
+    return probeVoiceCapability({ force:true }).then(function(cap){
+      var plan=Plan&&Plan.oralVoicePlan?Plan.oralVoicePlan(cap):{ action:'switch_auto' };
+      if(plan.action==='switch_auto'){
+        return switchListeningStrategy('auto',{ force:true });
+      }
+      // Vosk missing — prompt download; never fall back to SAPI/KWS for Soft Pad 转写.
+      if(!voiceSetupOverlayPinned){
+        renderVoiceSetupBanner(
+          { modelExists:false, dllExists:true, resourceIssue:'model_missing' },
+          { strategy:'auto', force:true }
+        );
+      }
+      return { ok:false, needVoskDownload:true };
+    }).catch(function(){
+      return switchListeningStrategy('auto',{ force:true });
+    });
+  }
+
   function retryVoskStart(){
     if(voskStartInFlight||voskDownloadInFlight) return;
     voiceSetupActivating=true;
@@ -4019,6 +4167,10 @@
     ensureHomeVoiceEngine:ensureHomeVoiceEngine,
     ensureHomeVoiceEngineIfMismatch:ensureHomeVoiceEngineIfMismatch,
     ensureHomeVoiceListening:ensureHomeVoiceListening,
+    ensureOralWithCapability:ensureOralWithCapability,
+    probeVoiceCapability:probeVoiceCapability,
+    refreshVoiceCapabilityStrip:refreshVoiceCapabilityStrip,
+    renderVoiceCapabilityStrip:renderVoiceCapabilityStrip,
     unparkHomeAsrQuiet:unparkHomeAsrQuiet,
     startPoll:startVoiceStatusPoll,
     liveFingerprint:voiceWakeLiveFingerprint,

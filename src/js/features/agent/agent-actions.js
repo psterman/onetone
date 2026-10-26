@@ -180,37 +180,101 @@
     pasteAndSend: ''
   });
 
-  /** Trae IDE: side chat is Ctrl+U, inline is Ctrl+I. Pad quickChat → side chat. */
+  /**
+   * Trae IDE / Trae Work（trae-work · trae-code；legacy trae-chat）。
+   * 来源：docs.trae.cn/ide_keyboard-shortcuts — 侧边对话 Ctrl+U，内嵌 Ctrl+I。
+   * Soft Pad quickChat/summon → 侧边面板；内嵌不占槽。mic 跟 OneTone。
+   * windsurf-chat 暂共用此表（Cascade 差异以后再拆）。
+   */
   var TRAE_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
-    quickChat: 'Ctrl+U'
-  });
-
-  /** Qoder IDE: chat panel Ctrl+L; reject-all Ctrl+Backspace. */
-  var QODER_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
-    quickChat: 'Ctrl+L',
-    cancel: 'Ctrl+Backspace'
+    summonCodex: 'Ctrl+U',
+    pushToTalk: '',
+    quickChat: 'Ctrl+U',
+    pasteAndSend: ''
   });
 
   /**
-   * WorkBuddy desktop client (WorkBuddy.exe), not CodeBuddy IDE.
-   * Wake is Ctrl+Space (global — do not inject from pad). New task Ctrl+N. Send Enter.
+   * Qoder IDE / Qoder CN（Qoder.exe）— VS Code 系，非 plugins 快捷键表。
+   * 来源：docs.qoder.com/user-guide/keyboard-shortcuts（Windows）。
+   * Soft Pad mic 跟 OneTone 口头键；summon/quickChat 同为打开聊天面板 Ctrl+L。
    */
-  var WORKBUDDY_DEFAULT_KEY_BY_SLOT = {
-    summonCodex: '',
+  var QODER_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
+    summonCodex: 'Ctrl+L',
+    pushToTalk: '',
+    // 打开/关闭 AI 聊天（与 Inline Ctrl+I 不同）
+    quickChat: 'Ctrl+L',
+    // 拒绝全部建议改动（非 Escape）
+    cancel: 'Ctrl+Backspace',
+    pasteAndSend: ''
+  });
+
+  /**
+   * MiniMax Code 桌面端默认快捷键（设置 → 快捷键；Windows）。
+   * 来源：官方快捷键页（⌘→Ctrl）+ 本机 globalAccessShortcut.miniChatCreate=Alt+A。
+   * Soft Pad mic 跟 OneTone 口头键，pushToTalk 留空。
+   */
+  var MINIMAX_DEFAULT_KEY_BY_SLOT = {
+    summonCodex: 'Alt+A',
     pushToTalk: '',
     stopOrSend: 'Enter',
+    pasteAndSend: '',
+    runTargetSequence: '',
     cancel: 'Escape',
     newThread: 'Ctrl+N',
     undo: 'Ctrl+Z',
-    quickSearch: '',
-    quickChat: '',
-    commandPalette: '',
+    // 全局搜索（功能/设置/任务）≈ 命令面板
+    quickSearch: 'Ctrl+G',
+    // Mini Chat 快捷小窗（与唤起同键）
+    quickChat: 'Alt+A',
+    commandPalette: 'Ctrl+K',
+    openReviewTab: '',
+    toggleReviewPanel: '',
+    toggleSidebar: 'Ctrl+B',
+    openSettings: 'Ctrl+,',
+    navBack: '',
+    navForward: '',
+    // 官方默认是 Ctrl+J，不是 Ctrl+`
+    openTerminal: 'Ctrl+J',
+    toggleBrowserPanel: '',
+    newBrowserTab: '',
+    focusBrowserAddressBar: '',
+    status: '',
+    plan: '',
+    review: '',
+    permissions: '',
+    switchAgent: '',
+    claudeModel: '',
+    switchModel: '',
+    appsOrPlugins: '',
+    toggleVoiceKeyless: ''
+  };
+
+  /**
+   * WorkBuddy desktop (WorkBuddy.exe), not CodeBuddy IDE / not a VS Code fork.
+   * Docs: Task-Management + client defaults. Soft Pad mic stays OneTone oral (empty).
+   * summonCodex = Ctrl+Space only on ENC / summon — not on pushToTalk.
+   */
+  var WORKBUDDY_DEFAULT_KEY_BY_SLOT = {
+    summonCodex: 'Ctrl+Space',
+    pushToTalk: '',
+    stopOrSend: 'Enter',
+    pasteAndSend: 'Ctrl+Shift+V',
+    runTargetSequence: '',
+    cancel: 'Escape',
+    newThread: 'Ctrl+N',
+    undo: 'Ctrl+Z',
+    // 全局搜索（任务/会话）
+    quickSearch: 'Ctrl+K',
+    // 快速新建对话
+    quickChat: 'Ctrl+Alt+W',
+    commandPalette: 'Ctrl+K',
     openReviewTab: '',
     toggleReviewPanel: '',
     toggleSidebar: '',
     openSettings: '',
-    navBack: '',
-    navForward: '',
+    // 上一 / 下一任务
+    navBack: 'Ctrl+[',
+    navForward: 'Ctrl+]',
     openTerminal: '',
     toggleBrowserPanel: '',
     newBrowserTab: '',
@@ -222,7 +286,8 @@
     switchAgent: '',
     claudeModel: '',
     switchModel: '',
-    appsOrPlugins: ''
+    appsOrPlugins: '',
+    toggleVoiceKeyless: ''
   };
 
   var VSCODE_DEFAULT_KEY_BY_SLOT = VSCODE_EDITOR_KEY_BY_SLOT;
@@ -240,7 +305,8 @@
     'trae-chat': 1,
     'trae-code': 1,
     'windsurf-chat': 1,
-    'qoder-chat': 1
+    'qoder-chat': 1,
+    'minimax-chat': 1
   };
 
   var PROVIDER_BY_APP = {
@@ -285,6 +351,7 @@
     if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'windsurf-chat') return TRAE_DEFAULT_KEY_BY_SLOT;
     if (app === 'qoder-chat') return QODER_DEFAULT_KEY_BY_SLOT;
     if (app === 'workbuddy-chat') return WORKBUDDY_DEFAULT_KEY_BY_SLOT;
+    if (app === 'minimax-chat') return MINIMAX_DEFAULT_KEY_BY_SLOT;
     if (app === 'codex-chat') return DEFAULT_KEY_BY_SLOT;
     return null;
   }
@@ -357,12 +424,56 @@
       'trae-chat': { zh: 'Trae Work', en: 'Trae Work' },
       'trae-code': { zh: 'Trae Code', en: 'Trae Code' },
       'windsurf-chat': { zh: 'Windsurf', en: 'Windsurf' },
-      'qoder-chat': { zh: 'Qoder', en: 'Qoder' }
+      'qoder-chat': { zh: 'Qoder', en: 'Qoder' },
+      'minimax-chat': { zh: 'MiniMax', en: 'MiniMax' }
     };
     var name = names[app];
     if (name) {
-      if (id === 'summonCodex') return isEnLocale() ? ('Focus ' + name.en) : ('聚焦 ' + name.zh);
+      if (id === 'summonCodex') {
+        if (app === 'minimax-chat') {
+          return isEnLocale() ? 'Show Mini Chat' : '显示 Mini Chat';
+        }
+        if (app === 'workbuddy-chat') {
+          return isEnLocale() ? 'Show WorkBuddy' : '呼出 WorkBuddy';
+        }
+        if (app === 'qoder-chat') {
+          return isEnLocale() ? 'Open/Close Chat' : '打开/关闭聊天';
+        }
+        if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code') {
+          return isEnLocale() ? 'Open side chat' : '打开侧边对话';
+        }
+        return isEnLocale() ? ('Focus ' + name.en) : ('聚焦 ' + name.zh);
+      }
       if (id === 'pushToTalk') return isEnLocale() ? 'Oral command' : '口头指令';
+      if (app === 'minimax-chat') {
+        if (id === 'commandPalette') return isEnLocale() ? 'Global search' : '全局搜索';
+        if (id === 'quickSearch') return isEnLocale() ? 'Search tasks' : '搜索任务和会话';
+        if (id === 'quickChat') return isEnLocale() ? 'Mini Chat' : 'Mini Chat';
+        if (id === 'newThread') return isEnLocale() ? 'New task' : '新建任务';
+        if (id === 'openTerminal') return isEnLocale() ? 'Terminal' : '终端';
+        if (id === 'toggleSidebar') return isEnLocale() ? 'Toggle sidebar' : '显示或隐藏左侧栏';
+      }
+      if (app === 'workbuddy-chat') {
+        if (id === 'commandPalette' || id === 'quickSearch') {
+          return isEnLocale() ? 'Global search' : '全局搜索';
+        }
+        if (id === 'quickChat') return isEnLocale() ? 'Quick new chat' : '快速新建对话';
+        if (id === 'newThread') return isEnLocale() ? 'New chat' : '新建对话';
+        if (id === 'navBack') return isEnLocale() ? 'Previous task' : '上一任务';
+        if (id === 'navForward') return isEnLocale() ? 'Next task' : '下一任务';
+        if (id === 'pasteAndSend') return isEnLocale() ? 'Paste and ask' : '粘贴并询问';
+      }
+      if (app === 'qoder-chat') {
+        if (id === 'quickChat') return isEnLocale() ? 'Open/Close Chat' : '打开/关闭聊天';
+        if (id === 'cancel') return isEnLocale() ? 'Reject all changes' : '拒绝全部建议';
+        if (id === 'commandPalette') return isEnLocale() ? 'Command palette' : '命令面板';
+        if (id === 'openSettings') return isEnLocale() ? 'Settings' : '打开设置';
+      }
+      if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code') {
+        if (id === 'quickChat') return isEnLocale() ? 'Side AI chat' : '侧边对话';
+        if (id === 'commandPalette') return isEnLocale() ? 'Command palette' : '命令面板';
+        if (id === 'openSettings') return isEnLocale() ? 'Settings' : '打开设置';
+      }
       if (id === 'cancel' && app === 'cursor-chat') {
         return isEnLocale() ? 'Cancel generation' : '取消生成';
       }
@@ -706,6 +817,7 @@
     TRAE_DEFAULT_KEY_BY_SLOT: TRAE_DEFAULT_KEY_BY_SLOT,
     QODER_DEFAULT_KEY_BY_SLOT: QODER_DEFAULT_KEY_BY_SLOT,
     WORKBUDDY_DEFAULT_KEY_BY_SLOT: WORKBUDDY_DEFAULT_KEY_BY_SLOT,
+    MINIMAX_DEFAULT_KEY_BY_SLOT: MINIMAX_DEFAULT_KEY_BY_SLOT,
     defaultKeyMapForApp: defaultKeyMapForApp,
     cameraRecommendedActionIds: cameraRecommendedActionIds,
     cameraRecommendedPresencePatch: cameraRecommendedPresencePatch,
