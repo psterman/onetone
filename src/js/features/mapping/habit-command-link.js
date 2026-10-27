@@ -1973,6 +1973,14 @@
       openMatchEditor: opts.openMatchEditor !== false,
       returnPanel: opts.returnPanel
     });
+    // Deep-link always lands on command view (vibecoding / cross-channel match).
+    ui().habitShellMode = 'commands';
+    var Ws = global.OneToneHabitWorkspace;
+    if (Ws && typeof Ws.syncShellModeToggle === 'function') {
+      try {
+        Ws.syncShellModeToggle('commands');
+      } catch (_) {}
+    }
     var drawer = global.OneToneSettingsDrawer;
     if (drawer && typeof drawer.open === 'function') {
       drawer.open({
@@ -2283,9 +2291,10 @@
       channelFilterChipHtml('pad', 'Soft Pad', 'pad') +
       channelFilterChipHtml('cam', '手势', 'cam') +
       '</div>' +
+      '<p class="hcl-axis-hint">按需求分文件夹；通道 chip 只过滤，不改分组。口头武装后用 Soft「说话」开听写（勿侧键双开）。</p>' +
       (secHtml
         ? '<div class="hcl-sec-wrap">' + secHtml + '</div>'
-        : '<p class="hcl-empty">暂无匹配命令。请到各通道页配置后再回此查看。</p>') +
+        : '<p class="hcl-empty">暂无匹配命令。可先在按键 / Soft Pad / 语音页配一条，再回这里看跨通道调用。</p>') +
       '</aside>';
 
     var detailHtml =
@@ -2516,8 +2525,117 @@
     syncHabitPadCaption(host);
   }
 
-  function renderEditorHtml(mapping, slotId) {
+  function detailPaneMode() {
+    var pane = String(ui().habitDetailPane || 'edit').trim();
+    return pane === 'lanes' ? 'lanes' : 'edit';
+  }
+
+  function detailPaneToggleHtml(cmdRef) {
+    var pane = detailPaneMode();
+    return (
+      '<div class="hcl-detail-toggle pref-segmented" role="tablist" aria-label="右侧视图">' +
+      '<button type="button" class="pref-segmented-btn' +
+      (pane === 'edit' ? ' is-active' : '') +
+      '" role="tab" data-hcl-detail-pane="edit" data-hcl-cmd="' +
+      esc(cmdRef) +
+      '" aria-selected="' +
+      (pane === 'edit' ? 'true' : 'false') +
+      '">编辑</button>' +
+      '<button type="button" class="pref-segmented-btn' +
+      (pane === 'lanes' ? ' is-active' : '') +
+      '" role="tab" data-hcl-detail-pane="lanes" data-hcl-cmd="' +
+      esc(cmdRef) +
+      '" aria-selected="' +
+      (pane === 'lanes' ? 'true' : 'false') +
+      '">通道</button>' +
+      '</div>'
+    );
+  }
+
+  function channelLaneBadge(st) {
+    if (st === 'bound') return '已绑定';
+    if (st === 'deep-link') return '去通道页';
+    if (st === 'readonly') return '只读';
+    if (st === 'inherited') return '继承';
+    return '未配置';
+  }
+
+  /** keys2-style 2×2 channel status grid (read-only projection). */
+  function channelsOverviewHtml(cmd) {
+    if (!cmd) return '<p class="hcl-empty">选择一条命令</p>';
+    if (!cmd.channels) enrichCommandChannels(cmd);
+    var ch = cmd.channels || {};
+    var cmdRef = cmd.commandRef || commandIdentity(cmd);
+    var n = 0;
+    ['voice', 'key', 'pad', 'camera'].forEach(function (k) {
+      var v = ch[k];
+      if (v && v.state && v.state !== 'empty') n += 1;
+    });
+    function lane(title, view, cls) {
+      view = view || { state: 'empty', value: '', owner: '' };
+      var st = view.state || 'empty';
+      var badge = view.value ? String(view.value) : channelLaneBadge(st);
+      return (
+        '<div class="keys2-lane ' +
+        cls +
+        '"><div class="hd"><h3>' +
+        esc(title) +
+        '</h3><span class="keys2-st ' +
+        (st === 'empty' ? 'off' : 'on') +
+        '"><span class="dot"></span><span class="txt">' +
+        esc(badge) +
+        '</span></span></div><p class="keys2-owner">' +
+        esc(channelLaneBadge(st)) +
+        (view.owner ? ' · ' + esc(view.owner) : '') +
+        '</p></div>'
+      );
+    }
+    return (
+      '<div class="hcl-lanes-panel keys2-root" data-hcl-lanes="' +
+      esc(cmdRef) +
+      '">' +
+      '<div class="keys2-hero">' +
+      '<div class="ico">' +
+      esc(String(cmd.label || '?').slice(0, 1)) +
+      '</div>' +
+      '<div class="meta"><h2>' +
+      esc(cmd.label || cmd.actionId || cmd.slotId || '命令') +
+      '</h2><p>' +
+      esc(cmdRef) +
+      '</p></div>' +
+      '<div class="keys2-ask">' +
+      esc(String(n) + ' / 4 通道有状态') +
+      '</div></div>' +
+      '<div class="keys2-sync"><span class="pulse" aria-hidden="true"></span><strong>只读</strong><span>投影自 buildModel · 点「编辑」改绑定</span></div>' +
+      '<div class="keys2-lanes">' +
+      lane('屏幕', ch.pad, 'pad') +
+      lane('实体键', ch.key, 'keys') +
+      lane('口头', ch.voice, 'voice') +
+      lane('摄像头', ch.camera, 'cam') +
+      '</div>' +
+      '<div class="hcl-lanes-foot"><button type="button" class="hcl-btn primary" data-hcl-detail-pane="edit" data-hcl-cmd="' +
+      esc(cmdRef) +
+      '">去编辑绑定</button></div>' +
+      '</div>'
+    );
+  }
+
+  function renderDetailPaneHtml(mapping, slotId) {
     var cmd = resolveCommandRef(mapping, slotId);
+    if (!cmd) return '<p class="hcl-empty">未找到命令</p>';
+    var cmdRef = cmd.commandRef || commandIdentity(cmd);
+    var body =
+      detailPaneMode() === 'lanes'
+        ? channelsOverviewHtml(cmd)
+        : renderEditorBodyHtml(mapping, cmd);
+    return detailPaneToggleHtml(cmdRef) + body;
+  }
+
+  function renderEditorHtml(mapping, slotId) {
+    return renderDetailPaneHtml(mapping, slotId);
+  }
+
+  function renderEditorBodyHtml(mapping, cmd) {
     if (!cmd) {
       return '<p class="hcl-empty">未找到命令</p>';
     }
@@ -2748,6 +2866,16 @@
       return;
     }
 
+    var paneBtn = t.closest('[data-hcl-detail-pane]');
+    if (paneBtn) {
+      var pane = paneBtn.getAttribute('data-hcl-detail-pane') === 'lanes' ? 'lanes' : 'edit';
+      ui().habitDetailPane = pane;
+      var focusCmd = paneBtn.getAttribute('data-hcl-cmd') || ui().habitMatchCommand || '';
+      if (focusCmd) ui().habitMatchCommand = focusCmd;
+      mountInto(host, m);
+      return;
+    }
+
     function afterSave() {
       delete ui().habitMatchPadMicroKey;
       if (maybeReturnAfterSave()) return;
@@ -2874,7 +3002,9 @@
     openChannelPanel: openChannelPanel,
     renderMatrixHtml: renderMatrixHtml,
     mountInto: mountInto,
-    paintWorkspaceHost: paintWorkspaceHost
+    paintWorkspaceHost: paintWorkspaceHost,
+    channelsOverviewHtml: channelsOverviewHtml,
+    detailPaneMode: detailPaneMode
   };
 
   // Alias per plan naming on AgentCapabilityUi

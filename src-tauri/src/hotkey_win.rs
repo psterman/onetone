@@ -305,6 +305,17 @@ fn key_to_vk(name: &str) -> Option<UINT> {
         "F10" => Some(0x79),
         "F11" => Some(0x7A),
         "F12" => Some(0x7B),
+        "-" => Some(0xBD),
+        "=" => Some(0xBB),
+        "[" => Some(0xDB),
+        "]" => Some(0xDD),
+        "\\" => Some(0xDC),
+        ";" => Some(0xBA),
+        "'" | "Quote" | "Apostrophe" => Some(0xDE),
+        "," => Some(0xBC),
+        "." => Some(0xBE),
+        "/" => Some(0xBF),
+        "`" => Some(0xC0),
         other if other.len() == 1 => {
             let b = other.as_bytes()[0];
             if b.is_ascii_alphanumeric() {
@@ -1847,6 +1858,18 @@ fn vk_to_name(vk: u32) -> Option<String> {
         0x6D => Some("NumpadSubtract".into()),
         0x6E => Some("NumpadDecimal".into()),
         0x6F => Some("NumpadDivide".into()),
+        // OEM punctuation — keep names aligned with key_chord / FE recording ("'").
+        0xBD => Some("-".into()),
+        0xBB => Some("=".into()),
+        0xDB => Some("[".into()),
+        0xDD => Some("]".into()),
+        0xDC => Some("\\".into()),
+        0xBA => Some(";".into()),
+        0xDE => Some("'".into()),
+        0xBC => Some(",".into()),
+        0xBE => Some(".".into()),
+        0xBF => Some("/".into()),
+        0xC0 => Some("`".into()),
         other => Some(format!("VK_{:02X}", other)),
     }
 }

@@ -317,7 +317,69 @@
     return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:'locator',ruleRows:shared()&&shared().buildRuleRows?shared().buildRuleRows(m,{channel:channel}):[],inherit:shared()&&shared().inheritSummary?shared().inheritSummary(m):{overrideCount:0,inheritedCount:0,total:0}};
   }
 
-  function ensureShell(){
+  function isVibeAppMapping(m){
+    var id=String(m&&m.appTargetId||'').trim().toLowerCase();
+    if(!id) return false;
+    return id.indexOf('cursor')>=0||id.indexOf('vscode')>=0||id.indexOf('codex')>=0||id.indexOf('windsurf')>=0;
+  }
+
+  function mappingHasMatchCmds(m){
+    var Link=global.OneToneHabitCommandLink;
+    if(Link&&typeof Link.buildModel==='function'){
+      try{
+        var model=Link.buildModel(m);
+        return !!(model&&Array.isArray(model.commands)&&model.commands.length);
+      }catch(_){}
+    }
+    var binds=m&&Array.isArray(m.agentBindings)?m.agentBindings:[];
+    for(var i=0;i<binds.length;i++){
+      if(binds[i]&&binds[i].enabled!==false&&String(binds[i].triggerBinding||'').trim()) return true;
+    }
+    return false;
+  }
+
+  /** scenes = hub list; commands = command×channel editor (vibecoding default for app scenarios). */
+  function resolveShellMode(){
+    var u=ui();
+    var pinned=String(u.habitShellMode||'').trim();
+    if(pinned==='scenes'||pinned==='commands') return pinned;
+    if(u.habitOpenMatchEditor||String(u.habitMatchCommand||'').trim()) return 'commands';
+    var m=normalizeSelection();
+    if(!m) return 'scenes';
+    if(isApp(m)&&(isVibeAppMapping(m)||mappingHasMatchCmds(m))) return 'commands';
+    return 'scenes';
+  }
+
+  function setShellMode(mode,opts){
+    opts=opts||{};
+    mode=String(mode||'').trim();
+    if(mode!=='scenes'&&mode!=='commands') mode='scenes';
+    ui().habitShellMode=mode;
+    syncShellModeToggle(mode);
+    if(opts.render===false) return mode;
+    render(Object.assign({skipFgAlign:true},opts));
+    return mode;
+  }
+
+  function syncShellModeToggle(mode){
+    mode=mode||resolveShellMode();
+    var root=document.getElementById('habitShellModeToggle');
+    if(!root) return;
+    var btns=root.querySelectorAll('[data-habit-shell-mode]');
+    for(var i=0;i<btns.length;i++){
+      var btn=btns[i];
+      var on=btn.getAttribute('data-habit-shell-mode')===mode;
+      btn.classList.toggle('is-active',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
+    }
+    var panel=document.getElementById('settingsPanelHabits');
+    if(panel){
+      panel.classList.toggle('is-habit-shell-scenes',mode==='scenes');
+      panel.classList.toggle('is-habit-shell-commands',mode==='commands');
+    }
+  }
+
+  function applyShellVisibility(mode){
     var hub=document.getElementById('habitHubView');
     if(!hub) return null;
     var host=document.getElementById('habitWorkspace');
@@ -332,10 +394,17 @@
     var oldToolbar=hub.querySelector('.habit-hub-toolbar');
     var oldBody=hub.querySelector('.habit-hub-body');
     var oldList=document.getElementById('habitHubList');
-    if(oldToolbar) oldToolbar.hidden=true;
-    if(oldBody) oldBody.hidden=true;
-    if(oldList) oldList.hidden=true;
+    var commands=mode==='commands';
+    host.hidden=!commands;
+    if(oldToolbar) oldToolbar.hidden=commands;
+    if(oldBody) oldBody.hidden=commands;
+    if(oldList) oldList.hidden=commands;
+    syncShellModeToggle(mode);
     return host;
+  }
+
+  function ensureShell(){
+    return applyShellVisibility(resolveShellMode());
   }
   function appListHtml(model){
     if(shared()&&shared().appListHtml) return shared().appListHtml(model,{variant:'ws'});
@@ -626,7 +695,8 @@
 
   function render(opts){
     opts=opts||{};
-    var host=ensureShell();
+    var mode=resolveShellMode();
+    var host=applyShellVisibility(mode);
     if(!host) return;
     var diffApi=diff();
     if(diffApi&&diffApi.ensureGlobalBaselineMapping){
@@ -634,9 +704,17 @@
     }
     bindEvents(host);
     bindUsageLive();
+    bindShellModeToggle();
     captureWorkspaceScroll();
     ui().habitExperienceMode='locator';
+    // Scenes view: hub list owns the body; workspace stays empty/hidden.
+    if(mode==='scenes'&&!ui().habitHubCreating){
+      host.innerHTML='';
+      maybeAutoAlignForeground(opts);
+      return;
+    }
     if(ui().habitHubCreating){
+      host.hidden=false;
       var hub=global.OneToneHabitHub;
       var createHtml=hub&&hub.inlineCreateHtml?hub.inlineCreateHtml():'';
       host.innerHTML='<div class="habit-ws-create">'+createHtml+'</div>';
@@ -668,6 +746,21 @@
         }).catch(function(){});
       }
     }
+  }
+
+  function bindShellModeToggle(){
+    var root=document.getElementById('habitShellModeToggle');
+    if(!root||root.__habitShellBound) return;
+    root.__habitShellBound=true;
+    root.addEventListener('click',function(e){
+      var btn=e.target&&e.target.closest&&e.target.closest('[data-habit-shell-mode]');
+      if(!btn) return;
+      e.preventDefault();
+      setShellMode(btn.getAttribute('data-habit-shell-mode')||'scenes',{skipStatsFetch:true});
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.render){
+        try{ global.OneToneHabitHub.render(); }catch(_){}
+      }
+    });
   }
 
   function bindUsageLive(){
@@ -876,6 +969,9 @@
     render:render,
     buildWorkspaceModel:buildWorkspaceModel,
     switchMode:switchMode,
+    resolveShellMode:resolveShellMode,
+    setShellMode:setShellMode,
+    syncShellModeToggle:syncShellModeToggle,
     restoreReturnContext:restoreReturnContext,
     defaultItem:defaultItem,
     alignToForeground:alignToForeground

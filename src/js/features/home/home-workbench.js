@@ -3111,10 +3111,12 @@
   var NAV_PANEL_MAP={
     habits:'schemes',
     keys:'triggers',
-    keys2:'keys2',
+    keysSeq:'keysSeq',
+    keys2:'schemes',
     softPad:'softPad',
     agent:'agent',
     agentData:'agent',
+    composerHistory:'composerHistory',
     voiceWake:'voice',
     models:'voice',
     camera:'camera',

@@ -53,6 +53,19 @@
       dir: 'softPadSceneKeysDir',
       detail: 'softPadSceneKeysDetail',
       add: 'softPadSceneKeysAdd'
+    },
+    {
+      panel: 'keysSeqSceneActionsPanel',
+      page: 'settingsPanelKeysSeq',
+      bodySel: '.keys-page-body',
+      app: 'keysSeqSceneActionsApp',
+      appIcon: 'keysSeqSceneActionsAppIcon',
+      appName: 'keysSeqSceneActionsAppName',
+      meta: 'keysSeqSceneActionsMeta',
+      back: 'keysSeqSceneActionsBack',
+      dir: 'keysSeqSceneActionsDir',
+      detail: 'keysSeqSceneActionsDetail',
+      add: 'keysSeqSceneActionsAdd'
     }
   ];
 
@@ -154,6 +167,7 @@
     if (panel === 'voiceWake') return HOSTS[1];
     if (panel === 'keys') return HOSTS[0];
     if (panel === 'softPad') return HOSTS[2];
+    if (panel === 'keysSeq') return HOSTS[3];
     var i;
     for (i = 0; i < HOSTS.length; i++) {
       if (pageIsOpen(HOSTS[i].page)) return HOSTS[i];
@@ -188,8 +202,12 @@
       if (show && active && host.panel === active.panel) {
         // Prefer settingsPanel over DOM [hidden] — live-frontend navigate can race panel.hidden.
         if (host.page === 'settingsPanelVoiceWake') showThis = voice;
-        else if (host.page === 'settingsPanelKeys') showThis = !voice && !softPad && pageIsOpen(host.page);
-        else if (host.page === 'settingsPanelSoftPad') {
+        else if (host.page === 'settingsPanelKeys') {
+          showThis = !voice && !softPad && !onKeysSeqPage() && pageIsOpen(host.page);
+        } else if (host.page === 'settingsPanelKeysSeq') {
+          // Action-chain desk keeps saved actions on the left rail — never show right dock.
+          showThis = false;
+        } else if (host.page === 'settingsPanelSoftPad') {
           showThis = softPad && softPadFaceOk && pageIsOpen(host.page);
         } else showThis = pageIsOpen(host.page);
       }
@@ -203,12 +221,17 @@
     }
   }
 
+  function onKeysSeqPage() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.settingsPanel === 'keysSeq');
+  }
+
   function openKeysPanelIfNeeded() {
     var ui = global.OneToneState && global.OneToneState.ui;
-    if (!ui || ui.settingsPanel === 'keys') return;
+    if (!ui || ui.settingsPanel === 'keys' || ui.settingsPanel === 'keysSeq') return;
     try {
       if (global.OneToneSettingsDrawer && typeof global.OneToneSettingsDrawer.open === 'function') {
-        global.OneToneSettingsDrawer.open({ panel: 'keys' });
+        global.OneToneSettingsDrawer.open({ panel: onKeysSeqPage() ? 'keysSeq' : 'keys' });
         return;
       }
     } catch (_) {}
@@ -1243,6 +1266,22 @@
       global.OneToneState.state.selectedMappingId = mid;
     }
     if (mid) state.mappingId = mid;
+    // Action-chain desk: stay here and refresh the sequence editor.
+    if (onKeysSeqPage()) {
+      try {
+        if (global.OneToneKeysSeqPanel && typeof global.OneToneKeysSeqPanel.render === 'function') {
+          global.OneToneKeysSeqPanel.render();
+        }
+      } catch (_) {}
+      paint();
+      var seqCap = $('keysSeqTriggerCap') || $('keysSeqActions');
+      if (seqCap && seqCap.scrollIntoView) {
+        try {
+          seqCap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (_) {}
+      }
+      return;
+    }
     // Soft Pad dock → Keys editor (same 本场景动作, edit surface lives on Keys).
     if (onSoftPadPage()) {
       openKeysPanelIfNeeded();
@@ -1353,7 +1392,7 @@
       clickHidden('btnVoiceWakePoolAdd');
       return;
     }
-    if (onSoftPadPage()) openKeysPanelIfNeeded();
+    if (onSoftPadPage() && !onKeysSeqPage()) openKeysPanelIfNeeded();
     var picker = global.OneToneKeysChannelCommandPicker;
     var createFn =
       picker && typeof picker.createBlankSceneActionMapping === 'function'
@@ -1378,6 +1417,20 @@
     state.mappingId = String(created.id);
     state.highlightId = String(created.id);
     paint();
+    if (onKeysSeqPage()) {
+      try {
+        if (global.OneToneKeysSeqPanel && typeof global.OneToneKeysSeqPanel.render === 'function') {
+          global.OneToneKeysSeqPanel.render();
+        }
+      } catch (_) {}
+      var seqPlus = $('keysSeqActions');
+      if (seqPlus && seqPlus.scrollIntoView) {
+        try {
+          seqPlus.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (_) {}
+      }
+      return;
+    }
     var trigTarget = $('habitKeyMapCellTrigger') || $('habitKeyMapRowTrigger') || $('keysDeskPanel');
     if (trigTarget && trigTarget.scrollIntoView) {
       try {
@@ -1435,12 +1488,16 @@
 
   function channelKind() {
     if (onVoicePage()) return 'voice';
-    if (pageIsOpen('settingsPanelKeys') || onSoftPadPage()) return 'key';
+    if (pageIsOpen('settingsPanelKeys') || pageIsOpen('settingsPanelKeysSeq') || onSoftPadPage()) {
+      return 'key';
+    }
     return 'all';
   }
 
   /** Right dock follows the active channel rail (Keys / Soft Pad / Voice). */
   function activeChannelTab() {
+    // Action-chain desk is the custom-key sequence surface.
+    if (onKeysSeqPage()) return 'key';
     // Voice page: intent rail wins — Keys picker may still sit on「我录的键」.
     if (onVoicePage()) {
       try {
@@ -2138,6 +2195,7 @@
   }
 
   function paint() {
+    bindOnce();
     var m = mappingById(state.mappingId);
     if (!m || !isAppScenario(m)) {
       setVisible(false);
@@ -2302,12 +2360,15 @@
   }
 
   function bindOnce() {
-    if (state.bound) return;
     state.bound = true;
     var i;
     for (i = 0; i < HOSTS.length; i++) {
       var panel = $(HOSTS[i].panel);
-      if (panel && panel.addEventListener) panel.addEventListener('click', onPanelClick);
+      // Per-host so keysSeq dock binds even if Keys/Voice already bound earlier.
+      if (panel && panel.addEventListener && panel.dataset.sceneActionsBound !== '1') {
+        panel.dataset.sceneActionsBound = '1';
+        panel.addEventListener('click', onPanelClick);
+      }
       var addBtn = $(HOSTS[i].add);
       if (addBtn && addBtn.addEventListener && !addBtn._sceneAddBound) {
         addBtn._sceneAddBound = true;
@@ -2317,7 +2378,8 @@
         });
       }
       var dir = $(HOSTS[i].dir);
-      if (dir && dir.addEventListener) {
+      if (dir && dir.addEventListener && dir.dataset.sceneDirBound !== '1') {
+        dir.dataset.sceneDirBound = '1';
         dir.addEventListener('dragstart', function (e) {
           var item = e.target && e.target.closest && e.target.closest('[data-row-key]');
           if (!item || item.getAttribute('draggable') !== 'true') return;

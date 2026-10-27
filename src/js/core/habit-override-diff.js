@@ -304,8 +304,19 @@
     return 'inherited';
   }
 
+  function mappingOwnsActionChainKeys(mapping){
+    if(!mapping) return false;
+    // Action-chain / 我录的键 peers own a unique trigger — never fold to inherit ''.
+    if(Array.isArray(mapping.targetActions)&&mapping.targetActions.length) return true;
+    if(String(mapping.keysSeqFamilyId||'').trim()) return true;
+    var ref=mapping.captureHeroRef;
+    if(ref&&typeof ref==='object'&&String(ref.kind||'').trim().toLowerCase()==='customkey') return true;
+    return false;
+  }
+
   function normalizeKeyFieldsForSave(mapping,baseline,isAppScenario){
     if(!mapping||!isAppScenario||!baseline) return mapping;
+    if(mappingOwnsActionChainKeys(mapping)) return mapping;
     var src=String(mapping.sourceKey||'').trim();
     // AutoTrigger + mouse/volume source: empty targetKey means "inherit" in the UI,
     // but SendKey treats empty as agent/workflow — not baseline RAlt. Keep IME key.

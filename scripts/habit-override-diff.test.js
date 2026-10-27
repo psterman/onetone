@@ -124,6 +124,16 @@ Diff.normalizeKeyFieldsForSave(keySparse,{triggerKey:'RAlt',targetKey:'V'},true)
 assert.strictEqual(keySparse.triggerKey,'');
 assert.strictEqual(keySparse.targetKey,'');
 
+// Action-chain peers keep their own trigger even when app-scoped + equal to baseline.
+var chainPeer={
+  appTargetId:'cursor-chat',
+  triggerKey:'LCtrl+\'',
+  targetKey:'',
+  targetActions:[{type:'text',value:'1'}]
+};
+Diff.normalizeKeyFieldsForSave(chainPeer,{triggerKey:'LCtrl+\'',targetKey:'RAlt'},true);
+assert.strictEqual(chainPeer.triggerKey,'LCtrl+\'','action-chain trigger must not fold to inherit');
+
 var mockCore={
   byId:function(id){
     if(id==='global-1') return {id:'global-1',triggerKey:'RAlt',targetKey:'V',appTargetId:''};

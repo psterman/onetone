@@ -804,9 +804,12 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
   }
 
   function startTargetRecord(pinnedMappingId){
-    var picker=global.OneToneKeysChannelCommandPicker;
-    if(picker&&picker.hasSelection&&picker.hasSelection()&&picker.recordSelected){
-      return Promise.resolve(picker.recordSelected()).then(function(){ return true; });
+    // Inline step capture (keysSeq IME/key) registers a finish hook — never hijack via channel picker.
+    if(!rec.beforeFinishTargetHook){
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(picker&&picker.hasSelection&&picker.hasSelection()&&picker.recordSelected){
+        return Promise.resolve(picker.recordSelected()).then(function(){ return true; });
+      }
     }
     var capUi=global.OneToneAgentCapabilityUi;
     if(capUi&&capUi.activeCodexMapping&&capUi.activeCodexMapping()){
@@ -1185,6 +1188,12 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
       var scene=global.OneToneKeysSceneActionsPanel;
       if(scene&&typeof scene.refresh==='function') scene.refresh();
     }catch(_){}
+    try{
+      var uiSeq=global.OneToneState&&global.OneToneState.ui;
+      if(uiSeq&&uiSeq.settingsPanel==='keysSeq'&&global.OneToneKeysSeqPanel&&global.OneToneKeysSeqPanel.render){
+        global.OneToneKeysSeqPanel.render();
+      }
+    }catch(_){}
     if(isPeerSlot){
       try{
         var peerPicker=global.OneToneKeysChannelCommandPicker;
@@ -1383,6 +1392,20 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'defau
     if(hook){
       void Promise.resolve(hook(combo, mappingId, m)).then(function(ok){
         if(rec.mode!=='target') return;
+        // 'handled' — caller already applied the chord (e.g. IME step); just end session.
+        if(ok==='handled'){
+          armLocalCaptureGuard();
+          updateRecordingPreview('target',combo);
+          rec.snapshot=null;
+          rec.mappingId='';
+          clearRecordMappingGuard();
+          clearRecTimer();
+          setRecording('none');
+          hooks().resetTargetCapture();
+          void invokeStopRecording();
+          rec.beforeFinishTargetHook=null;
+          return;
+        }
         if(!ok){
           rejectTargetCapture();
           return;

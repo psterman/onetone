@@ -302,16 +302,53 @@
   border-color:color-mix(in srgb, var(--ha2-accent) 55%, var(--ha2-line));
   box-shadow:0 0 0 2px color-mix(in srgb, var(--ha2-accent) 16%, transparent), 0 18px 44px -18px rgba(28,39,60,.22);
 }
-.ha2-dock-target{
-  display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:28px;
-}
 .ha2-chip{
-  height:26px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;
+  height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 4px;
   border:1px solid var(--ha2-line);background:color-mix(in srgb, var(--ha2-bg) 55%, var(--ha2-surface));
-  border-radius:8px;font-size:12px;font-weight:650;color:var(--ha2-ink);cursor:pointer;
+  border-radius:999px;font-size:12px;font-weight:650;color:var(--ha2-ink);cursor:pointer;
+  max-width:min(280px,52vw);
 }
 .ha2-chip.target{background:var(--ha2-surface);font-weight:700}
 .ha2-chip.target:hover{border-color:var(--ha2-accent);color:var(--ha2-accent)}
+.ha2-chip-icon,.ha2-chip .ha2-icon{
+  width:20px;height:20px;border-radius:6px;flex:0 0 auto;overflow:hidden;
+  display:inline-grid;place-items:center;
+}
+.ha2-chip-icon img,.ha2-chip .ha2-icon img{width:100%;height:100%;object-fit:contain;display:block}
+.ha2-chip-copy{
+  min-width:0;display:inline-flex;align-items:center;gap:6px;overflow:hidden;
+}
+.ha2-chip-copy [data-ha2-dest-name]{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:7em;
+}
+.ha2-chip-project{
+  flex:0 1 auto;max-width:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  height:18px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:650;
+  color:color-mix(in srgb, var(--ha2-accent) 88%, var(--ha2-ink));
+  background:color-mix(in srgb, var(--ha2-accent) 14%, var(--ha2-surface));
+  border:1px solid color-mix(in srgb, var(--ha2-accent) 22%, transparent);
+}
+.ha2-chip-caret{flex:0 0 auto;font-size:10px;color:var(--ha2-muted);margin-left:2px}
+.ha2-agent-fuse{
+  display:inline-flex;align-items:center;gap:4px;min-width:0;
+  padding:2px;border-radius:999px;
+  border:1px solid var(--ha2-line);
+  background:color-mix(in srgb, var(--ha2-bg) 40%, var(--ha2-surface));
+}
+.ha2-agent-fuse .ha2-chip.target{
+  border-color:transparent;background:transparent;max-width:min(240px,46vw);
+}
+.ha2-agent-fuse .ha2-aim-chip{
+  width:26px;height:26px;border-radius:999px;
+}
+.ha2-agent-fuse .ha2-aim-clear{padding:2px 6px;border-radius:999px}
+.ha2-channel-caps{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap}
+.ha2-cap.ha2-cap--icon{
+  height:24px;min-width:0;padding:0 7px;border-radius:999px;font-size:10.5px;
+}
+.ha2-cap.ha2-cap--icon .ha2-cap-lbl{
+  max-width:4.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 .ha2-aim-chip{
   width:28px;height:28px;padding:0;border-radius:9px;border:1px solid var(--ha2-line);
   display:inline-grid;place-items:center;flex:0 0 auto;cursor:pointer;

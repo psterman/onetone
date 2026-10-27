@@ -585,13 +585,25 @@
     return text;
   }
 
-  function archiveOnSuccess(kind) {
+  /**
+   * Persist composer send into PromptPrep handoff journal (for dock history).
+   * @param {string} kind
+   * @param {{ body?: string, outcome?: string, clear?: boolean, source?: string }} [opts]
+   */
+  function archiveOnSuccess(kind, opts) {
+    opts = opts || {};
     var Prep = global.OneToneHomePromptPrep;
     if (Prep && Prep.archiveHandoff) {
       try {
-        Prep.archiveHandoff({ targetKind: kind, outcome: 'sent' });
+        Prep.archiveHandoff({
+          targetKind: kind,
+          outcome: opts.outcome || 'sent',
+          body: opts.body,
+          source: opts.source || 'home-v2'
+        });
       } catch (_) {}
     }
+    if (opts.clear === false) return;
     var S = store();
     if (S && S.setDraft) S.setDraft('', { silent: true });
     if (Prep && Prep.setDraftBody) {
@@ -599,6 +611,38 @@
         Prep.setDraftBody('', { skipSync: true });
       } catch (_) {}
     }
+  }
+
+  function listComposerHistory(limit) {
+    var Prep = global.OneToneHomePromptPrep;
+    var rows = Prep && Prep.listHandoffs ? Prep.listHandoffs() : [];
+    var n = typeof limit === 'number' ? limit : 20;
+    return (rows || []).filter(Boolean).slice(0, n);
+  }
+
+  /** Restore a handoff body into the home composer draft. */
+  function restoreComposerHistory(id) {
+    var rows = listComposerHistory(40);
+    var hit = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i].id || '') === String(id || '')) {
+        hit = rows[i];
+        break;
+      }
+    }
+    if (!hit) return { ok: false, reason: 'missing' };
+    var text = String(hit.body || hit.preview || '').trim();
+    if (!text) return { ok: false, reason: 'empty' };
+    var S = store();
+    if (S && S.setDraft) S.setDraft(text, { silent: true });
+    syncDraftToPrep(text);
+    return { ok: true, text: text, row: hit };
+  }
+
+  function removeComposerHistory(id) {
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || !Prep.removeHandoff) return false;
+    return !!Prep.removeHandoff(id);
   }
 
   /** Pathless File/Blob → tray inbox → Prep material (same as Soft Pad carry). */
@@ -747,6 +791,9 @@
     syncDraftToPrep: syncDraftToPrep,
     assembledText: assembledText,
     archiveOnSuccess: archiveOnSuccess,
+    listComposerHistory: listComposerHistory,
+    restoreComposerHistory: restoreComposerHistory,
+    removeComposerHistory: removeComposerHistory,
     addFiles: addFiles,
     ingestBlobFile: ingestBlobFile,
     removeMaterial: removeMaterial,

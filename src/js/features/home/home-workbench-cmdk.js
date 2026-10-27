@@ -23,7 +23,7 @@
       {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitWizard:true},
       {id:'model', labelKey:'homeWbQuickSwitchModel', hintKey:'homeWbCmdkHintSettings', panel:'voiceWake'},
       {id:'triggers', labelKey:'homeWbNavTriggers', hintKey:'homeWbCmdkHintSettings', panel:'keys'},
-      {id:'keys2', labelKey:'homeWbNavKeys2', hintKey:'homeWbCmdkHintSettings', panel:'keys2'},
+      {id:'keys2', labelKey:'homeWbNavKeys2', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitShellMode:'commands', habitDetailPane:'lanes'},
       {id:'softPad', labelKey:'homeWbNavSoftPad', hintKey:'homeWbCmdkHintSettings', panel:'softPad', focus:'softPadLayout'},
       {id:'agent', labelKey:'homeWbNavAgent', hintKey:'homeWbCmdkHintSettings', panel:'agent'},
       {id:'agentData', labelKey:'homeWbNavAgentData', hintKey:'homeWbCmdkHintSettings', panel:'agent', agentSub:'data'},
@@ -118,6 +118,8 @@
       if(item.habitWizard) opts.habitWizard=true;
       if(item.focus) opts.focus=item.focus;
       if(item.agentSub) opts.agentSub=item.agentSub;
+      if(item.habitShellMode) opts.habitShellMode=item.habitShellMode;
+      if(item.habitDetailPane) opts.habitDetailPane=item.habitDetailPane;
       global.OneToneSettingsDrawer.open(opts);
     }
   }

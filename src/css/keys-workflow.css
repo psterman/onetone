@@ -545,7 +545,7 @@
 }
 /* Keep DOM order on IME: ??? + icons ? ???. Catalogue tabs hide the hero. */
 
-#settingsPanelKeys .keys-detail-card {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -556,29 +556,29 @@
   background: var(--surface, #fff);
 }
 
-#settingsPanelKeys .keys-detail-card--hero {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
   background: color-mix(in srgb, var(--primary, #2a9cc4) 4%, var(--surface, #fff));
 }
 
-#settingsPanelKeys .keys-detail-card--options {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--options {
   background: var(--surface-high, #f7f9fb);
 }
 
 /* IME: options panel only hosts finish ? don't double-wrap with a second surface */
-#settingsPanelKeys .keys-capture-key-panel:not(.is-custom-key-seq) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel:not(.is-custom-key-seq) {
   padding: 0;
   border: none;
   background: transparent;
   gap: 0;
 }
 
-#settingsPanelKeys .keys-detail-card[hidden],
-#settingsPanelKeys .keys-capture-key-panel[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card[hidden],
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel[hidden] {
   display: none !important;
 }
 
-#settingsPanelKeys .keys-detail-card .keys-capture-keycap-zone {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card .keys-capture-keycap-zone {
   border: none;
   background: transparent;
   padding: 0;
@@ -1120,13 +1120,13 @@
   color: var(--primary-strong);
 }
 
-#settingsPanelKeys .keys-capture-key-panel, .keys-capture-popover .keys-capture-key-panel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel, .keys-capture-popover .keys-capture-key-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-#settingsPanelKeys .keys-capture-key-panel[hidden], .keys-capture-popover .keys-capture-key-panel[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel[hidden], .keys-capture-popover .keys-capture-key-panel[hidden] {
   display: none !important;
 }
 
@@ -1142,26 +1142,26 @@
   display: none !important;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty,
 .keys-capture-popover .keys-custom-key-split.is-empty {
   grid-template-columns: 1fr;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty .keys-custom-key-match,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty .keys-custom-key-match,
 .keys-capture-popover .keys-custom-key-split.is-empty .keys-custom-key-match {
   border-right: none;
   background: var(--keys-paper, var(--surface));
   min-height: 200px;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty .keys-custom-key-detail,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty .keys-custom-key-detail,
 .keys-capture-popover .keys-custom-key-split.is-empty .keys-custom-key-detail,
-#settingsPanelKeys .keys-custom-key-detail[hidden],
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail[hidden],
 .keys-capture-popover .keys-custom-key-detail[hidden] {
   display: none !important;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty .keys-custom-key-match-empty,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty .keys-custom-key-match-empty,
 .keys-capture-popover .keys-custom-key-split.is-empty .keys-custom-key-match-empty {
   margin: 24px 16px;
   padding: 28px 20px;
@@ -1169,7 +1169,7 @@
   font-size: 13px;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty .keys-custom-key-match-list,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty .keys-custom-key-match-list,
 .keys-capture-popover .keys-custom-key-split.is-empty .keys-custom-key-match-list {
   flex: 1;
   justify-content: center;
@@ -1215,7 +1215,7 @@
   gap: 6px;
 }
 
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start {
   border: none !important;
   border-bottom: none !important;
   border-radius: 0;
@@ -1226,8 +1226,8 @@
 }
 
 /* Later .keys-capture-keycap-zone / .is-hero-mapped rules re-box the zone ? keep IME flat */
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
   border: none !important;
   border-radius: 0;
   background: transparent !important;
@@ -1865,7 +1865,7 @@
   }
 }
 
-#settingsPanelKeys .keys-custom-key-split,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split,
 .keys-capture-popover .keys-custom-key-split {
   display: grid;
   grid-template-columns: minmax(148px, 188px) minmax(0, 1fr);
@@ -1886,7 +1886,7 @@
   overflow: hidden;
 }
 
-#settingsPanelKeys .keys-capture-key-panel.is-custom-key-seq:has(.keys-custom-key-split),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel.is-custom-key-seq:has(.keys-custom-key-split),
 .keys-capture-popover .keys-capture-key-panel.is-custom-key-seq:has(.keys-custom-key-split) {
   flex: 1 1 auto;
   min-height: 0;
@@ -1908,7 +1908,7 @@
 }
 
 @media (max-width: 720px) {
-  #settingsPanelKeys .keys-custom-key-split,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split,
   .keys-capture-popover .keys-custom-key-split {
     grid-template-columns: 1fr;
   }
@@ -2232,7 +2232,7 @@
   background: rgba(255, 255, 255, 0.55);
 }
 
-#settingsPanelKeys .keys-custom-key-detail,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail,
 .keys-capture-popover .keys-custom-key-detail {
   display: flex;
   flex-direction: column;
@@ -2245,7 +2245,7 @@
   overflow: auto;
 }
 
-#settingsPanelKeys .keys-custom-key-detail > .keys-channel-group-label,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail > .keys-channel-group-label,
 .keys-capture-popover .keys-custom-key-detail > .keys-channel-group-label {
   margin: 0;
   font-size: 13px;
@@ -2253,7 +2253,7 @@
   letter-spacing: -0.02em;
 }
 
-#settingsPanelKeys .keys-custom-key-detail > .keys-capture-target-actions-hint,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail > .keys-capture-target-actions-hint,
 .keys-capture-popover .keys-custom-key-detail > .keys-capture-target-actions-hint {
   margin: -2px 0 0;
   font-size: 12px;
@@ -2312,7 +2312,7 @@
   display: none;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-actions.is-keys-variant,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-actions.is-keys-variant,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-actions.is-keys-variant {
   display: flex;
   flex-direction: column;
@@ -2326,7 +2326,7 @@
   border-radius: 0;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-action-empty.is-keys,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-action-empty.is-keys,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-action-empty.is-keys {
   align-items: flex-start;
   justify-content: flex-start;
@@ -2338,17 +2338,17 @@
   gap: 4px;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-action-empty.is-keys b,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-action-empty.is-keys b,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-action-empty.is-keys b {
   font-size: 13px;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-action-addrow.is-seq-kinds,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-action-addrow.is-seq-kinds,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-action-addrow.is-seq-kinds {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-#settingsPanelKeys .keys-custom-key-detail .keys-seq-empty-recipe,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .keys-seq-empty-recipe,
 .keys-capture-popover .keys-custom-key-detail .keys-seq-empty-recipe {
   margin: 6px 0 0;
   padding: 0 0 0 1.15em;
@@ -2358,12 +2358,12 @@
   text-align: left;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .keys-seq-empty-recipe li + li,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .keys-seq-empty-recipe li + li,
 .keys-capture-popover .keys-custom-key-detail .keys-seq-empty-recipe li + li {
   margin-top: 2px;
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-action-add.is-tile,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-action-add.is-tile,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-action-add.is-tile {
   min-height: 48px;
   padding: 8px 6px;
@@ -2376,7 +2376,7 @@
   box-shadow: inset 0 0 0 1px var(--keys-line, var(--outline-variant));
 }
 
-#settingsPanelKeys .keys-capture-key-panel.is-custom-key-seq,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-key-panel.is-custom-key-seq,
 .keys-capture-popover .keys-capture-key-panel.is-custom-key-seq {
   gap: 0;
   padding: 0;
@@ -2385,13 +2385,13 @@
 }
 
 /* ?? ????????????? ?? */
-#settingsPanelKeys .home-key-map-action-list.is-keys-inline,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .home-key-map-action-list.is-keys-inline,
 .keys-capture-popover .home-key-map-action-list.is-keys-inline {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-#settingsPanelKeys .home-key-map-action-row.is-keys-inline,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .home-key-map-action-row.is-keys-inline,
 .keys-capture-popover .home-key-map-action-row.is-keys-inline {
   display: grid;
   grid-template-columns: 28px 44px minmax(0, 1fr) auto;
@@ -2403,22 +2403,22 @@
   background: var(--keys-wash, var(--surface-high, #f3f7fa));
   border: none;
 }
-#settingsPanelKeys .home-key-map-action-row.is-keys-inline.is-listen,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .home-key-map-action-row.is-keys-inline.is-listen,
 .keys-capture-popover .home-key-map-action-row.is-keys-inline.is-listen {
   background: rgba(42, 156, 196, 0.12);
   box-shadow: inset 0 0 0 1px rgba(42, 156, 196, 0.4);
 }
-#settingsPanelKeys .keys-seq-kind,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-kind,
 .keys-capture-popover .keys-seq-kind {
   font-size: 11px;
   font-weight: 750;
   color: var(--on-surface-muted);
 }
-#settingsPanelKeys .keys-seq-body,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-body,
 .keys-capture-popover .keys-seq-body {
   min-width: 0;
 }
-#settingsPanelKeys .keys-seq-key-chip,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-key-chip,
 .keys-capture-popover .keys-seq-key-chip {
   display: inline-flex;
   align-items: center;
@@ -2433,22 +2433,22 @@
   color: var(--on-surface);
   cursor: pointer;
 }
-#settingsPanelKeys .keys-seq-key-chip.is-empty,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-key-chip.is-empty,
 .keys-capture-popover .keys-seq-key-chip.is-empty {
   color: var(--on-surface-muted);
   border-color: var(--keys-line, var(--outline-variant));
   font-family: inherit;
   font-weight: 550;
 }
-#settingsPanelKeys .keys-seq-key-chip.is-listen,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-key-chip.is-listen,
 .keys-capture-popover .keys-seq-key-chip.is-listen {
   border-color: var(--primary, #2a9cc4);
   border-style: solid;
   color: #0f5f7a;
 }
-#settingsPanelKeys .keys-seq-text-in,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-text-in,
 .keys-capture-popover .keys-seq-text-in,
-#settingsPanelKeys .keys-seq-open-in,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-in,
 .keys-capture-popover .keys-seq-open-in {
   width: 100%;
   box-sizing: border-box;
@@ -2463,20 +2463,20 @@
   min-height: 36px;
   line-height: 1.35;
 }
-#settingsPanelKeys .keys-seq-open-in,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-in,
 .keys-capture-popover .keys-seq-open-in {
   min-height: 32px;
   flex: 1 1 auto;
   min-width: 0;
 }
-#settingsPanelKeys .keys-seq-open-row,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-row,
 .keys-capture-popover .keys-seq-open-row {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
 }
-#settingsPanelKeys .keys-seq-open-browse,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-browse,
 .keys-capture-popover .keys-seq-open-browse {
   flex: 0 0 auto;
   border: 1px solid var(--keys-line, var(--outline-variant));
@@ -2490,7 +2490,7 @@
   cursor: pointer;
   white-space: nowrap;
 }
-#settingsPanelKeys .keys-seq-open-browse:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-browse:hover,
 .keys-capture-popover .keys-seq-open-browse:hover {
   border-color: rgba(42, 156, 196, 0.45);
   background: rgba(42, 156, 196, 0.1);
@@ -2666,22 +2666,22 @@
   max-width: 100%;
 }
 
-#settingsPanelKeys .keys-seq-text-in:focus,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-text-in:focus,
 .keys-capture-popover .keys-seq-text-in:focus,
-#settingsPanelKeys .keys-seq-open-in:focus,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-open-in:focus,
 .keys-capture-popover .keys-seq-open-in:focus {
   outline: none;
   border-color: var(--primary, #2a9cc4);
   box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.15);
 }
-#settingsPanelKeys .keys-seq-delay-pills,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-delay-pills,
 .keys-capture-popover .keys-seq-delay-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
 }
-#settingsPanelKeys .keys-seq-delay-pill,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-delay-pill,
 .keys-capture-popover .keys-seq-delay-pill {
   border: 1px solid var(--keys-line, var(--outline-variant));
   background: var(--keys-paper, var(--surface));
@@ -2693,13 +2693,13 @@
   color: var(--on-surface);
   cursor: pointer;
 }
-#settingsPanelKeys .keys-seq-delay-pill.is-on,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-delay-pill.is-on,
 .keys-capture-popover .keys-seq-delay-pill.is-on {
   border-color: rgba(42, 156, 196, 0.5);
   background: rgba(42, 156, 196, 0.12);
   color: #0f5f7a;
 }
-#settingsPanelKeys .keys-seq-delay-custom,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-delay-custom,
 .keys-capture-popover .keys-seq-delay-custom {
   width: 64px;
   border: 1px solid var(--keys-line, var(--outline-variant));
@@ -2711,13 +2711,13 @@
   font-weight: 650;
   color: var(--on-surface);
 }
-#settingsPanelKeys .keys-seq-delay-unit,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-delay-unit,
 .keys-capture-popover .keys-seq-delay-unit {
   font-size: 11px;
   color: var(--on-surface-muted);
   font-weight: 650;
 }
-#settingsPanelKeys .keys-custom-key-detail-name,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail-name,
 .keys-capture-popover .keys-custom-key-detail-name {
   display: block;
   width: 100%;
@@ -2733,21 +2733,21 @@
   color: var(--on-surface, #13202c);
   letter-spacing: -0.02em;
 }
-#settingsPanelKeys .keys-custom-key-detail-name:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail-name:hover,
 .keys-capture-popover .keys-custom-key-detail-name:hover {
   border-bottom-color: var(--keys-line, var(--outline-variant));
 }
-#settingsPanelKeys .keys-custom-key-detail-name:focus,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail-name:focus,
 .keys-capture-popover .keys-custom-key-detail-name:focus {
   outline: none;
   border-bottom-color: #2a9cc4;
 }
-#settingsPanelKeys .keys-custom-key-detail-name:disabled,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail-name:disabled,
 .keys-capture-popover .keys-custom-key-detail-name:disabled {
   opacity: 0.45;
 }
 
-#settingsPanelKeys .keys-seq-add-row,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-row,
 .keys-capture-popover .keys-seq-add-row {
   display: flex;
   flex-wrap: nowrap;
@@ -2756,7 +2756,7 @@
   padding-top: 8px;
   border-top: 1px solid var(--keys-line, var(--outline-variant));
 }
-#settingsPanelKeys .keys-seq-add-toggle,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-toggle,
 .keys-capture-popover .keys-seq-add-toggle {
   flex: 0 0 auto;
   width: 34px;
@@ -2771,16 +2771,16 @@
   line-height: 1;
   cursor: pointer;
 }
-#settingsPanelKeys .keys-seq-add-toggle:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-toggle:hover,
 .keys-capture-popover .keys-seq-add-toggle:hover {
   background: rgba(42, 156, 196, 0.22);
 }
-#settingsPanelKeys .keys-seq-add-toggle.is-open,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-toggle.is-open,
 .keys-capture-popover .keys-seq-add-toggle.is-open {
   background: #2a9cc4;
   color: #fff;
 }
-#settingsPanelKeys .keys-seq-add-menu,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-menu,
 .keys-capture-popover .keys-seq-add-menu {
   display: none;
   flex: 1 1 auto;
@@ -2795,11 +2795,11 @@
   box-shadow: 0 6px 20px rgba(19, 32, 44, 0.1);
   overflow-x: auto;
 }
-#settingsPanelKeys .keys-seq-add-menu.is-on,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-menu.is-on,
 .keys-capture-popover .keys-seq-add-menu.is-on {
   display: flex;
 }
-#settingsPanelKeys .keys-seq-add-menu button,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-menu button,
 .keys-capture-popover .keys-seq-add-menu button {
   flex: 1 1 0;
   min-width: 44px;
@@ -2814,12 +2814,12 @@
   cursor: pointer;
   white-space: nowrap;
 }
-#settingsPanelKeys .keys-seq-add-menu button:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-menu button:hover,
 .keys-capture-popover .keys-seq-add-menu button:hover {
   background: rgba(42, 156, 196, 0.12);
   color: #0f5f7a;
 }
-#settingsPanelKeys .keys-seq-recent,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-recent,
 .keys-capture-popover .keys-seq-recent {
   display: flex;
   flex-wrap: wrap;
@@ -2827,13 +2827,13 @@
   gap: 6px;
   margin-top: 8px;
 }
-#settingsPanelKeys .keys-seq-recent-lab,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-recent-lab,
 .keys-capture-popover .keys-seq-recent-lab {
   font-size: 11px;
   font-weight: 650;
   color: var(--on-surface-muted, #5a6b7c);
 }
-#settingsPanelKeys .keys-seq-recent-chip,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-recent-chip,
 .keys-capture-popover .keys-seq-recent-chip {
   border: 0;
   border-radius: 999px;
@@ -2845,13 +2845,13 @@
   color: var(--on-surface-muted, #5a6b7c);
   cursor: pointer;
 }
-#settingsPanelKeys .keys-seq-recent-chip:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-recent-chip:hover,
 .keys-capture-popover .keys-seq-recent-chip:hover {
   background: rgba(42, 156, 196, 0.14);
   color: #0f5f7a;
 }
 
-#settingsPanelKeys .keys-seq-add-strip,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-strip,
 .keys-capture-popover .keys-seq-add-strip {
   display: flex;
   flex-wrap: wrap;
@@ -2859,7 +2859,7 @@
   padding-top: 6px;
   border-top: 1px solid var(--keys-line, var(--outline-variant));
 }
-#settingsPanelKeys .keys-seq-add-strip button,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-strip button,
 .keys-capture-popover .keys-seq-add-strip button {
   display: inline-flex;
   align-items: center;
@@ -2874,13 +2874,13 @@
   color: #0f5f7a;
   cursor: pointer;
 }
-#settingsPanelKeys .keys-seq-add-strip button:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-strip button:hover,
 .keys-capture-popover .keys-seq-add-strip button:hover {
   background: rgba(42, 156, 196, 0.1);
   border-style: solid;
   border-color: rgba(42, 156, 196, 0.45);
 }
-#settingsPanelKeys .keys-seq-add-plus,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-seq-add-plus,
 .keys-capture-popover .keys-seq-add-plus {
   font-family: ui-monospace, monospace;
   font-weight: 700;
@@ -2988,7 +2988,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-#settingsPanelKeys .keys-custom-key-split.is-empty .keys-custom-key-match-empty,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-split.is-empty .keys-custom-key-match-empty,
 .keys-capture-popover .keys-custom-key-split.is-empty .keys-custom-key-match-empty {
   display: flex;
   flex-direction: column;
@@ -3018,7 +3018,7 @@
   filter: brightness(0.98);
 }
 
-#settingsPanelKeys .keys-custom-key-detail .home-key-map-action-add.is-tile:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-custom-key-detail .home-key-map-action-add.is-tile:hover,
 .keys-capture-popover .keys-custom-key-detail .home-key-map-action-add.is-tile:hover {
   border-color: var(--keys-cyan-bd, rgba(42, 156, 196, 0.45));
   background: var(--cyan-soft, var(--primary-soft));
@@ -3260,7 +3260,7 @@
 }
 
 /* IME finish lives inside options card ? drop the second frame */
-#settingsPanelKeys .keys-detail-card--options.keys-capture-key-panel:not(.is-custom-key-seq) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--options.keys-capture-key-panel:not(.is-custom-key-seq) {
   padding: 0;
   border: none;
   border-radius: 0;
@@ -3307,8 +3307,8 @@
 }
 
 /* IME start: never re-box after .is-hero-mapped */
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
@@ -3505,7 +3505,7 @@
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 38%, transparent);
 }
 
-#settingsPanelKeys .keys-page-rail__item[data-channel="voice"].is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item[data-channel="voice"].is-active {
   color: var(--primary);
 }
 
@@ -5524,8 +5524,8 @@
 }
 
 /* Capture / hero — same physical keycap material as trigger */
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:not(.empty),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:not(.empty),
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display,
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display:not(.empty),
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display,
@@ -5562,8 +5562,8 @@
 /* Hover/press via zone ? record-act overlay steals pointer from the keycap itself. */
 #settingsPanelKeys .keys-capture-keycap-zone:hover:not(:active) .habit-basic-key-display.display,
 #settingsPanelKeys .keys-capture-keycap-zone:hover:not(:active) .habit-basic-key-display.display:not(.empty),
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:hover:not(:active) .habit-basic-key-display.display,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:hover:not(:active) .habit-basic-key-display.display:not(.empty),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:hover:not(:active) .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:hover:not(:active) .habit-basic-key-display.display:not(.empty),
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display:hover:not(:active),
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display:not(.empty):hover:not(:active) {
   background: linear-gradient(180deg, #ffffff 0%, #f1f7fb 100%) !important;
@@ -5577,7 +5577,7 @@
 
 #settingsPanelKeys .keys-capture-keycap-zone:active .habit-basic-key-display.display,
 #settingsPanelKeys .keys-capture-keycap-zone:active .habit-basic-key-display.display:not(.empty),
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:active .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero:active .habit-basic-key-display.display,
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display:active,
 #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay.habit-basic-key-display.display:active,
 #settingsPanelKeys #keysCaptureHeroCard #targetDisplay.habit-basic-key-display.display:active {
@@ -5590,7 +5590,7 @@
     0 2px 6px rgba(19, 32, 44, 0.1) !important;
 }
 
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:focus-visible,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:focus-visible,
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display:focus-visible,
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display:focus-visible {
   outline: 2px solid rgba(42, 156, 196, 0.5);
@@ -5602,8 +5602,8 @@
 #settingsPanelKeys #keysCaptureHeroCard #targetDisplay .display-value,
 #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay:not(.empty) .display-value,
 #settingsPanelKeys #keysCaptureHeroCard #targetDisplay:not(.empty) .display-value,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display .display-value,
-#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display:not(.empty) .display-value,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display .display-value,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display:not(.empty) .display-value,
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display .display-value,
 #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display:not(.empty) .display-value,
 #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display .display-value,
@@ -5615,13 +5615,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
   #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display,
   #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display {
     transition: none;
     transform: none;
   }
-  #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:active,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display:active,
   #settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display:active,
   #settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display:active {
     --keys-cap-press: 0;
@@ -8012,13 +8012,13 @@
 
 /* Keys page desk mode ? single detail panel */
 
-#settingsPanelKeys.keys-page-desk {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk {
   --flow-node-active-color: var(--primary-strong);
   --flow-node-tag-bg: rgba(42, 156, 196, 0.08);
   --flow-node-tag-border: rgba(42, 156, 196, 0.22);
 }
 
-#settingsPanelKeys.keys-page-desk .keys-workflow-pipeline {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-workflow-pipeline {
   display: grid;
   grid-template-rows: auto auto;
   align-content: start;
@@ -8035,7 +8035,7 @@
 }
 
 /* Keys desk ? prototype surfaces (wash / paper / solid line), not global 10% outline */
-#settingsPanelKeys.keys-page-desk {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk {
   --keys-ink: #13202c;
   --keys-muted: #5a6b7c;
   --keys-faint: #8494a6;
@@ -8046,7 +8046,7 @@
   --keys-cyan-bd: #9bc6da;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-page-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body {
   background: var(--keys-wash);
   border: none;
   border-radius: 0;
@@ -8055,7 +8055,7 @@
   align-items: stretch;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-page-main {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-main {
   position: relative;
   gap: 10px;
   padding: 10px 12px 14px;
@@ -8068,7 +8068,7 @@
 }
 
 /* Recording banner: in three-col, host lives in the left rail (see rail rules). */
-#settingsPanelKeys.keys-page-desk #keysRecordingFeedback:not([hidden]) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysRecordingFeedback:not([hidden]) {
   position: static;
   left: auto;
   right: auto;
@@ -8080,14 +8080,14 @@
   pointer-events: auto;
   box-shadow: none;
 }
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col #keysRecordingFeedback:not([hidden]) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col #keysRecordingFeedback:not([hidden]) {
   margin: 0 2px 8px;
 }
-#settingsPanelKeys.keys-page-desk #keysRecordingFeedback[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysRecordingFeedback[hidden] {
   display: none !important;
 }
-#settingsPanelKeys.keys-page-desk #keysRecordingFeedback .btn-cancel-record,
-#settingsPanelKeys.keys-page-desk #btnCancelRecordInline {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysRecordingFeedback .btn-cancel-record,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #btnCancelRecordInline {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -8101,11 +8101,11 @@
   border-radius: var(--radius-pill, 999px);
   cursor: pointer;
 }
-#settingsPanelKeys.keys-page-desk #btnCancelRecordInline[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #btnCancelRecordInline[hidden] {
   display: none !important;
 }
 
-#settingsPanelKeys.keys-page-desk .page-status-bar {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .page-status-bar {
   border: none;
   border-bottom: 1px solid var(--keys-line);
   background: var(--keys-paper);
@@ -8113,13 +8113,13 @@
   margin-bottom: 0;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-page-foot {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-foot {
   background: var(--keys-wash);
   border-top: 1px solid var(--keys-line);
   padding: 10px 14px 12px;
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes {
   margin: 0;
   padding: 12px 16px 12px;
   border: 1px solid var(--keys-line, #d5dee8);
@@ -8131,23 +8131,23 @@
   flex: 0 0 auto;
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-node-btn {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-node-btn {
   width: var(--flow-node-btn-size);
   height: var(--flow-node-btn-size);
   border-radius: 16px;
   box-shadow: none;
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-node-btn.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-node-btn.is-active {
   box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-node-icon {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-node-icon {
   width: 22px;
   height: 22px;
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-node-title {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-node-title {
   margin: 6px 0 2px;
   font-size: 13px;
   font-weight: 750;
@@ -8155,14 +8155,14 @@
   text-transform: none;
 }
 
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-node-hint {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-node-hint {
   max-width: 200px;
   font-size: 12px;
   font-weight: 650;
 }
 
 #settingsPanelKeys #keysFlowNodes .flow-hint-mark,
-#settingsPanelKeys.keys-page-desk #keysFlowNodes .flow-hint-mark {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes .flow-hint-mark {
   display: inline-block;
   margin-left: 2px;
   padding: 0 6px;
@@ -8175,7 +8175,7 @@
   border: 1px solid rgba(42, 156, 196, 0.26);
 }
 
-#settingsPanelKeys.keys-page-desk .flow-desk-panel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-desk-panel {
   background: var(--keys-paper, #fff);
   border: 1px solid var(--keys-line, #d5dee8);
   border-radius: 16px;
@@ -8192,40 +8192,40 @@
   box-sizing: border-box;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target .flow-desk-panel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .flow-desk-panel {
   display: flex;
   flex-direction: column;
   /* Content-sized ? avoid tall empty stage under hero */
   min-height: 0;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target #habitDefaultFlow,
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitDefaultFlow,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
   min-height: 0;
 }
 
-#settingsPanelKeys.keys-page-desk #habitDefaultFlow.keys-workflow-grid {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #habitDefaultFlow.keys-workflow-grid {
   display: block !important;
   grid-template-columns: 1fr !important;
   gap: 0 !important;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-workflow-arrow {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-workflow-arrow {
   display: none !important;
 }
 
-#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) {
   display: none !important;
 }
 
-#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
   display: none !important;
 }
 
-#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
   display: flex !important;
   flex-direction: column;
   max-height: none;
@@ -8233,25 +8233,25 @@
   overflow: visible;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-step-body {
   overflow: visible;
   justify-content: flex-start;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block,
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-picker,
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-split {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-picker,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-split {
   flex: 0 0 auto;
   min-height: 0;
   width: 100%;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block {
   flex: 0 0 auto;
 }
 
 /* Recognize desk: keep 2-col ? left catalog, right editor; don't let rail eat the pane */
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-channel-split {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-channel-split {
   display: grid;
   grid-template-columns: 156px minmax(0, 1fr);
   align-items: start;
@@ -8260,30 +8260,30 @@
   overflow: visible;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-channel-pane-left {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-channel-pane-left {
   height: auto;
   min-height: 0;
   align-self: start;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-channel-tree,
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-channel-subtabs {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-channel-tree,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-channel-subtabs {
   flex: 0 0 auto;
   overflow: visible;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-channel-pane-right {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-channel-pane-right {
   min-width: 0;
   overflow: visible;
   padding: 10px 12px 12px;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-target .flow-desk-panel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .flow-desk-panel {
   width: 100%;
   overflow: visible;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #keysDeskPanel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #keysDeskPanel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8298,8 +8298,8 @@
   background-image: radial-gradient(380px 140px at 50% 20%, rgba(42, 156, 196, 0.07), transparent 68%);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitDefaultFlow,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitDefaultFlow,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
@@ -8308,7 +8308,7 @@
   width: 100%;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-step-body {
   flex: 0 0 auto !important;
   gap: 10px;
   width: 100%;
@@ -8320,15 +8320,15 @@
   justify-content: flex-start;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone {
   flex: 0 0 auto;
   justify-content: flex-start;
   width: 100%;
   max-width: 300px;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:not(.empty) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:not(.empty) {
   --keys-cap-press: 0;
   min-height: 96px;
   min-width: 100%;
@@ -8354,8 +8354,8 @@
     background 140ms var(--ease-standard, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:hover:not(:active) .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:hover:not(:active) .keys-key-hero .habit-basic-key-display.display:not(.empty) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:hover:not(:active) .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:hover:not(:active) .keys-key-hero .habit-basic-key-display.display:not(.empty) {
   background: linear-gradient(180deg, #ffffff 0%, #f1f7fb 100%) !important;
   border-color: transparent !important;
   box-shadow:
@@ -8365,8 +8365,8 @@
     0 6px 16px rgba(19, 32, 44, 0.14);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:active .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:active .keys-key-hero .habit-basic-key-display.display:not(.empty) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:active .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone:active .keys-key-hero .habit-basic-key-display.display:not(.empty) {
   --keys-cap-press: 1;
   transform: translateY(3px);
   box-shadow:
@@ -8376,7 +8376,7 @@
     0 2px 8px rgba(19, 32, 44, 0.1);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:focus-visible {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:focus-visible {
   outline: 2px solid rgba(42, 156, 196, 0.5);
   outline-offset: 4px;
   border-color: transparent !important;
@@ -8387,43 +8387,43 @@
     0 6px 14px rgba(19, 32, 44, 0.12);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display .display-value,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display:not(.empty) .display-value {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display .display-value,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display:not(.empty) .display-value {
   color: var(--keys-ink, #13202c);
   font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.03em;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display .habit-key-icon-host,
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display svg {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display .habit-key-icon-host,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display svg {
   color: var(--primary-strong, #0f5f7a);
   opacity: 0.9;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display {
     transition: none;
     transform: none;
   }
-  #settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:active {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display:active {
     --keys-cap-press: 0;
   }
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-trigger-modes {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-trigger-modes {
   width: auto;
   max-width: 100%;
 }
 
-#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .habit-flow-step.keys-workflow-col {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
   min-height: 0 !important;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-step-card-head {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-step-card-head {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -8435,30 +8435,30 @@
   border: 0;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-app-binding-strip .voice-app-scope-head {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-app-binding-strip .voice-app-scope-head {
   margin-bottom: 0;
 }
 
-#settingsPanelKeys.keys-page-desk .flow-scope-tile-wrap .keys-app-chip--add {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-scope-tile-wrap .keys-app-chip--add {
   align-self: flex-start;
 }
 
-#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="target"] .flow-node-tag {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-node[data-keys-node="target"] .flow-node-tag {
   border-color: rgba(42, 156, 196, 0.28);
   background: rgba(42, 156, 196, 0.1);
 }
 
-#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="target"] .flow-node-btn.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-node[data-keys-node="target"] .flow-node-btn.is-active {
   --flow-node-active-border: rgba(42, 156, 196, 0.55);
   --flow-node-active-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
 }
 
-#settingsPanelKeys.keys-page-desk .flow-node-btn.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-node-btn.is-active {
   --flow-node-active-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
 }
 
 /* Trigger stage: usage as one meta line under keycap (no ??????? card head) */
-#settingsPanelKeys.keys-page-desk.is-step-trigger #keysTriggerModeFooterLbl {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger #keysTriggerModeFooterLbl {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -8470,7 +8470,7 @@
   border: 0;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-modes-block {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-modes-block {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8478,7 +8478,7 @@
   width: 100%;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-modes--detected {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-modes--detected {
   display: flex;
   justify-content: center;
   width: auto;
@@ -8489,8 +8489,8 @@
   box-shadow: none;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly.is-active {
   width: auto;
   flex: 0 0 auto;
   flex-direction: row;
@@ -8507,41 +8507,41 @@
   pointer-events: none;
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__title {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__title {
   font-size: 13px;
   font-weight: 650;
   color: var(--on-surface);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__desc {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__desc {
   font-size: 13px;
   font-weight: 500;
   opacity: 1;
   color: var(--on-surface-muted);
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__desc::before {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-trigger-mode-seg.is-readonly .keys-trigger-mode-seg__desc::before {
   content: "? ";
 }
 
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-keycap-hint {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-keycap-hint {
   text-align: center;
   color: var(--primary-strong, #0f5f7a);
   font-weight: 650;
   opacity: 1;
 }
 
-#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="finish"] .flow-node-btn.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-node[data-keys-node="finish"] .flow-node-btn.is-active {
   --flow-node-active-border: rgba(245, 158, 11, 0.55);
   --flow-node-active-color: #b45309;
   --flow-node-active-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12), 0 0 24px rgba(245, 158, 11, 0.16);
 }
 
-html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-desk-panel {
+html[data-theme="dark"] :is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-desk-panel {
   background: rgba(22, 30, 44, 0.92);
 }
 
-html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
+html[data-theme="dark"] :is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .flow-node-btn {
   background: rgba(22, 30, 44, 0.92);
 }
 
@@ -8560,7 +8560,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 #settingsPanelKeys .keys-summary-btn.is-primary:active:not(:disabled) {
   box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.22);
 }
-#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
   transition: box-shadow var(--dur-med, 260ms) var(--motion-enter, var(--ease-standard)),
     border-color var(--dur-med, 260ms) var(--motion-enter, var(--ease-standard));
 }
@@ -8687,7 +8687,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
    Default window is 760px (tauri.conf); do NOT collapse the dock at mid widths.
    Drive layout off panel visibility so we don't depend only on
    has-scene-panel class (can drift) or direct-child :has() quirks. */
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
 #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body {
@@ -8698,7 +8698,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   min-height: 0;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-aside.keys-scene-actions,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-aside.keys-scene-actions,
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions,
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel,
 #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) #voiceSceneActionsPanel {
@@ -8725,7 +8725,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   float: none !important;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-main,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-main,
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main,
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main,
 #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main {
@@ -8736,20 +8736,20 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 
 /* Three-col Keys: rail owns col1 ? do not let legacy main?col1 squash the rail. */
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > .keys-page-main,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-main,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-main,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main {
   grid-column: 2 !important;
   grid-row: 1 !important;
 }
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > #keysSceneActionsPanel,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-aside.keys-scene-actions,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-aside.keys-scene-actions,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions {
   grid-column: 3 !important;
   grid-row: 1 !important;
 }
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > .keys-page-rail,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-rail,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-rail {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-rail,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-rail {
   grid-column: 1 !important;
   grid-row: 1 !important;
   z-index: 3;
@@ -8757,15 +8757,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 
 /* app.css collapses .keys-page-body under 1040px ? keep scene dock beside. */
 @media (max-width: 1040px) {
-  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
   :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
   #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
   #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body {
     grid-template-columns: minmax(0, 1fr) minmax(200px, 248px) !important;
   }
   #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
     grid-template-columns: 180px minmax(0, 1fr) minmax(200px, 248px) !important;
   }
   #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel,
@@ -9400,13 +9400,13 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
    Explicit grid-column placement beats legacy single-col / 2-col desk rules.
    ========================================================================== */
 
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col,
-#settingsPanelKeys.keys-page-desk .keys-page-body.keys-page-body--three-col,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body.keys-page-body--three-col,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
-#settingsPanelKeys.keys-page-desk .keys-page-body.keys-page-body--three-col.has-scene-panel,
-#settingsPanelKeys.keys-page-desk .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body.keys-page-body--three-col.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
   display: grid !important;
   grid-template-columns: 180px minmax(0, 1fr) !important;
   grid-template-rows: minmax(0, 1fr) !important;
@@ -9416,15 +9416,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   flex: 1 1 auto;
 }
 
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
 #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
-#settingsPanelKeys.keys-page-desk .keys-page-body.keys-page-body--three-col.has-scene-panel,
-#settingsPanelKeys.keys-page-desk .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body.keys-page-body--three-col.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) {
   grid-template-columns: 180px minmax(0, 1fr) minmax(200px, 248px) !important;
 }
 
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-rail {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-rail {
   grid-column: 1 !important;
   grid-row: 1 !important;
   display: flex !important;
@@ -9443,7 +9443,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   align-self: stretch !important;
 }
 
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-main {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-main {
   grid-column: 2 !important;
   grid-row: 1 !important;
   min-width: 0 !important;
@@ -9456,7 +9456,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   align-self: stretch !important;
 }
 
-#settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-aside.keys-scene-actions {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-aside.keys-scene-actions {
   grid-column: 3 !important;
   grid-row: 1 !important;
   align-self: stretch !important;
@@ -9464,10 +9464,10 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   max-height: 100%;
 }
 
-#settingsPanelKeys .keys-page-rail__trigger,
-#settingsPanelKeys.keys-page-desk .keys-page-rail__trigger,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger,
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-page-rail__trigger {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-rail__trigger,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-page-rail__trigger {
   display: block !important;
   flex: 0 0 auto !important;
   margin: 0 !important;
@@ -9480,7 +9480,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   max-width: none !important;
 }
 
-#settingsPanelKeys .keys-page-rail__start {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__start {
   padding: 10px 8px 12px;
   margin: 0 2px 6px;
   background: var(--surface, #fff);
@@ -9488,7 +9488,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 10px;
 }
 
-#settingsPanelKeys .keys-page-rail__badge {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__badge {
   display: inline-block;
   font-size: 10px;
   font-weight: 750;
@@ -9499,8 +9499,8 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   margin-bottom: 6px;
 }
 
-#settingsPanelKeys .keys-page-rail__title,
-#settingsPanelKeys .keys-page-rail__start .home-key-map-step-label {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__title,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__start .home-key-map-step-label {
   display: block;
   margin: 0 0 2px;
   font-size: 12.5px;
@@ -9508,7 +9508,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   color: var(--on-surface, #13202c);
 }
 
-#settingsPanelKeys .keys-page-rail__hint {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__hint {
   margin: 6px 0 0;
   font-size: 10.5px;
   color: var(--on-surface-muted, #8494a6);
@@ -9525,10 +9525,10 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 
 /* Keycap = Voice phrase block metrics (not mid-column hero) */
-#settingsPanelKeys .keys-page-rail__trigger .keys-key-hero,
-#settingsPanelKeys .keys-page-rail__trigger #habitKeyMapCellTrigger,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger #habitKeyMapCellTrigger {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger .keys-key-hero,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger #habitKeyMapCellTrigger,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger #habitKeyMapCellTrigger {
   width: 100% !important;
   max-width: 100% !important;
   min-height: 0 !important;
@@ -9537,10 +9537,10 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 10px !important;
 }
 
-#settingsPanelKeys .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display:not(.empty),
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display:not(.empty) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display:not(.empty),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-key-hero .habit-basic-key-display.display:not(.empty) {
   min-height: 0 !important;
   min-width: 0 !important;
   width: 100% !important;
@@ -9551,14 +9551,14 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   margin: 0 !important;
 }
 
-#settingsPanelKeys .keys-page-rail__trigger .keys-workflow-keycap-zone,
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-workflow-keycap-zone {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__trigger .keys-workflow-keycap-zone,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-rail__trigger .keys-workflow-keycap-zone {
   max-width: none !important;
   width: 100% !important;
   margin: 0 !important;
 }
 
-#settingsPanelKeys .keys-page-rail__dir {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__dir {
   flex: 1 1 auto;
   min-height: 0;
   display: flex !important;
@@ -9576,7 +9576,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   align-self: stretch !important;
 }
 
-#settingsPanelKeys .keys-page-rail__dir-lbl {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__dir-lbl {
   /* Same horizontal inset as .settings-nav-item / rail items */
   margin: 4px 10px 2px;
   font-size: 10px;
@@ -9586,7 +9586,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   flex: 0 0 auto;
 }
 
-#settingsPanelKeys .keys-page-rail__nav {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__nav {
   display: flex !important;
   flex-direction: column !important;
   flex: 1 1 auto !important;
@@ -9599,7 +9599,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 
 /* Match .settings-nav-item — same selected / hover language as 主面板 */
-#settingsPanelKeys .keys-page-rail__item {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item {
   appearance: none;
   display: block !important;
   width: 100% !important;
@@ -9621,27 +9621,27 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   cursor: pointer;
 }
 
-#settingsPanelKeys .keys-page-rail__item:hover,
-#settingsPanelKeys .keys-page-rail__item:focus-visible {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item:focus-visible {
   background: var(--primary-soft) !important;
   color: var(--on-surface) !important;
   outline: none;
 }
 
-#settingsPanelKeys .keys-page-rail__item.is-active {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item.is-active {
   background: var(--primary-soft) !important;
   color: var(--primary) !important;
   font-weight: 700 !important;
   box-shadow: none !important;
 }
 
-#settingsPanelKeys .keys-page-rail__item.is-codex-hidden {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail__item.is-codex-hidden {
   display: none !important;
 }
 
 /* Recording cancel strip lives in the left rail (not mid column). */
-#settingsPanelKeys.keys-page-desk .keys-page-rail #keysRecordingFeedback:not([hidden]),
-#settingsPanelKeys .keys-page-rail #keysRecordingFeedback:not([hidden]) {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-rail #keysRecordingFeedback:not([hidden]),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail #keysRecordingFeedback:not([hidden]) {
   display: flex !important;
   flex-direction: column;
   gap: 6px;
@@ -9660,11 +9660,11 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   z-index: 2;
 }
 
-#settingsPanelKeys .keys-page-rail #keysRecordingFeedback[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail #keysRecordingFeedback[hidden] {
   display: none !important;
 }
 
-#settingsPanelKeys .keys-page-rail .keys-recording-feedback-main {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail .keys-recording-feedback-main {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -9672,26 +9672,26 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-page-rail .keys-recording-feedback-lead {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail .keys-recording-feedback-lead {
   display: flex;
   align-items: flex-start;
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-page-rail .keys-recording-feedback-text {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail .keys-recording-feedback-text {
   text-align: left;
   line-height: 1.35;
 }
 
-#settingsPanelKeys .keys-page-rail .keys-recording-feedback-main .btn-cancel-record,
-#settingsPanelKeys .keys-page-rail #btnCancelRecordInline {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail .keys-recording-feedback-main .btn-cancel-record,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-rail #btnCancelRecordInline {
   margin: 0 !important;
   width: 100%;
   justify-content: center;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col #recordCancelBar,
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col #recordCancelBar.show {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col #recordCancelBar,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col #recordCancelBar.show {
   display: none !important;
 }
 
@@ -9766,32 +9766,32 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   box-shadow: 0 12px 28px rgba(19, 32, 44, 0.12);
 }
 
-#settingsPanelKeys .keys-page-main > .keys-trigger-conflict,
-#settingsPanelKeys .keys-page-main > .keys-test-progress {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-main > .keys-trigger-conflict,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-main > .keys-test-progress {
   flex: 0 0 auto;
   margin: 0;
 }
 
 /* Always show rail trigger + main target; kill step XOR hide */
-#settingsPanelKeys .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step),
-#settingsPanelKeys .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body,
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step),
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step),
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
   display: revert !important;
 }
 
-#settingsPanelKeys .keys-page-body--three-col #habitKeyMapRowTrigger {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #habitKeyMapRowTrigger {
   display: block !important;
 }
 
-#settingsPanelKeys .keys-page-body--three-col #habitKeyMapRowTarget {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #habitKeyMapRowTarget {
   display: flex !important;
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
 }
 
-#settingsPanelKeys .keys-page-body--three-col #habitKeyMapRowTarget .keys-step-body {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #habitKeyMapRowTarget .keys-step-body {
   display: flex !important;
   flex-direction: column;
   max-height: none;
@@ -9799,17 +9799,17 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   overflow: auto;
 }
 
-#settingsPanelKeys .keys-page-body--three-col #keysFlowNodes,
-#settingsPanelKeys.keys-page-desk .keys-page-body--three-col #keysFlowNodes,
-#settingsPanelKeys.keys-page-desk #keysFlowNodes[hidden] {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #keysFlowNodes,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk .keys-page-body--three-col #keysFlowNodes,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk #keysFlowNodes[hidden] {
   display: none !important;
 }
 
-#settingsPanelKeys .keys-page-body--three-col .keys-workflow-arrow {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .keys-workflow-arrow {
   display: none !important;
 }
 
-#settingsPanelKeys .keys-page-body--three-col #habitDefaultFlow.keys-workflow-grid {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #habitDefaultFlow.keys-workflow-grid {
   display: block !important;
   grid-template-columns: 1fr !important;
   gap: 0 !important;
@@ -9817,9 +9817,9 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   height: 100%;
 }
 
-#settingsPanelKeys .keys-page-body--three-col .keys-channel-split,
-#settingsPanelKeys .keys-page-body--three-col .keys-channel-split--detail-only,
-#settingsPanelKeys.keys-page-desk.is-step-target .keys-page-body--three-col .keys-channel-split {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .keys-channel-split,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .keys-channel-split--detail-only,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-target .keys-page-body--three-col .keys-channel-split {
   display: block !important;
   grid-template-columns: none !important;
   width: 100%;
@@ -9829,17 +9829,17 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   box-shadow: none;
 }
 
-#settingsPanelKeys .keys-page-body--three-col .keys-channel-pane-right {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .keys-channel-pane-right {
   width: 100%;
   min-width: 0;
   max-width: none;
 }
 
-#settingsPanelKeys .keys-page-body--three-col .keys-workflow-pipeline,
-#settingsPanelKeys .keys-page-body--three-col #keysDeskPanel,
-#settingsPanelKeys .keys-page-body--three-col #habitKeyMappingSection,
-#settingsPanelKeys .keys-page-body--three-col #quickKeyWakeSection,
-#settingsPanelKeys .keys-page-body--three-col #keyWakeSettings {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col .keys-workflow-pipeline,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #keysDeskPanel,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #habitKeyMappingSection,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #quickKeyWakeSection,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body--three-col #keyWakeSettings {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -9847,7 +9847,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 
 /* Do not center/hero the desk when trigger step class is on ? three-col keeps detail visible */
-#settingsPanelKeys.keys-page-desk.is-step-trigger .keys-page-body--three-col #keysDeskPanel {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq).keys-page-desk.is-step-trigger .keys-page-body--three-col #keysDeskPanel {
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
@@ -9859,24 +9859,24 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 
 @media (max-width: 720px) {
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col,
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col,
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col.has-scene-panel,
   #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col {
     grid-template-columns: 1fr !important;
     grid-template-rows: auto minmax(0, 1fr) auto !important;
   }
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-rail {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-rail {
     grid-column: 1 !important;
     grid-row: 1 !important;
     border-right: 0;
     border-bottom: 1px solid var(--outline-variant, #d5dee8);
     max-height: 42vh;
   }
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-main {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-main {
     grid-column: 1 !important;
     grid-row: 2 !important;
   }
-  #settingsPanelKeys .keys-page-body.keys-page-body--three-col > .keys-page-aside.keys-scene-actions {
+  :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-page-body.keys-page-body--three-col > .keys-page-aside.keys-scene-actions {
     grid-column: 1 !important;
     grid-row: 3 !important;
   }
@@ -9917,3 +9917,20 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 .keys-oral-add-via { color: var(--on-surface-muted, #5a6b7c); margin-left: auto; }
 .keys-oral-add-empty { font-size: 12px; color: var(--on-surface-muted); margin-bottom: 8px; }
 #voiceIntentOralHost { min-height: 120px; }
+
+/* keysSeq parallel desk — same three-col + scene dock as Keys */
+#settingsPanelKeysSeq:has(#keysSeqSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > .keys-page-main,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-main,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main {
+  grid-column: 2;
+}
+#settingsPanelKeysSeq:has(#keysSeqSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > #keysSeqSceneActionsPanel,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-aside.keys-scene-actions,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions {
+  grid-column: 3;
+}
+#settingsPanelKeysSeq:has(#keysSeqSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col > .keys-page-rail,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col.has-scene-panel > .keys-page-rail,
+#settingsPanelKeysSeq .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-rail {
+  grid-column: 1;
+}

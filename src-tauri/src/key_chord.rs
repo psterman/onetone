@@ -178,7 +178,11 @@ pub fn chord_token_matches(stored: &str, pressed: &str) -> bool {
         "Shift" => matches!(p.as_str(), "LShift" | "RShift"),
         "Alt" => matches!(p.as_str(), "LAlt" | "RAlt"),
         "Win" => matches!(p.as_str(), "LWin" | "RWin"),
-        _ => false,
+        // "'" ≡ "VK_DE" ≡ "Quote" — hook falls back to VK_XX when OEM names missing.
+        _ => match (token_def(&s), token_def(&p)) {
+            (Some(a), Some(b)) => a.send == b.send,
+            _ => false,
+        },
     }
 }
 
@@ -808,6 +812,13 @@ mod tests {
         assert!(!chords_equivalent("LAlt", "LAlt+Tab"));
         assert!(is_modifier_only_chord("LAlt"));
         assert!(!is_modifier_only_chord("Ctrl+Alt+C"));
+    }
+
+    #[test]
+    fn chords_equivalent_quote_and_vk_de() {
+        assert!(chords_equivalent("LCtrl+'", "LCtrl+VK_DE"));
+        assert!(chords_equivalent("Ctrl+Quote", "LCtrl+'"));
+        assert!(chord_to_register_hotkey("LCtrl+'").is_ok());
     }
 
     #[test]

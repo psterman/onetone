@@ -1548,6 +1548,7 @@
         html+='<summary class="habit-hub-act is-cta" data-ot-tip="'+esc(t('habitHubConfigChannels','配置'))+'" aria-label="'+esc(t('habitHubConfigChannels','配置'))+'">'
           +'<span>'+esc(t('habitHubConfigChannels','配置'))+'</span></summary>';
         html+='<div class="habit-hub-more-menu-panel">';
+        html+=menuItemBtn('data-habit-open-commands="'+esc(m.id)+'"',t('habitHubOpenCommands','配调用'));
         html+=menuItemBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'));
         html+=menuItemBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice','配语音'));
         html+=menuItemBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera','配摄像头'));
@@ -3380,7 +3381,7 @@
           render();
           return;
         }
-        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-scenario-softpad],.habit-hub-card-actions [data-habit-scenario-use],.habit-hub-card-actions [data-habit-enable]');
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-open-commands],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-scenario-softpad],.habit-hub-card-actions [data-habit-scenario-use],.habit-hub-card-actions [data-habit-enable]');
         if(actBtn){
           e.stopPropagation();
         }
@@ -3438,6 +3439,23 @@
             global.OneToneSceneActivate.activateScene(sceneUseId);
           }
           scheduleHubPaint();
+          return;
+        }
+        var openCommandsBtn=e.target.closest&&e.target.closest('[data-habit-open-commands]');
+        if(openCommandsBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          closeHubMenus();
+          var cmdHabitId=String(openCommandsBtn.getAttribute('data-habit-open-commands')||'').trim();
+          if(cmdHabitId) state().selectedMappingId=cmdHabitId;
+          ui().habitWorkspaceManualPick=true;
+          ui().habitWorkspaceFgReady=true;
+          if(global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.setShellMode){
+            global.OneToneHabitWorkspace.setShellMode('commands',{skipStatsFetch:true});
+          }else{
+            ui().habitShellMode='commands';
+            paintWorkspace({skipStatsFetch:true});
+          }
           return;
         }
         var scenarioKeysBtn=e.target.closest&&e.target.closest('[data-habit-scenario-keys]');

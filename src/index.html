@@ -30,12 +30,15 @@
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/now-home.css" />
   <link rel="stylesheet" href="css/home-agent-v2.css" />
+  <link rel="stylesheet" href="css/composer-history-panel.css" />
   <link rel="stylesheet" href="css/home-agent-roster.css" />
   <link rel="stylesheet" href="css/home-prompt-prep.css" />
   <link rel="stylesheet" href="css/agent-center.css" />
   <link rel="stylesheet" href="css/codex-smoke-feedback.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
   <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
+  <!-- After keys-workflow so KeysSeq desk overrides win (add menu / step cards). -->
+  <link rel="stylesheet" href="css/keys-seq-panel.css" />
   <link rel="stylesheet" href="css/keys2-command-card.css" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
@@ -145,9 +148,9 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                 <span data-i18n="homeWbNavTriggers">按键设置</span>
               </button>
-              <button type="button" class="wb-nav-item" data-wb-nav="keys2" id="wbNavKeys2" title="习惯通道调用总览 · 示意">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/><path d="M12 3v3"/></svg>
-                <span id="wbNavKeys2Label" data-i18n="homeWbNavKeys2">习惯 · 通道</span>
+              <button type="button" class="wb-nav-item" data-wb-nav="keysSeq" id="wbNavKeysSeq">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h13"/><circle cx="19" cy="12" r="2"/></svg>
+                <span data-i18n="homeWbNavKeysSeq">动作链</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="softPad" id="wbNavSoftPad">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
@@ -156,6 +159,10 @@
               <button type="button" class="wb-nav-item" data-wb-nav="agent" id="wbNavAgent">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/><path d="M16.5 7.5l1.5-1.5M19 10h2"/></svg>
                 <span data-i18n="homeWbNavAgent">Agent</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="composerHistory" id="wbNavComposerHistory">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v12H8l-4 4V5z"/><path d="M8 9h8M8 13h5"/></svg>
+                <span data-i18n="homeWbNavComposerHistory">对话历史</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
@@ -579,10 +586,6 @@
                 <button type="button" class="settings-nav-item" data-panel="keys" id="settingsNavKeys">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                   <span id="settingsNavKeysLabel">按键</span>
-                </button>
-                <button type="button" class="settings-nav-item" data-panel="keys2" id="settingsNavKeys2" title="习惯通道调用总览 · 示意">
-                  <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/><path d="M12 3v3"/></svg>
-                  <span id="settingsNavKeys2Label" data-i18n="homeWbNavKeys2">习惯 · 通道</span>
                 </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavSoftPadGroup">
@@ -1300,12 +1303,78 @@
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
           </div>
         </section>
-        <section class="settings-panel drawer-section keys2-page" id="settingsPanelKeys2" hidden>
-          <header class="pref-page-head keys2-page-head">
-            <h3 class="pref-page-title" id="settingsPanelKeys2Title">习惯 · 通道</h3>
-            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelKeys2Desc">命令怎么被各通道调用与管理 · 示意 · 不写配置</p>
-          </header>
-          <div id="keys2CommandCardRoot" class="keys2-root"></div>
+        <!-- keys2 directory removed: channel grid lives in Habits command right pane (编辑|通道). -->
+        <section class="settings-panel drawer-section keys-seq-page keys-page-desk" id="settingsPanelKeysSeq" hidden>
+          <div class="page-status-bar keys-page-status-bar keys-unified-status" id="keysSeqStatusBar">
+            <div class="page-status-bar-main keys-scheme-status-main">
+              <div class="keys-scheme-summary-title-row">
+                <span class="keys-scheme-summary-name keys-page-brand-title" id="keysSeqBrandTitle" data-i18n="keysSeqTitle">动作链</span>
+                <span class="keys-scheme-summary-pill" id="keysSeqHabitPill">—</span>
+              </div>
+              <button type="button" class="keys-seq-legacy-link" id="keysSeqOpenLegacy" data-i18n="keysSeqOpenLegacy">打开原按键设置 →</button>
+            </div>
+          </div>
+          <div class="keys-page-body keys-page-body--two-col" id="keysSeqPageBody">
+            <aside class="keys-page-rail" id="keysSeqRail" aria-label="触发与已存动作">
+              <div class="keys-page-rail__trigger habit-flow-step home-key-map-step is-clickable is-active-step" id="keysSeqTriggerRow" data-edit-step="trigger" role="region" aria-labelledby="keysSeqTriggerTitle">
+                <div class="keys-page-rail__start">
+                  <span class="keys-page-rail__badge" data-i18n="keysRailStartBadge">起点</span>
+                  <span class="keys-page-rail__title home-key-map-step-label" id="keysSeqTriggerTitle" data-i18n="keysSeqRecordTrigger">触发键</span>
+                  <div class="keys-page-rail__keycap">
+                    <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysSeqTriggerCap" role="button" tabindex="0" aria-label="录制触发键">
+                      <div class="habit-basic-key-display display empty" id="keysSeqTriggerDisplay">
+                        <span class="habit-key-icon-host" aria-hidden="true"></span>
+                        <span class="display-value" id="keysSeqTriggerView">未设置</span>
+                      </div>
+                    </div>
+                    <div class="habit-flow-step-act keys-step-record-act">
+                      <button type="button" class="habit-rerecord-link record-btn" id="keysSeqRecordTrigger">
+                        <span class="habit-rerecord-text" data-i18n="keysSeqRecordTrigger">录制触发键</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="keys-page-rail__hint" id="keysSeqTriggerSub" data-i18n="keysSeqTriggerUnset">先录制触发键，再配置动作链</p>
+                </div>
+              </div>
+              <div class="keys-seq-rail-tools" id="keysSeqRailTools">
+                <button type="button" class="keys-seq-rail-new" id="keysSeqNewAction" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
+                <div class="keys-seq-saved" id="keysSeqSaved">
+                  <button type="button" class="keys-seq-saved-toggle" id="keysSeqSavedToggle" aria-expanded="false">
+                    <span class="keys-seq-saved-toggle-lab" data-i18n="keysSeqSavedTitle">已存动作</span>
+                    <span class="keys-seq-saved-count" id="keysSeqSavedCount">0</span>
+                    <span class="keys-seq-saved-chev" aria-hidden="true">▸</span>
+                  </button>
+                  <div class="keys-seq-saved-list" id="keysSeqSavedList" role="list" hidden></div>
+                </div>
+              </div>
+            </aside>
+            <div class="keys-page-main" id="keysSeqMain">
+              <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel is-custom-key-seq">
+                <div class="keys-custom-key-detail">
+                  <p class="keys-channel-group-label" data-i18n="keysCaptureSeqTitle">动作序列</p>
+                  <p class="keys-capture-target-actions-hint" data-i18n="keysSeqBodyHint">点中间 ＋ 添加步骤；「语音输入法」会先对准输入框再发送激活键。</p>
+                  <div class="home-key-map-actions is-keys-variant keys-seq-actions-host" id="keysSeqActions"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Right scene dock removed: saved actions live in the left rail. Hosts kept for API compat but always hidden. -->
+            <aside class="keys-page-aside keys-scene-actions" id="keysSeqSceneActionsPanel" hidden data-panel="dir" aria-hidden="true" style="display:none!important">
+              <div class="keys-scene-actions__dir" id="keysSeqSceneActionsDir" role="list"></div>
+              <button type="button" class="keys-scene-actions__add" id="keysSeqSceneActionsAdd" hidden></button>
+              <span id="keysSeqSceneActionsApp" hidden></span>
+              <img id="keysSeqSceneActionsAppIcon" alt="" hidden />
+              <span id="keysSeqSceneActionsAppName" hidden></span>
+              <span id="keysSeqSceneActionsMeta" hidden></span>
+              <button type="button" id="keysSeqSceneActionsBack" hidden></button>
+              <div id="keysSeqSceneActionsDetail" hidden>
+                <div id="keysSeqSceneActionsPicks"></div>
+                <div id="keysSeqSceneActionsEdit"></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+        <section class="settings-panel drawer-section keys2-page" id="settingsPanelKeys2" hidden aria-hidden="true">
+          <div id="keys2CommandCardRoot" class="keys2-root" hidden></div>
         </section>
         <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerSoftPad" hidden role="status" aria-live="polite"></div>
@@ -1594,8 +1663,12 @@
             <header class="habit-hub-head">
               <div class="habit-hub-head-text">
                 <h3 class="pref-page-title" id="settingsPanelHabitsTitle">我的习惯</h3>
-                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">先设好大家共用的，再给某个应用开例外</p>
-                <p class="habit-hub-hint" id="habitHubAutoHint">建议先完成通用按键与语音，日常先用通用；某个应用需要不一样时再新建场景。</p>
+                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">场景管例外；命令管怎么调用。也可只在按键 / 语音 / Soft Pad 里配。</p>
+                <p class="habit-hub-hint" id="habitHubAutoHint">新手可先去「按键」「语音」「Soft Pad」配一条命令；这里用「场景 | 命令」切换总览。</p>
+                <div class="habit-shell-toggle pref-segmented" id="habitShellModeToggle" role="tablist" aria-label="习惯视图">
+                  <button type="button" class="pref-segmented-btn" role="tab" data-habit-shell-mode="scenes" id="btnHabitShellScenes" aria-selected="false">场景</button>
+                  <button type="button" class="pref-segmented-btn is-active" role="tab" data-habit-shell-mode="commands" id="btnHabitShellCommands" aria-selected="true">命令</button>
+                </div>
               </div>
               <div class="habit-hub-head-actions">
                 <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubHeadNew" data-habit-hub-new-draft data-i18n="habitHubNewHabit">+ 新建习惯</button>
@@ -1634,7 +1707,7 @@
                 </div>
                 <div class="habit-hub-empty" id="habitHubEmpty" hidden>
                   <p class="habit-hub-empty-title" id="habitHubEmptyTitle">还没有习惯</p>
-                  <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">在「按键」或「语音」里保存设置后，会自动出现在这里</p>
+                  <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">不必先懂这里：去「按键」「语音」或 Soft Pad 配好后，会自动出现场景。需要跨通道总览时再切到「命令」。</p>
                   <div class="habit-hub-empty-actions">
                     <button type="button" class="habit-hub-empty-btn is-primary" id="btnHabitHubEmptyNew">+ 新建应用场景</button>
                   </div>
@@ -4548,6 +4621,16 @@
   <div id="camera2Mount"></div>
 </section>
 
+<section class="settings-panel drawer-section composer-hist-page" id="settingsPanelComposerHistory" hidden>
+  <div class="composer-hist-head">
+    <div>
+      <h3 class="pref-page-title" id="settingsPanelComposerHistoryTitle" data-i18n="composerHistTitle">对话历史</h3>
+      <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelComposerHistoryDesc" data-i18n="composerHistDesc">新首页发往 Agent 的正文记录，可对照、回填或删除。</p>
+    </div>
+    <button type="button" class="composer-hist-clear" id="composerHistoryClear" data-i18n="composerHistClear">清空</button>
+  </div>
+  <div class="composer-hist-list" id="composerHistoryList" role="list"></div>
+</section>
 <section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgent" hidden>
   <iframe class="agent-proto-frame" id="agentProtoFrame" title="Agent" src="agent-proto/agent-page?embed=1" loading="lazy"></iframe>
 </section>
@@ -5726,6 +5809,7 @@
   <script src="js/features/agent/semantic-action-store.js"></script>
   <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
+  <script src="js/features/mapping/keys-seq-panel.js"></script>
   <script src="js/features/mapping/keys-channel-command-picker.js?v=prompt-autosave-2"></script>
   <script src="js/features/mapping/keys-scene-actions-panel.js?v=prompt-multi-1"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>
@@ -5811,6 +5895,7 @@
   <script src="js/features/now/now-home-ui.js"></script>
   <script src="js/features/now/home-agent-v2-store.js"></script>
   <script src="js/features/now/home-agent-v2-dock.js"></script>
+  <script src="js/features/now/composer-history-panel.js"></script>
   <script src="js/features/now/home-agent-v2.js"></script>
   <script src="js/features/now/now-home.js"></script>
   <script src="js/features/home/codex-smoke-feedback.js"></script>

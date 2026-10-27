@@ -1233,14 +1233,21 @@
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
         var isApp=diffApi&&diffApi.isAppScenarioMapping&&diffApi.isAppScenarioMapping(m);
-        if(isApp&&diffApi.normalizeKeyFieldsForSave&&baseline){
+        var ownsChain=!!(
+          (Array.isArray(m.targetActions)&&m.targetActions.length)
+          ||String(m.keysSeqFamilyId||'').trim()
+          ||(m.captureHeroRef&&typeof m.captureHeroRef==='object'
+            &&String(m.captureHeroRef.kind||'').trim().toLowerCase()==='customkey')
+        );
+        if(isApp&&!ownsChain&&diffApi.normalizeKeyFieldsForSave&&baseline){
           diffApi.normalizeKeyFieldsForSave(m,baseline,true);
         }
         // App scenarios inherit keys from universal settings. Do not synthesize
         // editor/voice fallbacks into the payload — that used to look "recorded"
         // and later wipe/normalize paths could drop appTargetId.
-        var trig=isApp?String(m.triggerKey||'').trim():hooks().editorTriggerForMapping(m);
-        var tgt=isApp?String(m.targetKey||'').trim():hooks().editorTargetForMapping(m);
+        // Action-chain peers keep their own trigger even when stamped with appTargetId.
+        var trig=(isApp||ownsChain)?String(m.triggerKey||'').trim():hooks().editorTriggerForMapping(m);
+        var tgt=(isApp||ownsChain)?String(m.targetKey||'').trim():hooks().editorTargetForMapping(m);
         var order=Number(m.order);
         if(!isFinite(order)) order=i;
         return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',gestureModes:serializeGestureModes(m.gestureModes),triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings),codexMicroPad:m.codexMicroPad==null?null:m.codexMicroPad,timeMachineWorkspace:String(m.timeMachineWorkspace||''),targetActions:serializeTargetActions(m.targetActions),captureHeroRef:serializeCaptureHeroRef(m.captureHeroRef),oralCommandScheme:serializeOralCommandScheme(m.oralCommandScheme),assists:(Array.isArray(m.assists)?m.assists.map(function(s){return String(s||'').trim();}).filter(Boolean):undefined)};

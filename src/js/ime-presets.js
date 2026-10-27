@@ -78,9 +78,19 @@
       return;
     }
     if(ctx === 'voice'){
-      var st = global.OneToneState && global.OneToneState.state;
-      var cfg = st && st.config;
-      selectedByContext.voice = cfg && cfg.imePresetId ? String(cfg.imePresetId) : '';
+      // Habit mapping is the write authority; config.imePresetId is fallback mirror only.
+      var voiceId = '';
+      try{
+        var hdr = global.OneToneVoicePageHeaderRender;
+        var scopeM = hdr && typeof hdr.resolveScopeMapping === 'function' ? hdr.resolveScopeMapping(null) : null;
+        if(scopeM && String(scopeM.imePresetId || '').trim()) voiceId = String(scopeM.imePresetId).trim();
+      }catch(_){}
+      if(!voiceId){
+        var st = global.OneToneState && global.OneToneState.state;
+        var cfg = st && st.config;
+        voiceId = cfg && cfg.imePresetId ? String(cfg.imePresetId) : '';
+      }
+      selectedByContext.voice = voiceId;
     }
   }
 
@@ -352,6 +362,7 @@
       cfg.voiceSapi.targetKey = combo;
       cfg.voiceVosk.targetKey = combo;
       cfg.voiceEnd.targetKey = combo;
+      // Mirror only — mapping.imePresetId below is the habit source of truth.
       cfg.imePresetId = presetId;
       var persist = global.OneToneConfigPersist;
       if(persist && persist.save) persist.save();

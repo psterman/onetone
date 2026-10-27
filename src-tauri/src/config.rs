@@ -1506,7 +1506,8 @@ pub struct OralCommandItem {
 ///
 /// `serde(tag = "type")` → on-disk shape is `{"type":"key","value":"Ctrl+Enter"}`,
 /// `{"type":"text","value":"继续"}`, `{"type":"delay","ms":200}`, or
-/// `{"type":"open","kind":"file"|"folder"|"url","value":"…"}`.
+/// `{"type":"open","kind":"file"|"folder"|"url","value":"…"}` /
+/// `{"type":"ime","value":"RAlt","presetId":"typeless","aim":"auto","finish":"send"}`.
 /// The legacy single-string `targetKey` field is still read and folded back in
 /// through [`MappingEntry::effective_target_actions`] so old configs need no
 /// migration.
@@ -1521,6 +1522,18 @@ pub enum Action {
     Delay { ms: u32 },
     /// Shell-open a file, folder, or URL. `kind` is file | folder | url.
     Open { kind: String, value: String },
+    /// Voice IME activation: optional aim, then send the activation chord.
+    Ime {
+        value: String,
+        #[serde(default, rename = "presetId", alias = "preset_id")]
+        preset_id: String,
+        /// `auto` | `none` — aim the app input box before the chord.
+        #[serde(default)]
+        aim: String,
+        /// `send` | `enter` | `none` — post-speech hint (mirrored on mapping).
+        #[serde(default)]
+        finish: String,
+    },
 }
 
 impl Action {
@@ -1533,6 +1546,7 @@ impl Action {
             Action::Open { kind, value } => {
                 format!("Open({kind}:{})", truncate_for_display(value, 32))
             }
+            Action::Ime { value, .. } => format!("Ime({value})"),
         }
     }
 }
@@ -4418,16 +4432,19 @@ pub fn mapping_target_physical_bindings(m: &MappingEntry) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for act in &m.target_actions {
-        if let Action::Key { value } = act {
-            let v = value.trim();
-            if v.is_empty() {
-                continue;
-            }
-            let parts = expand_physical_components(v);
-            for p in parts {
-                if seen.insert(p.clone()) {
-                    out.push(p);
-                }
+        let value = match act {
+            Action::Key { value } => value.as_str(),
+            Action::Ime { value, .. } => value.as_str(),
+            _ => continue,
+        };
+        let v = value.trim();
+        if v.is_empty() {
+            continue;
+        }
+        let parts = expand_physical_components(v);
+        for p in parts {
+            if seen.insert(p.clone()) {
+                out.push(p);
             }
         }
     }
@@ -10095,6 +10112,12 @@ fn action_serde_roundtrip_text_and_delay() {
             kind: "folder".into(),
             value: r"C:\Users".into(),
         },
+        Action::Ime {
+            value: "RAlt".into(),
+            preset_id: "typeless".into(),
+            aim: "auto".into(),
+            finish: "send".into(),
+        },
     ];
     let json = serde_json::to_string(&original).expect("serialize");
     // Tagged form: each entry has a "type" discriminator.
@@ -10102,7 +10125,9 @@ fn action_serde_roundtrip_text_and_delay() {
     assert!(json.contains(r#""type":"text""#));
     assert!(json.contains(r#""type":"delay""#));
     assert!(json.contains(r#""type":"open""#));
+    assert!(json.contains(r#""type":"ime""#));
     assert!(json.contains(r#""kind":"url""#));
+    assert!(json.contains(r#""presetId":"typeless""#));
     let back: Vec<Action> = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(back, original);
 }

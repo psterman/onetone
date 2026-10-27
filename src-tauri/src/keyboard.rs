@@ -658,6 +658,38 @@ fn shell_open_action(kind: &str, value: &str) -> bool {
     }
 }
 
+/// Release physically held side modifiers before injecting a sequence.
+///
+/// Ctrl+' (RegisterHotKey) fires while Ctrl is still down. KEYEVENTF_UNICODE
+/// with Ctrl held is ignored by Electron/Cursor; RAlt wake becomes Ctrl+RAlt.
+fn release_held_side_modifiers() {
+    #[cfg(windows)]
+    {
+        use winapi::um::winuser::GetAsyncKeyState;
+        // (vk, extended) — match send_chord side modifiers.
+        const SIDES: &[(u16, bool)] = &[
+            (0xA2, false), // LCtrl
+            (0xA3, true),  // RCtrl
+            (0xA0, false), // LShift
+            (0xA1, false), // RShift
+            (0xA4, false), // LAlt
+            (0xA5, true),  // RAlt
+            (0x5B, true),  // LWin
+            (0x5C, true),  // RWin
+        ];
+        let mut any = false;
+        for &(vk, extended) in SIDES {
+            if unsafe { GetAsyncKeyState(vk as i32) } as u16 & 0x8000 != 0 {
+                send_vk(vk, extended, true);
+                any = true;
+            }
+        }
+        if any {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
+}
+
 /// Execute an ordered action sequence.  `Key` reuses `send_chord` with the
 /// caller's `key_press_duration_ms`; `Text` calls `send_text`; `Delay` does a
 /// blocking `thread::sleep`; `Open` shell-opens a file/folder/URL.  Because
@@ -665,6 +697,8 @@ fn shell_open_action(kind: &str, value: &str) -> bool {
 /// (voice_end_runtime already wraps the whole end-of-session body in
 /// `std::thread::spawn`).  Returns false on the first failing step and stops.
 pub fn run_action_sequence(actions: &[crate::config::Action], key_press_duration_ms: u32) -> bool {
+    // Drop the trigger chord's physical modifiers before the first inject step.
+    release_held_side_modifiers();
     for act in actions {
         match act {
             crate::config::Action::Key { value } => {
@@ -686,6 +720,15 @@ pub fn run_action_sequence(actions: &[crate::config::Action], key_press_duration
                     continue;
                 }
                 if !shell_open_action(kind, value) {
+                    return false;
+                }
+            }
+            crate::config::Action::Ime { value, .. } => {
+                // IME step = activation chord (aim happens in run_mapping_target_sequence).
+                if value.trim().is_empty() {
+                    continue;
+                }
+                if !send_chord(value, key_press_duration_ms) {
                     return false;
                 }
             }

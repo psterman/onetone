@@ -64,6 +64,15 @@
   function friendlySingleToken(token, lang){
     var raw = String(token || '').trim();
     if(!raw) return '';
+    // Windows / browser spellings → canonical tokens (avoid "Left Ctrl" leaking in zh UI).
+    var aliases = {
+      'Left Ctrl': 'LCtrl', 'Right Ctrl': 'RCtrl',
+      'Left Shift': 'LShift', 'Right Shift': 'RShift',
+      'Left Alt': 'LAlt', 'Right Alt': 'RAlt',
+      'Left Win': 'LWin', 'Right Win': 'RWin',
+      Control: 'Ctrl', Meta: 'Win'
+    };
+    if(Object.prototype.hasOwnProperty.call(aliases, raw)) raw = aliases[raw];
     var direct = directTable(lang);
     if(Object.prototype.hasOwnProperty.call(direct, raw)){
       return direct[raw];

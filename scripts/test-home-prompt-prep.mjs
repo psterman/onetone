@@ -692,9 +692,14 @@ function matchAttrSel(node, sel) {
   // 14 handoff kind rejected from materials; archive goes to handoffs[]
   assert.equal(API.addMaterial({ kind: 'handoff', name: 'bad' }), null);
   const beforeHo = (API.listHandoffs() || []).length;
-  API.archiveHandoff({ targetKind: 'traeCode', outcome: 'clipboard_ready' });
+  API.archiveHandoff({
+    targetKind: 'traeCode',
+    outcome: 'clipboard_ready',
+    body: 'composer recall body'
+  });
   assert.equal(API.listHandoffs().length, beforeHo + 1);
   assert.equal(API.listHandoffs()[0].targetKind, 'traeCode');
+  assert.equal(API.listHandoffs()[0].body, 'composer recall body');
   assert.ok(!API.getMaterialSummary().refs.some((r) => r.kind === 'handoff'));
 
   // 15 carry dismiss keeps materials; restart migrate clears carry.active

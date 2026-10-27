@@ -66,7 +66,8 @@ pub fn cmd_mapping_conflicts(
 
 /// Frontend payload shape: `{ type: "key", value: "Ctrl+Enter" }` /
 /// `{ type: "text", value: "继续" }` / `{ type: "delay", ms: 200 }` /
-/// `{ type: "open", kind: "file"|"folder"|"url", value: "…" }`.
+/// `{ type: "open", kind: "file"|"folder"|"url", value: "…" }` /
+/// `{ type: "ime", value: "RAlt", presetId, aim, finish }`.
 /// Mirrors the on-disk schema exactly, so JSON roundtrip is lossless.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -75,6 +76,15 @@ pub enum ActionPayload {
     Text { value: String },
     Delay { ms: u32 },
     Open { kind: String, value: String },
+    Ime {
+        value: String,
+        #[serde(default, rename = "presetId", alias = "preset_id")]
+        preset_id: String,
+        #[serde(default)]
+        aim: String,
+        #[serde(default)]
+        finish: String,
+    },
 }
 
 impl From<ActionPayload> for Action {
@@ -84,6 +94,17 @@ impl From<ActionPayload> for Action {
             ActionPayload::Text { value } => Action::Text { value },
             ActionPayload::Delay { ms } => Action::Delay { ms },
             ActionPayload::Open { kind, value } => Action::Open { kind, value },
+            ActionPayload::Ime {
+                value,
+                preset_id,
+                aim,
+                finish,
+            } => Action::Ime {
+                value,
+                preset_id,
+                aim,
+                finish,
+            },
         }
     }
 }
@@ -105,7 +126,7 @@ pub fn cmd_mapping_set_target_actions(
             m.target_key = converted
                 .iter()
                 .find_map(|a| match a {
-                    Action::Key { value } => {
+                    Action::Key { value } | Action::Ime { value, .. } => {
                         let v = value.trim();
                         if v.is_empty() {
                             None
@@ -116,6 +137,15 @@ pub fn cmd_mapping_set_target_actions(
                     _ => None,
                 })
                 .unwrap_or_default();
+            if let Some(Action::Ime { preset_id, .. }) = converted
+                .iter()
+                .find(|a| matches!(a, Action::Ime { .. }))
+            {
+                let pid = preset_id.trim();
+                if !pid.is_empty() {
+                    m.ime_preset_id = pid.to_string();
+                }
+            }
         }
         cfg.normalize();
     }

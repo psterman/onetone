@@ -1278,6 +1278,12 @@
   }
 
   function renderRecordingFeedback(){
+    try{
+      var uiNow=ui();
+      if(uiNow&&uiNow.settingsPanel==='keysSeq'&&global.OneToneKeysSeqPanel&&global.OneToneKeysSeqPanel.syncTrigger){
+        global.OneToneKeysSeqPanel.syncTrigger();
+      }
+    }catch(_){}
     var model=buildKeysRecordingFeedbackModel();
     applyKeysRecordingFeedbackHost(model);
     syncCancelButtonHost();

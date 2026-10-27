@@ -2469,6 +2469,12 @@
               ? t('keysCaptureSeqAddOpenUrl', '网址')
               : t('keysCaptureSeqAddOpenFile', '文件');
         parts.push(ok + ' ' + String(a.value || ''));
+      } else if (a.type === 'ime') {
+        parts.push(
+          t('keysCaptureSeqAddIme', '语音输入法') +
+            ' ' +
+            friendlyTriggerLabel(a.value || '')
+        );
       }
     }
     return parts.length ? parts.join(' · ') : t('keysCustomKeyMatchNoActions', '尚无动作');
@@ -7925,7 +7931,7 @@
       bar.setAttribute('data-habit-command-match', channel || 'key');
       bar.textContent = t(
         'keysHabitCommandMatchCta',
-        '跨通道匹配（说法 / Pad / 手势）→ 在习惯中编辑'
+        '跨通道匹配 → 习惯「命令」视图'
       );
       host.appendChild(bar);
     }

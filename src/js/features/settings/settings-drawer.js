@@ -14,13 +14,13 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keysSeq:'settingsPanelKeysSeq',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
     camera:'settingsPanelCamera',camera2:'settingsPanelCamera2',tray:'settingsPanelTray',
 
-    agent:'settingsPanelAgent',agentData:'settingsPanelAgentData'
+    agent:'settingsPanelAgent',agentData:'settingsPanelAgentData',composerHistory:'settingsPanelComposerHistory'
 
   };
 
@@ -85,6 +85,13 @@
 
     // scenes ????????habits??????????settingsPanelScenes
     if(panel==='scenes') return 'habits';
+
+    // keys2 directory removed — channel grid lives in Habits command right pane.
+    if(panel==='keys2'){
+      ui.habitShellMode='commands';
+      ui.habitDetailPane='lanes';
+      return 'habits';
+    }
 
     return panel;
 
@@ -409,6 +416,13 @@
 
 
   function refreshKeysPanel(){
+    if(normalizePanel(ui.settingsPanel)==='keysSeq'){
+      if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.render==='function'){
+        try{ global.OneToneKeysSeqPanel.render(); }
+        catch(err){ console.error('keys seq refresh',err); }
+      }
+      return;
+    }
 
     if(global.OneToneHabitKeyMappingTable&&global.OneToneHabitKeyMappingTable.mount){
       global.OneToneHabitKeyMappingTable.mount();
@@ -1012,6 +1026,17 @@
       }
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
 
+    }else if(panel==='keysSeq'){
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='keysSeq') return;
+          if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.render==='function'){
+            try{ global.OneToneKeysSeqPanel.render(); }
+            catch(err){ console.error('keys seq panel',err); }
+          }
+        },0);
+      });
+
     }else if(panel==='keys2'){
 
       // Parallel preview: command-card mock only — never refreshKeysPanel / islands.
@@ -1124,6 +1149,14 @@
           }
         },0);
       });
+
+    }else if(panel==='composerHistory'){
+      setTimeout(function(){
+        if(normalizePanel(ui.settingsPanel)!=='composerHistory') return;
+        if(global.OneToneComposerHistoryPanel&&global.OneToneComposerHistoryPanel.render){
+          try{ global.OneToneComposerHistoryPanel.render(); }catch(err){ console.error('composer history panel',err); }
+        }
+      },0);
 
     }else if(panel==='basic'){
 
@@ -1674,6 +1707,13 @@
           ui.habitOpenMatchEditor=opts.openMatchEditor!==false;
           if(opts.returnPanel) ui.habitMatchReturnPanel=String(opts.returnPanel);
         }
+        ui.habitShellMode='commands';
+      }
+      if(opts.habitShellMode==='scenes'||opts.habitShellMode==='commands'){
+        ui.habitShellMode=opts.habitShellMode;
+      }
+      if(opts.habitDetailPane==='edit'||opts.habitDetailPane==='lanes'){
+        ui.habitDetailPane=opts.habitDetailPane;
       }
     }catch(_){}
 

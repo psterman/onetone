@@ -316,6 +316,85 @@ pub(super) fn dispatch_send_key(
         return;
     }
 
+    // Action-chain rows with explicit targetActions (text / key / delay / …) own the
+    // trigger. Text-only sequences clear target_key, which used to look like "no
+    // recognition key" and get hijacked into summon Cursor / composer workflow.
+    if has_explicit_actions {
+        let app = window.app_handle();
+        if app_chat_workflow::profile_for(&app_target_id).is_some() {
+            match crate::voice_end_runtime::run_mapping_target_sequence(
+                state,
+                &app,
+                mapping_id,
+                duration_ms,
+            ) {
+                Ok(label) => {
+                    push_soft_pad_success(
+                        &window.app_handle(),
+                        state.as_ref(),
+                        mapping_id,
+                        &app_target_id,
+                    );
+                    finish_send_key_dispatch(
+                        state,
+                        window,
+                        mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        source_key,
+                        true,
+                        "sent",
+                        &label,
+                    );
+                }
+                Err(reason) => {
+                    finish_send_key_dispatch(
+                        state,
+                        window,
+                        mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        source_key,
+                        false,
+                        &reason,
+                        &reason,
+                    );
+                }
+            }
+            return;
+        }
+        let sent = crate::voice_end_runtime::send_actions_to_target(
+            Some(state.as_ref()),
+            Some(&app),
+            &actions,
+            duration_ms,
+        );
+        let label = actions
+            .iter()
+            .map(|a| a.display())
+            .collect::<Vec<_>>()
+            .join(" → ");
+        let (ok, reason) = if sent {
+            (true, "sent")
+        } else if crate::app_identity::foreground_is_self() {
+            (false, "self_foreground")
+        } else {
+            (false, "send_failed")
+        };
+        finish_send_key_dispatch(
+            state,
+            window,
+            mapping_id,
+            &trigger_key,
+            &target_key,
+            source_key,
+            ok,
+            reason,
+            if ok { &label } else { reason },
+        );
+        return;
+    }
+
     // Foreground-aware routing: app scenario (Codex pack) vs global default.
     if let Some(fg) = app_identity::foreground_app_identity() {
         let (app_scenario_id, workflow_target) = {
@@ -432,51 +511,7 @@ pub(super) fn dispatch_send_key(
     }
 
     if app_chat_workflow::profile_for(&app_target_id).is_some() {
-        // Explicit targetActions → open/focus Agent then run the linear sequence
-        // (no voice). Empty sequence keeps the existing summon + voice workflow.
-        if has_explicit_actions {
-            let app = window.app_handle();
-            match crate::voice_end_runtime::run_mapping_target_sequence(
-                state,
-                &app,
-                mapping_id,
-                duration_ms,
-            ) {
-                Ok(label) => {
-                    push_soft_pad_success(
-                        &window.app_handle(),
-                        state.as_ref(),
-                        mapping_id,
-                        &app_target_id,
-                    );
-                    finish_send_key_dispatch(
-                        state,
-                        window,
-                        mapping_id,
-                        &trigger_key,
-                        &target_key,
-                        source_key,
-                        true,
-                        "sent",
-                        &label,
-                    );
-                }
-                Err(reason) => {
-                    finish_send_key_dispatch(
-                        state,
-                        window,
-                        mapping_id,
-                        &trigger_key,
-                        &target_key,
-                        source_key,
-                        false,
-                        &reason,
-                        &reason,
-                    );
-                }
-            }
-            return;
-        }
+        // No explicit sequence: summon + voice workflow for the bound Agent app.
         match app_chat_workflow::run_for_target_id(
             state,
             window,

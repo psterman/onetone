@@ -165,8 +165,16 @@
         commandRef: ref,
         matchCommand: ref,
         openMatchEditor: true,
-        returnPanel: 'keys2'
+        returnPanel: 'habits',
+        // Prefer channel grid in habit right pane (keys2 directory removed).
       });
+      try {
+        var stUi = global.OneToneState && global.OneToneState.ui;
+        if (stUi) {
+          stUi.habitShellMode = 'commands';
+          stUi.habitDetailPane = 'lanes';
+        }
+      } catch (_) {}
       return;
     }
     var drawer = global.OneToneSettingsDrawer;
@@ -178,7 +186,8 @@
         commandRef: ref,
         matchCommand: ref,
         openMatchEditor: true,
-        returnPanel: 'keys2'
+        habitShellMode: 'commands',
+        habitDetailPane: 'lanes'
       });
     }
   }
@@ -191,7 +200,7 @@
       '<span>摘要 → 习惯</span><span>灯 = 通道状态</span><span>只读</span>' +
       '</div>' +
       '<div class="keys2-actions" style="margin-top:10px">' +
-      '<button type="button" class="keys2-btn primary" data-k2-go-habits="1">去习惯查看匹配</button>' +
+      '<button type="button" class="keys2-btn primary" data-k2-go-habits="1">去习惯 · 命令视图</button>' +
       '</div></div>' +
       '<div class="keys2-frame">' +
       '<div class="keys2-scope">' +

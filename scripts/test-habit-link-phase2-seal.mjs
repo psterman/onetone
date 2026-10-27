@@ -61,6 +61,15 @@ const keys2 = src('src/js/features/settings/keys2-command-card.js');
 check('keys2 READ_ONLY', /READ_ONLY:\s*true/.test(keys2));
 check('keys2 no write controls', !/keys2BtnAddPhrase|keys2BtnRecordKey|data-k2-clear/.test(keys2));
 
+const hcl = src('src/js/features/mapping/habit-command-link.js');
+check('habit has channels overview (lanes)', hcl.includes('function channelsOverviewHtml'));
+check('habit detail pane toggle', hcl.includes('data-hcl-detail-pane'));
+check('index removed keys2 nav', !html.includes('id="settingsNavKeys2"') && !html.includes('id="wbNavKeys2"'));
+check(
+  'keys2 panel redirects to habits',
+  /if\(panel==='keys2'\)[\s\S]*return 'habits'/.test(src('src/js/features/settings/settings-drawer.js'))
+);
+
 // KEEP: Soft Pad still has native keycap commit (P-class look/layout)
 const pad = src('src/js/features/agent/codex-micro-pad-ui.js');
 check('KEEP Soft Pad commitEditKeycapDraft', pad.includes('function commitEditKeycapDraft'));

@@ -9,10 +9,12 @@
     home: { panel: null, home: true, deep: false, pro: false, note: 'now-cockpit' },
     schemes: { panel: 'habits', home: false, deep: false, pro: false, note: 'primary' },
     triggers: { panel: 'keys', home: false, deep: true, pro: false, note: 'mid' },
-    keys2: { panel: 'keys2', home: false, deep: true, pro: false, note: 'command-card-preview' },
+    keysSeq: { panel: 'keysSeq', home: false, deep: false, pro: false, note: 'action-chain' },
+    keys2: { panel: 'habits', home: false, deep: true, pro: false, note: 'redirect-habits-lanes' },
     // Soft Pad = 绑键动作面；Agent / 数据 = 独立配置目录（见 design-mock/agent-settings-dir-proto）
     softPad: { panel: 'softPad', home: false, deep: true, pro: false, note: 'mid', focus: 'softPadLayout' },
     agent: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-dir' },
+    composerHistory: { panel: 'composerHistory', home: false, deep: false, pro: false, note: 'send-journal' },
     agentData: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-data-leaf', agentSub: 'data' },
     voice: { panel: 'voiceWake', home: false, deep: true, pro: false, note: 'mid' },
     camera: { panel: 'camera', home: false, deep: true, pro: true, note: 'pro-no-home-cta' },

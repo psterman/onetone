@@ -432,7 +432,13 @@
     if(!m) return [];
     if(Array.isArray(m.targetActions)&&m.targetActions.length){
       return m.targetActions.map(function(a){
-        return {type:a.type||'key',value:a.value,ms:a.ms,kind:a.kind};
+        var o={type:a.type||'key',value:a.value,ms:a.ms,kind:a.kind};
+        if(o.type==='ime'){
+          o.presetId=a.presetId||a.preset_id||'';
+          o.aim=a.aim||'auto';
+          o.finish=a.finish||'send';
+        }
+        return o;
       });
     }
     var tk=String(m.targetKey||'').trim();
@@ -446,11 +452,22 @@
     if(!m) return;
     m.targetActions = Array.isArray(next) ? next.slice() : [];
     var firstKey = null;
+    var firstIme = null;
     for(var i=0;i<m.targetActions.length;i++){
       var a=m.targetActions[i];
-      if(a&&a.type==='key'&&String(a.value||'').trim()){ firstKey=String(a.value).trim(); break; }
+      if(!a) continue;
+      if(!firstIme&&a.type==='ime') firstIme=a;
+      if(!firstKey&&a.type==='key'&&String(a.value||'').trim()) firstKey=String(a.value).trim();
+      if(!firstKey&&a.type==='ime'&&String(a.value||'').trim()) firstKey=String(a.value).trim();
     }
     m.targetKey = firstKey || '';
+    // Mirror ime step ↔ habit field so deleting「语音输入法」cannot resurrect via ensureImeStepOnHabit.
+    if(firstIme){
+      var pid=String(firstIme.presetId||firstIme.preset_id||'').trim();
+      m.imePresetId=pid;
+    }else{
+      m.imePresetId='';
+    }
   }
   // Numbered action row: type badge + readable body + always-visible ▲▼×.
   function buildActionRowHtml(a, i, total, canEdit){
@@ -476,6 +493,10 @@
       typeLbl=openKindLabel(a&&a.kind);
       body=escHtml(a.value||'')||escHtml(t('keysCaptureSeqOpenEmpty','未填写'));
       editHint=' data-edit="open"';
+    } else if(typ==='ime'){
+      badge='声'; typeLbl=t('keysCaptureSeqAddIme','语音输入法');
+      body=escHtml(hooks().friendlyKeyName(a.value||'')||a.value||'');
+      editHint='';
     } else {
       typeLbl=escHtml(typ||'?');
       body='';
@@ -515,7 +536,7 @@
       var raw=localStorage.getItem(KEYS_SEQ_RECENT_LS);
       var arr=raw?JSON.parse(raw):[];
       return Array.isArray(arr)?arr.filter(function(id){
-        return /^(key|text|delay|open-file|open-folder|open-url)$/.test(String(id));
+        return /^(key|text|delay|open-file|open-folder|open-url|ime)$/.test(String(id));
       }).slice(0,5):[];
     }catch(_){ return []; }
   }
@@ -533,6 +554,7 @@
     if(kind==='open-file') return t('keysCaptureSeqAddOpenFile','文件');
     if(kind==='open-folder') return t('keysCaptureSeqAddOpenFolder','文件夹');
     if(kind==='open-url') return t('keysCaptureSeqAddOpenUrl','网址');
+    if(kind==='ime') return t('keysCaptureSeqAddIme','语音输入法');
     return kind;
   }
   var keysInlineListen = { mappingId: '', idx: -1, onKey: null };
@@ -579,7 +601,12 @@
       stopKeysInlineListen();
       var cur=effectiveTargetActions(m).slice();
       if(!cur[listenIdx]) return;
-      cur[listenIdx]={type:'key',value:chord};
+      var prev=cur[listenIdx]||{};
+      if(prev.type==='ime'){
+        cur[listenIdx]={type:'ime',presetId:prev.presetId||'',value:chord,aim:prev.aim||'auto',finish:prev.finish||'send'};
+      } else {
+        cur[listenIdx]={type:'key',value:chord};
+      }
       applyAndRefresh(m, cur);
     };
     document.addEventListener('keydown', keysInlineListen.onKey, true);
@@ -594,7 +621,9 @@
         ? t('keysCaptureSeqAddText','文本')
         : typ==='open'
           ? openKindLabel(a&&a.kind)
-          : t('keysCaptureSeqAddDelay','延迟');
+          : typ==='ime'
+            ? t('keysCaptureSeqAddIme','语音输入法')
+            : t('keysCaptureSeqAddDelay','延迟');
     var body='';
     if(typ==='key'){
       var empty=!String(a&&a.value||'').trim();
@@ -638,6 +667,63 @@
         +' placeholder="'+escHtml(openKindPlaceholder(okind))+'" />'
         +sideBtns
         +'</div>';
+    } else if(typ==='ime'){
+      var presets=(global.OneToneImePresets&&global.OneToneImePresets.presets)||[];
+      var pid=String(a&&(a.presetId||a.preset_id)||'');
+      var aim=String(a&&a.aim||'auto')==='none'?'none':'auto';
+      var finishRaw=String(a&&a.finish||'confirm');
+      var finish=finishRaw==='manual'||finishRaw==='none'||finishRaw==='keep'
+        ? 'manual'
+        : finishRaw==='perpress'||finishRaw==='hold'
+          ? 'perpress'
+          : 'confirm';
+      var delayMs=Number(a&&a.ms)>0?Number(a.ms):(Number(a&&a.delayMs)||2000);
+      var chordEmpty=!String(a&&a.value||'').trim();
+      var chordLbl=chordEmpty
+        ? t('keysCaptureSeqTapRecord','点此录制按键')
+        : (hooks().friendlyKeyName(a.value)||a.value);
+      var presetBtns=presets.map(function(p){
+        var name=t(p.nameKey,p.id);
+        var shortName=t(p.shortKey,name);
+        var ico=p.icon
+          ? '<img class="keys-seq-ime-ico" src="'+escHtml(p.icon)+'" alt="" width="18" height="18" />'
+          : '';
+        return '<button type="button" class="keys-seq-ime-preset'+(pid===p.id?' is-on':'')+'"'
+          +' data-inline-ime-preset-pick="'+i+'" data-preset="'+escHtml(p.id)+'"'
+          +' title="'+escHtml(name)+'" aria-pressed="'+(pid===p.id?'true':'false')+'">'
+          +ico+'<span>'+escHtml(shortName)+'</span></button>';
+      }).join('');
+      var finishBtns=
+        '<button type="button" class="keys-seq-ime-finish'+(finish==='manual'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="manual">'
+        +escHtml(t('habitFinishModeManual','说完先等我'))+'</button>'
+        +'<button type="button" class="keys-seq-ime-finish'+(finish==='confirm'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="confirm">'
+        +escHtml(t('habitFinishModeConfirmSend','说完发送'))+'</button>'
+        +'<button type="button" class="keys-seq-ime-finish'+(finish==='perpress'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="perpress">'
+        +escHtml(t('habitFinishModeAuto','按住说话'))+'</button>';
+      var delayHtml=finish==='confirm'
+        ? ('<div class="keys-seq-ime-delay" role="group" aria-label="ms">'
+          +[1000,2000,3000].map(function(ms){
+            return '<button type="button" class="keys-seq-delay-pill'+(Math.abs(delayMs-ms)<1?' is-on':'')+'"'
+              +' data-inline-ime-delay="'+i+'" data-ms="'+ms+'">'+(ms/1000)+'s</button>';
+          }).join('')
+          +'</div>')
+        : '';
+      body='<div class="keys-seq-ime-card">'
+        +'<div class="keys-seq-ime-field wide"><label>'+escHtml(t('keysSeqImePreset','输入法'))+'</label>'
+        +'<div class="keys-seq-ime-presets" role="listbox">'+presetBtns+'</div></div>'
+        +'<div class="keys-seq-ime-field"><label>'+escHtml(t('keysSeqImeChord','识别键'))+'</label>'
+        +'<button type="button" class="keys-seq-key-chip'+(chordEmpty?' is-empty':'')+'" data-inline-rec="'+i+'">'
+        +escHtml(chordLbl)+'</button></div>'
+        +'<div class="keys-seq-ime-field"><label>'+escHtml(t('keysSeqImeAim','聚焦策略'))+'</label>'
+        +'<div class="keys-seq-ime-aim-row">'
+        +'<select data-inline-ime-aim="'+i+'">'
+        +'<option value="auto"'+(aim==='auto'?' selected':'')+'>'+escHtml(t('keysSeqImeAimAuto','自动对准输入框'))+'</option>'
+        +'<option value="none"'+(aim==='none'?' selected':'')+'>'+escHtml(t('keysSeqImeAimNone','自己点进框'))+'</option>'
+        +'</select>'
+        +'<button type="button" class="keys-seq-ime-demo-btn" data-inline-ime-aim-demo="'+i+'" data-ime-aim-demo-host="'+i+'" data-mode="'+aim+'">'
+        +escHtml(t('keysAimDemoShow','看演示'))+'</button></div></div>'
+        +'<div class="keys-seq-ime-field wide"><label>'+escHtml(t('keysSeqImeFinish','说完后'))+'</label>'
+        +'<div class="keys-seq-ime-finish-row">'+finishBtns+'</div>'+delayHtml+'</div></div>';
     } else {
       var ms=Number(a&&a.ms)||200;
       var pills=KEYS_DELAY_PRESETS.map(function(preset){
@@ -691,14 +777,14 @@
       var mapping=resolveMapping();
       if(!mapping||!mapping.id) return;
       var t=ev.target;
-      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-inline-open-browse],[data-inline-open-paste],[data-inline-open-bookmarks],[data-add],[data-add-toggle]'):null;
+      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-inline-open-browse],[data-inline-open-paste],[data-inline-open-bookmarks],[data-add],[data-add-toggle],[data-inline-ime-preset-pick],[data-inline-ime-finish-mode],[data-inline-ime-delay],[data-inline-ime-aim-demo]'):null;
       if(!btn||!container.contains(btn)) return;
       // Let textareas / number inputs keep default focus behavior.
       if(btn.tagName==='TEXTAREA'||btn.tagName==='INPUT') return;
       ev.preventDefault();
       if(btn.getAttribute('data-add-toggle')){
         keysSeqAddMenuOpen=!keysSeqAddMenuOpen;
-        renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+        renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys', hideAdd:!!container.__keysHideAdd });
         return;
       }
       var cur=effectiveTargetActions(mapping).slice();
@@ -722,11 +808,101 @@
         applyAndRefresh(mapping, cur);
         return;
       }
+      var presetPick=btn.getAttribute('data-inline-ime-preset-pick');
+      if(presetPick!=null){
+        var pxi=parseInt(presetPick,10);
+        var pidPick=String(btn.getAttribute('data-preset')||'');
+        if(!cur[pxi]||cur[pxi].type!=='ime') return;
+        var nextP={type:'ime',presetId:pidPick,value:cur[pxi].value||'',aim:cur[pxi].aim||'auto',finish:cur[pxi].finish||'confirm',ms:cur[pxi].ms};
+        if(pidPick&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+          try{
+            var prP=global.OneToneImePresets.presetById(pidPick);
+            if(prP&&prP.targetKey) nextP.value=String(prP.targetKey);
+          }catch(_){}
+        }
+        cur[pxi]=nextP;
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      var finMode=btn.getAttribute('data-inline-ime-finish-mode');
+      if(finMode!=null){
+        var fxi=parseInt(finMode,10);
+        var fval=String(btn.getAttribute('data-finish')||'confirm');
+        if(!cur[fxi]||cur[fxi].type!=='ime') return;
+        cur[fxi]={type:'ime',presetId:cur[fxi].presetId||'',value:cur[fxi].value||'',aim:cur[fxi].aim||'auto',finish:fval,ms:cur[fxi].ms||2000};
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      var imeDelay=btn.getAttribute('data-inline-ime-delay');
+      if(imeDelay!=null){
+        var dxi=parseInt(imeDelay,10);
+        var dms=parseInt(btn.getAttribute('data-ms')||'0',10);
+        if(!cur[dxi]||cur[dxi].type!=='ime'||!(dms>0)) return;
+        cur[dxi]={type:'ime',presetId:cur[dxi].presetId||'',value:cur[dxi].value||'',aim:cur[dxi].aim||'auto',finish:cur[dxi].finish||'confirm',ms:dms};
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      var aimDemo=btn.getAttribute('data-inline-ime-aim-demo');
+      if(aimDemo!=null){
+        openKeysAimDemoModal(btn.getAttribute('data-mode')||'auto');
+        return;
+      }
       var rec=btn.getAttribute('data-inline-rec');
       if(rec!=null){
         var ri=parseInt(rec,10);
-        startKeysInlineListen(mapping, ri);
-        renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+        stopKeysInlineListen();
+        var applyRecChord=function(chord){
+          chord=String(chord||'').trim();
+          if(!chord) return;
+          var next=effectiveTargetActions(mapping).slice();
+          if(!next[ri]) return;
+          if(next[ri].type==='ime'){
+            next[ri]={type:'ime',presetId:next[ri].presetId||'',value:chord,aim:next[ri].aim||'auto',finish:next[ri].finish||'confirm',ms:next[ri].ms};
+          } else {
+            next[ri]={type:'key',value:chord};
+          }
+          applyAndRefresh(mapping, next);
+        };
+        var MRec=global.OneToneMappingRecording;
+        var recDone=false;
+        var finishRecSession=function(opts){
+          if(recDone) return;
+          recDone=true;
+          if(MRec&&MRec.setBeforeFinishTargetHook) MRec.setBeforeFinishTargetHook(null);
+          // Hardware finish already ends the session — don't cancel mid-hook.
+          if(!(opts&&opts.skipCancel)&&MRec&&MRec.mode&&MRec.mode()==='target'&&MRec.cancel){
+            try{ MRec.cancel(); }catch(_){}
+          }
+        };
+        // Popup first — never blocked by hardware / Codex hijack / IPC arm failure.
+        var recUi=recordChordInline(function(chord){
+          finishRecSession();
+          applyRecChord(chord);
+        }, {
+          title: t('keysCaptureSeqTapRecord','点此录制按键'),
+          hint: t('homeKeyMapActionRecordHint','按下你想要的组合键 — Esc 取消')
+        });
+        // Optional Soft Pad / 外设 path; failures must not dismiss the popup.
+        try{
+          if(MRec&&typeof MRec.setBeforeFinishTargetHook==='function'&&typeof MRec.startTarget==='function'){
+            MRec.setBeforeFinishTargetHook(function(combo){
+              if(recUi&&typeof recUi.dismiss==='function') recUi.dismiss();
+              finishRecSession({ skipCancel:true });
+              applyRecChord(combo);
+              return 'handled';
+            });
+            var startedTg=MRec.startTarget(mapping.id);
+            if(startedTg&&typeof startedTg.then==='function'){
+              startedTg.then(function(ok){
+                if(!ok&&MRec.setBeforeFinishTargetHook) MRec.setBeforeFinishTargetHook(null);
+              }, function(){
+                if(MRec.setBeforeFinishTargetHook) MRec.setBeforeFinishTargetHook(null);
+              });
+            }
+          }
+        }catch(_){
+          if(MRec&&MRec.setBeforeFinishTargetHook) MRec.setBeforeFinishTargetHook(null);
+        }
         return;
       }
       var delayBtn=btn.getAttribute('data-inline-delay');
@@ -787,8 +963,29 @@
         keysSeqAddMenuOpen=false;
         cur.push({type:'key',value:''});
         applyAndRefresh(mapping, cur).then(function(){
-          startKeysInlineListen(mapping, cur.length-1);
-          renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+          var kIdx=cur.length-1;
+          var applyK=function(chord){
+            chord=String(chord||'').trim();
+            if(!chord) return;
+            var next=effectiveTargetActions(mapping).slice();
+            if(next[kIdx]) next[kIdx]={type:'key',value:chord};
+            applyAndRefresh(mapping, next);
+          };
+          var MR=global.OneToneMappingRecording;
+          if(MR&&typeof MR.startTarget==='function'&&typeof MR.setBeforeFinishTargetHook==='function'){
+            MR.setBeforeFinishTargetHook(function(combo){ applyK(combo); return 'handled'; });
+            MR.startTarget(mapping.id).then(function(ok){
+              if(!ok){
+                MR.setBeforeFinishTargetHook(null);
+                if(typeof global.OneToneHomeRecordChord==='function') global.OneToneHomeRecordChord(applyK);
+              }
+            });
+          } else if(typeof global.OneToneHomeRecordChord==='function'){
+            global.OneToneHomeRecordChord(applyK);
+          } else {
+            startKeysInlineListen(mapping, kIdx);
+            renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys', hideAdd:!!container.__keysHideAdd });
+          }
         });
         return;
       }
@@ -828,6 +1025,22 @@
         });
         return;
       }
+      if(add==='ime'){
+        pushKeysSeqRecent('ime');
+        keysSeqAddMenuOpen=false;
+        var defPreset='';
+        var defChord='';
+        try{
+          var mid=mapping.imePresetId||'';
+          if(mid&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+            var pr=global.OneToneImePresets.presetById(mid);
+            if(pr){ defPreset=pr.id; defChord=String(pr.targetKey||''); }
+          }
+        }catch(_){}
+        cur.push({type:'ime',presetId:defPreset,value:defChord||String(mapping.targetKey||''),aim:'auto',finish:'confirm',ms:2000});
+        applyAndRefresh(mapping, cur);
+        return;
+      }
     });
     container.addEventListener('change', function(ev){
       if(!container.classList.contains('is-keys-inline')) return;
@@ -843,7 +1056,37 @@
         if(!cur[ci]) return;
         cur[ci]={type:'delay',ms:n};
         applyAndRefresh(mapping, cur);
+        return;
       }
+      var ip=el.getAttribute('data-inline-ime-preset');
+      var ia=el.getAttribute('data-inline-ime-aim');
+      var iff=el.getAttribute('data-inline-ime-finish');
+      if(ip==null&&ia==null&&iff==null) return;
+      if(!mapping) return;
+      var ix=parseInt(ip!=null?ip:(ia!=null?ia:iff),10);
+      var curI=effectiveTargetActions(mapping).slice();
+      if(!curI[ix]||curI[ix].type!=='ime') return;
+      var nextI={type:'ime',presetId:curI[ix].presetId||'',value:curI[ix].value||'',aim:curI[ix].aim||'auto',finish:curI[ix].finish||'confirm',ms:curI[ix].ms||2000};
+      if(ip!=null){
+        nextI.presetId=String(el.value||'');
+        if(nextI.presetId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+          try{
+            var pr2=global.OneToneImePresets.presetById(nextI.presetId);
+            if(pr2&&pr2.targetKey) nextI.value=String(pr2.targetKey);
+          }catch(_){}
+        }
+      }
+      if(ia!=null){
+        nextI.aim=String(el.value||'auto')==='none'?'none':'auto';
+        var demoBtn=container.querySelector('[data-inline-ime-aim-demo="'+ix+'"]');
+        if(demoBtn) demoBtn.setAttribute('data-mode', nextI.aim);
+      }
+      if(iff!=null){
+        var f=String(el.value||'confirm');
+        nextI.finish=f==='manual'||f==='perpress'||f==='none'? (f==='none'?'manual':f) : 'confirm';
+      }
+      curI[ix]=nextI;
+      applyAndRefresh(mapping, curI);
     });
     container.addEventListener('input', function(ev){
       if(!container.classList.contains('is-keys-inline')) return;
@@ -908,10 +1151,18 @@
     if(global.OneToneState&&global.OneToneState.state&&typeof global.OneToneState.state.render==='function'){
       try{ global.OneToneState.state.render(); }catch(_){ }
     }
-    var keysEl=document.getElementById('keysCaptureTargetActions');
-    if(keysEl && keysEl.classList.contains('is-keys-variant')){
-      try{ renderTargetActionsInto(keysEl, m, { mode:'picker', variant:'keys' }); }catch(_){ }
-    }
+    ['keysCaptureTargetActions','keysSeqActions'].forEach(function(hid){
+      var keysEl=document.getElementById(hid);
+      if(keysEl && keysEl.classList.contains('is-keys-variant')){
+        try{
+          renderTargetActionsInto(keysEl, m, {
+            mode:'picker',
+            variant:'keys',
+            hideAdd: !!keysEl.__keysHideAdd
+          });
+        }catch(_){ }
+      }
+    });
     var picker=global.OneToneKeysChannelCommandPicker;
     if(picker&&picker.refreshKeysCustomKeyMatchList){
       try{ picker.refreshKeysCustomKeyMatchList(); }catch(_){ }
@@ -923,7 +1174,14 @@
     if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
       try{ global.OneToneKeysPageNav.renderStepHints(); }catch(_){ }
     }
-    return commitTargetActions(m.id, next).catch(function(err){
+    return commitTargetActions(m.id, next).then(function(res){
+      try{
+        if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.refreshAfterEdit==='function'){
+          global.OneToneKeysSeqPanel.refreshAfterEdit();
+        }
+      }catch(_){}
+      return res;
+    }).catch(function(err){
       try{ console.error('targetActions persist failed', err); }catch(_){ }
       return null;
     });
@@ -1296,39 +1554,54 @@
   // into a `Ctrl+Shift+D` style chord, then fires the callback.  Esc cancels.
   // Independent from the picker so non-settings callers can record without
   // touching the settings recording state machine.
-  function recordChordInline(onRecorded){
+  function recordChordInline(onRecorded, opts){
+    opts=opts||{};
     var doc=document;
     var overlay=doc.createElement('div');
     overlay.className='home-record-overlay';
     overlay.setAttribute('role','dialog');
     overlay.setAttribute('aria-modal','true');
+    var title=opts.title||t('homeKeyMapActionRecordTitle','录制按键');
+    var hint=opts.hint||t('homeKeyMapActionRecordHint','按下你想要的组合键 — Esc 取消');
     overlay.innerHTML='<div class="home-record-card">'
-      +'<div class="home-record-card-h">'+(global.OneToneI18n&&global.OneToneI18n.t?t('homeKeyMapActionRecordTitle'):'Record a key combo')+'</div>'
-      +'<div class="home-record-card-p">'+(global.OneToneI18n&&global.OneToneI18n.t?t('homeKeyMapActionRecordHint'):'Press the key combo you want — Esc to cancel')+'</div>'
+      +'<div class="home-record-card-h">'+escHtml(title)+'</div>'
+      +'<div class="home-record-card-p">'+escHtml(hint)+'</div>'
       +'<div class="home-record-card-kbd" id="homeRecordCardKbd">—</div>'
+      +'<button type="button" class="home-record-card-cancel" id="homeRecordCardCancel">'
+      +escHtml(t('cancel','取消'))+' · Esc</button>'
       +'</div>';
     doc.body.appendChild(overlay);
     var kbdEl=overlay.querySelector('#homeRecordCardKbd');
+    var cancelBtn=overlay.querySelector('#homeRecordCardCancel');
+    var finished=false;
     var cleanup=function(){
+      if(finished) return;
+      finished=true;
       doc.removeEventListener('keydown',onKey,true);
       doc.removeEventListener('keyup',onKeyUp,true);
       if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
     };
+    var finish=function(chord){
+      cleanup();
+      onRecorded(chord||'');
+    };
+    // Close UI without firing onRecorded (hardware path already applied the chord).
+    var dismiss=function(){ cleanup(); };
     var renderChord=function(parts){
       if(kbdEl) kbdEl.textContent=parts.length?parts.join('+'):'—';
     };
     var isMod=function(k){ return k==='Control'||k==='Shift'||k==='Alt'||k==='Meta'; };
-    var modName=function(k){
-      if(k==='Control') return 'Ctrl';
-      if(k==='Meta') return 'Win';
-      return k.charAt(0).toUpperCase()+k.slice(1);
-    };
     var onKeyUp=function(ev){
-      // Live preview: show modifier-only state when no main key yet.
       if(isMod(ev.key)) return;
     };
+    if(cancelBtn){
+      cancelBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        finish('');
+      });
+    }
     var onKey=function(ev){
-      if(ev.key==='Escape'){ ev.preventDefault(); cleanup(); onRecorded(''); return; }
+      if(ev.key==='Escape'){ ev.preventDefault(); finish(''); return; }
       if(isMod(ev.key)){
         ev.preventDefault();
         var p=[];
@@ -1352,12 +1625,84 @@
       // voice-pilot's canonical `Ctrl+Enter` style chord names.
       if(main.length===1) main=main.toUpperCase();
       p.push(main);
-      var chord=p.join('+');
-      cleanup();
-      onRecorded(chord);
+      finish(p.join('+'));
     };
     doc.addEventListener('keydown',onKey,true);
     doc.addEventListener('keyup',onKeyUp,true);
+    return { dismiss:dismiss, finish:finish };
+  }
+
+  function openKeysAimDemoModal(mode){
+    mode=mode==='none'?'none':'auto';
+    var doc=document;
+    var prev=doc.getElementById('keysSeqAimDemoOverlay');
+    if(prev&&prev.parentNode) prev.parentNode.removeChild(prev);
+    var overlay=doc.createElement('div');
+    overlay.id='keysSeqAimDemoOverlay';
+    overlay.className='keys-seq-aim-demo-overlay';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    // Default 1x = 8s loop; slider 0.5x–2x maps duration 16s→4s.
+    var speed=1;
+    var durSec=function(s){ return (8/Math.max(0.5, Math.min(2, s))).toFixed(2)+'s'; };
+    overlay.innerHTML=
+      '<div class="keys-seq-aim-demo-card">'
+      +'<div class="keys-seq-aim-demo-head">'
+      +'<b>'+escHtml(t('keysAimDemoShow','看演示'))+'</b>'
+      +'<button type="button" class="keys-seq-aim-demo-close" data-aim-demo-close="1">'
+      +escHtml(t('cancel','关闭'))+'</button></div>'
+      +'<p class="keys-seq-aim-demo-hint">'+escHtml(
+        mode==='auto'
+          ? t('keysSeqImeAimAuto','自动对准输入框')
+          : t('keysSeqImeAimNone','自己点进框')
+      )+'</p>'
+      +'<div class="keys-aim-demo is-slow" data-mode="'+escHtml(mode)+'" style="--keys-aim-dur:'+durSec(speed)+'">'
+      +'<div class="keys-aim-demo__win"><span class="keys-aim-demo__title">目标窗口</span>'
+      +'<div class="keys-aim-demo__code">fn main() {…}</div>'
+      +'<div class="keys-aim-demo__chat"><span class="keys-aim-demo__caret"></span>'
+      +'<span class="keys-aim-demo__ph">聊天输入框</span></div></div>'
+      +'<span class="keys-aim-demo__cursor"></span>'
+      +'<span class="keys-aim-demo__key">键</span>'
+      +'<span class="keys-aim-demo__badge is-ok">已开麦</span></div>'
+      +'<div class="keys-seq-aim-demo-speed">'
+      +'<label for="keysSeqAimDemoSpeed">'+escHtml(t('keysSeqAimDemoSpeed','播放速度'))+'</label>'
+      +'<input type="range" id="keysSeqAimDemoSpeed" min="0.5" max="2" step="0.25" value="1" />'
+      +'<span class="keys-seq-aim-demo-speed-val" id="keysSeqAimDemoSpeedVal">1×</span></div>'
+      +'<p class="keys-seq-aim-demo-foot">'+escHtml(t('keysSeqAimDemoSlow','拖动速度条慢速观看，点关闭退出'))+'</p>'
+      +'</div>';
+    doc.body.appendChild(overlay);
+    var close=function(){
+      if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      doc.removeEventListener('keydown',onEsc,true);
+    };
+    var onEsc=function(ev){
+      if(ev.key==='Escape'){ ev.preventDefault(); close(); }
+    };
+    overlay.addEventListener('click', function(ev){
+      if(ev.target===overlay||(ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-aim-demo-close'))){
+        close();
+      }
+    });
+    doc.addEventListener('keydown',onEsc,true);
+    var demoEl=overlay.querySelector('.keys-aim-demo');
+    var speedInput=overlay.querySelector('#keysSeqAimDemoSpeed');
+    var speedVal=overlay.querySelector('#keysSeqAimDemoSpeedVal');
+    function applySpeed(v){
+      speed=Math.max(0.5, Math.min(2, Number(v)||1));
+      if(speedVal) speedVal.textContent=speed+'×';
+      if(!demoEl) return;
+      var dur=durSec(speed);
+      demoEl.style.setProperty('--keys-aim-dur', dur);
+      // Restart animations so the new duration takes effect immediately.
+      var keep=demoEl.getAttribute('data-mode')||mode;
+      demoEl.removeAttribute('data-mode');
+      void demoEl.offsetWidth;
+      demoEl.setAttribute('data-mode', keep);
+    }
+    if(speedInput){
+      speedInput.addEventListener('input', function(){ applySpeed(speedInput.value); });
+    }
+    applySpeed(speed);
   }
 
   function pickKeyChordViaRecord(onPicked){
@@ -1883,39 +2228,33 @@
         String(m.id) === keysInlineListen.mappingId
           ? keysInlineListen.idx
           : -1;
-      var buildAddStrip = function(){
-        if(!canEdit) return '';
-        var recent=loadKeysSeqRecent();
-        var recentHtml=recent.length
-          ? ('<div class="keys-seq-recent" role="group" aria-label="'+escHtml(t('keysCaptureSeqRecent','近期'))+'">'
-            +'<span class="keys-seq-recent-lab">'+escHtml(t('keysCaptureSeqRecent','近期'))+'</span>'
-            +recent.map(function(id){
-              return '<button type="button" class="keys-seq-recent-chip" data-add="'+escHtml(id)+'">'
-                +escHtml(keysSeqRecentLabel(id))+'</button>';
-            }).join('')
-            +'</div>')
-          : '';
-        return '<div class="keys-seq-add-row">'
-          +'<button type="button" class="keys-seq-add-toggle'+(keysSeqAddMenuOpen?' is-open':'')+'" data-add-toggle="1"'
+      var addItems=[
+        {id:'key', lab:t('keysCaptureSeqAddKey','按键'), tip:t('keysSeqAddHintKey','发送一组快捷键（含外设）')},
+        {id:'text', lab:t('keysCaptureSeqAddText','文本'), tip:t('keysSeqAddHintText','向当前输入框注入文字')},
+        {id:'delay', lab:t('keysCaptureSeqAddDelay','延迟'), tip:t('keysSeqAddHintDelay','等待一段时间再执行下一步')},
+        {id:'open-file', lab:t('keysCaptureSeqAddOpenFile','文件'), tip:t('keysSeqAddHintOpenFile','用系统默认应用打开文件')},
+        {id:'open-folder', lab:t('keysCaptureSeqAddOpenFolder','文件夹'), tip:t('keysSeqAddHintOpenFolder','在资源管理器中打开文件夹')},
+        {id:'open-url', lab:t('keysCaptureSeqAddOpenUrl','网址'), tip:t('keysSeqAddHintOpenUrl','在浏览器打开网址')},
+        {id:'ime', lab:t('keysCaptureSeqAddIme','语音输入法'), tip:t('keysSeqAddHintIme','对准输入框后激活语音输入法')}
+      ];
+      var buildAddStrip = function(optsAdd){
+        optsAdd=optsAdd||{};
+        if(!canEdit || options.hideAdd) return '';
+        var emptyPlus=!!optsAdd.emptyPlus;
+        return '<div class="keys-seq-add-row'+(emptyPlus?' is-empty-plus':'')+'">'
+          +(emptyPlus?('<p class="keys-seq-add-lab">'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'</p>'):'')
+          +'<button type="button" class="keys-seq-add-toggle'+(keysSeqAddMenuOpen?' is-open':'')+(emptyPlus?' is-hero':'')+'" data-add-toggle="1"'
           +' aria-expanded="'+(keysSeqAddMenuOpen?'true':'false')+'"'
           +' title="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">＋</button>'
           +'<div class="keys-seq-add-menu'+(keysSeqAddMenuOpen?' is-on':'')+'" role="menu"'
           +' aria-label="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">'
-          +'<button type="button" role="menuitem" data-add="key">'
-            +escHtml(t('keysCaptureSeqAddKey','按键'))+'</button>'
-          +'<button type="button" role="menuitem" data-add="text">'
-            +escHtml(t('keysCaptureSeqAddText','文本'))+'</button>'
-          +'<button type="button" role="menuitem" data-add="delay">'
-            +escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</button>'
-          +'<button type="button" role="menuitem" data-add="open-file">'
-            +escHtml(t('keysCaptureSeqAddOpenFile','文件'))+'</button>'
-          +'<button type="button" role="menuitem" data-add="open-folder">'
-            +escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+'</button>'
-          +'<button type="button" role="menuitem" data-add="open-url">'
-            +escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+'</button>'
-          +'</div></div>'
-          +recentHtml;
+          +addItems.map(function(it){
+            return '<button type="button" role="menuitem" data-add="'+escHtml(it.id)+'" title="'+escHtml(it.tip)+'">'
+              +escHtml(it.lab)+'</button>';
+          }).join('')
+          +'</div></div>';
       };
+      container.__keysHideAdd = !!options.hideAdd;
       container.hidden = false;
       if(acts.length >= 1){
         var rows = acts.map(function(a, i){
@@ -1923,15 +2262,7 @@
         }).join('');
         container.innerHTML = '<div class="home-key-map-action-list is-keys-inline" role="list">'+rows+'</div>'+buildAddStrip();
       } else {
-        container.innerHTML =
-          '<div class="home-key-map-action-empty is-keys">'
-          + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有步骤'))+'</b>'
-          + '<ol class="keys-seq-empty-recipe">'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep1','点 ＋ 选择要添加的命令'))+'</li>'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','按键 / 文本 / 延迟 / 文件 / 文件夹 / 网址横排可选'))+'</li>'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep3','触发后按顺序执行'))+'</li>'
-          + '</ol></div>'
-          + buildAddStrip();
+        container.innerHTML = buildAddStrip({ emptyPlus:true });
       }
       if(canEdit) wireKeysInlineHandlers(container, m);
       container.querySelectorAll('.keys-seq-text-in').forEach(function(ta){
@@ -1988,8 +2319,83 @@
     }
   }
 
+  function addKeysStep(mapping, kind){
+    if(!mapping||!mapping.id) return Promise.resolve(null);
+    var cur=effectiveTargetActions(mapping).slice();
+    var add=String(kind||'key');
+    if(add==='open-file'||add==='open-folder'){
+      var okPick=add==='open-folder'?'folder':'file';
+      return new Promise(function(resolve){
+        pickOpenValue(okPick, '', function(v){
+          if(!v){ resolve(null); return; }
+          cur.push({type:'open',kind:okPick,value:v});
+          applyAndRefresh(mapping, cur).then(function(){ resolve(cur); });
+        });
+      });
+    }
+    if(add==='key') cur.push({type:'key',value:''});
+    else if(add==='text') cur.push({type:'text',value:''});
+    else if(add==='delay') cur.push({type:'delay',ms:200});
+    else if(add==='open-url') cur.push({type:'open',kind:'url',value:''});
+    else if(add==='ime'){
+      var defPreset='';
+      var defChord='';
+      try{
+        var mid=mapping.imePresetId||'';
+        if(mid&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+          var pr=global.OneToneImePresets.presetById(mid);
+          if(pr){ defPreset=pr.id; defChord=String(pr.targetKey||''); }
+        }
+      }catch(_){}
+      cur.push({type:'ime',presetId:defPreset,value:defChord||String(mapping.targetKey||''),aim:'auto',finish:'confirm',ms:2000});
+    } else {
+      return Promise.resolve(null);
+    }
+    return applyAndRefresh(mapping, cur).then(function(){
+      if(add==='key'){
+        var idx=cur.length-1;
+        var applyKey=function(chord){
+          chord=String(chord||'').trim();
+          if(!chord) return;
+          var next=effectiveTargetActions(mapping).slice();
+          if(next[idx]) next[idx]={type:'key',value:chord};
+          applyAndRefresh(mapping, next);
+        };
+        var MRec2=global.OneToneMappingRecording;
+        if(MRec2&&typeof MRec2.startTarget==='function'&&typeof MRec2.setBeforeFinishTargetHook==='function'){
+          MRec2.setBeforeFinishTargetHook(function(combo){
+            applyKey(combo);
+            return 'handled';
+          });
+          MRec2.startTarget(mapping.id).then(function(ok){
+            if(!ok){
+              MRec2.setBeforeFinishTargetHook(null);
+              if(typeof global.OneToneHomeRecordChord==='function') global.OneToneHomeRecordChord(applyKey);
+            }
+          });
+        } else if(typeof global.OneToneHomeRecordChord==='function'){
+          global.OneToneHomeRecordChord(applyKey);
+        }
+      } else if(add==='text'||add==='open-url'){
+        // paintActions may re-render; focus the new field after a tick.
+        setTimeout(function(){
+          var host=document.getElementById('keysSeqActions')||document.getElementById('keysCaptureTargetActions');
+          if(!host) return;
+          var sel=add==='text'
+            ? '[data-inline-text="'+(cur.length-1)+'"]'
+            : '[data-inline-open="'+(cur.length-1)+'"]';
+          var el=host.querySelector(sel);
+          if(el) el.focus();
+        }, 0);
+      }
+      return cur;
+    });
+  }
+
   global.OneToneHomeTargetActions = {
     render: renderTargetActionsInto,
-    effective: effectiveTargetActions
+    effective: effectiveTargetActions,
+    commit: commitTargetActions,
+    addStep: addKeysStep
   };
 })((typeof window!=='undefined')?window:globalThis);

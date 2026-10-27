@@ -601,8 +601,16 @@
       if (m && m.needsManualUpload && m.included !== false) manual += 1;
     });
     var names = materialNamesOf();
+    var body =
+      opts.body != null
+        ? String(opts.body)
+        : String((model.draft && model.draft.body) || model.assembledMd || '');
+    // ponytail: cap stored body — local journal, not infinite chat log; raise if recall needs more.
+    if (body.length > 8000) body = body.slice(0, 8000);
     var title =
+      (opts.title && String(opts.title).trim()) ||
       workTitleFromDraftOrMats() ||
+      truncateLine(body, 42) ||
       (opts.targetKind ? '交给 ' + opts.targetKind : '') ||
       '交接记录';
     var row = {
@@ -610,13 +618,14 @@
       collectionId: model.collectionId || '',
       targetKind: opts.targetKind || null,
       title: title,
-      preview: truncateLine((model.draft && model.draft.body) || model.assembledMd, 80),
+      preview: truncateLine(body || (model.draft && model.draft.body) || model.assembledMd, 80),
+      body: body,
       materialNames: names,
       materialCount: (model.materials || []).length,
       assembledAt: model.assembledAt || null,
       handedOffAt: nowIso(),
       outcome: opts.outcome || 'unknown',
-      chars: (model.assembledMd || '').length,
+      chars: body.length || (model.assembledMd || '').length,
       manualUploadCount: manual,
       source: opts.source || 'home'
     };
@@ -643,6 +652,28 @@
 
   function listHandoffs() {
     return (model.handoffs || []).slice().reverse();
+  }
+
+  function removeHandoff(id) {
+    id = String(id || '');
+    if (!id || !Array.isArray(model.handoffs)) return false;
+    var next = model.handoffs.filter(function (h) {
+      return !h || String(h.id || '') !== id;
+    });
+    if (next.length === model.handoffs.length) return false;
+    model.handoffs = next;
+    saveModel();
+    notifyTray();
+    return true;
+  }
+
+  function clearHandoffs() {
+    if (!Array.isArray(model.handoffs) || !model.handoffs.length) return 0;
+    var n = model.handoffs.length;
+    model.handoffs = [];
+    saveModel();
+    notifyTray();
+    return n;
   }
 
   function setDraftBody(text, opts) {
@@ -2460,6 +2491,8 @@
     dismissCarry: dismissCarry,
     archiveHandoff: archiveHandoff,
     listHandoffs: listHandoffs,
+    removeHandoff: removeHandoff,
+    clearHandoffs: clearHandoffs,
     noteWorkLog: noteWorkLog,
     listWorkLog: listWorkLog,
     setDraftBody: setDraftBody,

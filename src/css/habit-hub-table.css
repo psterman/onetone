@@ -34,6 +34,23 @@ html[data-theme="dark"] .habit-hub-shell{
   margin:6px 0 0;padding:0;border:0;background:transparent;
   font-size:12px;line-height:1.45;color:var(--hub-notion-muted);
 }
+.habit-shell-toggle{
+  margin-top:10px;
+  max-width:280px;
+}
+.habit-shell-toggle .pref-segmented-btn{
+  min-height:34px;
+  padding:0 14px;
+  font-size:12px;
+  font-weight:650;
+}
+#settingsPanelHabits.is-habit-shell-scenes .habit-workspace{
+  display:none;
+}
+#settingsPanelHabits.is-habit-shell-commands .habit-hub-toolbar,
+#settingsPanelHabits.is-habit-shell-commands .habit-hub-body{
+  display:none;
+}
 
 .habit-hub-baseline-callout{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;

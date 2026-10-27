@@ -122,11 +122,30 @@ assert.ok(fs.existsSync('src/icons/app-target/hermes.png'));
 assert.match(dockSrc, /function clearAim[\s\S]*cmd_input_aim_calibrate_clear[\s\S]*appTargetId/);
 assert.doesNotMatch(dockSrc, /slot:\s*['"]active['"]/);
 assert.match(dockSrc, /setAim\(appId,\s*\{\s*hasActive:\s*false/);
-// Dock: visual aim chip; no Soft-Pad-on / Saved status chips.
+// Dock: compose + fused agent chip; send history lives in left-nav panel.
 assert.match(shell, /aimChipHtml|ha2-aim-ico/);
 assert.match(shell, /syncAimChip/);
+assert.doesNotMatch(shell, /data-ha2-hist|histMenuHtml|histMenuOpen/);
+assert.match(shell, /ha2-agent-fuse|data-ha2-agent-fuse/);
+assert.match(shell, /ha2-channel-caps/);
+assert.match(shell, /agentCapBtn\(caps,\s*'softPad'/);
+assert.match(shell, /agentCapBtn\(caps,\s*'voice'/);
+assert.match(shell, /agentCapBtn\(caps,\s*'camera'/);
+// Caps left of spacer; aim lives inside agent fuse (not with channel caps).
+assert.match(
+  shell,
+  /ha2-channel-caps[\s\S]*ha2-spacer[\s\S]*ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-send/
+);
+assert.doesNotMatch(shell, /ha2-agent-caps/);
+assert.match(shell, /draftRemember/);
+assert.match(dockSrc, /listComposerHistory/);
+assert.match(dockSrc, /restoreComposerHistory/);
+assert.match(dockSrc, /archiveOnSuccess\(kind,\s*opts\)|opts\.body/);
 assert.doesNotMatch(shell, /data-ha2-soft-chip|data-ha2-saved-chip/);
+assert.doesNotMatch(shell, /data-ha2-quick/);
 assert.match(css, /\.ha2-aim-chip\.is-off|\.ha2-aim-chip\.is-ok/);
+assert.match(css, /\.ha2-agent-fuse/);
+assert.match(shell, /ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-aim-clear/);
 // Top-right menu = vertical list; dock grid is separate (not shared markup).
 assert.match(shell, /data-ha2-menu-picker/);
 assert.match(shell, /ha2-picker-list|is-menu/);

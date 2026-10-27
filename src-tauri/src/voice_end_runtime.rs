@@ -635,7 +635,15 @@ pub fn run_mapping_target_sequence(
         .collect::<Vec<_>>()
         .join(" → ");
 
-    if explicit
+    let ime_needs_aim = actions.iter().any(|a| match a {
+        crate::config::Action::Ime { aim, .. } => {
+            let a = aim.trim();
+            a.is_empty() || a.eq_ignore_ascii_case("auto")
+        }
+        _ => false,
+    });
+
+    if (explicit || ime_needs_aim)
         && !app_target.is_empty()
         && crate::app_chat_workflow::profile_for(&app_target).is_some()
     {
@@ -687,7 +695,8 @@ pub fn run_mapping_target_sequence(
 /// True when the sequence is a single Key step (legacy IME wake → may enter dictating).
 pub fn sequence_is_single_key(actions: &[crate::config::Action]) -> Option<&str> {
     match actions {
-        [crate::config::Action::Key { value }] => {
+        [crate::config::Action::Key { value }]
+        | [crate::config::Action::Ime { value, .. }] => {
             let v = value.trim();
             if v.is_empty() {
                 None
