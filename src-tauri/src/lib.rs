@@ -83,9 +83,12 @@ mod send_guard;
 mod shell_agent_hook_setup;
 mod shell_agent_usage;
 mod soft_pad_purpose;
+mod assist_runtime;
+mod project_context;
 mod soft_pad_quota;
 mod soft_pad_runtime;
 mod soft_pad_voice_pending;
+mod workbuddy_local_llm;
 mod state;
 mod test_pulse;
 pub mod time_machine;
@@ -1339,6 +1342,30 @@ pub fn run() {
             ipc::cmd_minimax_coding_key_set,
             ipc::cmd_soft_pad_provider_key_get,
             ipc::cmd_soft_pad_provider_key_set,
+            ipc::cmd_workbuddy_local_accounts_list,
+            ipc::cmd_workbuddy_local_account_add,
+            ipc::cmd_workbuddy_local_account_remove,
+            ipc::cmd_workbuddy_local_account_set_default,
+            ipc::cmd_workbuddy_local_account_set_enabled,
+            ipc::cmd_workbuddy_local_account_set_model,
+            ipc::cmd_workbuddy_local_account_verify,
+            ipc::cmd_workbuddy_local_account_refresh_models,
+            ipc::cmd_assist_run,
+            ipc::cmd_assist_cancel,
+            ipc::cmd_assist_ready,
+            ipc::cmd_assist_status,
+            ipc::cmd_project_context_open,
+            ipc::cmd_project_context_close,
+            ipc::cmd_project_context_query,
+            ipc::cmd_project_context_cancel,
+            ipc::cmd_workbuddy_local_chat,
+            ipc::cmd_workbuddy_local_chat_start,
+            ipc::cmd_workbuddy_local_chat_cancel,
+            ipc::cmd_workbuddy_local_chat_poll,
+            ipc::cmd_workbuddy_local_chat_window_open,
+            ipc::cmd_workbuddy_local_oauth_start,
+            ipc::cmd_workbuddy_local_oauth_poll,
+            ipc::cmd_workbuddy_local_oauth_cancel,
             ipc::cmd_claude_cli_inject,
             ipc::cmd_claude_cli_decide,
             ipc::cmd_codex_pad_binding_diagnose,

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-assist-run"
+description = "Enables the cmd_assist_run command without any pre-configured scope."
+commands.allow = ["cmd_assist_run"]
+
+[[permission]]
+identifier = "deny-cmd-assist-run"
+description = "Denies the cmd_assist_run command without any pre-configured scope."
+commands.deny = ["cmd_assist_run"]

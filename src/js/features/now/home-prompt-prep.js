@@ -46,15 +46,28 @@
     return 'c_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4);
   }
 
+  function ownershipApi() {
+    return global.OneToneHomeAssistOwnership || null;
+  }
+
   function emptyModel() {
-    return {
+    var Own = ownershipApi();
+    var raw = Own && Own.emptyRawDraft ? Own.emptyRawDraft() : { title: '', body: '' };
+    var base = {
       phase: 'EMPTY',
       collectionId: newCollectionId(),
       scopeId: null,
       materials: [],
       handoffs: [],
       workLog: [],
-      draft: { title: '', body: '' },
+      draft: raw,
+      rawDraft: raw,
+      organizedDraft: Own && Own.emptyOrganizedDraft ? Own.emptyOrganizedDraft() : null,
+      activeDraft: 'raw',
+      assist: Own && Own.emptyAssistState ? Own.emptyAssistState() : { state: 'idle' },
+      taskScopeId: Own && Own.newTaskScopeId ? Own.newTaskScopeId() : 'ts_boot',
+      sendScope: 'included_materials',
+      lastSendSnapshotId: null,
       channel: null,
       receipt: null,
       assembledMd: '',
@@ -70,6 +83,7 @@
         generation: 0
       }
     };
+    return Own && Own.migrateOwnershipFields ? Own.migrateOwnershipFields(base) : base;
   }
 
   function migrateModel(parsed) {
@@ -87,6 +101,8 @@
     parsed.carry.targetKind = null;
     parsed.carry.updatedAt = null;
     if (typeof parsed.carry.generation !== 'number') parsed.carry.generation = 0;
+    var Own = ownershipApi();
+    if (Own && Own.migrateOwnershipFields) parsed = Own.migrateOwnershipFields(parsed);
     return parsed;
   }
 
@@ -264,6 +280,13 @@
 
   function bumpContentRevision() {
     model.contentRevision = (model.contentRevision || 0) + 1;
+    var Own = ownershipApi();
+    if (Own && Own.markOrganizedStale) Own.markOrganizedStale(model);
+  }
+
+  function syncRawDraftMirror() {
+    model.rawDraft = model.rawDraft || { title: '', body: '' };
+    model.draft = model.rawDraft;
   }
 
   function derivePhase() {
@@ -645,6 +668,10 @@
       at: row.handedOffAt
     });
     saveModel();
+    try {
+      var J = global.OneToneHomeTaskJournal;
+      if (J && typeof J.appendHandoff === 'function') J.appendHandoff(row);
+    } catch (_) {}
     notifyTray();
     schedulePublishTray();
     return row;
@@ -678,10 +705,11 @@
 
   function setDraftBody(text, opts) {
     opts = opts || {};
-    model.draft = model.draft || { title: '', body: '' };
+    syncRawDraftMirror();
     var next = String(text == null ? '' : text);
-    if (model.draft.body === next && !opts.force) return;
-    model.draft.body = next;
+    if (model.rawDraft.body === next && !opts.force) return;
+    model.rawDraft.body = next;
+    syncRawDraftMirror();
     bumpContentRevision();
     if (!opts.skipSync) syncUiAfterMutation();
     else saveModel();
@@ -689,13 +717,158 @@
 
   function setDraftTitle(text, opts) {
     opts = opts || {};
-    model.draft = model.draft || { title: '', body: '' };
+    syncRawDraftMirror();
     var next = String(text == null ? '' : text);
-    if (model.draft.title === next && !opts.force) return;
-    model.draft.title = next;
+    if (model.rawDraft.title === next && !opts.force) return;
+    model.rawDraft.title = next;
+    syncRawDraftMirror();
     bumpContentRevision();
     if (!opts.skipSync) syncUiAfterMutation();
     else saveModel();
+  }
+
+  function setOrganizedBody(text, opts) {
+    opts = opts || {};
+    var Own = ownershipApi();
+    if (!Own || !Own.editOrganizedBody) return null;
+    var row = Own.editOrganizedBody(model, text);
+    if (!opts.skipSync) syncUiAfterMutation();
+    else saveModel();
+    return row;
+  }
+
+  function setActiveDraft(which) {
+    model.activeDraft = which === 'organized' ? 'organized' : 'raw';
+    saveModel();
+    schedulePublishTray();
+    return model.activeDraft;
+  }
+
+  function restoreRawDraft() {
+    return setActiveDraft('raw');
+  }
+
+  function buildAssistInputSnapshot(opts) {
+    var Own = ownershipApi();
+    if (!Own || !Own.buildAssistInputSnapshot) return null;
+    return Own.buildAssistInputSnapshot(model, opts || {});
+  }
+
+  function buildSendBody(opts) {
+    var Own = ownershipApi();
+    if (!Own || !Own.buildSendBody) return null;
+    var body = Own.buildSendBody(model, opts || {});
+    if (body && body.snapshotId) {
+      model.lastSendSnapshotId = body.snapshotId;
+      saveModel();
+    }
+    return body;
+  }
+
+  function beginAssistOrganize(opts) {
+    opts = opts || {};
+    var Own = ownershipApi();
+    if (!Own) return { ok: false, reason: 'no_ownership' };
+    model.assist = model.assist || Own.emptyAssistState();
+    if (model.assist.state === 'running') {
+      return { ok: false, reason: 'already_running', requestId: model.assist.requestId };
+    }
+    var generation = (model.assist.generation || 0) + 1;
+    var requestId = opts.requestId || Own.newRequestId();
+    var sourceRevision = model.contentRevision || 0;
+    model.assist = {
+      state: 'running',
+      requestId: requestId,
+      generation: generation,
+      sourceRevision: sourceRevision,
+      taskScopeId: model.taskScopeId,
+      startedEditGeneration: (model.organizedDraft && model.organizedDraft.editGeneration) || 0,
+      error: null
+    };
+    saveModel();
+    var snapshot = Own.buildAssistInputSnapshot(model, {
+      sendScope: opts.sendScope || model.sendScope
+    });
+    return {
+      ok: true,
+      requestId: requestId,
+      generation: generation,
+      sourceRevision: sourceRevision,
+      taskScopeId: model.taskScopeId,
+      snapshot: snapshot,
+      policy: {
+        allowedProviders: opts.allowedProviders || null,
+        allowMetered: !!opts.allowMetered,
+        callPolicy: opts.allowMetered ? 'allow_metered' : 'free_only',
+        sendScope: snapshot.sendScope,
+        maxInputChars: opts.maxInputChars || 24000,
+        maxOutputChars: opts.maxOutputChars || 6000,
+        deadlineMs: opts.deadlineMs || 30000
+      }
+    };
+  }
+
+  function adoptAssistResult(payload) {
+    payload = payload || {};
+    var Own = ownershipApi();
+    if (!Own || !Own.canAdoptAssistResult) return { adopted: false, reason: 'no_ownership' };
+    var meta = {
+      requestId: payload.requestId,
+      generation: model.assist && model.assist.generation,
+      sourceRevision: model.assist && model.assist.sourceRevision,
+      editGeneration: model.assist && model.assist.startedEditGeneration
+    };
+    if (!Own.canAdoptAssistResult(model.assist, model, meta)) {
+      if (model.assist && model.assist.requestId === payload.requestId) {
+        model.assist.state = 'idle';
+        model.assist.requestId = null;
+        saveModel();
+      }
+      return { adopted: false, reason: 'stale' };
+    }
+    if (!payload.ok) {
+      model.assist.state = payload.reason === 'cancelled' ? 'cancelled' : 'failed';
+      model.assist.error = {
+        reason: payload.reason || 'internal',
+        message: payload.message || ''
+      };
+      model.assist.requestId = null;
+      saveModel();
+      return { adopted: false, reason: payload.reason || 'failed' };
+    }
+    Own.applyOrganizedFromStructured(model, payload.result, {
+      generation: model.assist.generation,
+      sourceRevision: model.assist.sourceRevision,
+      createdAt: nowIso()
+    });
+    model.assist.state = 'done';
+    model.assist.requestId = null;
+    model.assist.error = null;
+    saveModel();
+    schedulePublishTray();
+    return { adopted: true, organizedDraft: model.organizedDraft };
+  }
+
+  function finishAssistLocal(state, error) {
+    model.assist = model.assist || {};
+    model.assist.state = state || 'idle';
+    model.assist.requestId = null;
+    model.assist.error = error || null;
+    saveModel();
+  }
+
+  function rotateTaskScope(reason) {
+    var Own = ownershipApi();
+    var prevReq = model.assist && model.assist.requestId;
+    model.taskScopeId = Own && Own.newTaskScopeId ? Own.newTaskScopeId() : 'ts_' + Date.now();
+    if (model.assist && model.assist.state === 'running') {
+      model.assist.state = 'cancelled';
+      model.assist.requestId = null;
+      model.assist.error = { reason: 'cancelled', message: reason || 'task_scope_changed' };
+    }
+    if (Own && Own.markOrganizedStale) Own.markOrganizedStale(model);
+    saveModel();
+    return { taskScopeId: model.taskScopeId, cancelledRequestId: prevReq || null };
   }
 
   function clearAssemblyAndHandoff() {
@@ -714,6 +887,7 @@
     model.materials = [];
     clearAssemblyAndHandoff();
     model.phase = 'EMPTY';
+    rotateTaskScope('reset_workspace');
     bumpContentRevision();
   }
 
@@ -771,6 +945,25 @@
       needsManualUpload: !!item.needsManualUpload,
       previewDataUrl: item.previewDataUrl || ''
     };
+    if (item.excerptText != null) row.excerptText = String(item.excerptText);
+    if (item.freshness) row.freshness = String(item.freshness);
+    if (item.evidenceId) row.evidenceId = String(item.evidenceId);
+    if (item.provenance && typeof item.provenance === 'object') {
+      row.provenance = {
+        evidenceId: item.provenance.evidenceId || item.evidenceId || null,
+        scopeId: item.provenance.scopeId || null,
+        kind: item.provenance.kind || null,
+        sourceRef: item.provenance.sourceRef || null,
+        sourceVersion: item.provenance.sourceVersion || null,
+        displayPath: item.provenance.displayPath || null,
+        relativePath: item.provenance.relativePath || null,
+        exact: item.provenance.exact !== false,
+        range: item.provenance.range || null,
+        freshness: item.provenance.freshness || item.freshness || 'captured',
+        truncated: !!item.provenance.truncated,
+        limitReason: item.provenance.limitReason || null
+      };
+    }
     if (!model.collectionId) model.collectionId = newCollectionId();
     model.materials.push(row);
     bumpContentRevision();
@@ -870,6 +1063,49 @@
         }
         syncUiAfterMutation();
       }
+      return m;
+    }
+    return null;
+  }
+
+  /**
+   * Refresh engineering evidence body/version; keep included/citeMode/user note.
+   * Marks organized draft stale via bumpContentRevision. Does not overwrite user-edited body.
+   */
+  function refreshEvidenceMaterial(materialId, evidenceRecord) {
+    var mid = String(materialId || '');
+    var ev = evidenceRecord || {};
+    if (!mid || derivePhase() === 'HANDING_OFF') return null;
+    for (var i = 0; i < model.materials.length; i++) {
+      var m = model.materials[i];
+      if (!m || m.id !== mid) continue;
+      var body = String(ev.content || '');
+      m.content = body;
+      if (ev.excerptText != null || body) m.excerptText = String(ev.excerptText != null ? ev.excerptText : body);
+      m.freshness = String(ev.freshness || 'captured');
+      m.evidenceId = String(ev.id || m.evidenceId || '');
+      m.provenance = m.provenance || {};
+      m.provenance.evidenceId = m.evidenceId;
+      m.provenance.scopeId = ev.scopeId || m.provenance.scopeId || null;
+      m.provenance.kind = ev.kind || m.provenance.kind || null;
+      m.provenance.sourceRef = ev.sourceRef || m.provenance.sourceRef || null;
+      m.provenance.sourceVersion = ev.sourceVersion || null;
+      m.provenance.displayPath = ev.displayPath || m.provenance.displayPath || null;
+      m.provenance.exact = true;
+      m.provenance.range = ev.range || m.provenance.range || null;
+      m.provenance.freshness = m.freshness;
+      m.provenance.truncated = !!ev.truncated;
+      m.provenance.limitReason = ev.limitReason || null;
+      m.capturedAt = ev.capturedAt || nowIso();
+      if (ev.label) m.name = String(ev.label);
+      // Relative display path only — never absolute.
+      if (ev.displayPath) m.path = String(ev.displayPath);
+      bumpContentRevision();
+      if (model.organizedDraft && String(model.organizedDraft.body || '').trim()) {
+        model.organizedDraft.structuredOutdated = true;
+      }
+      clearAssemblyAndHandoff();
+      syncUiAfterMutation();
       return m;
     }
     return null;
@@ -2497,9 +2733,19 @@
     listWorkLog: listWorkLog,
     setDraftBody: setDraftBody,
     setDraftTitle: setDraftTitle,
+    setOrganizedBody: setOrganizedBody,
+    setActiveDraft: setActiveDraft,
+    restoreRawDraft: restoreRawDraft,
+    buildAssistInputSnapshot: buildAssistInputSnapshot,
+    buildSendBody: buildSendBody,
+    beginAssistOrganize: beginAssistOrganize,
+    adoptAssistResult: adoptAssistResult,
+    finishAssistLocal: finishAssistLocal,
+    rotateTaskScope: rotateTaskScope,
     updateMaterialFlags: updateMaterialFlags,
     updateMaterialContent: updateMaterialContent,
     addMaterial: addMaterial,
+    refreshEvidenceMaterial: refreshEvidenceMaterial,
     beginMaterialCollection: beginMaterialCollection,
     collectMaterial: collectMaterial,
     guessAttachKind: guessAttachKind,

@@ -1,0 +1,6 @@
+{
+  "identifier": "project-context-main",
+  "description": "Phase2 project context — main window only (not tray / Soft Pad)",
+  "windows": ["main"],
+  "permissions": ["project-context-ipc"]
+}

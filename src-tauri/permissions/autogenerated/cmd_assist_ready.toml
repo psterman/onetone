@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-assist-ready"
+description = "Enables the cmd_assist_ready command without any pre-configured scope."
+commands.allow = ["cmd_assist_ready"]
+
+[[permission]]
+identifier = "deny-cmd-assist-ready"
+description = "Denies the cmd_assist_ready command without any pre-configured scope."
+commands.deny = ["cmd_assist_ready"]

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 验收悬浮面板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #12151a;
+      --panel: #1a1f27;
+      --panel-2: #222933;
+      --line: rgba(255, 255, 255, 0.08);
+      --muted: #8b95a8;
+      --text: #e8edf5;
+      --pass: #3dcf8e;
+      --pass-dim: rgba(61, 207, 142, 0.14);
+      --pend: #e6b35a;
+      --pend-dim: rgba(230, 179, 90, 0.14);
+      --skip: #9aa3b5;
+      --skip-dim: rgba(154, 163, 181, 0.12);
+      --fail: #e87a6b;
+      --accent: #6ec8ff;
+      --shadow: 0 24px 64px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line);
+      --radius: 16px;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --sans: "DM Sans", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 12% 8%, rgba(110, 200, 255, 0.08), transparent 55%),
+        radial-gradient(700px 420px at 88% 90%, rgba(61, 207, 142, 0.06), transparent 50%),
+        linear-gradient(165deg, #0d1014 0%, #151a22 48%, #10141a 100%);
+    }
+    .stage {
+      min-height: 100vh;
+      padding: 48px 28px 120px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .stage h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 8px;
+    }
+    .stage p {
+      color: var(--muted);
+      max-width: 42rem;
+      line-height: 1.55;
+      margin: 0 0 28px;
+    }
+    .hint {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(110, 200, 255, 0.08);
+      border: 1px solid rgba(110, 200, 255, 0.22);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    /* —— floating panel —— */
+    .acc-float {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      width: min(380px, calc(100vw - 28px));
+      max-height: min(72vh, 640px);
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, var(--panel) 0%, #161b23 100%);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      z-index: 9999;
+      transform-origin: bottom right;
+      animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .acc-float.is-collapsed {
+      max-height: none;
+    }
+    .acc-float.is-collapsed .acc-body { display: none; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .acc-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+      cursor: grab;
+      user-select: none;
+    }
+    .acc-head:active { cursor: grabbing; }
+    .acc-badge {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--pend-dim);
+      border: 1px solid rgba(230, 179, 90, 0.35);
+      position: relative;
+    }
+    .acc-badge svg { width: 20px; height: 20px; color: var(--pend); }
+    .acc-badge::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: conic-gradient(var(--pass) calc(var(--pct, 0.5) * 1turn), transparent 0) border-box;
+      -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.85;
+      animation: spin 8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .acc-titles { flex: 1; min-width: 0; }
+    .acc-titles strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .acc-titles span {
+      display: block;
+      margin-top: 2px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .acc-actions { display: flex; gap: 4px; }
+    .acc-icon-btn {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .acc-icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .acc-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .acc-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .acc-stat {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+    .acc-stat em {
+      display: block;
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .acc-stat strong {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .acc-stat[data-tone="pass"] strong { color: var(--pass); }
+    .acc-stat[data-tone="pend"] strong { color: var(--pend); }
+
+    .acc-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 10px 14px 0;
+    }
+    .acc-tab {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .acc-tab[aria-selected="true"] {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.14);
+    }
+    .acc-tab:focus-visible { outline: 2px solid var(--accent); }
+
+    .acc-body {
+      overflow: auto;
+      padding: 10px 14px 14px;
+      flex: 1;
+    }
+    .acc-layer {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .acc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .acc-item {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 11px;
+      border-radius: 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      animation: itemIn 0.35s ease both;
+    }
+    .acc-item:nth-child(1) { animation-delay: 0.04s; }
+    .acc-item:nth-child(2) { animation-delay: 0.08s; }
+    .acc-item:nth-child(3) { animation-delay: 0.12s; }
+    .acc-item:nth-child(4) { animation-delay: 0.16s; }
+    .acc-item:nth-child(5) { animation-delay: 0.2s; }
+    .acc-item:nth-child(6) { animation-delay: 0.24s; }
+    .acc-item:nth-child(7) { animation-delay: 0.28s; }
+    .acc-item:nth-child(8) { animation-delay: 0.32s; }
+    @keyframes itemIn {
+      from { opacity: 0; transform: translateX(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .acc-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 4px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+    .acc-dot[data-s="passed"] { background: var(--pass); --ring: var(--pass-dim); }
+    .acc-dot[data-s="pending"] { background: var(--pend); --ring: var(--pend-dim); }
+    .acc-dot[data-s="skipped"],
+    .acc-dot[data-s="unverified"] { background: var(--skip); --ring: var(--skip-dim); }
+    .acc-dot[data-s="failed"] { background: var(--fail); --ring: rgba(232,122,107,0.18); }
+    .acc-item-main { min-width: 0; }
+    .acc-item-main b {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .acc-item-main small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .acc-pill {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .acc-pill[data-s="passed"] { color: var(--pass); background: var(--pass-dim); }
+    .acc-pill[data-s="pending"] { color: var(--pend); background: var(--pend-dim); }
+    .acc-pill[data-s="skipped"],
+    .acc-pill[data-s="unverified"] { color: var(--skip); background: var(--skip-dim); }
+
+    .acc-foot {
+      padding: 10px 14px 14px;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .acc-foot code {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .acc-float, .acc-item, .acc-badge::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <h1>验收悬浮面板预览</h1>
+    <p>
+      一眼区分 Phase1 已验收能力与 Phase2 RC 分层状态。
+      右侧面板可拖动、折叠；标签切换两阶段清单。
+      口径与 <code>docs/phase2-gate-record.md</code> 对齐：不得把自动化通过写成桌面点通。
+    </p>
+    <div class="hint">预览 · 右下角面板 · 拖动手柄移动</div>
+  </div>
+
+  <aside class="acc-float" id="accFloat" role="dialog" aria-label="OneTone 验收状态" style="--pct: 0.5">
+    <header class="acc-head" id="accDrag">
+      <div class="acc-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+          <circle cx="12" cy="12" r="4" />
+        </svg>
+      </div>
+      <div class="acc-titles">
+        <strong>验收雷达 · Phase2 RC</strong>
+        <span id="accStamp">复验 2026-10-28 · 非 release</span>
+      </div>
+      <div class="acc-actions">
+        <button type="button" class="acc-icon-btn" id="accCollapse" title="折叠" aria-expanded="true">−</button>
+      </div>
+    </header>
+    <div class="acc-body" id="accBody">
+      <div class="acc-summary">
+        <div class="acc-stat" data-tone="pass">
+          <em>Passed</em>
+          <strong id="accPassN">0</strong>
+        </div>
+        <div class="acc-stat" data-tone="pend">
+          <em>Pending</em>
+          <strong id="accPendN">0</strong>
+        </div>
+      </div>
+      <div class="acc-tabs" role="tablist">
+        <button type="button" class="acc-tab" role="tab" id="tab1" aria-selected="true" aria-controls="panel1">Phase1</button>
+        <button type="button" class="acc-tab" role="tab" id="tab2" aria-selected="false" aria-controls="panel2">Phase2 RC</button>
+      </div>
+      <div id="panel1" role="tabpanel" aria-labelledby="tab1"></div>
+      <div id="panel2" role="tabpanel" aria-labelledby="tab2" hidden></div>
+    </div>
+    <footer class="acc-foot">
+      本地工程材料 / 有限证据 / 无模型直发已实现。真机 A/B 与真实远程整理仍未验收。
+      应用内：<code>localStorage.onetone.acceptanceFloat=1</code> 或 <code>Ctrl+Shift+A</code>
+    </footer>
+  </aside>
+
+  <script>
+    const DATA = {
+      stamp: "复验 2026-10-28 · 非 release",
+      layers: `implementation: passed
+automated verification: passed
+Phase2.0 preflight: passed
+local desktop: pending
+remote organize: pending
+release acceptance: pending`,
+      phase1: [
+        { status: "passed", title: "Assist Runtime", note: "cmd_assist_run / cancel / ready" },
+        { status: "passed", title: "出站快照 + citeMode", note: "buildAssistInputSnapshot" },
+        { status: "passed", title: "草稿守卫 / 直接发送", note: "raw / organized / activeDraft" },
+        { status: "passed", title: "本地假传输整理", note: "task_organize · local/fake verified" },
+        { status: "unverified", title: "真实提供商整理", note: "real provider · 未验证" },
+        { status: "pending", title: "真机八步点击 / 截图", note: "device_check_remaining" },
+        { status: "passed", title: "模拟 UI checklist", note: "≠ 真机点击" }
+      ],
+      phase2: [
+        { status: "passed", title: "实现 + 自动化", note: "FE 回归 + project_context 11 tests" },
+        { status: "passed", title: "Phase2.0 预检门", note: "七项通过 · RC 口径" },
+        { status: "passed", title: "Assist IPC args 包装", note: "test-home-assist-ipc-contract" },
+        { status: "passed", title: "主窗口 capability", note: "project-context-main only" },
+        { status: "passed", title: "路径安全 / junction", note: "lib tests · Windows" },
+        { status: "passed", title: "exe 重建 (debug)", note: "2026-10-28 11:23 build" },
+        { status: "pending", title: "桌面本地闭环 A", note: "目录选择 → adopt → 直发" },
+        { status: "pending", title: "Git 闭环 B", note: "staged / unstaged / 降级" },
+        { status: "skipped", title: "真实远程整理 C", note: "无费用授权 · skipped" },
+        { status: "pending", title: "Release acceptance", note: "待 A/B 人工通过" }
+      ]
+    };
+
+    const LABEL = {
+      passed: "通过",
+      pending: "待验",
+      skipped: "跳过",
+      unverified: "未验证",
+      failed: "失败"
+    };
+
+    function renderList(items) {
+      return (
+        '<ul class="acc-list">' +
+        items
+          .map(
+            (it) =>
+              '<li class="acc-item">' +
+              '<span class="acc-dot" data-s="' +
+              it.status +
+              '"></span>' +
+              '<div class="acc-item-main"><b>' +
+              it.title +
+              "</b><small>" +
+              it.note +
+              "</small></div>" +
+              '<span class="acc-pill" data-s="' +
+              it.status +
+              '">' +
+              (LABEL[it.status] || it.status) +
+              "</span></li>"
+          )
+          .join("") +
+        "</ul>"
+      );
+    }
+
+    function count(items) {
+      let pass = 0,
+        pend = 0;
+      items.forEach((i) => {
+        if (i.status === "passed") pass++;
+        else if (i.status === "pending" || i.status === "unverified") pend++;
+      });
+      return { pass, pend };
+    }
+
+    const all = DATA.phase1.concat(DATA.phase2);
+    const c = count(all);
+    document.getElementById("accPassN").textContent = String(c.pass);
+    document.getElementById("accPendN").textContent = String(c.pend);
+    document.getElementById("accStamp").textContent = DATA.stamp;
+    document.getElementById("accFloat").style.setProperty("--pct", String(c.pass / all.length));
+
+    document.getElementById("panel1").innerHTML =
+      '<div class="acc-layer">Phase1 status: accepted\nAssist: implemented\ntask_organize: local verified · real unverified</div>' +
+      renderList(DATA.phase1);
+    document.getElementById("panel2").innerHTML =
+      '<div class="acc-layer">' + DATA.layers + "</div>" + renderList(DATA.phase2);
+
+    const tab1 = document.getElementById("tab1");
+    const tab2 = document.getElementById("tab2");
+    const p1 = document.getElementById("panel1");
+    const p2 = document.getElementById("panel2");
+    function select(which) {
+      const one = which === 1;
+      tab1.setAttribute("aria-selected", one ? "true" : "false");
+      tab2.setAttribute("aria-selected", one ? "false" : "true");
+      p1.hidden = !one;
+      p2.hidden = one;
+    }
+    tab1.addEventListener("click", () => select(1));
+    tab2.addEventListener("click", () => select(2));
+
+    const floatEl = document.getElementById("accFloat");
+    document.getElementById("accCollapse").addEventListener("click", () => {
+      const on = floatEl.classList.toggle("is-collapsed");
+      document.getElementById("accCollapse").textContent = on ? "+" : "−";
+      document.getElementById("accCollapse").setAttribute("aria-expanded", on ? "false" : "true");
+    });
+
+    // drag
+    const drag = document.getElementById("accDrag");
+    let ox = 0,
+      oy = 0,
+      dragging = false;
+    drag.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      dragging = true;
+      const r = floatEl.getBoundingClientRect();
+      ox = e.clientX - r.left;
+      oy = e.clientY - r.top;
+      floatEl.style.left = r.left + "px";
+      floatEl.style.top = r.top + "px";
+      floatEl.style.right = "auto";
+      floatEl.style.bottom = "auto";
+      drag.setPointerCapture(e.pointerId);
+    });
+    drag.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      floatEl.style.left = Math.max(8, e.clientX - ox) + "px";
+      floatEl.style.top = Math.max(8, e.clientY - oy) + "px";
+    });
+    drag.addEventListener("pointerup", () => {
+      dragging = false;
+    });
+  </script>
+</body>
+</html>

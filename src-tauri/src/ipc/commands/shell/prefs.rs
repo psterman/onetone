@@ -115,7 +115,7 @@ pub fn cmd_handoff_write_md(
 }
 
 /// Temporarily drop always-on-top so Soft Pad / main don't bury WinForms pickers.
-fn suspend_topmost_for_native_dialog(app: &tauri::AppHandle) -> Vec<(String, bool)> {
+pub(crate) fn suspend_topmost_for_native_dialog(app: &tauri::AppHandle) -> Vec<(String, bool)> {
     use tauri::Manager;
     let labels = [
         "main",
@@ -135,7 +135,7 @@ fn suspend_topmost_for_native_dialog(app: &tauri::AppHandle) -> Vec<(String, boo
     restored
 }
 
-fn restore_topmost_for_native_dialog(app: &tauri::AppHandle, restored: Vec<(String, bool)>) {
+pub(crate) fn restore_topmost_for_native_dialog(app: &tauri::AppHandle, restored: Vec<(String, bool)>) {
     use tauri::Manager;
     for (label, want) in restored {
         if !want {

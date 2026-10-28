@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="css/composer-history-panel.css" />
   <link rel="stylesheet" href="css/home-agent-roster.css" />
   <link rel="stylesheet" href="css/home-prompt-prep.css" />
+  <link rel="stylesheet" href="css/home-acceptance-float.css" />
   <link rel="stylesheet" href="css/agent-center.css" />
   <link rel="stylesheet" href="css/codex-smoke-feedback.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
@@ -4625,11 +4626,36 @@
   <div class="composer-hist-head">
     <div>
       <h3 class="pref-page-title" id="settingsPanelComposerHistoryTitle" data-i18n="composerHistTitle">对话历史</h3>
-      <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelComposerHistoryDesc" data-i18n="composerHistDesc">新首页发往 Agent 的正文记录，可对照、回填或删除。</p>
+      <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelComposerHistoryDesc" data-i18n="composerHistDesc">按任务整理；右键新建、置顶、归档或删除。同一任务可混排多 Agent 对话与投递。</p>
     </div>
-    <button type="button" class="composer-hist-clear" id="composerHistoryClear" data-i18n="composerHistClear">清空</button>
   </div>
-  <div class="composer-hist-list" id="composerHistoryList" role="list"></div>
+  <div class="composer-hist-shell" id="composerHistoryShell">
+    <aside class="composer-hist-rail">
+      <input type="search" class="composer-hist-search" id="composerHistorySearch" placeholder="搜索任务或正文…" aria-label="搜索任务" />
+      <div class="composer-hist-filter" role="tablist">
+        <button type="button" class="is-on" data-hist-filter="active" id="composerHistFilterActive">进行中</button>
+        <button type="button" data-hist-filter="archived" id="composerHistFilterArchived">已归档</button>
+      </div>
+      <div class="composer-hist-batch" id="composerHistoryBatch" hidden>
+        <span id="composerHistoryBatchCount">已选 0</span>
+        <button type="button" class="composer-hist-btn" data-hist-batch="pin">置顶</button>
+        <button type="button" class="composer-hist-btn" data-hist-batch="archive">归档</button>
+        <button type="button" class="composer-hist-btn danger" data-hist-batch="delete">删除</button>
+      </div>
+      <div class="composer-hist-list" id="composerHistoryList" role="list"></div>
+    </aside>
+    <section class="composer-hist-main">
+      <header class="composer-hist-main-head">
+        <div>
+          <h4 id="composerHistoryTaskTitle">选择一个任务</h4>
+          <p id="composerHistoryTaskMeta" class="composer-hist-main-meta"></p>
+        </div>
+        <button type="button" class="composer-hist-btn primary" id="composerHistoryRestore" hidden>回填首页</button>
+      </header>
+      <div class="composer-hist-timeline" id="composerHistoryTimeline" role="list"></div>
+    </section>
+    <div class="composer-hist-ctx" id="composerHistoryCtx" hidden role="menu"></div>
+  </div>
 </section>
 <section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgent" hidden>
   <iframe class="agent-proto-frame" id="agentProtoFrame" title="Agent" src="agent-proto/agent-page?embed=1" loading="lazy"></iframe>
@@ -5888,11 +5914,17 @@
   <script src="js/features/now/home-focus-view.js"></script>
   <script src="js/features/now/home-agent-status-strip.js"></script>
   <script src="js/features/capture/smart-capture.js"></script>
+  <script src="js/features/now/home-assist-ownership.js"></script>
+  <script src="js/features/now/home-assist-client.js"></script>
+  <script src="js/features/now/home-project-context.js"></script>
+  <script src="js/features/now/home-acceptance-float.js"></script>
   <script src="js/features/now/home-prompt-prep.js"></script>
+  <script src="js/features/now/home-task-journal.js"></script>
   <script src="js/features/now/cursor-work-view.js"></script>
   <script src="js/features/now/history-view.js"></script>
   <script src="js/features/now/memory-view.js"></script>
   <script src="js/features/now/now-home-ui.js"></script>
+  <script src="js/features/now/home-agent-capabilities.js"></script>
   <script src="js/features/now/home-agent-v2-store.js"></script>
   <script src="js/features/now/home-agent-v2-dock.js"></script>
   <script src="js/features/now/composer-history-panel.js"></script>
