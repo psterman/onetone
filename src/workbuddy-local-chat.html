@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkBuddy 本机对话</title>
+  <link rel="stylesheet" href="css/workbuddy-local-chat.css" />
+  <script src="js/core/ipc.js"></script>
+  <script src="js/features/now/home-agent-capabilities.js"></script>
+  <script src="js/features/now/home-task-journal.js"></script>
+  <script src="js/features/now/workbuddy-local-chat-window.js"></script>
+</head>
+<body>
+  <div class="wb-root" data-wb-local-chat>
+    <header class="wb-titlebar" id="wbTitlebar" data-tauri-drag-region>
+      <div class="wb-title">
+        WorkBuddy 本机对话
+        <span class="wb-sub" id="wbSub">本机讨论（不打开 WorkBuddy.exe）</span>
+      </div>
+      <button type="button" class="wb-icon-btn" id="wbStop" title="停止">■</button>
+      <button type="button" class="wb-icon-btn" id="wbClose" title="关闭">✕</button>
+    </header>
+    <div class="wb-transcript" id="wbTranscript" aria-live="polite"></div>
+    <div class="wb-status" id="wbStatus"></div>
+    <div class="wb-compose">
+      <textarea id="wbDraft" rows="2" placeholder="继续讨论…（Ctrl+Enter 发送）" aria-label="本机对话输入"></textarea>
+      <button type="button" class="wb-send" id="wbSend" disabled>发送</button>
+    </div>
+  </div>
+</body>
+</html>

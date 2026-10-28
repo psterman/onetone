@@ -450,6 +450,8 @@ fn reconcile_overlay_input_mode(win: &WebviewWindow, visible: bool, pass: bool) 
     // Force: hide→show / EXSTYLE reset must not leave a stale pass-through.
     set_overlay_click_through_impl(pass, true, true);
     let _ = win.set_ignore_cursor_events(pass);
+    // LAYERED / TRANSPARENT toggles above can blank the clear color → black slab.
+    restore_overlay_transparency(win);
     // During permission wait / Soft Pad file dialog: do not re-assert always_on_top
     // (keeps ChatGPT approval / OS picker above pad).
     if !pass && !OVERLAY_SUSPEND_TOPMOST.load(Ordering::Relaxed) {
@@ -1186,10 +1188,17 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Re-assert WebView2 clear color after Win32 EXSTYLE churn.
+/// Stripping/restoring `WS_EX_LAYERED` (drag follow / click-through) can leave the
+/// host painting opaque black in the CSS-transparent regions — Soft Pad "黑屏背景".
+fn restore_overlay_transparency(win: &WebviewWindow) {
+    let _ = win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)));
+    let _ = win.set_shadow(false);
+}
+
 fn configure_codex_overlay_window(win: &WebviewWindow) -> tauri::Result<()> {
     cache_overlay_hwnd_from_window(win);
-    win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
-    let _ = win.set_shadow(false);
+    restore_overlay_transparency(win);
     let _ = win.set_always_on_top(true);
     apply_overlay_no_activate();
     // HWND recreate can drop EXSTYLE — converge input mode to "interactive" until next snap.
@@ -4687,6 +4696,9 @@ fn finish_overlay_drag(win: &WebviewWindow, gen: u64) {
     // Re-converge hit-test after SetWindowPos / failed SC_MOVE — stuck interactive
     // + oversized HWND was eating clicks under the pad.
     reconcile_overlay_input_mode(win, true, soft_pad_click_through());
+    // Drag follow strips WS_EX_LAYERED then restore ORs it back — without a clear-color
+    // refresh the pad keeps a pure-black rectangle around the neumorphic chrome.
+    restore_overlay_transparency(win);
     emit_overlay_drag_ended(win);
     crate::window_layout::emit_drag_trace(
         win.app_handle(),
@@ -5144,6 +5156,10 @@ fn apply_overlay_payload(
         // Status-only pushes still reconcile mini↔full outer size (mapping presentation
         // can flip while visible; skipping resize left a 680px window around a 44px bar).
         let _ = apply_overlay_geometry(&win, payload);
+        // First paint / hide→show: clear color can be lost if HWND EXSTYLE churned while hidden.
+        if !already_visible {
+            restore_overlay_transparency(&win);
+        }
         if reposition {
             let _ = win.set_always_on_top(true);
             let _ = win.set_skip_taskbar(true);

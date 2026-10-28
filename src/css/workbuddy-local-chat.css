@@ -1,0 +1,262 @@
+:root {
+  --wb-bg: #f4f7fa;
+  --wb-surface: #ffffff;
+  --wb-ink: #152238;
+  --wb-muted: #5a7086;
+  --wb-line: rgba(26, 45, 74, 0.12);
+  --wb-accent: #2a9cc4;
+  --wb-user: #e8f4fa;
+  --wb-danger: #dc2626;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wb-bg: #121820;
+    --wb-surface: #1c2430;
+    --wb-ink: #e8f0f8;
+    --wb-muted: #9aa8b8;
+    --wb-line: rgba(148, 163, 184, 0.18);
+    --wb-accent: #5ec8e8;
+    --wb-user: #243040;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wb-bg);
+  color: var(--wb-ink);
+}
+
+.wb-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wb-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--wb-surface);
+  border-bottom: 1px solid var(--wb-line);
+  cursor: grab;
+  user-select: none;
+}
+
+.wb-titlebar:active {
+  cursor: grabbing;
+}
+
+.wb-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wb-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--wb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wb-icon-btn {
+  border: 0;
+  background: transparent;
+  color: var(--wb-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.wb-icon-btn:hover {
+  background: rgba(42, 156, 196, 0.12);
+  color: var(--wb-ink);
+}
+
+.wb-transcript {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wb-turn {
+  display: flex;
+  flex-direction: column;
+  max-width: 86%;
+  gap: 4px;
+}
+
+.wb-turn--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.wb-turn--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+  max-width: 92%;
+}
+
+.wb-turn-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--wb-muted);
+}
+
+.wb-turn--assistant .wb-turn-role {
+  color: #3a556e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wb-turn--assistant .wb-turn-role {
+    color: #b8c6d6;
+  }
+}
+
+.wb-turn-role img {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-line);
+}
+
+.wb-avatar-me {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--wb-muted);
+}
+
+.wb-turn-meta {
+  font-weight: 500;
+  color: var(--wb-muted);
+  font-size: 10.5px;
+}
+
+.wb-turn-body {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+.wb-turn--user .wb-turn-body {
+  background: var(--wb-user);
+  border: 1px solid color-mix(in srgb, var(--wb-accent) 22%, var(--wb-line));
+  border-bottom-right-radius: 4px;
+}
+
+.wb-turn--assistant .wb-turn-body {
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-line);
+  border-bottom-left-radius: 4px;
+}
+
+.wb-turn.is-streaming .wb-turn-body::after {
+  content: "▍
+  animation: wbBlink 1s steps(1) infinite;
+  color: var(--wb-accent);
+}
+
+@keyframes wbBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.wb-status {
+  padding: 0 12px 6px;
+  font-size: 11px;
+  color: var(--wb-muted);
+  min-height: 18px;
+}
+
+.wb-status.is-err {
+  color: var(--wb-danger);
+}
+
+.wb-compose {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--wb-line);
+  background: var(--wb-surface);
+}
+
+.wb-compose textarea {
+  flex: 1;
+  resize: none;
+  min-height: 54px;
+  max-height: 120px;
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--wb-bg);
+  color: var(--wb-ink);
+}
+
+.wb-compose textarea:focus {
+  outline: 2px solid rgba(42, 156, 196, 0.35);
+  border-color: var(--wb-accent);
+}
+
+.wb-send {
+  align-self: flex-end;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--wb-accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wb-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wb-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--wb-muted);
+  font-size: 13px;
+  padding: 24px;
+}
+

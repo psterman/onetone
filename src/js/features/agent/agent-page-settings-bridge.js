@@ -14,7 +14,8 @@
     Cursor: 'cursor',
     Claude: 'claude',
     Codex: 'codex',
-    MiniMax: 'minimax'
+    MiniMax: 'minimax',
+    WorkBuddy: 'workbuddy'
   };
 
   /** Soft Pad topbar / 接入 roster — keep in sync with TOPBAR_LIGHT_CANDIDATES. */
@@ -79,7 +80,13 @@
     var name = String(app || '').trim();
     if (APP_TO_KIND[name]) return APP_TO_KIND[name];
     var low = name.toLowerCase();
-    if (low === 'cursor' || low === 'claude' || low === 'codex' || low === 'minimax') {
+    if (
+      low === 'cursor' ||
+      low === 'claude' ||
+      low === 'codex' ||
+      low === 'minimax' ||
+      low === 'workbuddy'
+    ) {
       return low;
     }
     return 'cursor';
@@ -90,7 +97,89 @@
     if (k === 'claude') return 'Claude';
     if (k === 'codex') return 'Codex';
     if (k === 'minimax') return 'MiniMax';
+    if (k === 'workbuddy') return 'WorkBuddy';
     return 'Cursor';
+  }
+
+  /** Pure: normalize WorkBuddy local-account snapshot for Agent iframe (no secrets). */
+  function projectWorkbuddyLocal(raw) {
+    raw = raw || {};
+    var accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
+    var defaultId = String(raw.defaultAccountId || '').trim();
+    if (!defaultId) {
+      for (var i = 0; i < accounts.length; i++) {
+        var a0 = accounts[i];
+        if (a0 && a0.enabled && a0.isDefault) {
+          defaultId = String(a0.id || '');
+          break;
+        }
+      }
+    }
+    var rows = accounts.map(function (a) {
+      a = a || {};
+      var models = Array.isArray(a.models) ? a.models : [];
+      var authKind = String(a.authKind || a.auth_kind || 'api_key');
+      if (authKind !== 'oauth') authKind = 'api_key';
+      return {
+        id: String(a.id || ''),
+        label: String(a.label || a.nickname || 'WorkBuddy'),
+        authKind: authKind,
+        region: String(a.region || 'cn'),
+        uid: String(a.uid || ''),
+        nickname: String(a.nickname || ''),
+        enabled: a.enabled !== false,
+        isDefault: !!a.isDefault,
+        keyFingerprint: String(a.keyFingerprint || a.key_fingerprint || ''),
+        maskedKey: String(a.maskedKey || a.masked_key || ''),
+        verifyStatus: String(a.verifyStatus || a.verify_status || 'pending'),
+        lastError: String(a.lastError || a.last_error || '').slice(0, 120),
+        selectedModel: String(a.selectedModel || a.selected_model || ''),
+        modelCount: models.length,
+        models: models.map(function (m) {
+          m = m || {};
+          return {
+            id: String(m.id || ''),
+            name: String(m.name || m.id || '')
+          };
+        })
+      };
+    });
+    var def = null;
+    for (var j = 0; j < rows.length; j++) {
+      if (rows[j].id === defaultId) {
+        def = rows[j];
+        break;
+      }
+    }
+    if (!def) {
+      for (var k = 0; k < rows.length; k++) {
+        if (rows[k].enabled) {
+          def = rows[k];
+          break;
+        }
+      }
+    }
+    var pending = raw.oauthPending || raw.oauth_pending || null;
+    return {
+      channel: 'workbuddy',
+      configured: rows.some(function (r) {
+        return r.enabled;
+      }),
+      defaultAccountId: def ? def.id : '',
+      defaultLabel: def ? def.label : '',
+      defaultFingerprint: def ? def.keyFingerprint : '',
+      defaultAuthKind: def ? def.authKind : '',
+      defaultModel: def ? def.selectedModel : '',
+      oauthPending: pending
+        ? {
+            pendingId: String(pending.pendingId || pending.pending_id || ''),
+            authUrl: String(pending.authUrl || pending.auth_url || ''),
+            region: String(pending.region || 'cn'),
+            expiresAt: Number(pending.expiresAt || pending.expires_at || 0) || 0
+          }
+        : null,
+      accounts: rows
+    };
   }
 
   function agentLightEnabled(pad, agent) {
@@ -275,7 +364,8 @@
         cursorActivityApplicable: String(kind).toLowerCase() === 'cursor',
         keySet: !!opts.keySet,
         keyApplicable: String(kind).toLowerCase() === 'minimax'
-      }
+      },
+      workbuddyLocal: opts.workbuddyLocal || projectWorkbuddyLocal(null)
     };
   }
 
@@ -306,6 +396,16 @@
       })
       .catch(function () {
         return false;
+      });
+  }
+
+  function fetchWorkbuddyLocal() {
+    return invoke('cmd_workbuddy_local_accounts_list', {})
+      .then(function (res) {
+        return projectWorkbuddyLocal(res);
+      })
+      .catch(function () {
+        return projectWorkbuddyLocal(null);
       });
   }
 
@@ -344,7 +444,12 @@
       });
       return statusByKind;
     });
-    return Promise.all([rosterP, fetchCursorActivity(), fetchKeyConfigured(kind)])
+    return Promise.all([
+      rosterP,
+      fetchCursorActivity(),
+      fetchKeyConfigured(kind),
+      fetchWorkbuddyLocal()
+    ])
       .then(function (parts) {
         var byKind = parts[0] || {};
         var payload = projectSettingsSnapshot({
@@ -354,7 +459,8 @@
           status: byKind[kind] || null,
           statusByKind: byKind,
           cursorActivity: parts[1],
-          keySet: parts[2]
+          keySet: parts[2],
+          workbuddyLocal: parts[3]
         });
         postPayload(payload);
         try {
@@ -581,6 +687,131 @@
       });
   }
 
+  function wbLocalAdd(label, key) {
+    return invoke('cmd_workbuddy_local_account_add', {
+      label: String(label || ''),
+      key: String(key || '')
+    })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalRemove(id) {
+    return invoke('cmd_workbuddy_local_account_remove', { id: String(id || '') })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalSetDefault(id) {
+    return invoke('cmd_workbuddy_local_account_set_default', { id: String(id || '') })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalSetEnabled(id, enabled) {
+    return invoke('cmd_workbuddy_local_account_set_enabled', {
+      id: String(id || ''),
+      enabled: !!enabled
+    })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalVerify(id) {
+    return invoke('cmd_workbuddy_local_account_verify', { id: String(id || '') })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalRefreshModels(id) {
+    return invoke('cmd_workbuddy_local_account_refresh_models', {
+      id: String(id || '')
+    })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalSetModel(id, model) {
+    return invoke('cmd_workbuddy_local_account_set_model', {
+      id: String(id || ''),
+      model: String(model || '')
+    })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalOauthStart(region) {
+    return invoke('cmd_workbuddy_local_oauth_start', {
+      region: String(region || 'cn')
+    })
+      .then(function (res) {
+        return refresh().then(function () {
+          return res;
+        });
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
+  function wbLocalOauthPoll(pendingId) {
+    return invoke('cmd_workbuddy_local_oauth_poll', {
+      pendingId: String(pendingId || '')
+    })
+      .then(function (res) {
+        var status = res && res.status;
+        if (status === 'ok' || status === 'fail' || status === 'expired') {
+          return refresh().then(function () {
+            return res;
+          });
+        }
+        return res;
+      })
+      .catch(function () {
+        return { status: 'fail', error: 'poll_failed' };
+      });
+  }
+
+  function wbLocalOauthCancel(pendingId) {
+    return invoke('cmd_workbuddy_local_oauth_cancel', {
+      pendingId: String(pendingId || '')
+    })
+      .then(function () {
+        return refresh();
+      })
+      .catch(function () {
+        return refresh();
+      });
+  }
+
   function selectAgent(appOrKind) {
     var raw = String(appOrKind || '').trim();
     if (APP_TO_KIND[raw]) {
@@ -648,6 +879,46 @@
       setProviderKey(data.key);
       return;
     }
+    if (cmd === 'wbLocalAdd') {
+      wbLocalAdd(data.label, data.key);
+      return;
+    }
+    if (cmd === 'wbLocalRemove') {
+      wbLocalRemove(data.id);
+      return;
+    }
+    if (cmd === 'wbLocalSetDefault') {
+      wbLocalSetDefault(data.id);
+      return;
+    }
+    if (cmd === 'wbLocalSetEnabled') {
+      wbLocalSetEnabled(data.id, data.enabled !== false);
+      return;
+    }
+    if (cmd === 'wbLocalVerify') {
+      wbLocalVerify(data.id);
+      return;
+    }
+    if (cmd === 'wbLocalRefreshModels') {
+      wbLocalRefreshModels(data.id);
+      return;
+    }
+    if (cmd === 'wbLocalSetModel') {
+      wbLocalSetModel(data.id, data.model);
+      return;
+    }
+    if (cmd === 'wbLocalOauthStart') {
+      wbLocalOauthStart(data.region);
+      return;
+    }
+    if (cmd === 'wbLocalOauthPoll') {
+      wbLocalOauthPoll(data.pendingId);
+      return;
+    }
+    if (cmd === 'wbLocalOauthCancel') {
+      wbLocalOauthCancel(data.pendingId);
+      return;
+    }
   }
 
   function bindFrameLoad() {
@@ -686,6 +957,7 @@
     CMD_TYPE: CMD_TYPE,
     connectJobLead: connectJobLead,
     projectSettingsSnapshot: projectSettingsSnapshot,
+    projectWorkbuddyLocal: projectWorkbuddyLocal,
     kindFromApp: kindFromApp,
     appFromKind: appFromKind,
     refresh: refresh,

@@ -1,0 +1,11 @@
+{
+  "identifier": "workbuddy-local-chat",
+  "description": "OneTone WorkBuddy local streaming chat window",
+  "windows": ["workbuddy_local_chat"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-start-dragging",
+    "workbuddy-local-chat-ipc"
+  ]
+}

@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WorkBuddy 独立对话 · 对话历史 — UI 预览 v2</title>
+<style>
+  :root {
+    --bg: #eef2f6;
+    --ink: #152238;
+    --muted: #5a7086;
+    --line: rgba(26, 45, 74, 0.12);
+    --accent: #2a9cc4;
+    --accent-soft: #e8f4fa;
+    --surface: #ffffff;
+    --danger: #b91c1c;
+    --wb-bg: #f4f7fa;
+    --wb-user: #e8f4fa;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .page {
+    width: min(1200px, calc(100% - 28px));
+    margin: 0 auto;
+    padding: 28px 0 48px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  h1 { margin: 6px 0; font-size: 24px; letter-spacing: -0.02em; }
+  .lead { margin: 0 0 18px; color: var(--muted); font-size: 13.5px; max-width: 64ch; line-height: 1.5; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .tab.is-on {
+    color: #0b6f93;
+    border-color: color-mix(in srgb, var(--accent) 45%, #fff);
+    background: var(--accent-soft);
+  }
+  .panel { display: none; }
+  .panel.is-on { display: block; }
+  .note {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .note strong { color: var(--ink); font-weight: 650; }
+
+  /* ===== Chat window ===== */
+  .win-stage { display: grid; place-items: start center; padding: 4px 0; }
+  .win {
+    width: min(420px, 100%);
+    height: 600px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--wb-bg);
+    box-shadow: 0 12px 28px rgba(21, 34, 56, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+  .wb-titlebar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .wb-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; }
+  .wb-sub {
+    display: block; font-size: 11px; font-weight: 400; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wb-icon-btn {
+    border: 0; background: transparent; color: var(--muted);
+    width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  .wb-icon-btn:hover { background: rgba(42,156,196,.1); color: var(--ink); }
+
+  .wb-taskbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px 7px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .wb-task-name {
+    flex: 1; min-width: 0; font-weight: 650;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wb-task-more {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 28px; height: 26px;
+    font: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; line-height: 1;
+  }
+  .wb-task-more:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, #fff); }
+
+  .wb-transcript {
+    flex: 1; overflow: auto; padding: 14px 12px 10px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .wb-turn {
+    display: flex; flex-direction: column; max-width: 86%; gap: 4px;
+  }
+  .wb-turn--user { align-self: flex-end; align-items: flex-end; }
+  .wb-turn--assistant { align-self: flex-start; align-items: flex-start; max-width: 92%; }
+
+  .wb-turn-role {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; color: var(--muted);
+  }
+  .wb-turn--assistant .wb-turn-role { color: #3a556e; }
+  .wb-turn-role img {
+    width: 16px; height: 16px; border-radius: 4px;
+    object-fit: contain; background: #fff; border: 1px solid var(--line);
+  }
+  .wb-avatar-me {
+    width: 16px; height: 16px; border-radius: 4px;
+    display: grid; place-items: center;
+    font-size: 9px; font-weight: 800; color: #fff;
+    background: #5a7086;
+  }
+  .wb-turn-meta { font-weight: 500; color: var(--muted); font-size: 10.5px; }
+
+  .wb-turn-body {
+    margin: 0; padding: 10px 12px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .wb-turn--user .wb-turn-body {
+    background: var(--wb-user);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+    border-bottom-right-radius: 4px;
+  }
+  .wb-turn--assistant .wb-turn-body {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 4px;
+  }
+  .wb-turn.is-streaming .wb-turn-body::after {
+    content: "▍
+    animation: blink 1s steps(1) infinite;
+    color: var(--accent);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .wb-status { padding: 0 12px 6px; font-size: 11px; color: var(--muted); min-height: 18px; }
+  .wb-compose {
+    display: flex; gap: 8px;
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .wb-compose textarea {
+    flex: 1; resize: none; min-height: 54px;
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; font: inherit; font-size: 13px;
+    background: var(--wb-bg); color: var(--ink);
+  }
+  .wb-send {
+    align-self: flex-end; border: 0; border-radius: 10px;
+    padding: 10px 14px; background: var(--accent); color: #fff;
+    font-weight: 700; cursor: pointer;
+  }
+  .wb-send:disabled { opacity: 0.45; cursor: default; }
+
+  /* ===== History ===== */
+  .hist-shell {
+    display: grid;
+    grid-template-columns: minmax(220px, 270px) minmax(0, 1fr);
+    min-height: 620px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(21,34,56,.08);
+    position: relative;
+  }
+  @media (max-width: 820px) { .hist-shell { grid-template-columns: 1fr; } }
+  .hist-rail {
+    border-right: 1px solid var(--line);
+    background: #f7f9fb;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .hist-rail-head { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
+  .hist-rail-head h2 { margin: 0 0 4px; font-size: 15px; }
+  .hist-rail-head p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .hist-search {
+    margin: 10px 12px 8px;
+    width: calc(100% - 24px);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 8px 10px;
+    font: inherit; font-size: 12.5px; background: #fff;
+  }
+  .hist-filter {
+    display: flex; gap: 6px; padding: 0 12px 8px;
+  }
+  .hist-filter button {
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 11px;
+    font-weight: 650; cursor: pointer;
+  }
+  .hist-filter button.is-on {
+    color: #0b6f93; border-color: color-mix(in srgb, var(--accent) 40%, #fff);
+    background: var(--accent-soft);
+  }
+  .hist-batch {
+    display: none;
+    align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 0 12px 8px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 9px; background: #fff;
+    font-size: 12px; color: var(--muted);
+  }
+  .hist-batch.is-on { display: flex; }
+  .hist-batch .btn { height: 26px; padding: 0 8px; font-size: 11.5px; }
+
+  .hist-task-list {
+    flex: 1; overflow: auto; padding: 4px 8px 12px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .hist-pin-label {
+    font-size: 10.5px; font-weight: 700; color: var(--muted);
+    padding: 8px 8px 4px; letter-spacing: .04em;
+  }
+  .hist-task {
+    text-align: left;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 10px;
+    padding: 9px 10px;
+    cursor: pointer;
+    font: inherit;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+  .hist-task:hover { background: #eef3f7; }
+  .hist-task.is-on {
+    background: #fff;
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  }
+  .hist-task.is-selected { background: var(--accent-soft); }
+  .hist-task input { margin-top: 3px; }
+  .hist-task-title {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700;
+    min-width: 0;
+  }
+  .hist-task-title span {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pin-mark { color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+  .hist-task-meta {
+    display: block; margin-top: 3px; font-size: 11px; color: var(--muted);
+  }
+  .hist-task-agents {
+    display: flex; align-items: center; gap: 4px; margin-top: 6px;
+  }
+  .hist-task-agents img {
+    width: 14px; height: 14px; border-radius: 3px;
+    border: 1px solid var(--line); background: #fff; object-fit: contain;
+  }
+  .hist-task-agents .tag {
+    font-size: 10px; color: var(--muted); font-weight: 650;
+  }
+
+  .hist-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .hist-main-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .hist-main-head h3 { margin: 0; font-size: 15px; }
+  .hist-main-head p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+  .hist-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn {
+    height: 30px; padding: 0 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff;
+    font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; color: var(--ink);
+  }
+  .btn.primary {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 35%, #fff);
+    color: #0b6f93;
+  }
+  .btn.danger:hover { border-color: #c45c5c; color: var(--danger); }
+
+  .hist-timeline {
+    flex: 1; overflow: auto; padding: 16px 18px 22px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: #fafbfc;
+  }
+  .day-label {
+    align-self: center;
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    background: #eef2f6; border-radius: 999px; padding: 3px 10px;
+  }
+  .tl-event {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+  .tl-time {
+    font-size: 11px; color: var(--muted); padding-top: 10px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .tl-card.is-user {
+    background: var(--wb-user);
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+  }
+  .tl-card.is-edge {
+    border-left: 2px solid var(--accent);
+  }
+  .tl-top {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .tl-top img {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1px solid var(--line); background: #fff; object-fit: contain;
+  }
+  .tl-agent { font-size: 11px; font-weight: 750; color: #3a556e; }
+  .tl-kind { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+  .tl-body {
+    margin: 0; font-size: 13px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .tl-foot { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+  /* Context menu */
+  .ctx {
+    position: absolute;
+    z-index: 40;
+    min-width: 168px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(21,34,56,.16);
+    display: none;
+  }
+  .ctx.is-on { display: block; }
+  .ctx button {
+    display: block; width: 100%; text-align: left;
+    border: 0; background: transparent;
+    padding: 8px 10px; border-radius: 7px;
+    font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  }
+  .ctx button:hover { background: #eef3f7; }
+  .ctx button.is-danger { color: var(--danger); }
+  .ctx button:disabled { color: #a8b4c0; cursor: default; }
+  .ctx button:disabled:hover { background: transparent; }
+  .ctx hr {
+    border: 0; border-top: 1px solid var(--line); margin: 4px 6px;
+  }
+  .hint-bar {
+    margin-top: 12px; font-size: 12px; color: var(--muted);
+  }
+  .legend {
+    margin-top: 12px;
+    display: flex; flex-wrap: wrap; gap: 10px 16px;
+    font-size: 12px; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="eyebrow">ONETONE · UI 预览 v2（未接线）</div>
+  <h1>独立对话窗 + 对话历史</h1>
+  <p class="lead">配色只保留主题色；人称「我」；Agent 用品牌图标区分。任务整理走右键菜单（新建 / 置顶 / 重命名 / 归档 / 删除 / 批量）。</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="chat">1 · WorkBuddy 独立对话窗</button>
+    <button type="button" class="tab" data-tab="hist">2 · 对话历史（右键菜单）</button>
+  </div>
+
+  <section class="panel is-on" id="panel-chat">
+    <p class="note"><strong>独立窗：</strong>「我」右对齐浅主题气泡；助手左对齐白卡片 + WorkBuddy 图标。任务条只有名称与 ⋯（右键/菜单），无彩色「新任务」按钮。</p>
+    <div class="win-stage">
+      <div class="win" aria-label="WorkBuddy 本机对话预览">
+        <header class="wb-titlebar">
+          <div class="wb-title">
+            WorkBuddy 本机对话
+            <span class="wb-sub">voice-pilot · glm-4.6 · 本机讨论</span>
+          </div>
+          <button type="button" class="wb-icon-btn" title="停止">■</button>
+          <button type="button" class="wb-icon-btn" title="关闭">✕</button>
+        </header>
+
+        <div class="wb-taskbar">
+          <span class="wb-task-name" title="修复首页对话分层">任务：修复首页对话分层</span>
+          <button type="button" class="wb-task-more" id="wbTaskMore" title="任务菜单" aria-label="任务菜单">⋯</button>
+        </div>
+
+        <div class="wb-transcript">
+          <div class="wb-turn wb-turn--user">
+            <span class="wb-turn-role"><span class="wb-avatar-me">我</span>我</span>
+            <pre class="wb-turn-body">把首页和 WorkBuddy 对话 UI 对齐主流 agent 客户端，用户和 agent 文本不要再混在一起。</pre>
+          </div>
+
+          <div class="wb-turn wb-turn--assistant">
+            <span class="wb-turn-role">
+              <img src="../../src/icons/app-target/workbuddy.png" alt="" />
+              WorkBuddy
+              <span class="wb-turn-meta">· glm-4.6</span>
+            </span>
+            <pre class="wb-turn-body">可以。建议先改独立对话窗消息样式：我右对齐气泡、助手左对齐文档流，角色与正文分开渲染。历史再做成「任务 → 时间线」。</pre>
+          </div>
+
+          <div class="wb-turn wb-turn--user">
+            <span class="wb-turn-role"><span class="wb-avatar-me">我</span>我</span>
+            <pre class="wb-turn-body">颜色不要过于丰富。历史任务用右键菜单做新建、置顶、重命名、删除、批量、归档。</pre>
+          </div>
+
+          <div class="wb-turn wb-turn--assistant is-streaming">
+            <span class="wb-turn-role">
+              <img src="../../src/icons/app-target/workbuddy.png" alt="" />
+              WorkBuddy
+              <span class="wb-turn-meta">· glm-4.6</span>
+            </span>
+            <pre class="wb-turn-body">收到。主题色保留，Agent 靠图标识别；任务操作收进右键菜单。</pre>
+          </div>
+        </div>
+
+        <div class="wb-status">正在回复…</div>
+        <div class="wb-compose">
+          <textarea rows="2" placeholder="继续讨论…（Ctrl+Enter 发送）"></textarea>
+          <button type="button" class="wb-send" disabled>发送</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-hist">
+    <p class="note"><strong>对话历史：</strong>左侧任务列表支持单击打开、Ctrl 多选批量；在任务上<strong>右键</strong>出菜单。时间线混排本机对话与投递，用主题色细竖条点缀，不用每人一套彩色标签。</p>
+
+    <div class="hist-shell" id="histShell" aria-label="对话历史预览">
+      <aside class="hist-rail">
+        <div class="hist-rail-head">
+          <h2>对话历史</h2>
+          <p>右键整理任务 · 一个任务可混多个 Agent</p>
+        </div>
+        <input class="hist-search" type="search" placeholder="搜索任务或正文…" />
+        <div class="hist-filter">
+          <button type="button" class="is-on" data-filter="active">进行中</button>
+          <button type="button" data-filter="archived">已归档</button>
+        </div>
+        <div class="hist-batch" id="histBatch">
+          <span id="histBatchCount">已选 0</span>
+          <button type="button" class="btn" data-batch="pin">置顶</button>
+          <button type="button" class="btn" data-batch="archive">归档</button>
+          <button type="button" class="btn danger" data-batch="delete">删除</button>
+        </div>
+        <div class="hist-task-list" id="histTaskList" role="list">
+          <div class="hist-pin-label">置顶</div>
+          <button type="button" class="hist-task is-on" role="listitem" data-task="1" data-pinned="1">
+            <input type="checkbox" aria-label="选择任务" />
+            <span>
+              <span class="hist-task-title"><span class="pin-mark">⬆</span><span>修复首页对话分层</span></span>
+              <span class="hist-task-meta">今天 23:18 · 6 条</span>
+              <span class="hist-task-agents">
+                <img src="../../src/icons/app-target/workbuddy.png" alt="WorkBuddy" title="WorkBuddy" />
+                <img src="../../src/icons/app-target/codex.png" alt="Codex" title="Codex" />
+                <span class="tag">投递</span>
+              </span>
+            </span>
+          </button>
+          <div class="hist-pin-label">最近</div>
+          <button type="button" class="hist-task" role="listitem" data-task="2">
+            <input type="checkbox" aria-label="选择任务" />
+            <span>
+              <span class="hist-task-title"><span>整理 Soft Pad 配额文案</span></span>
+              <span class="hist-task-meta">昨天 19:02 · 3 条</span>
+              <span class="hist-task-agents">
+                <img src="../../src/icons/app-target/workbuddy.png" alt="WorkBuddy" title="WorkBuddy" />
+              </span>
+            </span>
+          </button>
+          <button type="button" class="hist-task" role="listitem" data-task="3">
+            <input type="checkbox" aria-label="选择任务" />
+            <span>
+              <span class="hist-task-title"><span>投递记录（迁移）</span></span>
+              <span class="hist-task-meta">10/26 · 12 条</span>
+              <span class="hist-task-agents">
+                <img src="../../src/icons/app-target/cursor.png" alt="Cursor" title="Cursor" />
+                <span class="tag">投递</span>
+              </span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <section class="hist-main">
+        <header class="hist-main-head">
+          <div>
+            <h3>修复首页对话分层</h3>
+            <p>voice-pilot · 本机 + 桌面投递 · 更新于 23:18</p>
+          </div>
+          <div class="hist-acts">
+            <button type="button" class="btn primary">回填首页</button>
+          </div>
+        </header>
+
+        <div class="hist-timeline">
+          <div class="day-label">今天</div>
+
+          <div class="tl-event">
+            <div class="tl-time">22:51</div>
+            <div class="tl-card is-user">
+              <div class="tl-top">
+                <span class="tl-agent">我</span>
+                <span class="tl-kind">本机对话</span>
+              </div>
+              <pre class="tl-body">把首页和 WorkBuddy 对话 UI 对齐主流 agent 客户端…</pre>
+            </div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-time">22:52</div>
+            <div class="tl-card">
+              <div class="tl-top">
+                <img src="../../src/icons/app-target/workbuddy.png" alt="" />
+                <span class="tl-agent">WorkBuddy</span>
+                <span class="tl-kind">本机回复 · glm-4.6</span>
+              </div>
+              <pre class="tl-body">建议先改独立对话窗消息样式，再做任务级历史。</pre>
+            </div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-time">23:05</div>
+            <div class="tl-card is-edge">
+              <div class="tl-top">
+                <img src="../../src/icons/app-target/codex.png" alt="" />
+                <span class="tl-agent">我 → Codex</span>
+                <span class="tl-kind">桌面投递</span>
+              </div>
+              <pre class="tl-body">按预览实现 WorkBuddy 独立窗气泡分层，并升级对话历史为任务时间线。</pre>
+              <div class="tl-foot">snapshot · 1.8k 字 · 已粘贴</div>
+            </div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-time">23:11</div>
+            <div class="tl-card is-edge">
+              <div class="tl-top">
+                <img src="../../src/icons/app-target/codex.png" alt="" />
+                <span class="tl-agent">Codex</span>
+                <span class="tl-kind">投递回执</span>
+              </div>
+              <pre class="tl-body">已送达桌面 · 等待执行（≠ 执行完成）</pre>
+              <div class="tl-foot">verified paste · receipt ok</div>
+            </div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-time">23:18</div>
+            <div class="tl-card is-user">
+              <div class="tl-top">
+                <span class="tl-agent">我</span>
+                <span class="tl-kind">本机对话</span>
+              </div>
+              <pre class="tl-body">颜色不要过于丰富；历史任务用右键菜单。</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="ctx" id="ctxMenu" role="menu">
+        <button type="button" data-act="new">新建任务</button>
+        <hr />
+        <button type="button" data-act="pin" id="ctxPin">置顶</button>
+        <button type="button" data-act="rename">重命名</button>
+        <button type="button" data-act="archive">归档</button>
+        <hr />
+        <button type="button" data-act="restore">回填首页</button>
+        <button type="button" class="is-danger" data-act="delete">删除</button>
+        <hr />
+        <button type="button" data-act="batch" disabled title="先勾选多个任务">批量操作…</button>
+      </div>
+    </div>
+
+    <p class="hint-bar">提示：在左侧任务上<strong>右键</strong>打开菜单；勾选多个任务后顶部出现批量条，或右键「批量操作」。</p>
+    <div class="legend">
+      <span>浅主题气泡 = 我</span>
+      <span>白卡片 + 图标 = Agent</span>
+      <span>左侧主题细条 = 投递 / 回执</span>
+    </div>
+  </section>
+</main>
+<script>
+  (function () {
+    var ctx = document.getElementById('ctxMenu');
+    var shell = document.getElementById('histShell');
+    var batch = document.getElementById('histBatch');
+    var batchCount = document.getElementById('histBatchCount');
+    var ctxTarget = null;
+
+    document.querySelectorAll('.tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab').forEach(function (b) { b.classList.remove('is-on'); });
+        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('is-on'); });
+        btn.classList.add('is-on');
+        document.getElementById('panel-' + btn.getAttribute('data-tab')).classList.add('is-on');
+        hideCtx();
+      });
+    });
+
+    function hideCtx() {
+      ctx.classList.remove('is-on');
+      ctxTarget = null;
+    }
+
+    function showCtx(x, y, taskEl) {
+      ctxTarget = taskEl || null;
+      var pinBtn = document.getElementById('ctxPin');
+      if (taskEl && taskEl.getAttribute('data-pinned') === '1') {
+        pinBtn.textContent = '取消置顶';
+      } else {
+        pinBtn.textContent = '置顶';
+      }
+      pinBtn.disabled = !taskEl;
+      ctx.querySelector('[data-act="rename"]').disabled = !taskEl;
+      ctx.querySelector('[data-act="archive"]').disabled = !taskEl;
+      ctx.querySelector('[data-act="restore"]').disabled = !taskEl;
+      ctx.querySelector('[data-act="delete"]').disabled = !taskEl;
+      var n = selectedCount();
+      var batchBtn = ctx.querySelector('[data-act="batch"]');
+      batchBtn.disabled = n < 2;
+      batchBtn.textContent = n >= 2 ? ('批量操作（' + n + '）…') : '批量操作…';
+
+      ctx.classList.add('is-on');
+      var rect = shell.getBoundingClientRect();
+      var left = x - rect.left;
+      var top = y - rect.top;
+      var maxL = rect.width - ctx.offsetWidth - 8;
+      var maxT = rect.height - ctx.offsetHeight - 8;
+      ctx.style.left = Math.max(8, Math.min(left, maxL)) + 'px';
+      ctx.style.top = Math.max(8, Math.min(top, maxT)) + 'px';
+    }
+
+    function selectedCount() {
+      return document.querySelectorAll('.hist-task input:checked').length;
+    }
+
+    function syncBatch() {
+      var n = selectedCount();
+      batch.classList.toggle('is-on', n > 0);
+      batchCount.textContent = '已选 ' + n;
+      document.querySelectorAll('.hist-task').forEach(function (t) {
+        var on = t.querySelector('input').checked;
+        t.classList.toggle('is-selected', on);
+      });
+    }
+
+    document.getElementById('histTaskList').addEventListener('contextmenu', function (e) {
+      var task = e.target.closest('.hist-task');
+      var blank = e.target.closest('.hist-task-list');
+      if (!blank) return;
+      e.preventDefault();
+      showCtx(e.clientX, e.clientY, task);
+    });
+
+    document.getElementById('wbTaskMore').addEventListener('click', function (e) {
+      // demo: jump to history tab and open menu near corner
+      document.querySelector('.tab[data-tab="hist"]').click();
+      setTimeout(function () {
+        var first = document.querySelector('.hist-task.is-on');
+        var r = first.getBoundingClientRect();
+        showCtx(r.right - 8, r.top + 8, first);
+      }, 40);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.ctx')) hideCtx();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hideCtx();
+    });
+
+    document.getElementById('histTaskList').addEventListener('click', function (e) {
+      if (e.target.matches('input[type="checkbox"]')) {
+        syncBatch();
+        return;
+      }
+      var task = e.target.closest('.hist-task');
+      if (!task) return;
+      document.querySelectorAll('.hist-task').forEach(function (t) { t.classList.remove('is-on'); });
+      task.classList.add('is-on');
+    });
+
+    document.querySelectorAll('.hist-filter button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.hist-filter button').forEach(function (b) { b.classList.remove('is-on'); });
+        btn.classList.add('is-on');
+      });
+    });
+
+    ctx.addEventListener('click', function (e) {
+      var act = e.target.getAttribute('data-act');
+      if (!act || e.target.disabled) return;
+      if (act === 'batch') {
+        syncBatch();
+        hideCtx();
+        return;
+      }
+      var label = e.target.textContent.trim();
+      hideCtx();
+      window.alert('预览：' + label + (ctxTarget ? '' : '（空白处）'));
+    });
+
+    batch.addEventListener('click', function (e) {
+      var b = e.target.getAttribute('data-batch');
+      if (!b) return;
+      window.alert('预览：批量' + e.target.textContent.trim() + ' × ' + selectedCount());
+    });
+  })();
+</script>
+</body>
+</html>

@@ -30,7 +30,9 @@ assert.match(html, /css\/home-agent-v2\.css/);
 assert.match(html, /js\/features\/now\/home-focus-triad\.js/);
 assert.match(html, /home-focus-triad\.js[\s\S]*home-focus-view\.js/);
 assert.match(html, /js\/core\/project-path\.js/);
-assert.match(html, /project-path\.js[\s\S]*home-agent-v2-store\.js/);
+assert.match(html, /project-path\.js[\s\S]*home-agent-capabilities\.js/);
+assert.match(html, /home-agent-capabilities\.js[\s\S]*home-agent-v2-store\.js/);
+assert.match(html, /js\/features\/now\/home-agent-capabilities\.js/);
 assert.match(html, /js\/features\/now\/home-agent-v2-store\.js/);
 assert.match(html, /js\/features\/now\/home-agent-v2-dock\.js/);
 assert.match(html, /js\/features\/now\/home-agent-v2\.js/);
@@ -46,7 +48,17 @@ assert.match(workbench, /onetone\.homeSurface/);
 assert.match(workbench, /action==='homeV2'/);
 assert.match(workbench, /homeSurface','focus'/);
 
+const capsSrc = read('src/js/features/now/home-agent-capabilities.js');
+assert.match(capsSrc, /OneToneHomeAgentCapabilities/);
+assert.match(capsSrc, /projectCapabilities|projectSession|projectPermissions/);
+assert.match(capsSrc, /task_organize|projectTaskOrganize/);
+assert.match(capsSrc, /cmd_assist_run|cmd_assist_cancel/);
+assert.match(capsSrc, /available:\s*st\s*===\s*'available'/);
+assert.match(html, /home-assist-ownership\.js[\s\S]*home-assist-client\.js[\s\S]*home-prompt-prep\.js/);
+assert.doesNotMatch(capsSrc, /\blocalStorage\s*\.|\bOneToneIpc\b|\bsetInterval\s*\(|\bsetTimeout\s*\(/);
 assert.match(storeSrc, /OneToneHomeAgentV2Store/);
+assert.match(storeSrc, /wbSendMode|setWbSendMode/);
+assert.match(storeSrc, /session:|buildSessionProjection/);
 assert.match(storeSrc, /evidence:/);
 assert.match(storeSrc, /OneToneHomeFocusStore/);
 assert.match(storeSrc, /inventoryDiscovery/);
@@ -88,7 +100,8 @@ assert.match(css, /\.ha2-empty--hints/);
 assert.match(shell, /data-ha2-workspace-row/);
 assert.match(shell, /ha2WorkspaceChanges|项改动/);
 assert.match(shell, /ha2TmClean|工作区干净/);
-assert.match(shell, /changed > 0[\s\S]*ha2ViewChanges/);
+assert.match(shell, /ha2OpenProjectTimeline|打开项目时间线/);
+assert.match(shell, /resolveHomeTimelineWorkspace|targetContext\.projectPath/);
 assert.doesNotMatch(shell, /data-ha2-workspace-review|审查工作区改动/);
 // Picker anchors to trigger; aim must not treat slot index as locked.
 assert.match(shell, /positionPickerPanel/);
@@ -131,6 +144,64 @@ assert.match(shell, /ha2-channel-caps/);
 assert.match(shell, /agentCapBtn\(caps,\s*'softPad'/);
 assert.match(shell, /agentCapBtn\(caps,\s*'voice'/);
 assert.match(shell, /agentCapBtn\(caps,\s*'camera'/);
+// WorkBuddy default model switch on home dock (same account store as Soft Pad 监视中).
+assert.match(shell, /data-ha2-wb-model-host|wbModelSelectHtml/);
+assert.match(shell, /data-ha2-wb-model/);
+assert.match(shell, /cmd_workbuddy_local_account_set_model/);
+assert.match(shell, /cmd_workbuddy_local_accounts_list/);
+assert.match(css, /\.ha2-wb-model\b/);
+// P1: home local chat (default) + desktop handoff toggle; transcript separate from handoff journal.
+assert.match(shell, /cmd_workbuddy_local_chat_start/);
+assert.match(shell, /cmd_workbuddy_local_chat_poll/);
+assert.match(shell, /startWbPoll/);
+assert.doesNotMatch(shell, /maxTokens:\s*\d+/);
+assert.equal((shell.match(/function sendWbLocal/g) || []).length, 1);
+assert.equal((shell.match(/function ensureWbStreamListen/g) || []).length, 1);
+assert.match(shell, /wb_local_chat_done/);
+assert.match(shell, /wb_local_chat_delta/);
+assert.match(shell, /function sendWbLocal/);
+assert.match(shell, /openWbChatPage|data-ha2-wb-page/);
+assert.match(shell, /onWbStreamDelta/);
+assert.match(shell, /paintWbStreamingLive|wb_local_chat_delta/);
+assert.doesNotMatch(shell, /ha2WbPageChatting|正在流式回复/);
+assert.doesNotMatch(shell, /ha2-wb-page-status/);
+assert.match(css, /\.ha2-wb-page\b/);
+assert.match(read('src-tauri/src/workbuddy_local_llm.rs'), /chat_stream_poll/);
+assert.match(read('src-tauri/src/workbuddy_local_llm.rs'), /remove\("reasoning_effort"\)/);
+assert.match(
+  read('src/js/features/now/workbuddy-local-chat-window.js'),
+  /turns\s*=\s*loadTurns\(\)/
+);
+assert.match(
+  read('src/js/features/now/workbuddy-local-chat-window.js'),
+  /wb_local_chat_delta/
+);
+assert.match(read('src-tauri/src/workbuddy_local_llm.rs'), /wb_local_chat_delta/);
+assert.doesNotMatch(
+  read('src-tauri/src/workbuddy_local_llm.rs'),
+  /workbuddy_local_chat:\/\//
+);
+assert.match(shell, /wbUsesLocalChat/);
+assert.match(shell, /data-ha2-wb-mode/);
+assert.match(shell, /data-ha2-wb-transcript/);
+assert.match(shell, /WB_CHAT_KEY|onetone\.ha2\.wbChat/);
+assert.match(shell, /appendWbChatTurn/);
+assert.match(shell, /kind:\s*'local_chat'/);
+assert.match(shell, /outcome:\s*'local_replied'/);
+assert.match(shell, /empty_model_content/);
+assert.match(shell, /ha2PillLocalChat/);
+assert.match(shell, /wbMessagesForApi\(snapCtx\)|wbMessagesForApi\(snap/);
+assert.match(shell, /wbLocalSystemContent|buildLocalChatSystemPrompt/);
+assert.match(shell, /role:\s*'system'/);
+assert.doesNotMatch(shell, /archiveOnSuccess\([\s\S]{0,80}sendWbLocal|sendWbLocal[\s\S]{0,120}archiveOnSuccess/);
+// Streaming chat window asset exists.
+assert.match(
+  read('src/workbuddy-local-chat.html'),
+  /workbuddy-local-chat-window\.js|data-wb-local-chat/
+);
+assert.match(read('src/js/features/now/workbuddy-local-chat-window.js'), /wb_local_chat_delta/);
+assert.match(css, /\.ha2-wb-transcript\b/);
+assert.match(css, /\.ha2-wb-mode-btn\b/);
 // Caps left of spacer; aim lives inside agent fuse (not with channel caps).
 assert.match(
   shell,
@@ -236,6 +307,23 @@ assert.match(shell, /ha2-pulse|data-ha2-pulse/);
 assert.match(shell, /pillsHtml|data-ha2-pills/);
 assert.match(shell, /approveHtml|data-ha2-approve/);
 assert.match(shell, /ha2GoHandle|前往处理/);
+assert.match(shell, /isWaitingForUserStatus|needs\|waiting\|approval\|needsinput/);
+assert.doesNotMatch(
+  shell,
+  /function approvalTarget[\s\S]{0,400}can\([^)]*approval\.approve/
+);
+assert.match(shell, /ha2OpenProjectTimeline|打开项目时间线/);
+assert.match(shell, /resolveHomeTimelineWorkspace|targetContext\.projectPath/);
+assert.match(shell, /整理并交接任务|data-ha2-handoff/);
+assert.match(shell, /data-ha2-organize|整理任务/);
+assert.match(shell, /data-ha2-allow-metered|允许计量/);
+assert.match(shell, /data-ha2-assist-keys|data-ha2-enable-metered/);
+assert.match(shell, /formatFailureNotice|runOrganizeTask|OneToneHomeAssistClient/);
+assert.match(shell, /snapshotId/);
+assert.doesNotMatch(shell, /t\('ha2OrganizeFailed',\s*'整理失败'\)/);
+assert.match(shell, /已填入草稿/);
+assert.doesNotMatch(shell, /已开始编码/);
+assert.match(css, /\.ha2-session-chrome|\.ha2-mode-btn|\.ha2-handoff/);
 assert.match(shell, /data-ha2-go-agent/);
 assert.match(shell, /ha2-row-main/);
 assert.match(shell, /workspaceCapsuleRowHtml|data-ha2-workspace-row/);
@@ -286,18 +374,97 @@ sandbox.sessionStorage = {
     delete this._m[k];
   }
 };
+sandbox.localStorage = {
+  _m: {},
+  getItem(k) {
+    return this._m[k] != null ? this._m[k] : null;
+  },
+  setItem(k, v) {
+    this._m[k] = String(v);
+  },
+  removeItem(k) {
+    delete this._m[k];
+  }
+};
 const pathSrc = read('src/js/core/project-path.js');
 vm.createContext(sandbox);
 vm.runInContext(pathSrc, sandbox, { filename: 'project-path.js' });
 vm.runInContext(triadSrc, sandbox, { filename: 'home-focus-triad.js' });
+vm.runInContext(capsSrc, sandbox, { filename: 'home-agent-capabilities.js' });
 vm.runInContext(storeSrc, sandbox, { filename: 'home-agent-v2-store.js' });
 
 const Store = sandbox.OneToneHomeAgentV2Store;
+const Caps = sandbox.OneToneHomeAgentCapabilities;
 const Triad = sandbox.OneToneHomeFocusTriad;
 const PP = sandbox.OneToneProjectPath;
 assert.ok(Store && Store.__testOnly, 'store exports __testOnly');
+assert.ok(Caps && Caps.projectSession, 'capabilities module loaded');
 assert.ok(Triad && Triad.composerHtml && Triad.agentGridHtml);
 assert.ok(PP && PP.normalizeAbsolutePath);
+
+// --- Capability contract ---
+{
+  const local = Caps.projectSession({ selectedKind: 'workbuddy', wbSendMode: 'local', workMode: 'think' });
+  assert.equal(local.role, 'think');
+  assert.equal(local.mode, 'think');
+  assert.equal(local.modeEffective, true);
+  assert.equal(local.capabilities.text_chat.status, 'available');
+  assert.equal(local.capabilities.text_chat.available, true);
+  assert.equal(local.capabilities.approval_execute.status, 'not_wired');
+  assert.equal(local.capabilities.approval_execute.available, false);
+  assert.equal(local.capabilities.diff.status, 'partial');
+  assert.equal(local.capabilities.diff.available, false);
+  assert.match(local.capabilities.diff.reason, /项目时间线/);
+  assert.equal(local.diffRef, null);
+  assert.equal(local.sessionId, null);
+  assert.equal(local.permissions.read_project.available, false);
+  assert.equal(local.permissions.write_project.status, 'not_wired');
+
+  const desk = Caps.projectSession({ selectedKind: 'workbuddy', wbSendMode: 'desktop', workMode: 'think' });
+  assert.equal(desk.role, 'code');
+  assert.equal(desk.capabilities.text_chat.available, false);
+  assert.equal(desk.modeEffective, false);
+
+  const cursor = Caps.projectSession({ selectedKind: 'cursor', wbSendMode: 'local', workMode: 'edit' });
+  assert.equal(cursor.role, 'code');
+  assert.equal(cursor.mode, 'edit');
+  assert.equal(cursor.modeEffective, false);
+
+  // Local chat system prompt carries home project path (no fake FS).
+  assert.equal(typeof Caps.buildLocalChatSystemPrompt, 'function');
+  const withPath = Caps.buildLocalChatSystemPrompt({
+    projectPath: 'E:\\voice-pilot',
+    projectName: 'voice-pilot',
+    workTitle: 'home local chat context'
+  });
+  assert.match(withPath, /E:\\voice-pilot|E:\\\\voice-pilot/);
+  assert.match(withPath, /voice-pilot/);
+  assert.match(withPath, /home local chat context/);
+  assert.match(withPath, /不能读写磁盘|看不到磁盘/);
+  const noPath = Caps.buildLocalChatSystemPrompt({});
+  assert.match(noPath, /未选定/);
+
+  // available must derive from status — never hand-written independently
+  const entry = Caps.entry('partial', 'x', []);
+  assert.equal(entry.available, false);
+  assert.equal(Caps.entry('available', 'y', []).available, true);
+
+  assert.equal(Caps.isWaitingForUserStatus('needs_input'), true);
+  assert.equal(Caps.isWaitingForUserStatus('idle'), false);
+  assert.equal(Caps.isWaitingForUserStatus('working'), false);
+
+  assert.equal(
+    Caps.resolveHomeTimelineWorkspace({
+      projectPath: 'E:\\home-project',
+      tmWorkspace: 'D:\\tm-other'
+    }),
+    'E:\\home-project'
+  );
+  assert.equal(
+    Caps.resolveHomeTimelineWorkspace({ projectPath: null, tmWorkspace: 'D:\\tm-only' }),
+    'D:\\tm-only'
+  );
+}
 
 const cursorDto = {
   agentId: 'kind:cursor',
@@ -456,8 +623,9 @@ assert.equal(rows[0].line, 'refactor home dock');
   assert.equal(claude.status, 'needs_input');
   assert.match(claude.line, /批准 Claude/);
   assert.equal(claude.deskSource, 'needsYou');
-  // Center approve action preserved on Soft Pad wait merge
+  // Fixture may still carry phantom approval.approve; CTA must stay navigate (not_wired)
   assert.ok(claude.actions.some((a) => a.id === 'approval.approve'));
+  assert.equal(claude.primaryCta || Store.__testOnly.primaryCtaOf(claude.status, claude.actions), 'navigate');
   const cursorRow = merged.find((r) => r.kind === 'cursor');
   assert.equal(cursorRow.status, 'working');
   assert.doesNotMatch(cursorRow.line || '', /拆分首页/); // Continue suppressed while Living/working
@@ -959,17 +1127,76 @@ assert.equal(st.loadLastGood(), null);
     'Agent recentPrompt must not leak into session cards'
   );
 
-  // Soft Pad needs → navigate, not fake approve without capability
+  // Soft Pad needs → always「前往处理」; approval.approve is not_wired in Agent Center
   assert.equal(Store.__testOnly.primaryCtaOf('needs_input', []), 'navigate');
   assert.equal(
     Store.__testOnly.primaryCtaOf('needs_input', [{ id: 'approval.approve', enabled: true }]),
-    'approve'
+    'navigate'
+  );
+
+  // Idle + phantom approval.approve is NOT a waiting target (status gate only)
+  assert.equal(Caps.isWaitingForUserStatus('idle'), false);
+  assert.equal(
+    Store.__testOnly.primaryCtaOf('idle', [{ id: 'approval.approve', enabled: true }]),
+    'open'
   );
 
   // TM mismatch → no task-result semantics (workspace review gated in UI)
   state.timeMachine.workspace = 'D:\\other\\proj';
   const ctx2 = Store.resolveTargetContext();
   assert.equal(ctx2.tmWorkspaceMatched, false);
+}
+
+// --- wbSendMode in store + session role projection ---
+{
+  Store.setSelected('workbuddy', { lock: true, force: true });
+  Store.setWbSendMode('local', { force: true });
+  let snap = Store.getSnapshot();
+  assert.equal(snap.wbSendMode, 'local');
+  assert.equal(snap.session.role, 'think');
+  assert.equal(snap.session.capabilities.text_chat.available, true);
+  assert.equal(snap.session.diffRef, null);
+
+  Store.setWbSendMode('desktop');
+  snap = Store.getSnapshot();
+  assert.equal(snap.wbSendMode, 'desktop');
+  assert.equal(snap.session.role, 'code');
+  assert.equal(snap.session.capabilities.text_chat.available, false);
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.wbSendMode'), 'desktop');
+
+  Store.setWorkMode('readonly');
+  snap = Store.getSnapshot();
+  assert.equal(snap.session.mode, 'readonly');
+  assert.equal(snap.session.modeEffective, false);
+  assert.ok(snap.session.modeReason);
+
+  // All permissions not_wired / no fake toggles
+  const perms = snap.session.permissions;
+  for (const id of Caps.PERM_IDS) {
+    assert.equal(perms[id].status, 'not_wired');
+    assert.equal(perms[id].available, false);
+  }
+}
+
+// --- Fail-closed when capabilities module missing ---
+{
+  const saved = sandbox.OneToneHomeAgentCapabilities;
+  sandbox.OneToneHomeAgentCapabilities = null;
+  const closed = Store.buildSessionProjection({ projectPath: null, agentId: '' });
+  assert.equal(closed.modeEffective, false);
+  assert.match(closed.modeReason || '', /未加载/);
+  sandbox.OneToneHomeAgentCapabilities = saved;
+}
+
+// --- Handoff tracking uses handoffId, never fabricates sessionId ---
+{
+  Store.setHandoffId('handoff_test1');
+  const snap = Store.getSnapshot();
+  assert.equal(snap.handoffId, 'handoff_test1');
+  assert.equal(snap.session.handoffId, 'handoff_test1');
+  assert.equal(snap.session.sessionId, null);
+  assert.equal(snap.session.externalSessionId, null);
+  Store.setHandoffId(null);
 }
 
 console.log('test-home-agent-v2: ok');

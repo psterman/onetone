@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 第一口命令 · 第二口听写</title>
+  <style>
+    :root {
+      --ink: #1a2330; --muted: #5c6b7a; --faint: #8a97a5; --line: #d5dde6;
+      --panel: #fff; --wash: #eef2f5; --rail: #f4f6f8;
+      --teal: #0f6e6a; --teal-soft: #e3f3f1;
+      --ok: #1a7a4c; --warn: #9a5b12; --bad: #a33;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: linear-gradient(165deg, #d5e2e4 0%, #e7ecef 55%, #dce4e8 100%);
+      color: var(--ink); font: 13px/1.45 var(--font);
+    }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #16a6a0; outline-offset: 2px; }
+    code { font-family: ui-monospace, Consolas, monospace; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar em { color: #70d7cf; font-style: normal; }
+    .proto-bar .hint { margin-left: auto; color: #8ba5aa; }
+
+    .stage { width: min(1080px, calc(100% - 28px)); margin: 18px auto 40px; }
+    .stage h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+    .lede { margin: 6px 0 0; color: var(--muted); max-width: 72ch; }
+    .rule {
+      margin: 12px 0 16px; padding: 10px 12px; border-radius: 8px;
+      background: var(--teal-soft); color: var(--teal); font-size: 12px; font-weight: 650;
+    }
+
+    .lane {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
+    }
+    @media (max-width: 820px) { .lane { grid-template-columns: 1fr 1fr; } }
+    .ph {
+      border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px;
+      text-align: left; color: inherit;
+    }
+    .ph .n {
+      width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; background: var(--wash); color: var(--muted); margin-bottom: 6px;
+    }
+    .ph strong { display: block; font-size: 13px; }
+    .ph span { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .ph.is-now { border-color: #7bc4bf; background: var(--teal-soft); box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 18%, transparent); }
+    .ph.is-now .n { background: var(--teal); color: #fff; }
+    .ph.is-done { opacity: .72; }
+    .ph.is-done .n { background: #e8f6ee; color: var(--ok); }
+
+    .shell {
+      display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      min-height: 560px; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(20, 40, 50, .12);
+    }
+    @media (max-width: 820px) { .shell { grid-template-columns: 1fr; } }
+
+    .left { border-right: 1px solid var(--line); background: #fafbfc; padding: 14px; }
+    .left h2 { margin: 0 0 4px; font-size: 15px; }
+    .left .sub { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+    .ime-flag {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--line); background: #fff; font-weight: 650; font-size: 12px; margin-bottom: 12px;
+    }
+    .ime-flag[data-on="0"] { background: #f6f1ea; border-color: #ead8bf; color: var(--warn); }
+    .ime-flag[data-on="1"] { background: #e8f6ee; border-color: #b7e0c6; color: var(--ok); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .white { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .chip {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 5px 10px; font-size: 12px; color: var(--ink);
+    }
+    .chip:hover { border-color: #9bd5d1; }
+    .chip.is-hit { background: var(--teal-soft); border-color: #7bc4bf; font-weight: 650; }
+    .ghost {
+      border: 1px dashed #c5d0d8; background: #fff; border-radius: 999px;
+      padding: 5px 10px; font-size: 12px; color: var(--muted);
+    }
+
+    .log {
+      margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 12px; color: var(--muted);
+    }
+    .log li { padding: 6px 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+    .log .ok { color: var(--ok); font-weight: 650; }
+    .log .skip { color: var(--warn); }
+
+    .right { padding: 16px 18px; min-width: 0; }
+    .zone-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 6px;
+    }
+    .cursor {
+      border: 1px solid var(--line); border-radius: 12px; background: #fbfcfd; overflow: hidden;
+    }
+    .cursor-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      background: #f4f6f8; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 650;
+    }
+    .cursor-bar span { color: var(--muted); font-weight: 500; }
+    .composer {
+      min-height: 140px; margin: 12px; padding: 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: #fff; position: relative;
+    }
+    .composer.is-aim { box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 28%, transparent); border-color: #7bc4bf; }
+    .composer .ph-text { color: var(--faint); }
+    .composer .typed { color: var(--ink); white-space: pre-wrap; }
+    .caret {
+      display: none; width: 1px; height: 14px; background: var(--teal);
+      animation: blink 1s steps(1) infinite; vertical-align: -2px;
+    }
+    .composer.is-aim .caret { display: inline-block; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .ime-banner {
+      display: none; position: absolute; right: 10px; top: 10px;
+      padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+      background: #e8f6ee; color: var(--ok); border: 1px solid #b7e0c6;
+    }
+    .composer.is-ime .ime-banner { display: inline-flex; }
+
+    .now {
+      margin-top: 14px; padding: 12px; border-radius: 12px; background: var(--wash);
+      font-size: 13px;
+    }
+    .now b { color: var(--teal); }
+    .acts { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .pri {
+      border: 0; background: var(--teal); color: #fff; border-radius: 8px;
+      padding: 8px 12px; font-weight: 700;
+    }
+    .sec {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 8px 12px; color: var(--muted);
+    }
+    .keep {
+      margin-top: 16px; font-size: 11px; color: var(--faint); font-weight: 650;
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型</strong>
+    <em>方案 1 · 第一口命令窗</em>
+    <span>IME 关着听白名单 → 执行并跳框 → 气口后第二口才开听写</span>
+    <span class="hint">file: prototypes/onetone-cmd-then-second-breath.html</span>
+  </div>
+
+  <div class="stage">
+    <h1>命令与听写错开一口气</h1>
+    <p class="lede">第一口只认闭集口令（说偏一点也能中）。命中后立刻关 IME、跳到输入框，仍不听写。等气口结束，第二口开口才脉冲打开 Typeless。</p>
+    <p class="rule">规则：命令命中 = 屏蔽输入法；没命中不当命令。超时 2.5s 无声则结束，不自动开听写。</p>
+
+    <div class="lane" id="lane"></div>
+
+    <div class="shell">
+      <aside class="left">
+        <h2>第一口 · 命令窗</h2>
+        <p class="sub">麦给 OneTone。白名单可模糊；正文先不进框。</p>
+        <div class="ime-flag" id="imeFlag" data-on="0"><i class="dot"></i><span>语音输入法 · 关</span></div>
+        <div class="white">
+          <button class="chip" type="button" data-say="plan" data-fuzzy="false">Plan</button>
+          <button class="chip" type="button" data-say="plan" data-fuzzy="true">普兰</button>
+          <button class="chip" type="button" data-say="continue" data-fuzzy="false">继续</button>
+          <button class="chip" type="button" data-say="newThread" data-fuzzy="false">新建</button>
+          <button class="ghost" type="button" data-say="noise">帮我写个函数…</button>
+        </div>
+        <ul class="log" id="log"></ul>
+      </aside>
+      <section class="right">
+        <div class="zone-tag">Cursor · Agent 输入框</div>
+        <div class="cursor">
+          <div class="cursor-bar">Chat <span id="aimLbl">未聚焦</span></div>
+          <div class="composer" id="composer">
+            <span class="ime-banner">Typeless 听写中</span>
+            <span class="ph-text" id="phText">第一口不会写到这里</span>
+            <span class="typed" id="typed"></span><i class="caret"></i>
+          </div>
+        </div>
+        <div class="now" id="now"></div>
+        <div class="acts">
+          <button class="pri" type="button" id="btnBreath" hidden>第二口开口 · 开听写</button>
+          <button class="sec" type="button" id="btnTimeout" hidden>2.5s 无声 · 结束</button>
+          <button class="sec" type="button" id="btnReset">重来</button>
+        </div>
+        <p class="keep">不改产品 runtime。点白名单 = 模拟第一口；「普兰」演示说错仍执行。</p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    var PHASES = [
+      { id: 'cmd', title: '第一口', desc: 'IME 关 · 只听白名单' },
+      { id: 'run', title: '执行跳框', desc: '仍不打开输入法' },
+      { id: 'gap', title: '等气口', desc: '第一口结束' },
+      { id: 'dict', title: '第二口', desc: '开口才开听写' }
+    ];
+    var phase = 'cmd';
+    var typed = '';
+    var lastCmd = '';
+
+    function $(id) { return document.getElementById(id); }
+
+    function paintLane() {
+      var order = ['cmd', 'run', 'gap', 'dict'];
+      var idx = order.indexOf(phase);
+      $('lane').innerHTML = PHASES.map(function (p, i) {
+        var cls = 'ph';
+        if (p.id === phase) cls += ' is-now';
+        else if (i < idx) cls += ' is-done';
+        return '<div class="' + cls + '"><div class="n">' + (i + 1) + '</div><strong>' + p.title + '</strong><span>' + p.desc + '</span></div>';
+      }).join('');
+    }
+
+    function setIme(on) {
+      var el = $('imeFlag');
+      el.setAttribute('data-on', on ? '1' : '0');
+      el.querySelector('span').textContent = on ? '语音输入法 · 开' : '语音输入法 · 关';
+      $('composer').classList.toggle('is-ime', on);
+    }
+
+    function setAim(on) {
+      $('composer').classList.toggle('is-aim', on);
+      $('aimLbl').textContent = on ? '已跳到输入框' : '未聚焦';
+    }
+
+    function log(html) {
+      var li = document.createElement('li');
+      li.innerHTML = html;
+      $('log').prepend(li);
+    }
+
+    function paintNow() {
+      var copy = {
+        cmd: '现在：<b>命令窗</b>。点左侧口令（含「普兰」= 说错仍执行）。长句不当命令。',
+        run: '已执行 <b>' + lastCmd + '</b> 并聚焦输入框。IME 仍关，避免口令进框。',
+        gap: '气口中。超时无声则结束；第二口开口才开 Typeless。',
+        dict: '第二口开始。输入法打开，之后说的才写入框。'
+      };
+      $('now').innerHTML = copy[phase];
+      $('btnBreath').hidden = phase !== 'gap';
+      $('btnTimeout').hidden = phase !== 'gap';
+      if (typed) {
+        $('phText').hidden = true;
+        $('typed').textContent = typed;
+      } else {
+        $('phText').hidden = false;
+        $('phText').textContent = phase === 'dict' ? '对着麦克风说正文…' : '第一口不会写到这里';
+        $('typed').textContent = '';
+      }
+    }
+
+    function go(next) {
+      phase = next;
+      paintLane();
+      paintNow();
+    }
+
+    document.querySelector('.white').addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-say]');
+      if (!btn) return;
+      var say = btn.getAttribute('data-say');
+      var fuzzy = btn.getAttribute('data-fuzzy') === 'true';
+      var label = btn.textContent.trim();
+      if (phase !== 'cmd' && phase !== 'run') {
+        log('<span class="skip">已过命令窗，忽略「' + label + '」</span>');
+        return;
+      }
+      if (say === 'noise') {
+        log('<span class="skip">未命中白名单 · 不当命令 · IME 仍关</span>');
+        return;
+      }
+      lastCmd = label;
+      document.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('is-hit', c === btn); });
+      log('<span class="ok">' + (fuzzy ? '模糊命中 Plan' : '命中 ' + label) + ' · 关 IME · 跳框</span>');
+      setIme(false);
+      setAim(true);
+      go('run');
+      setTimeout(function () {
+        if (phase === 'run') go('gap');
+      }, 420);
+    });
+
+    $('btnBreath').onclick = function () {
+      setIme(true);
+      typed = '帮我把这段测试改成可跑的断言。';
+      log('<span class="ok">第二口开口 · 脉冲打开 Typeless</span>');
+      go('dict');
+    };
+    $('btnTimeout').onclick = function () {
+      setIme(false);
+      log('<span class="skip">2.5s 无声 · 不自动开听写</span>');
+      $('now').innerHTML = '会话结束。只下了命令，没有第二口。';
+      $('btnBreath').hidden = true;
+      $('btnTimeout').hidden = true;
+    };
+    $('btnReset').onclick = function () {
+      typed = ''; lastCmd = '';
+      document.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('is-hit'); });
+      $('log').innerHTML = '';
+      setIme(false); setAim(false);
+      go('cmd');
+    };
+
+    setIme(false); setAim(false); go('cmd');
+  </script>
+</body>
+</html>

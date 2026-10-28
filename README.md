@@ -350,3 +350,8 @@ powershell -NoProfile -Command "Get-ChildItem E:\voice-pilot\daily-image-site\to
   实测首屏可交互 104 ms，日常够用。若要更快，可把图片改挂阿里云 OSS + 国内 CDN。
 - **不做历史清理**：`published/` 和 R2 会随天数线性增长。R2 免费额度 10 GB，
   按 20 MB/天算够用一年多；Pages 静态文件不占 R2 额度。
+
+test111
+
+
+222

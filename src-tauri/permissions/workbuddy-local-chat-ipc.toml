@@ -1,0 +1,17 @@
+[[set]]
+identifier = "workbuddy-local-chat-ipc"
+description = "IPC for the OneTone WorkBuddy local streaming chat window"
+permissions = [
+  "allow-cmd-workbuddy-local-chat-start",
+  "allow-cmd-workbuddy-local-chat-cancel",
+  "allow-cmd-workbuddy-local-chat-poll",
+  "allow-cmd-workbuddy-local-chat-window-open",
+  "allow-cmd-workbuddy-local-accounts-list",
+  "allow-cmd-workbuddy-local-account-set-model",
+  "core:window:allow-close",
+  "core:window:allow-hide",
+  "core:window:allow-show",
+  "core:window:allow-set-focus",
+  "core:window:allow-start-dragging",
+  "core:window:allow-set-always-on-top",
+]

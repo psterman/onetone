@@ -10,6 +10,7 @@
   var LAST_GOOD_MAX_AGE_MS = 5 * 60 * 1000;
   var COALESCE_MS = 120;
   var POLL_MS = 15000;
+  var WB_MODE_KEY = 'onetone.ha2.wbSendMode';
 
   var CATALOG = [
     { id: 'codex', name: 'Codex', appId: 'codex-chat', icon: 'icons/app-target/codex.png' },
@@ -43,6 +44,12 @@
     targets: [],
     selectedKind: null,
     userLocked: false,
+    /** WorkBuddy send mode: local = in-app chat; desktop = paste to exe. */
+    wbSendMode: 'local',
+    /** User intent for home session: think | readonly | edit */
+    workMode: 'think',
+    /** Honest handoff tracking — never a fake external sessionId. */
+    handoffId: null,
     /** Absolute project path locked with Agent when userLocked. */
     lockedProjectPath: null,
     lockedProjectSource: null,
@@ -84,6 +91,26 @@
   var refreshGen = 0;
   var lastRefreshAt = 0;
   var composing = false;
+
+  function capsApi() {
+    return global.OneToneHomeAgentCapabilities || null;
+  }
+
+  function loadWbSendMode() {
+    try {
+      var v = global.localStorage && global.localStorage.getItem(WB_MODE_KEY);
+      if (v === 'desktop' || v === 'local') return v;
+    } catch (_) {}
+    return 'local';
+  }
+
+  function persistWbSendMode(mode) {
+    try {
+      if (global.localStorage) global.localStorage.setItem(WB_MODE_KEY, mode);
+    } catch (_) {}
+  }
+
+  state.wbSendMode = loadWbSendMode();
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -281,12 +308,8 @@
   }
 
   function primaryCtaOf(status, actions) {
-    if (
-      /needs|waiting|approval|needsinput/.test(String(status || '')) &&
-      (actionEnabled(actions, 'approval.approve') || actionEnabled(actions, 'approval.reject'))
-    ) {
-      return 'approve';
-    }
+    // ponytail: Agent Center never emits approval.approve/reject (not_wired). Waiting
+    // →「前往处理」only; do not treat phantom approve actions as executable auth.
     if (/needs|waiting|approval|needsinput/.test(String(status || ''))) {
       return 'navigate';
     }
@@ -1266,11 +1289,49 @@
     }
   }
 
+  function buildSessionProjection(targetContext) {
+    var Caps = capsApi();
+    var ctx = targetContext || resolveTargetContext();
+    var input = {
+      selectedKind: state.selectedKind,
+      wbSendMode: state.wbSendMode,
+      workMode: state.workMode,
+      projectPath: ctx.projectPath || null,
+      agentId: ctx.agentId || null,
+      handoffId: state.handoffId
+    };
+    if (Caps && typeof Caps.projectSession === 'function') {
+      return Caps.projectSession(input);
+    }
+    // Fail-closed when capabilities module missing — never open permissions.
+    return {
+      sessionId: null,
+      externalSessionId: null,
+      handoffId: state.handoffId,
+      title: '',
+      role:
+        state.selectedKind === 'workbuddy' && state.wbSendMode === 'local'
+          ? 'think'
+          : 'code',
+      mode: state.workMode === 'readonly' || state.workMode === 'edit' ? state.workMode : 'think',
+      modeEffective: false,
+      modeReason: '能力投影模块未加载',
+      projectPath: ctx.projectPath || null,
+      agentKind: state.selectedKind,
+      agentId: ctx.agentId || null,
+      capabilities: Caps && Caps.closedCapabilities ? Caps.closedCapabilities() : {},
+      permissions: Caps && Caps.closedPermissions ? Caps.closedPermissions() : {},
+      diffRef: null,
+      execution: 'idle'
+    };
+  }
+
   function getSnapshot() {
     var vm = state.focusVm;
     var mode = (vm && vm.mode) || 'quiet';
     var project = (state.focusDto && state.focusDto.project) || null;
     var targetContext = resolveTargetContext();
+    var session = buildSessionProjection(targetContext);
     return {
       loadPhase: state.loadPhase,
       error: state.error,
@@ -1285,9 +1346,13 @@
       homeSnap: state.homeSnap,
       timeMachine: state.timeMachine,
       selectedKind: state.selectedKind,
+      wbSendMode: state.wbSendMode,
+      workMode: state.workMode,
+      handoffId: state.handoffId,
       userLocked: state.userLocked,
       lockedProjectPath: state.lockedProjectPath,
       targetContext: targetContext,
+      session: session,
       validationNotice: state.validationNotice,
       deliveryReceipt: state.deliveryReceipt,
       actionReceipt: state.actionReceipt,
@@ -1724,8 +1789,9 @@
   }
 
   /**
-   * Delivery attempt result only.
-   * outcome: pasted_confirmed | activated_confirmed | attempted | failed | delivery_attempt
+   * Delivery / local-chat attempt result only.
+   * outcome: pasted_confirmed | activated_confirmed | local_replied | attempted | failed | delivery_attempt
+   * kind: 'local_chat' marks in-app WorkBuddy LLM (not desktop paste).
    */
   function setDeliveryReceipt(receipt) {
     state.deliveryReceipt = receipt || null;
@@ -1735,6 +1801,7 @@
       var verified =
         receipt.outcome === 'pasted_confirmed' ||
         receipt.outcome === 'activated_confirmed' ||
+        receipt.outcome === 'local_replied' ||
         !!(receipt.verified || receipt.inputConfirmed);
       state.evidence.delivery = {
         source: 'cmd_agent_center_action',
@@ -1756,6 +1823,38 @@
     opts = opts || {};
     state.draft = String(text == null ? '' : text);
     if (opts.lock) state.userLocked = true;
+    if (!opts.silent) emit();
+  }
+
+  function setWbSendMode(mode, opts) {
+    opts = opts || {};
+    var Caps = capsApi();
+    var next =
+      Caps && Caps.normalizeWbSendMode
+        ? Caps.normalizeWbSendMode(mode)
+        : mode === 'desktop'
+          ? 'desktop'
+          : 'local';
+    if (state.wbSendMode === next && !opts.force) return;
+    state.wbSendMode = next;
+    persistWbSendMode(next);
+    if (!opts.silent) emit();
+  }
+
+  function setWorkMode(mode, opts) {
+    opts = opts || {};
+    var Caps = capsApi();
+    var next =
+      Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(mode) : String(mode || 'think');
+    if (next !== 'think' && next !== 'readonly' && next !== 'edit') next = 'think';
+    if (state.workMode === next && !opts.force) return;
+    state.workMode = next;
+    if (!opts.silent) emit();
+  }
+
+  function setHandoffId(id, opts) {
+    opts = opts || {};
+    state.handoffId = id != null && String(id).trim() ? String(id).trim() : null;
     if (!opts.silent) emit();
   }
 
@@ -1939,6 +2038,9 @@
     normalizePath: normalizePath,
     pathsEqual: pathsEqual,
     setDraft: setDraft,
+    setWbSendMode: setWbSendMode,
+    setWorkMode: setWorkMode,
+    setHandoffId: setHandoffId,
     setComposing: setComposing,
     isComposing: isComposing,
     setAim: setAim,
@@ -1946,6 +2048,7 @@
     setVisible: setVisible,
     syncMaterialsFromPrep: syncMaterialsFromPrep,
     mayAct: mayAct,
+    buildSessionProjection: buildSessionProjection,
     __testOnly: {
       projectAgent: projectAgent,
       resolveKind: resolveKind,
@@ -1981,6 +2084,11 @@
       normalizePath: normalizePath,
       pathsEqual: pathsEqual,
       primaryCtaOf: primaryCtaOf,
+      buildSessionProjection: buildSessionProjection,
+      setWbSendMode: setWbSendMode,
+      setWorkMode: setWorkMode,
+      setHandoffId: setHandoffId,
+      WB_MODE_KEY: WB_MODE_KEY,
       COALESCE_MS: COALESCE_MS,
       LAST_GOOD_KEY: LAST_GOOD_KEY,
       LAST_GOOD_MAX_AGE_MS: LAST_GOOD_MAX_AGE_MS,

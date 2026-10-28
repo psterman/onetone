@@ -575,6 +575,18 @@
   function assembledText(fallback) {
     var Prep = global.OneToneHomePromptPrep;
     var text = fallback || '';
+    // Prefer ownership send body (organized body is source of truth; never re-render structured).
+    if (Prep && typeof Prep.buildSendBody === 'function') {
+      try {
+        if (Prep.setDraftBody && Prep._model && Prep._model().activeDraft !== 'organized') {
+          Prep.setDraftBody(text, { skipSync: true });
+        }
+        var send = Prep.buildSendBody({ attachEvidence: true });
+        if (send && String(send.body || '').trim()) {
+          return String(send.body);
+        }
+      } catch (_) {}
+    }
     if (Prep && Prep.setDraftBody) {
       try {
         Prep.setDraftBody(text, { skipSync: true });

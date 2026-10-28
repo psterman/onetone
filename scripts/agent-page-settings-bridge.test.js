@@ -17,7 +17,60 @@ assert.strictEqual(bridge.MSG_TYPE, 'ot-agent-settings');
 assert.strictEqual(bridge.CMD_TYPE, 'ot-agent-settings-cmd');
 assert.strictEqual(bridge.kindFromApp('Cursor'), 'cursor');
 assert.strictEqual(bridge.kindFromApp('Codex'), 'codex');
+assert.strictEqual(bridge.kindFromApp('WorkBuddy'), 'workbuddy');
 assert.strictEqual(bridge.appFromKind('claude'), 'Claude');
+assert.strictEqual(bridge.appFromKind('workbuddy'), 'WorkBuddy');
+
+var wbEmpty = bridge.projectWorkbuddyLocal(null);
+assert.strictEqual(wbEmpty.configured, false);
+assert.strictEqual(wbEmpty.defaultAccountId, '');
+assert.ok(Array.isArray(wbEmpty.accounts));
+
+var wbSnap = bridge.projectWorkbuddyLocal({
+  defaultAccountId: 'wb_2',
+  oauthPending: {
+    pendingId: 'pending_1',
+    authUrl: 'https://example.com/a',
+    region: 'cn',
+    expiresAt: 99
+  },
+  accounts: [
+    {
+      id: 'wb_1',
+      label: 'A',
+      authKind: 'api_key',
+      enabled: false,
+      isDefault: false,
+      keyFingerprint: 'aaaa',
+      verifyStatus: 'ok',
+      selectedModel: 'm1',
+      models: [{ id: 'm1', name: 'M1' }]
+    },
+    {
+      id: 'wb_2',
+      label: 'B',
+      authKind: 'oauth',
+      uid: 'u99',
+      enabled: true,
+      isDefault: true,
+      keyFingerprint: 'bbbb',
+      verifyStatus: 'ok',
+      selectedModel: 'm2',
+      models: [{ id: 'm2', name: 'M2' }]
+    }
+  ]
+});
+assert.strictEqual(wbSnap.configured, true);
+assert.strictEqual(wbSnap.defaultAccountId, 'wb_2');
+assert.strictEqual(wbSnap.defaultLabel, 'B');
+assert.strictEqual(wbSnap.defaultFingerprint, 'bbbb');
+assert.strictEqual(wbSnap.defaultAuthKind, 'oauth');
+assert.strictEqual(wbSnap.accounts.length, 2);
+assert.strictEqual(wbSnap.accounts[1].modelCount, 1);
+assert.strictEqual(wbSnap.accounts[1].authKind, 'oauth');
+assert.strictEqual(wbSnap.accounts[0].authKind, 'api_key');
+assert.ok(wbSnap.oauthPending);
+assert.strictEqual(wbSnap.oauthPending.pendingId, 'pending_1');
 
 assert.ok(/没接上/.test(bridge.connectJobLead('not_configured', 'Codex')));
 assert.ok(!/还没接上/.test(bridge.connectJobLead('connected', 'Codex')));
@@ -54,6 +107,8 @@ assert.ok(/已接通/.test(snapOk.connect.jobLead));
 assert.strictEqual(snapOk.ambient.enabled, false);
 assert.strictEqual(snapOk.keyLights.enabled, true);
 assert.strictEqual(snapOk.padEnabled, true);
+assert.ok(snapOk.workbuddyLocal);
+assert.strictEqual(snapOk.workbuddyLocal.configured, false);
 
 var src = fs.readFileSync(
   path.join(root, 'src/js/features/agent/agent-page-settings-bridge.js'),
@@ -67,6 +122,13 @@ assert.ok(src.includes("cmd === 'refreshConnect'"));
 assert.ok(src.includes("cmd === 'copyHookConfig'"));
 assert.ok(src.includes("cmd === 'enableCursorActivity'"));
 assert.ok(src.includes("cmd === 'selectAgent'"));
+assert.ok(src.includes("cmd === 'wbLocalAdd'"));
+assert.ok(src.includes("cmd === 'wbLocalOauthStart'"));
+assert.ok(src.includes("cmd === 'wbLocalOauthPoll'"));
+assert.ok(src.includes("cmd === 'wbLocalOauthCancel'"));
+assert.ok(src.includes('cmd_workbuddy_local_oauth_start'));
+assert.ok(src.includes('cmd_workbuddy_local_accounts_list'));
+assert.ok(src.includes('projectWorkbuddyLocal'));
 assert.ok(src.includes('setScreenOpacity'));
 assert.ok(src.includes('screenOpacity'));
 assert.ok(src.includes('cmd_codex_micro_pad_set_flags'));
@@ -163,6 +225,18 @@ assert.ok(agentPage.includes('浮窗透明度'));
 assert.ok(agentPage.includes('paintFloatOpacity'));
 assert.ok(agentPage.includes('data-settings-act'));
 assert.ok(agentPage.includes('postSettingsCmd'));
+assert.ok(agentPage.includes('workbuddyLocalPanelHtml'));
+assert.ok(agentPage.includes('workbuddyDefaultModelSelectHtml'));
+assert.ok(agentPage.includes('本机模型 · 账号'));
+assert.ok(agentPage.includes('登录（浏览器）'));
+assert.ok(agentPage.includes('data-wb-act'));
+assert.ok(agentPage.includes('wbLocalAdd'));
+assert.ok(agentPage.includes('wbLocalOauthStart'));
+assert.ok(agentPage.includes('ensureWbOauthPoll'));
+// After login, default model switch sits on Soft Pad 监视中 home row (not buried in account acts).
+assert.ok(agentPage.includes('workbuddyDefaultModelSelectHtml(snap.workbuddyLocal||{})'));
+assert.ok(agentPage.includes('wbRowModel+'));
+assert.ok(agentPage.includes("select[data-wb-act]"));
 assert.ok(!/badge warn">还没接上</.test(agentPage));
 assert.ok(agentPage.includes('phaseBadgeHtml') || agentPage.includes('phaseLabel'));
 

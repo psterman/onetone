@@ -22,6 +22,186 @@
   var pickerReposTimer = 0;
   /** 'menu' = top-right vertical list; 'dock' = dock grid. Never share one panel. */
   var pickerSurface = null;
+  /** WorkBuddy local-account projection for dock model switch (same store as Soft Pad). */
+  var wbLocalCache = null;
+  var wbLocalFetchGen = 0;
+  /** Home local chat (separate from handoff journal). */
+  var WB_CHAT_KEY = 'onetone.ha2.wbChat.v1';
+  var WB_CHAT_MAX = 40;
+  var wbChatTurns = [];
+  var wbTranscriptCollapsed = false;
+  var wbChatBusy = false;
+  var wbChatPaintGen = 0;
+  /** Active streaming run id for local chat. */
+  var wbStreamRunId = '';
+  var wbStreamAgentName = 'WorkBuddy';
+  var wbStreamProjectLeaf = '';
+  var wbStreamModel = '';
+  var wbDoneUnsub = null;
+  var wbDeltaUnsub = null;
+  /** In-app chat page (left meta + right streaming Q&A). */
+  var wbChatPageOpen = false;
+  var wbStreamingText = '';
+  var wbStreamingTurnId = '';
+  var wbPollTimer = 0;
+  /** Handoff draft editor open (summary → draft only; no auto-send). */
+  var handoffOpen = false;
+  var handoffSummary = '';
+  var handoffTargetKind = '';
+  /** Assist organize in-flight (UI busy; Prep.assist is source of truth). */
+  var organizeBusy = false;
+  var assistReadyCache = null;
+
+  function loadWbChatTurns() {
+    try {
+      var raw = global.localStorage && global.localStorage.getItem(WB_CHAT_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed && parsed.turns) ? parsed.turns.filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveWbChatTurns() {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(
+          WB_CHAT_KEY,
+          JSON.stringify({ turns: wbChatTurns.slice(-WB_CHAT_MAX), at: Date.now() })
+        );
+      }
+    } catch (_) {}
+  }
+
+  function wbSendModeOf(snap) {
+    var S = store();
+    if (snap && snap.wbSendMode) return snap.wbSendMode === 'desktop' ? 'desktop' : 'local';
+    if (S && S.getSnapshot) {
+      var s = S.getSnapshot();
+      if (s && s.wbSendMode === 'desktop') return 'desktop';
+    }
+    return 'local';
+  }
+
+  function appendWbChatTurn(turn) {
+    turn = turn || {};
+    var row = {
+      id: turn.id || 't_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
+      role: turn.role === 'assistant' ? 'assistant' : 'user',
+      text: String(turn.text || ''),
+      model: turn.model ? String(turn.model) : '',
+      accountId: turn.accountId ? String(turn.accountId) : '',
+      at: turn.at || Date.now()
+    };
+    if (!row.text) return null;
+    wbChatTurns.push(row);
+    if (wbChatTurns.length > WB_CHAT_MAX) wbChatTurns = wbChatTurns.slice(-WB_CHAT_MAX);
+    saveWbChatTurns();
+    var J = global.OneToneHomeTaskJournal;
+    if (J && typeof J.appendChatTurn === 'function') {
+      try {
+        J.appendChatTurn({
+          id: row.id,
+          at: row.at,
+          role: row.role,
+          text: row.text,
+          model: row.model,
+          accountId: row.accountId,
+          agentKind: 'workbuddy'
+        });
+      } catch (_) {}
+    }
+    return row;
+  }
+
+  function wbLocalPromptInput(snap) {
+    snap = snap || (store() && store().getSnapshot && store().getSnapshot()) || {};
+    var ctx = snap.targetContext || {};
+    var session = snap.session || {};
+    var project = snap.project || {};
+    var focusLive = null;
+    try {
+      focusLive =
+        (global.OneToneHomeFocusStore &&
+          global.OneToneHomeFocusStore.get &&
+          global.OneToneHomeFocusStore.get()) ||
+        null;
+    } catch (_) {}
+    var focusProject = (focusLive && focusLive.project) || project || {};
+    var path =
+      (ctx && ctx.projectPath) ||
+      session.projectPath ||
+      focusProject.root ||
+      focusProject.path ||
+      project.root ||
+      project.path ||
+      null;
+    var name =
+      focusProject.name ||
+      project.name ||
+      project.displayName ||
+      project.display_name ||
+      (snap.focusVm && snap.focusVm.projectName) ||
+      '';
+    if (!name && path) {
+      name = targetProjectLabel({ targetContext: { projectPath: path } });
+      if (name === t('ha2NoProject', '未选项目')) name = '';
+    }
+    var focusWork = (focusLive && focusLive.work) || {};
+    var work =
+      (snap.focusVm &&
+        (snap.focusVm.headline ||
+          snap.focusVm.assistance ||
+          snap.focusVm.line ||
+          snap.focusVm.title ||
+          snap.focusVm.workTitle)) ||
+      focusWork.title ||
+      focusWork.currentTask ||
+      focusWork.current_task ||
+      focusWork.nextAction ||
+      focusWork.next_action ||
+      '';
+    var mats = (snap.materials || [])
+      .map(function (m) {
+        return (m && (m.title || m.name || m.label || m.path)) || '';
+      })
+      .filter(Boolean);
+    return {
+      projectPath: path,
+      projectName: name,
+      workTitle: work,
+      materialNames: mats
+    };
+  }
+
+  function wbLocalSystemContent(snap) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    var input = wbLocalPromptInput(snap);
+    if (Caps && typeof Caps.buildLocalChatSystemPrompt === 'function') {
+      return Caps.buildLocalChatSystemPrompt(input);
+    }
+    var path = String((input && input.projectPath) || '').trim();
+    return path
+      ? '当前项目路径：' + path + '\n请在该项目语境下回答；不要假装能读写磁盘。'
+      : '当前未选定项目；请说明缺少项目语境后再作仓库相关回答。';
+  }
+
+  function wbMessagesForApi(snap) {
+    var turns = wbChatTurns
+      .filter(function (t) {
+        return t && (t.role === 'user' || t.role === 'assistant') && String(t.text || '').trim();
+      })
+      .slice(-24)
+      .map(function (t) {
+        return { role: t.role, content: String(t.text) };
+      });
+    var system = wbLocalSystemContent(snap);
+    if (system) turns.unshift({ role: 'system', content: system });
+    return turns;
+  }
+
+  wbChatTurns = loadWbChatTurns();
 
   function toast(msg) {
     var T = global.OneToneToast;
@@ -123,6 +303,277 @@
     return ipc && ipc.invoke
       ? ipc.invoke(cmd, args || {})
       : Promise.reject(new Error('ipc_unavailable'));
+  }
+
+  function projectWbLocal(raw) {
+    var Bridge = global.OneToneAgentPageSettingsBridge;
+    if (Bridge && typeof Bridge.projectWorkbuddyLocal === 'function') {
+      return Bridge.projectWorkbuddyLocal(raw);
+    }
+    return { configured: false, defaultAccountId: '', accounts: [] };
+  }
+
+  function wbDefaultAccount(wb) {
+    wb = wb || wbLocalCache || {};
+    var defId = String(wb.defaultAccountId || '');
+    var accounts = Array.isArray(wb.accounts) ? wb.accounts : [];
+    var def = null;
+    var i;
+    for (i = 0; i < accounts.length; i++) {
+      if (accounts[i] && String(accounts[i].id || '') === defId) {
+        def = accounts[i];
+        break;
+      }
+    }
+    if (!def) {
+      for (i = 0; i < accounts.length; i++) {
+        if (accounts[i] && accounts[i].enabled && accounts[i].isDefault) {
+          def = accounts[i];
+          break;
+        }
+      }
+    }
+    if (!def) {
+      for (i = 0; i < accounts.length; i++) {
+        if (accounts[i] && accounts[i].enabled) {
+          def = accounts[i];
+          break;
+        }
+      }
+    }
+    return def && def.enabled ? def : null;
+  }
+
+  /** Same default-account model list Soft Pad「监视中」row uses. */
+  function wbModelSelectHtml(kind) {
+    if (String(kind || '') !== 'workbuddy') return '';
+    var def = wbDefaultAccount(wbLocalCache);
+    if (!def) return '';
+    var models = Array.isArray(def.models) ? def.models : [];
+    if (!models.length) return '';
+    var opts = models
+      .map(function (m) {
+        m = m || {};
+        var id = String(m.id || '');
+        var sel = id && id === String(def.selectedModel || '') ? ' selected' : '';
+        return (
+          '<option value="' +
+          esc(id) +
+          '"' +
+          sel +
+          '>' +
+          esc(m.name || id) +
+          '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<select class="ha2-wb-model" data-ha2-wb-model data-wb-id="' +
+      esc(def.id) +
+      '" title="' +
+      esc(t('ha2WbModel', '模型')) +
+      '" aria-label="' +
+      esc(t('ha2WbModel', '模型')) +
+      '">' +
+      opts +
+      '</select>'
+    );
+  }
+
+  function wbModelSig(kind) {
+    if (String(kind || '') !== 'workbuddy') return '';
+    var def = wbDefaultAccount(wbLocalCache);
+    if (!def) return '';
+    var models = Array.isArray(def.models) ? def.models : [];
+    if (!models.length) return '';
+    return (
+      String(def.id || '') +
+      '\0' +
+      String(def.selectedModel || '') +
+      '\0' +
+      models
+        .map(function (m) {
+          return String((m && m.id) || '');
+        })
+        .join(',')
+    );
+  }
+
+  function syncWbModelHost(kind) {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-wb-model-host]');
+    if (!host) return;
+    var sig = wbModelSig(kind);
+    if (host.getAttribute('data-sig') === sig) return;
+    host.setAttribute('data-sig', sig);
+    host.innerHTML = wbModelSelectHtml(kind);
+  }
+
+  function refreshWbLocal(force) {
+    if (!force && wbLocalCache) return Promise.resolve(wbLocalCache);
+    var gen = ++wbLocalFetchGen;
+    return invoke('cmd_workbuddy_local_accounts_list', {})
+      .then(function (res) {
+        if (gen !== wbLocalFetchGen) return wbLocalCache;
+        wbLocalCache = projectWbLocal(res);
+        return wbLocalCache;
+      })
+      .catch(function () {
+        if (gen !== wbLocalFetchGen) return wbLocalCache;
+        wbLocalCache = projectWbLocal(null);
+        return wbLocalCache;
+      });
+  }
+
+  function ensureWbModelForDock(kind) {
+    kind = String(kind || '');
+    if (kind !== 'workbuddy') {
+      syncWbModelHost(kind);
+      syncWbChatChrome(kind);
+      return;
+    }
+    syncWbModelHost(kind);
+    syncWbChatChrome(kind);
+    refreshWbLocal(!wbLocalCache).then(function () {
+      if (!mounted) return;
+      syncWbModelHost('workbuddy');
+      syncWbChatChrome('workbuddy');
+    });
+  }
+
+  function wbSelectedModelId() {
+    var el = root && root.querySelector('[data-ha2-wb-model]');
+    if (el && el.value) return String(el.value);
+    var def = wbDefaultAccount(wbLocalCache);
+    return def ? String(def.selectedModel || '') : '';
+  }
+
+  /** local = in-app WorkBuddy LLM; desktop = paste into WorkBuddy.exe. */
+  function wbUsesLocalChat(kind, snap) {
+    return String(kind || '') === 'workbuddy' && wbSendModeOf(snap) !== 'desktop';
+  }
+
+  function openWbAgentConfig() {
+    var Nav = global.OneToneAgentNavTarget;
+    if (Nav && Nav.open) {
+      Nav.open({ view: 'overview', section: 'working', provider: 'workbuddy' });
+      return;
+    }
+    var S = store();
+    if (S && S.setSelected) S.setSelected('workbuddy', { lock: true, force: true });
+    if (S) S.setView('agent');
+  }
+
+  function wbModeToggleHtml(kind, snap) {
+    if (String(kind || '') !== 'workbuddy') return '';
+    var mode = wbSendModeOf(snap);
+    var busy = wbChatBusy ? ' disabled aria-disabled="true"' : '';
+    return (
+      '<span class="ha2-wb-mode" role="group" aria-label="' +
+      esc(t('ha2WbSendMode', '发送方式')) +
+      '">' +
+      '<button type="button" class="ha2-wb-mode-btn' +
+      (mode === 'local' ? ' is-on' : '') +
+      '" data-ha2-wb-mode="local"' +
+      busy +
+      ' title="' +
+      esc(t('ha2WbModeLocalHint', '本机大模型对话，不打开 WorkBuddy 窗口')) +
+      '">' +
+      esc(t('ha2WbModeLocal', '本机')) +
+      '</button>' +
+      '<button type="button" class="ha2-wb-mode-btn' +
+      (mode === 'desktop' ? ' is-on' : '') +
+      '" data-ha2-wb-mode="desktop"' +
+      busy +
+      ' title="' +
+      esc(t('ha2WbModeDesktopHint', '粘贴到桌面 WorkBuddy')) +
+      '">' +
+      esc(t('ha2WbModeDesktop', '桌面')) +
+      '</button></span>'
+    );
+  }
+
+  var WB_CHAT_ICON = 'icons/app-target/workbuddy.png';
+
+  function wbTurnRoleHtml(role, modelId) {
+    if (role === 'assistant') {
+      return (
+        '<img class="ha2-wb-turn-ico" src="' +
+        esc(WB_CHAT_ICON) +
+        '" alt="" />' +
+        '<span>' +
+        esc(t('ha2WbRoleAssistant', 'WorkBuddy')) +
+        '</span>' +
+        (modelId
+          ? '<span class="ha2-wb-turn-meta">· ' + esc(modelId) + '</span>'
+          : '')
+      );
+    }
+    return (
+      '<span class="ha2-wb-avatar-me" aria-hidden="true">' +
+      esc(t('ha2WbRoleUser', '我')) +
+      '</span><span>' +
+      esc(t('ha2WbRoleUser', '我')) +
+      '</span>'
+    );
+  }
+
+  function wbTranscriptHtml(kind) {
+    if (String(kind || '') !== 'workbuddy') return '';
+    if (!wbChatTurns.length) return '';
+    var collapsed = wbTranscriptCollapsed;
+    var body = collapsed
+      ? ''
+      : '<div class="ha2-wb-transcript-body" data-ha2-wb-transcript-body>' +
+        wbChatTurns
+          .slice(-16)
+          .map(function (turn) {
+            var role = turn.role === 'assistant' ? 'assistant' : 'user';
+            return (
+              '<div class="ha2-wb-turn ha2-wb-turn--' +
+              role +
+              '"><span class="ha2-wb-turn-role">' +
+              wbTurnRoleHtml(role, turn.model) +
+              '</span><pre class="ha2-wb-turn-text">' +
+              esc(turn.text) +
+              '</pre></div>'
+            );
+          })
+          .join('') +
+        '</div>';
+    return (
+      '<div class="ha2-wb-transcript' +
+      (collapsed ? ' is-collapsed' : '') +
+      '" data-ha2-wb-transcript>' +
+      '<div class="ha2-wb-transcript-head">' +
+      '<button type="button" class="ha2-link" data-ha2-wb-transcript-toggle>' +
+      esc(
+        collapsed
+          ? t('ha2WbTranscriptExpand', '展开对话') + ' · ' + wbChatTurns.length
+          : t('ha2WbTranscriptCollapse', '收起对话')
+      ) +
+      '</button>' +
+      '<button type="button" class="ha2-link ha2-wb-transcript-clear" data-ha2-wb-chat-clear>' +
+      esc(t('ha2WbChatClear', '清空')) +
+      '</button></div>' +
+      body +
+      '</div>'
+    );
+  }
+
+  function syncWbChatChrome(kind) {
+    if (!root) return;
+    var snap = store() && store().getSnapshot ? store().getSnapshot() : null;
+    var host = root.querySelector('[data-ha2-wb-transcript-host]');
+    if (host) host.innerHTML = wbTranscriptHtml(kind);
+    var modeHost = root.querySelector('[data-ha2-wb-mode-host]');
+    if (modeHost) {
+      var html = wbModeToggleHtml(kind, snap);
+      if (modeHost.getAttribute('data-sig') !== html) {
+        modeHost.setAttribute('data-sig', html);
+        modeHost.innerHTML = html;
+      }
+    }
   }
 
   function iconHtml(cat, cls) {
@@ -364,22 +815,34 @@
   function pillsHtml(snap) {
     var receipt = snap && (snap.deliveryReceipt || snap.receipt);
     var notice = snap && snap.validationNotice;
-    var deliv = t('ha2PillNoDelivery', '尚未投递');
+    var receiptLocal = !!(receipt && receipt.kind === 'local_chat');
+    var modeLocal = wbUsesLocalChat((snap && snap.selectedKind) || '', snap);
+    var isLocalChat = receiptLocal || (!receipt && modeLocal);
+    var deliv = isLocalChat
+      ? t('ha2PillNoLocalChat', '尚未本机对话')
+      : t('ha2PillNoDelivery', '尚未投递');
     var tone = '';
     if (notice && notice.kind === 'missing_project') {
       deliv = notice.message || t('ha2NeedProject', '先选定项目');
       tone = ' is-warn';
     } else if (receipt) {
       if (receipt.phase === 'sending' || receipt.outcome === 'delivery_attempt') {
-        deliv = receipt.title || t('ha2PillSending', '正在尝试投递');
+        deliv =
+          receipt.title ||
+          (receiptLocal ? t('ha2WbChatting', '正在回复…') : t('ha2PillSending', '正在尝试投递'));
       } else if (receipt.phase === 'failed' || receipt.outcome === 'failed') {
-        deliv = receipt.title || t('ha2PillFailed', '投递失败');
+        deliv =
+          receipt.title ||
+          (receiptLocal ? t('ha2WbChatFailed', '本机对话失败') : t('ha2PillFailed', '投递失败'));
         tone = ' is-warn';
       } else if (receipt.outcome === 'pasted_confirmed') {
         deliv = receipt.title || t('ha2PillPasted', '已确认粘贴');
         tone = ' is-ok';
       } else if (receipt.outcome === 'activated_confirmed') {
         deliv = receipt.title || t('ha2PillActivated', '已确认唤起');
+        tone = ' is-ok';
+      } else if (receipt.outcome === 'local_replied') {
+        deliv = receipt.title || t('ha2WbReplied', '本机对话已回复');
         tone = ' is-ok';
       } else if (receipt.outcome === 'attempted') {
         deliv = receipt.title || t('ha2PillAttempted', '结果未确认');
@@ -395,18 +858,26 @@
       '<span class="ha2-pill' +
       tone +
       '"><i aria-hidden="true"></i><span class="ha2-pill-lbl">' +
-      esc(t('ha2PillDelivery', '投递')) +
+      esc(
+        receiptLocal || isLocalChat
+          ? t('ha2PillLocalChat', '本机对话')
+          : t('ha2PillDelivery', '投递')
+      ) +
       '</span><span class="ha2-pill-val">' +
       esc(truncateLabel(deliv, 28)) +
       '</span></span></div>'
     );
   }
 
-  /** Agent that can be approved inline (prefer selected). */
+  /**
+   * Waiting-for-user target. Never treat phantom approval.approve as eligibility —
+   * Agent Center does not wire that action; only real needs/waiting status qualifies.
+   */
   function approvalTarget(snap) {
     function eligible(a) {
       if (!a) return false;
-      if (can(a.actions, 'approval.approve') || can(a.actions, 'approval.reject')) return true;
+      var Caps = global.OneToneHomeAgentCapabilities;
+      if (Caps && Caps.isWaitingForUserStatus) return Caps.isWaitingForUserStatus(a.status);
       return /needs|waiting|approval|needsinput/.test(String(a.status || ''));
     }
     // Prefer merged workRows (Center ∪ Soft Pad desk) so Soft Pad wait isn't a second strip.
@@ -427,36 +898,16 @@
   function approveHtml(snap) {
     var agent = approvalTarget(snap);
     if (!agent) return '';
-    var acts = [];
-    if (can(agent.actions, 'approval.reject')) {
-      acts.push(
-        '<button type="button" class="ha2-btn" data-ha2-action="approval.reject" data-agent="' +
-          esc(agent.agentId) +
-          '">' +
-          esc(t('ha2Reject', '拒绝')) +
-          '</button>'
-      );
-    }
-    if (can(agent.actions, 'approval.approve')) {
-      acts.push(
-        '<button type="button" class="ha2-btn primary" data-ha2-action="approval.approve" data-agent="' +
-          esc(agent.agentId) +
-          '">' +
-          esc(t('ha2Approve', '批准')) +
-          '</button>'
-      );
-    }
-    if (!acts.length) {
-      acts.push(
-        '<button type="button" class="ha2-btn primary" data-ha2-go-agent="' +
-          esc(agent.kind || '') +
-          '" data-agent="' +
-          esc(agent.agentId || '') +
-          '">' +
-          esc(t('ha2GoHandle', '前往处理')) +
-          '</button>'
-      );
-    }
+    // Backend does not wire approval.approve/reject yet — never label「批准/已允许」.
+    var acts = [
+      '<button type="button" class="ha2-btn primary" data-ha2-go-agent="' +
+        esc(agent.kind || '') +
+        '" data-agent="' +
+        esc(agent.agentId || '') +
+        '">' +
+        esc(t('ha2GoHandle', '前往处理')) +
+        '</button>'
+    ];
     return (
       '<div class="ha2-approve" data-ha2-approve role="status">' +
       '<div class="ha2-approve-copy"><b>' +
@@ -509,6 +960,235 @@
     return { html: '', kind: null };
   }
 
+  function sessionModeLabel(mode) {
+    if (mode === 'readonly') return t('ha2ModeReadonly', '只读分析');
+    if (mode === 'edit') return t('ha2ModeEdit', '修改代码');
+    return t('ha2ModeThink', '思考 / 方案');
+  }
+
+  function sessionChromeHtml(snap) {
+    var session = snap && snap.session;
+    if (!session) return '';
+    var role = session.role || 'code';
+    var mode = session.mode || 'think';
+    var effective = !!session.modeEffective;
+    var roleHint =
+      role === 'think'
+        ? t('ha2RoleThink', '讨论与整理')
+        : t('ha2RoleCode', '投递到代码 Agent');
+    var modes = [
+      { id: 'think', label: sessionModeLabel('think') },
+      { id: 'readonly', label: sessionModeLabel('readonly') },
+      { id: 'edit', label: sessionModeLabel('edit') }
+    ];
+    var modeBtns = modes
+      .map(function (m) {
+        var on = m.id === mode;
+        var disabled =
+          m.id === 'readonly'
+            ? !(session.capabilities && session.capabilities.read_project && session.capabilities.read_project.available)
+            : m.id === 'edit'
+              ? !(
+                  session.capabilities &&
+                  session.capabilities.write_project &&
+                  session.capabilities.write_project.available
+                )
+              : false;
+        // think always selectable as intent; effective still gated by text_chat.
+        var title = disabled
+          ? t('ha2ModeNotWired', '暂未接入') +
+            (m.id === 'readonly'
+              ? ' · ' + ((session.capabilities.read_project && session.capabilities.read_project.reason) || '')
+              : ' · ' + ((session.capabilities.write_project && session.capabilities.write_project.reason) || ''))
+          : on && !effective && session.modeReason
+            ? session.modeReason
+            : m.label;
+        return (
+          '<button type="button" class="ha2-mode-btn' +
+          (on ? ' is-on' : '') +
+          (disabled ? ' is-disabled' : '') +
+          '"' +
+          (disabled ? ' disabled aria-disabled="true"' : '') +
+          ' data-ha2-work-mode="' +
+          esc(m.id) +
+          '" title="' +
+          esc(title) +
+          '">' +
+          esc(m.label) +
+          (disabled ? ' · ' + esc(t('ha2NotWiredShort', '暂未接入')) : '') +
+          '</button>'
+        );
+      })
+      .join('');
+
+    var perms = session.permissions || {};
+    var permIds = Object.keys(perms);
+    var permBits = [];
+    var pi;
+    for (pi = 0; pi < permIds.length; pi++) {
+      var p = perms[permIds[pi]];
+      if (p && p.available) continue; // only toggles for available — none today
+      permBits.push(
+        '<li class="ha2-perm-item is-pending" data-perm="' +
+          esc(permIds[pi]) +
+          '"><span>' +
+          esc(permIds[pi]) +
+          '</span><em>' +
+          esc(t('ha2PermPending', '暂未接入')) +
+          '</em></li>'
+      );
+    }
+
+    var handoffBtn = '';
+    if (role === 'think' && wbChatTurns.length) {
+      handoffBtn =
+        '<button type="button" class="ha2-link" data-ha2-handoff-open>' +
+        esc(t('ha2HandoffOpen', '整理并交接任务')) +
+        '</button>';
+    }
+
+    return (
+      '<div class="ha2-session-chrome" data-ha2-session-chrome>' +
+      '<div class="ha2-session-role"><b>' +
+      esc(roleHint) +
+      '</b>' +
+      (effective
+        ? ''
+        : '<span class="ha2-session-mode-note">' +
+          esc(session.modeReason || t('ha2ModeIneffective', '当前模式尚未真正生效')) +
+          '</span>') +
+      handoffBtn +
+      '</div>' +
+      '<div class="ha2-mode-row" role="group" aria-label="' +
+      esc(t('ha2WorkMode', '工作模式')) +
+      '">' +
+      modeBtns +
+      '</div>' +
+      (permBits.length
+        ? '<ul class="ha2-perm-list" data-ha2-perm-list aria-label="' +
+          esc(t('ha2Permissions', '权限')) +
+          '">' +
+          permBits.join('') +
+          '</ul>'
+        : '') +
+      handoffPanelHtml(snap) +
+      '</div>'
+    );
+  }
+
+  function buildHandoffSummaryFromChat() {
+    var turns = wbChatTurns.slice(-12);
+    if (!turns.length) return '';
+    var lines = [];
+    var i;
+    for (i = 0; i < turns.length; i++) {
+      var turn = turns[i];
+      if (!turn || !turn.text) continue;
+      var who = turn.role === 'assistant' ? '助手' : '我';
+      lines.push(who + '：' + String(turn.text).replace(/\s+/g, ' ').trim());
+    }
+    var body = lines.join('\n');
+    if (body.length > 1200) body = body.slice(0, 1200) + '…';
+    return t('ha2HandoffLead', '请按以下整理后的任务继续处理：') + '\n\n' + body;
+  }
+
+  function handoffPanelHtml(snap) {
+    if (!handoffOpen) return '';
+    var catalog = (snap && snap.catalog) || [];
+    var opts = catalog
+      .filter(function (c) {
+        return c && c.id && c.id !== 'workbuddy';
+      })
+      .map(function (c) {
+        var sel = handoffTargetKind === c.id ? ' selected' : '';
+        return (
+          '<option value="' + esc(c.id) + '"' + sel + '>' + esc(c.name || c.id) + '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="ha2-handoff" data-ha2-handoff role="region" aria-label="' +
+      esc(t('ha2HandoffOpen', '整理并交接任务')) +
+      '">' +
+      '<label class="ha2-handoff-label">' +
+      esc(t('ha2HandoffSummary', '任务摘要（可编辑）')) +
+      '</label>' +
+      '<textarea class="ha2-handoff-summary" data-ha2-handoff-summary rows="5">' +
+      esc(handoffSummary) +
+      '</textarea>' +
+      '<label class="ha2-handoff-label">' +
+      esc(t('ha2HandoffTarget', '目标 Agent')) +
+      '</label>' +
+      '<select class="ha2-handoff-target" data-ha2-handoff-target>' +
+      '<option value="">' +
+      esc(t('ha2PickAgent', '选择 Agent')) +
+      '</option>' +
+      opts +
+      '</select>' +
+      '<div class="ha2-handoff-acts">' +
+      '<button type="button" class="ha2-btn primary" data-ha2-handoff-apply>' +
+      esc(t('ha2HandoffApply', '填入草稿')) +
+      '</button>' +
+      '<button type="button" class="ha2-btn" data-ha2-handoff-cancel>' +
+      esc(t('ha2HandoffCancel', '取消')) +
+      '</button></div>' +
+      '<p class="ha2-handoff-hint">' +
+      esc(t('ha2HandoffHint', '不会自动发送；确认后点底栏发送才会投递。原对话会保留。')) +
+      '</p></div>'
+    );
+  }
+
+  function applyHandoffToDraft() {
+    var S = store();
+    if (!S) return;
+    var summary = String(handoffSummary || '').trim();
+    var host = root && root.querySelector('[data-ha2-handoff-summary]');
+    if (host) summary = String(host.value || '').trim();
+    var sel = root && root.querySelector('[data-ha2-handoff-target]');
+    var target = sel ? String(sel.value || '').trim() : handoffTargetKind;
+    if (!summary) {
+      S.setValidationNotice({
+        kind: 'handoff_empty',
+        message: t('ha2HandoffNeedSummary', '先整理一段任务摘要')
+      });
+      return;
+    }
+    if (!target) {
+      S.setValidationNotice({
+        kind: 'handoff_no_target',
+        message: t('ha2HandoffNeedTarget', '先选择要交接的 Agent')
+      });
+      return;
+    }
+    var prevDraft = S.getSnapshot && S.getSnapshot().draft;
+    var handoffId = 'handoff_' + Date.now().toString(36);
+    try {
+      S.setHandoffId(handoffId, { silent: true });
+      S.setSelected(target, { lock: true, force: true, closePicker: true });
+      S.setDraft(summary, { silent: true });
+      handoffOpen = false;
+      handoffSummary = summary;
+      handoffTargetKind = target;
+      syncDraftMirrors(summary);
+      S.setValidationNotice({
+        kind: 'handoff_drafted',
+        message: t('ha2HandoffDrafted', '已填入草稿') + ' · ' + target
+      });
+      // Keep WorkBuddy transcript — do not clear wbChatTurns.
+      if (S.emit) {
+        /* getSnapshot emit via setValidationNotice */
+      }
+      paint(S.getSnapshot());
+    } catch (e) {
+      if (prevDraft != null) S.setDraft(prevDraft, { silent: true });
+      S.setValidationNotice({
+        kind: 'handoff_failed',
+        message: t('ha2HandoffFailed', '交接失败，已保留原对话与草稿')
+      });
+      paint(S.getSnapshot());
+    }
+  }
+
   function situationHtml(snap) {
     var ctx = contextLabels();
     var task = taskVm(snap);
@@ -528,6 +1208,7 @@
       '</b> ' +
       esc(ctx.habit) +
       '</button></div>' +
+      sessionChromeHtml(snap) +
       '<div class="ha2-task">' +
       '<div class="ha2-task-body">' +
       (task.kicker
@@ -634,15 +1315,6 @@
     // Avoid duplicate approve when the top approve bar already covers this agent.
     var bar = approvalTarget(snap);
     if ((cta === 'approve' || cta === 'navigate') && bar && bar.kind === r.kind) cta = 'open';
-    if (cta === 'approve' && can(r.actions, 'approval.approve')) {
-      return (
-        '<button type="button" class="ha2-btn primary ha2-row-cta" data-ha2-action="approval.approve" data-agent="' +
-        esc(r.agentId) +
-        '">' +
-        esc(t('ha2Approve', '批准')) +
-        '</button>'
-      );
-    }
     if (cta === 'navigate' || cta === 'approve') {
       return (
         '<button type="button" class="ha2-btn primary ha2-row-cta" data-ha2-go-agent="' +
@@ -788,13 +1460,44 @@
   function validationNoticeHtml(snap) {
     var n = snap && snap.validationNotice;
     if (!n) return '';
+    var isWbCfg = n.kind === 'wb_no_account';
+    var isAssistFail = n.kind === 'assist_failed' || n.kind === 'assist_missing';
+    var reason = n.reason ? String(n.reason) : '';
+    var hint = isWbCfg
+      ? t('ha2WbNeedAccountHint', '账号与 Key 只在 Agent 页管理')
+      : isAssistFail
+        ? (reason
+            ? t('ha2AssistReasonCode', '原因码') + ': ' + reason
+            : t('ha2AssistCanDirectSend', '整理失败不影响直接发送原稿'))
+        : t('ha2ValidationHint', '尚未尝试投递');
+    var cta = '';
+    if (isWbCfg) {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-open-wb-config>' +
+        esc(t('ha2WbGoConfig', '去配置')) +
+        '</button>';
+    } else if (reason === 'no_key') {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-assist-keys>' +
+        esc(t('ha2AssistKeysShort', '密钥')) +
+        '</button>';
+    } else if (reason === 'no_free_model') {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-enable-metered>' +
+        esc(t('ha2AllowMetered', '允许计量额度')) +
+        '</button>';
+    }
     return (
-      '<div class="ha2-receipt ha2-validation-notice" data-receipt-kind="validation">' +
+      '<div class="ha2-receipt ha2-validation-notice" data-receipt-kind="validation"' +
+      (reason ? ' data-assist-reason="' + esc(reason) + '"' : '') +
+      '>' +
       '<span class="ha2-receipt-mark">!</span><div class="ha2-grow"><b>' +
       esc(n.message || t('ha2NeedProject', '先选定项目')) +
       '</b><small>' +
-      esc(t('ha2ValidationHint', '尚未尝试投递')) +
-      '</small></div></div>'
+      esc(hint) +
+      '</small></div>' +
+      cta +
+      '</div>'
     );
   }
 
@@ -806,12 +1509,18 @@
     var sending =
       receipt.phase === 'sending' || receipt.outcome === 'delivery_attempt';
     var mark = sending ? '…' : failed ? '!' : '✓';
+    var snapId = receipt.snapshotId ? String(receipt.snapshotId) : '';
+    var snapLine = snapId
+      ? ' · snapshotId ' + snapId
+      : '';
     return (
       '<div class="ha2-receipt ha2-delivery-receipt" data-phase="' +
       esc(receipt.phase || receipt.outcome || '') +
       '" data-receipt-kind="delivery" data-outcome="' +
       esc(receipt.outcome || '') +
-      '"><span class="ha2-receipt-mark">' +
+      '"' +
+      (snapId ? ' data-snapshot-id="' + esc(snapId) + '"' : '') +
+      '><span class="ha2-receipt-mark">' +
       mark +
       '</span><div class="ha2-grow"><b>' +
       esc(receipt.title) +
@@ -819,6 +1528,7 @@
       esc(receipt.message || '') +
       (receipt.message ? ' · ' : '') +
       esc(t('ha2DeliveryReceiptHint', '投递回执')) +
+      esc(snapLine) +
       '</small></div>' +
       (failed
         ? '<button type="button" class="ha2-btn" data-ha2-retry>' +
@@ -929,42 +1639,52 @@
     var tag;
     var note;
     var tagTone = '';
-    var action = t('ha2OpenTimeCapsule', '打开');
+    // Home has no session-bound Diff — always open project timeline (prefer home project).
+    var action = t('ha2OpenProjectTimeline', '打开项目时间线');
     var tipLabel = tm && (tm.tipLabel || tm.tip_label || tm.tipId || tm.tip_id);
-    if (!tm) {
+    var homePath = (ctx && ctx.projectPath) || (snap.session && snap.session.projectPath) || '';
+    if (homePath) {
+      var homeLeaf = '';
+      if (PP && PP.pathLeaf) homeLeaf = PP.pathLeaf(homePath) || '';
+      else {
+        var hp = String(homePath).replace(/[\\/]+$/, '').split(/[\\/]/);
+        homeLeaf = hp[hp.length - 1] || homePath;
+      }
+      if (homeLeaf) title = homeLeaf + ' 工作区';
+    }
+    if (!tm && !homePath) {
       tag = t('ha2TmLoadingTag', '读取中');
       note = t('ha2TmLoading', '正在读取 Git 状态…');
-    } else if (block) {
+    } else if (!homePath && !path) {
+      tag = t('ha2TmNoProjectTag', '未接入');
+      note = t('ha2TmNoProject', '选择项目后可查看改动与恢复点');
+    } else if (block && (!homePath || targetPathMatchedTm(snap))) {
       tag = t('ha2TmNeedsAttention', '需处理');
       note = String(block);
       tagTone = ' is-wait';
-    } else if (!path) {
-      tag = t('ha2TmNoProjectTag', '未接入');
-      note = t('ha2TmNoProject', '选择项目后可查看改动与恢复点');
-    } else if (ctx && ctx.projectPath && !targetPathMatchedTm(snap)) {
-      tag = t('ha2TmOtherProjectTag', '其他项目');
-      note = t('ha2TmOtherProject', '时间胶囊当前连接到另一个项目');
+    } else if (homePath && path && !targetPathMatchedTm(snap)) {
+      tag = t('ha2TmOtherProjectTag', '将打开当前项目');
+      note = t('ha2TmOpenHomeProject', '时间胶囊当前连着其他目录；入口会打开本页确认的项目');
       tagTone = ' is-wait';
-    } else if (!isGit) {
+    } else if (!isGit && path && targetPathMatchedTm(snap)) {
       tag = t('ha2TmUnprotected', '未保护');
       note = t('ha2TmNotGit', '当前项目还不是 Git 仓库');
       tagTone = ' is-wait';
-    } else if (changed > 0) {
+    } else if (changed > 0 && targetPathMatchedTm(snap)) {
       tag = changed + t('ha2WorkspaceChanges', ' 项改动');
       note = tipLabel
         ? t('ha2RecentProtectPoint', '最近保护点') + ' · ' + tipLabel
         : t('ha2TmDirtyHint', '打开后可查看恢复点和影响文件');
-      action = t('ha2ViewChanges', '查看改动');
     } else {
       tag = t('ha2TmClean', '工作区干净');
       note = tipLabel
         ? t('ha2RecentProtectPoint', '最近保护点') + ' · ' + tipLabel
-        : t('ha2TmCleanHint', '可随时保存或回到已有恢复点');
+        : t('ha2TmTimelineHint', '打开项目时间线查看恢复点（首页无会话绑定 Diff）');
     }
     return (
       '<article class="ha2-row ha2-workspace-row" data-ha2-workspace-row>' +
       '<button type="button" class="ha2-row-main" data-ha2-tm aria-label="' +
-      esc(t('ha2TmOpenHint', '打开项目时间胶囊')) +
+      esc(t('ha2OpenProjectTimeline', '打开项目时间线')) +
       '"><span class="ha2-workspace-icon" aria-hidden="true">' +
       '<svg viewBox="0 0 24 24" focusable="false"><path d="M3.5 6.5h6l1.8 2h9.2v9H3.5z"/><path d="M3.5 8.5h17"/></svg>' +
       '</span><div class="ha2-row-body"><div class="ha2-row-title"><b>' +
@@ -984,11 +1704,22 @@
   function openTimeCapsule() {
     var S = store();
     var snap = S && S.getSnapshot ? S.getSnapshot() : null;
-    var tm = snap && snap.timeMachine;
+    var ctx = snap && snap.targetContext;
+    var session = snap && snap.session;
+    var Caps = global.OneToneHomeAgentCapabilities;
+    // Prefer home-confirmed project — TM current workspace may be a different folder.
     var ws =
-      tm && (tm.workspace || tm.workspacePath)
-        ? String(tm.workspace || tm.workspacePath)
-        : '';
+      Caps && Caps.resolveHomeTimelineWorkspace
+        ? Caps.resolveHomeTimelineWorkspace({
+            projectPath:
+              (ctx && ctx.projectPath) || (session && session.projectPath) || null,
+            tmWorkspace: tmWorkspaceRaw(snap)
+          })
+        : (ctx && ctx.projectPath) ||
+          (session && session.projectPath) ||
+          tmWorkspaceRaw(snap) ||
+          '';
+    ws = String(ws || '').trim();
     var Nav = global.OneToneAgentNavTarget;
     if (Nav && typeof Nav.open === 'function') {
       if (Nav.open({ view: 'capsule', workspace: ws || null })) return;
@@ -1431,7 +2162,23 @@
       send();
       return;
     }
+    if (
+      (e.key === 'Enter' || e.key === 'NumpadEnter') &&
+      (e.ctrlKey || e.metaKey) &&
+      e.target &&
+      e.target.matches &&
+      e.target.matches('[data-ha2-wb-page-draft]')
+    ) {
+      e.preventDefault();
+      sendWbPageDraft();
+      return;
+    }
     if (e.key !== 'Escape') return;
+    if (wbChatPageOpen) {
+      e.preventDefault();
+      closeWbChatPage();
+      return;
+    }
     var S = store();
     var snap = S && S.getSnapshot ? S.getSnapshot() : null;
     if (snap && snap.pickerOpen) {
@@ -1543,6 +2290,9 @@
     var sendOk = canSendNow(snap);
     return (
       '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop>' +
+      '<div data-ha2-wb-transcript-host>' +
+      wbTranscriptHtml(c.id) +
+      '</div>' +
       '<div class="ha2-compose"><label class="ha2-sr-only" for="ha2-draft-input">' +
       esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
       '</label><textarea id="ha2-draft-input" class="ha2-editor" data-ha2-draft aria-label="' +
@@ -1583,6 +2333,12 @@
       '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
       esc(projectLabel) +
       '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>' +
+      '<span class="ha2-wb-mode-host" data-ha2-wb-mode-host>' +
+      wbModeToggleHtml(c.id, snap) +
+      '</span>' +
+      '<span class="ha2-wb-model-host" data-ha2-wb-model-host>' +
+      wbModelSelectHtml(c.id) +
+      '</span>' +
       aimChipHtml(hasAim) +
       '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
       (hasAim ? '' : ' hidden') +
@@ -1591,19 +2347,56 @@
       '">' +
       esc(t('ha2AimClear', '清除')) +
       '</button></div>' +
+      '<button type="button" class="ha2-link ha2-pcx" data-ha2-pcx title="' +
+      esc(t('ha2AddProjectMaterials', '添加工程材料')) +
+      '"' +
+      (global.OneToneHomeProjectContext &&
+      global.OneToneHomeProjectContext.featureEnabled &&
+      global.OneToneHomeProjectContext.featureEnabled()
+        ? ''
+        : ' hidden') +
+      '>' +
+      esc(t('ha2AddProjectMaterials', '添加工程材料')) +
+      '</button>' +
+      '<button type="button" class="ha2-btn ha2-organize" data-ha2-organize title="' +
+      esc(t('ha2OrganizeTask', '整理任务')) +
+      '">' +
+      esc(t('ha2OrganizeTask', '整理任务')) +
+      '</button>' +
+      '<button type="button" class="ha2-link ha2-organize-cancel" data-ha2-organize-cancel hidden>' +
+      esc(t('ha2OrganizeCancel', '取消整理')) +
+      '</button>' +
+      '<label class="ha2-metered-toggle" title="' +
+      esc(
+        t(
+          'ha2AllowMeteredTitle',
+          '允许计量额度：会产生费用；关闭时仅尝试零价模型'
+        )
+      ) +
+      '"><input type="checkbox" data-ha2-allow-metered />' +
+      esc(t('ha2AllowMetered', '允许计量额度')) +
+      '</label>' +
+      '<button type="button" class="ha2-link" data-ha2-assist-keys title="' +
+      esc(t('ha2AssistKeys', '配置 Soft Pad 提供商密钥')) +
+      '">' +
+      esc(t('ha2AssistKeysShort', '密钥')) +
+      '</button>' +
       '<button type="button" class="ha2-send" data-ha2-send ' +
       (sendOk ? '' : 'disabled') +
       ' title="' +
       esc(
         sendOk
-          ? t('ha2SendHint', '发送（Ctrl+Enter）')
+          ? wbUsesLocalChat(c.id, snap)
+            ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+            : t('ha2SendHint', '发送（Ctrl+Enter）')
           : !c.id
             ? t('ha2PickAgent', '选择 Agent')
             : t('ha2SendNeedDraft', '先写一句再发送')
       ) +
       '" aria-label="' +
       esc(t('ha2Send', '发送')) +
-      '">↑</button></div></section></div>'
+      '">↑</button></div>' +
+      '<p class="ha2-send-scope-hint" data-ha2-send-scope-hint></p></section></div>'
     );
   }
 
@@ -1707,12 +2500,22 @@
     if (!shellBuilt) {
       root.className = 'now-home is-home-agent-v2';
       root.innerHTML =
-        '<div class="ha2-shell"><header class="ha2-top"><div class="ha2-crumb" data-ha2-crumb></div></header><main class="ha2-main"><div class="ha2-content" data-ha2-content></div></main><div data-ha2-picker-host></div><div data-ha2-dock-host></div></div>';
+        '<div class="ha2-shell"><header class="ha2-top"><div class="ha2-crumb" data-ha2-crumb></div></header><main class="ha2-main"><div class="ha2-content" data-ha2-content></div></main><div data-ha2-picker-host></div><div data-ha2-dock-host></div><div class="ha2-wb-page-host" data-ha2-wb-page-host hidden></div></div>';
       shellBuilt = true;
       var dockHost = root.querySelector('[data-ha2-dock-host]');
       if (dockHost) dockHost.innerHTML = dockStaticHtml(snap);
       var ta = root.querySelector('[data-ha2-draft]');
       if (ta) ta.value = snap.draft || '';
+    }
+    if (!root.querySelector('[data-ha2-wb-page-host]')) {
+      var shell = root.querySelector('.ha2-shell');
+      if (shell) {
+        var pageHost = document.createElement('div');
+        pageHost.className = 'ha2-wb-page-host';
+        pageHost.setAttribute('data-ha2-wb-page-host', '');
+        pageHost.hidden = true;
+        shell.appendChild(pageHost);
+      }
     }
   }
 
@@ -1834,18 +2637,24 @@
     var appId = c.appId || '';
     var aim = (snap.aimByAppId && snap.aimByAppId[appId]) || {};
     syncAimChip(!!aim.hasActive);
+    ensureWbModelForDock(c.id);
 
     var sendBtn = root.querySelector('[data-ha2-send]');
     if (sendBtn) {
       var draftNow = snap.draft || (ta && ta.value) || '';
-      var ok = canSendNow(snap, draftNow);
+      var ok = canSendNow(snap, draftNow) && !wbChatBusy;
       sendBtn.disabled = !ok;
       sendBtn.title = ok
-        ? t('ha2SendHint', '发送（Ctrl+Enter）')
-        : !c.id
-          ? t('ha2PickAgent', '选择 Agent')
-          : t('ha2SendNeedDraft', '先写一句再发送');
+        ? wbUsesLocalChat(c.id, snap)
+          ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+          : t('ha2SendHint', '发送（Ctrl+Enter）')
+        : wbChatBusy
+          ? t('ha2WbChatting', '正在回复…')
+          : !c.id
+            ? t('ha2PickAgent', '选择 Agent')
+            : t('ha2SendNeedDraft', '先写一句再发送');
     }
+    syncOrganizeChrome();
 
     var addWrap = root.querySelector('.ha2-add-wrap');
     if (addWrap) {
@@ -1975,6 +2784,683 @@
       });
   }
 
+  function paintWbTranscript() {
+    if (!root) return;
+    var snap = store() && store().getSnapshot();
+    var kind = (snap && snap.selectedKind) || '';
+    syncWbChatChrome(kind);
+    var host = root.querySelector('[data-ha2-wb-transcript-host]');
+    if (host && !wbTranscriptCollapsed && wbChatTurns.length) {
+      try {
+        host.scrollTop = host.scrollHeight;
+      } catch (_) {}
+    }
+    if (wbChatPageOpen) paintWbChatPage();
+  }
+
+  function wbPageTurnsForPaint() {
+    var list = wbChatTurns.slice();
+    if (wbChatBusy) {
+      var last = list[list.length - 1];
+      var streamText = wbStreamingText || '…';
+      if (last && last.role === 'assistant' && last.id === wbStreamingTurnId) {
+        list[list.length - 1] = Object.assign({}, last, { text: streamText, streaming: true });
+      } else {
+        list.push({
+          id: wbStreamingTurnId || 'stream_live',
+          role: 'assistant',
+          text: streamText,
+          streaming: true
+        });
+      }
+    }
+    return list;
+  }
+
+  function wbChatPageHtml() {
+    var snap = store() && store().getSnapshot();
+    var promptIn = {};
+    try {
+      promptIn = wbLocalPromptInput(snap) || {};
+    } catch (_) {}
+    var projectLeaf =
+      wbStreamProjectLeaf || String(promptIn.projectName || '').trim() || t('ha2NoProject', '未选项目');
+    var model = wbStreamModel || wbSelectedModelId() || '';
+    var J = global.OneToneHomeTaskJournal;
+    var activeTask = null;
+    try {
+      if (J && J.getActiveTaskId && J.getTask) {
+        activeTask = J.getTask(J.getActiveTaskId());
+      }
+    } catch (_) {}
+    var taskTitle =
+      (activeTask && activeTask.title) || t('ha2WbTaskDefault', '本机对话');
+    var turns = wbPageTurnsForPaint();
+    var body =
+      turns
+        .map(function (turn) {
+          var role = turn.role === 'assistant' ? 'assistant' : 'user';
+          return (
+            '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
+            role +
+            (turn.streaming ? ' is-streaming' : '') +
+            '"><span class="ha2-wb-page-turn-role">' +
+            wbTurnRoleHtml(role, turn.model || model) +
+            '</span><pre class="ha2-wb-page-turn-text">' +
+            esc(turn.text || '') +
+            '</pre></div>'
+          );
+        })
+        .join('') ||
+      '<div class="ha2-wb-page-empty">' +
+        esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
+        '</div>';
+    return (
+      '<div class="ha2-wb-page" data-ha2-wb-page>' +
+      '<aside class="ha2-wb-page-rail">' +
+      '<button type="button" class="ha2-link ha2-wb-page-back" data-ha2-wb-page-back>' +
+      esc(t('ha2WbPageBack', '← 返回首页')) +
+      '</button>' +
+      '<div class="ha2-wb-page-rail-title">' +
+      esc(t('ha2WbPageTitle', 'WorkBuddy 本机对话')) +
+      '</div>' +
+      '<div class="ha2-wb-page-rail-meta">' +
+      '<div><span>' +
+      esc(t('ha2WbTask', '任务')) +
+      '</span><b title="' +
+      esc(taskTitle) +
+      '">' +
+      esc(taskTitle) +
+      '</b></div>' +
+      '<div><span>' +
+      esc(t('ha2Project', '项目')) +
+      '</span><b title="' +
+      esc(promptIn.projectPath || '') +
+      '">' +
+      esc(projectLeaf) +
+      '</b></div>' +
+      '<div><span>' +
+      esc(t('ha2WbModel', '模型')) +
+      '</span><b>' +
+      esc(model || '—') +
+      '</b></div>' +
+      '<div><span>' +
+      esc(t('ha2WbSendMode', '发送方式')) +
+      '</span><b>' +
+      esc(t('ha2WbModeLocal', '本机')) +
+      '</b></div></div>' +
+      '<p class="ha2-wb-page-rail-hint">' +
+      esc(t('ha2WbPageHint', '不打开 WorkBuddy.exe；在右侧继续讨论。任务整理请到「对话历史」右键菜单。')) +
+      '</p>' +
+      '<div class="ha2-wb-page-rail-acts">' +
+      '<button type="button" class="ha2-link" data-ha2-wb-page-clear>' +
+      esc(t('ha2WbChatClear', '清空')) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+      esc(t('ha2WbOpenConfig', '账号设置')) +
+      '</button></div></aside>' +
+      '<section class="ha2-wb-page-main">' +
+      '<div class="ha2-wb-page-transcript" data-ha2-wb-page-transcript>' +
+      body +
+      '</div>' +
+      '<div class="ha2-wb-page-compose">' +
+      '<textarea data-ha2-wb-page-draft rows="2" placeholder="' +
+      esc(t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）')) +
+      '" aria-label="' +
+      esc(t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）')) +
+      '"></textarea>' +
+      '<div class="ha2-wb-page-compose-acts">' +
+      (wbChatBusy
+        ? '<button type="button" class="ha2-btn" data-ha2-wb-page-stop>' +
+          esc(t('ha2WbChatStop', '停止')) +
+          '</button>'
+        : '') +
+      '<button type="button" class="ha2-btn primary" data-ha2-wb-page-send' +
+      (wbChatBusy ? ' disabled' : '') +
+      '>' +
+      esc(t('ha2Send', '发送')) +
+      '</button></div></div></section></div>'
+    );
+  }
+
+  function paintWbChatPage() {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-wb-page-host]');
+    if (!host) return;
+    if (!wbChatPageOpen) {
+      host.innerHTML = '';
+      host.hidden = true;
+      root.classList.remove('is-wb-chat-page');
+      return;
+    }
+    host.hidden = false;
+    root.classList.add('is-wb-chat-page');
+    var draftEl = host.querySelector('[data-ha2-wb-page-draft]');
+    var keepDraft = draftEl ? String(draftEl.value || '') : '';
+    var keepFocus = document.activeElement === draftEl;
+    var selStart = draftEl ? draftEl.selectionStart : 0;
+    var selEnd = draftEl ? draftEl.selectionEnd : 0;
+    host.innerHTML = wbChatPageHtml();
+    var nextDraft = host.querySelector('[data-ha2-wb-page-draft]');
+    if (nextDraft) {
+      nextDraft.value = keepDraft;
+      if (keepFocus) {
+        try {
+          nextDraft.focus();
+          nextDraft.setSelectionRange(selStart, selEnd);
+        } catch (_) {}
+      }
+    }
+    var transcript = host.querySelector('[data-ha2-wb-page-transcript]');
+    if (transcript) {
+      try {
+        transcript.scrollTop = transcript.scrollHeight;
+      } catch (_) {}
+    }
+  }
+
+  function openWbChatPage() {
+    wbChatPageOpen = true;
+    paintWbChatPage();
+  }
+
+  function closeWbChatPage() {
+    wbChatPageOpen = false;
+    paintWbChatPage();
+  }
+
+  function sendWbPageDraft() {
+    if (wbChatBusy) return;
+    var ta = root && root.querySelector('[data-ha2-wb-page-draft]');
+    var text = ta ? String(ta.value || '').trim() : '';
+    if (!text) return;
+    if (ta) ta.value = '';
+    var snap = store() && store().getSnapshot();
+    var c = currentCat(snap || {});
+    sendWbLocal(text, c);
+  }
+
+  function stopWbLocalStream() {
+    invoke('cmd_workbuddy_local_chat_cancel', {
+      args: { runId: wbStreamRunId || undefined }
+    }).catch(function () {});
+  }
+
+  function mapWbChatError(msg) {
+    msg = String(msg || '');
+    if (msg === 'no_default_account' || msg === 'not_found' || msg === 'key_missing') {
+      return t('ha2WbNeedAccount', '先去 Agent 页添加 WorkBuddy 账号');
+    }
+    if (msg === 'authExpired' || msg === 'key_unauthorized') {
+      return t('ha2WbAuthFail', '账号鉴权失败，请到 Agent 页重新登录或换 Key');
+    }
+    if (msg === 'no_model' || msg === 'model_not_in_catalog') {
+      return t('ha2WbNeedModel', '先选择一个模型（或去 Agent 页刷新模型）');
+    }
+    if (msg === 'rate_limited') {
+      return t('ha2WbRateLimited', '请求过于频繁，稍后再试');
+    }
+    if (msg === 'empty_model_content') {
+      return t(
+        'ha2WbEmptyReply',
+        '模型返回为空（可换非纯推理模型，或去 Agent 页刷新模型后再试）'
+      );
+    }
+    if (msg === 'cancelled') {
+      return t('ha2WbChatCancelled', '已停止');
+    }
+    if (msg === 'ipc_unavailable') {
+      return t('ha2IpcUnavailable', '桌面通道未就绪');
+    }
+    return msg;
+  }
+
+  function finishWbLocalBusy() {
+    stopWbPoll();
+    wbChatBusy = false;
+    wbStreamRunId = '';
+    wbStreamingText = '';
+    wbStreamingTurnId = '';
+    paintWbTranscript();
+    var S = store();
+    if (!S || !S.getSnapshot) return;
+    var snap = S.getSnapshot();
+    var sendBtn = root && root.querySelector('[data-ha2-send]');
+    if (sendBtn) sendBtn.disabled = !canSendNow(snap);
+    syncOrganizeChrome();
+  }
+
+  function paintWbStreamingLive() {
+    if (!wbChatPageOpen || !root) {
+      paintWbTranscript();
+      return;
+    }
+    var textEl = root.querySelector(
+      '.ha2-wb-page-turn.is-streaming .ha2-wb-page-turn-text'
+    );
+    if (textEl) {
+      textEl.textContent = wbStreamingText || '…';
+      var transcript = root.querySelector('[data-ha2-wb-page-transcript]');
+      if (transcript) {
+        try {
+          transcript.scrollTop = transcript.scrollHeight;
+        } catch (_) {}
+      }
+      return;
+    }
+    paintWbChatPage();
+  }
+
+  function stopWbPoll() {
+    if (wbPollTimer) {
+      clearInterval(wbPollTimer);
+      wbPollTimer = 0;
+    }
+  }
+
+  function startWbPoll(runId, gen) {
+    stopWbPoll();
+    var last = '';
+    wbPollTimer = setInterval(function () {
+      if (gen !== wbChatPaintGen) {
+        stopWbPoll();
+        return;
+      }
+      invoke('cmd_workbuddy_local_chat_poll', {
+        args: { runId: runId || undefined }
+      })
+        .then(function (res) {
+          if (gen !== wbChatPaintGen) return;
+          res = res || {};
+          var soFar = String(res.contentSoFar != null ? res.contentSoFar : res.content || '');
+          if (soFar && soFar !== last) {
+            last = soFar;
+            onWbStreamDelta({
+              runId: res.runId || runId,
+              contentSoFar: soFar
+            });
+          }
+          if (res.done) {
+            stopWbPoll();
+            onWbStreamDone({
+              runId: res.runId || runId,
+              content: soFar || res.content || '',
+              model: res.model || wbStreamModel,
+              accountId: res.accountId || '',
+              error: res.error || null,
+              ok: !res.error
+            });
+          }
+        })
+        .catch(function () {});
+    }, 80);
+  }
+
+  function onWbStreamDelta(payload) {
+    payload = payload || {};
+    if (wbStreamRunId && payload.runId && payload.runId !== wbStreamRunId) return;
+    wbStreamingText = String(
+      payload.contentSoFar != null ? payload.contentSoFar : payload.delta || ''
+    );
+    if (!wbStreamingTurnId) wbStreamingTurnId = 'stream_' + Date.now().toString(36);
+    paintWbStreamingLive();
+  }
+
+  function onWbStreamDone(payload) {
+    payload = payload || {};
+    // Poll + event can both fire; only settle once.
+    if (!wbChatBusy) return;
+    if (wbStreamRunId && payload.runId && payload.runId !== wbStreamRunId) return;
+    var S = store();
+    if (!S) return;
+    // Shared history may have been updated by another surface — reload first.
+    wbChatTurns = loadWbChatTurns();
+    var content = payload.content != null ? String(payload.content).trim() : '';
+    var err = payload.error ? String(payload.error) : '';
+    var model = (payload.model && String(payload.model)) || wbStreamModel;
+    var accountId = payload.accountId ? String(payload.accountId) : '';
+    wbStreamingText = '';
+    wbStreamingTurnId = '';
+    if (err && err !== 'cancelled') {
+      paintWbTranscript();
+      S.setDeliveryReceipt({
+        kind: 'local_chat',
+        phase: 'failed',
+        outcome: 'failed',
+        title: t('ha2WbChatFailed', '本机对话失败'),
+        message: mapWbChatError(err),
+        verified: false,
+        inputConfirmed: false
+      });
+      finishWbLocalBusy();
+      return;
+    }
+    if (content) {
+      var last = wbChatTurns[wbChatTurns.length - 1];
+      if (!(last && last.role === 'assistant' && String(last.text || '') === content)) {
+        appendWbChatTurn({
+          role: 'assistant',
+          text: content,
+          model: model,
+          accountId: accountId
+        });
+      }
+    }
+    paintWbTranscript();
+    if (err === 'cancelled') {
+      S.setDeliveryReceipt({
+        kind: 'local_chat',
+        phase: 'failed',
+        outcome: 'failed',
+        title: t('ha2WbChatFailed', '本机对话失败'),
+        message: mapWbChatError('cancelled'),
+        verified: false,
+        inputConfirmed: false
+      });
+    } else {
+      S.setDeliveryReceipt({
+        kind: 'local_chat',
+        phase: 'done',
+        outcome: 'local_replied',
+        title: t('ha2WbReplied', '本机对话已回复') + ' · ' + wbStreamAgentName,
+        message: wbStreamProjectLeaf ? wbStreamProjectLeaf + ' · ' + model : model,
+        verified: true,
+        inputConfirmed: true
+      });
+    }
+    finishWbLocalBusy();
+  }
+
+  var wbToJsHooked = false;
+
+  function onWbToJsMessage(ev) {
+    var d = (ev && ev.data) || ev || {};
+    if (!d || !d.type) return;
+    if (d.type === 'wb_local_chat_delta') onWbStreamDelta(d);
+    else if (d.type === 'wb_local_chat_done') onWbStreamDone(d);
+  }
+
+  function ensureWbStreamListen() {
+    var ipc = global.OneToneIpc;
+    var pending = [];
+    if (ipc && typeof ipc.listen === 'function') {
+      if (!wbDoneUnsub) {
+        pending.push(
+          ipc
+            .listen('wb_local_chat_done', function (ev) {
+              onWbStreamDone((ev && ev.payload) || ev || {});
+            })
+            .then(function (unsub) {
+              if (typeof unsub === 'function') wbDoneUnsub = unsub;
+            })
+            .catch(function () {})
+        );
+      }
+      if (!wbDeltaUnsub) {
+        pending.push(
+          ipc
+            .listen('wb_local_chat_delta', function (ev) {
+              onWbStreamDelta((ev && ev.payload) || ev || {});
+            })
+            .then(function (unsub) {
+              if (typeof unsub === 'function') wbDeltaUnsub = unsub;
+            })
+            .catch(function () {})
+        );
+      }
+    }
+    // Backup: to_js envelope (same bus Soft Pad / config use).
+    if (!wbToJsHooked && global.chrome && global.chrome.webview && global.chrome.webview.addEventListener) {
+      wbToJsHooked = true;
+      try {
+        global.chrome.webview.addEventListener('message', onWbToJsMessage);
+      } catch (_) {
+        wbToJsHooked = false;
+      }
+    }
+    return pending.length ? Promise.all(pending) : Promise.resolve();
+  }
+
+  function sendWbLocal(draftRemember, c) {
+    var S = store();
+    if (wbChatBusy) return;
+    var def = wbDefaultAccount(wbLocalCache);
+    if (!def) {
+      S.setValidationNotice({
+        kind: 'wb_no_account',
+        message: t('ha2WbNeedAccount', '先去 Agent 页添加 WorkBuddy 账号')
+      });
+      return;
+    }
+    var model = wbSelectedModelId() || String(def.selectedModel || '');
+    if (!model) {
+      S.setValidationNotice({
+        kind: 'wb_no_account',
+        message: t('ha2WbNeedModel', '先选择一个模型（或去 Agent 页刷新模型）')
+      });
+      return;
+    }
+
+    wbChatBusy = true;
+    wbTranscriptCollapsed = false;
+    wbStreamingText = '';
+    wbStreamingTurnId = 'stream_' + Date.now().toString(36);
+    appendWbChatTurn({
+      role: 'user',
+      text: draftRemember,
+      model: model,
+      accountId: def.id
+    });
+    S.setDraft('', { silent: true });
+    syncDraftMirrors('');
+    openWbChatPage();
+    paintWbTranscript();
+    var gen = ++wbChatPaintGen;
+    var snapCtx = S.getSnapshot ? S.getSnapshot() : null;
+    var messages = wbMessagesForApi(snapCtx);
+    var promptIn = {};
+    try {
+      promptIn = wbLocalPromptInput(snapCtx) || {};
+    } catch (_) {}
+    var projectLeaf = String(promptIn.projectName || '').trim();
+    wbStreamAgentName = (c && c.name) || 'WorkBuddy';
+    wbStreamProjectLeaf = projectLeaf;
+    wbStreamModel = model;
+    // Start immediately; poll for live text (events alone are unreliable).
+    ensureWbStreamListen().catch(function () {});
+    // No maxTokens: prepare_chat defaults to the model catalog output cap.
+    invoke('cmd_workbuddy_local_chat_start', {
+      args: {
+        accountId: def.id,
+        model: model,
+        messages: messages
+      }
+    })
+      .then(function (res) {
+        if (gen !== wbChatPaintGen) return;
+        wbStreamRunId = (res && res.runId) || '';
+        if (!wbStreamRunId) throw new Error('chat_failed');
+        startWbPoll(wbStreamRunId, gen);
+      })
+      .catch(function (e) {
+        if (gen !== wbChatPaintGen) return;
+        var msg = mapWbChatError((e && e.message) || String(e || ''));
+        wbStreamingText = '';
+        wbStreamingTurnId = '';
+        paintWbTranscript();
+        S.setDeliveryReceipt({
+          kind: 'local_chat',
+          phase: 'failed',
+          outcome: 'failed',
+          title: t('ha2WbChatFailed', '本机对话失败'),
+          message: msg,
+          verified: false,
+          inputConfirmed: false
+        });
+        finishWbLocalBusy();
+      });
+  }
+
+  function syncOrganizeChrome() {
+    if (!root) return;
+    var Prep = global.OneToneHomePromptPrep;
+    var Assist = global.OneToneHomeAssistClient;
+    var model = Prep && Prep._model ? Prep._model() : null;
+    var running =
+      organizeBusy ||
+      !!(model && model.assist && model.assist.state === 'running');
+    var orgBtn = root.querySelector('[data-ha2-organize]');
+    var cancelBtn = root.querySelector('[data-ha2-organize-cancel]');
+    var hint = root.querySelector('[data-ha2-send-scope-hint]');
+    var metered = root.querySelector('[data-ha2-allow-metered]');
+    if (orgBtn) {
+      orgBtn.disabled = !!running;
+      orgBtn.textContent = running
+        ? t('ha2Organizing', '整理中…')
+        : t('ha2OrganizeTask', '整理任务');
+    }
+    if (cancelBtn) cancelBtn.hidden = !running;
+    if (metered && Assist && typeof Assist.allowMetered === 'function') {
+      metered.checked = !!Assist.allowMetered();
+      metered.disabled = !!running;
+    }
+    if (hint && Assist && typeof Assist.sendScopeHint === 'function') {
+      var scopeLine = Assist.sendScopeHint() || '';
+      var readyLine = '';
+      if (assistReadyCache) {
+        if (assistReadyCache.ready) {
+          readyLine = t('ha2AssistReady', '整理可用');
+        } else {
+          readyLine =
+            (Assist.formatFailureNotice &&
+              Assist.formatFailureNotice(assistReadyCache.reason || 'no_free_model')) ||
+            '';
+        }
+      }
+      hint.textContent = readyLine ? scopeLine + ' · ' + readyLine : scopeLine;
+    }
+  }
+
+  function refreshAssistReady() {
+    var Assist = global.OneToneHomeAssistClient;
+    if (!Assist || typeof Assist.fetchReady !== 'function') return;
+    Assist.fetchReady().then(function (ready) {
+      assistReadyCache = ready;
+      syncOrganizeChrome();
+    });
+  }
+
+  function runOrganizeTask() {
+    var S = store();
+    var Assist = global.OneToneHomeAssistClient;
+    if (!Assist || typeof Assist.runOrganize !== 'function') {
+      if (S) {
+        S.setValidationNotice({
+          kind: 'assist_missing',
+          message: t('ha2AssistMissing', '整理模块未加载；可直接发送原稿')
+        });
+      }
+      return;
+    }
+    if (organizeBusy) return;
+    organizeBusy = true;
+    syncOrganizeChrome();
+    if (S) {
+      S.setValidationNotice({
+        kind: 'assist_running',
+        message: t('ha2OrganizingHint', '正在整理任务…本地取消不保证停止计费')
+      });
+    }
+    Assist.fetchReady()
+      .then(function (ready) {
+        assistReadyCache = ready;
+        if (ready && ready.ready === false && ready.reason === 'no_free_model') {
+          var allow = false;
+          try {
+            allow = global.confirm
+              ? global.confirm(
+                  t(
+                    'ha2AllowMeteredConfirm',
+                    '当前无零价模型。是否允许使用计量额度整理？（会产生费用）'
+                  )
+                )
+              : false;
+          } catch (_) {}
+          if (allow) Assist.setAllowMetered(true);
+        }
+        return Assist.runOrganize({});
+      })
+      .then(function (res) {
+        organizeBusy = false;
+        syncOrganizeChrome();
+        if (!S) return;
+        if (!res || !res.ok) {
+          var failMsg =
+            (Assist.formatFailureNotice &&
+              Assist.formatFailureNotice(res && res.reason)) ||
+            (Assist.reasonMessage && Assist.reasonMessage(res && res.reason)) ||
+            t('ha2OrganizeFailed', '整理未完成 · 可直接发送原稿');
+          S.setValidationNotice({
+            kind: 'assist_failed',
+            reason: (res && res.reason) || 'internal',
+            message: failMsg
+          });
+          refreshAssistReady();
+          return;
+        }
+        if (res.adopted === false && res.reason === 'stale') {
+          return;
+        }
+        S.setValidationNotice({
+          kind: 'assist_done',
+          message: t('ha2OrganizeDone', '已生成整理稿，可编辑后发送；恢复原稿可切回')
+        });
+        var Prep = global.OneToneHomePromptPrep;
+        if (Prep && Prep.setActiveDraft) Prep.setActiveDraft('organized');
+        var org =
+          Prep && Prep._model && Prep._model().organizedDraft
+            ? Prep._model().organizedDraft.body
+            : '';
+        if (org) {
+          syncDraftMirrors(org);
+          S.setDraft(org, { silent: true });
+        }
+        paint(S.getSnapshot());
+      })
+      .catch(function (err) {
+        organizeBusy = false;
+        syncOrganizeChrome();
+        if (!S) return;
+        S.setValidationNotice({
+          kind: 'assist_failed',
+          reason: 'offline',
+          message:
+            (Assist.formatFailureNotice && Assist.formatFailureNotice('offline')) ||
+            t('ha2OrganizeOffline', '网络或后端不可用 · 可直接发送原稿')
+        });
+      });
+  }
+
+  function cancelOrganizeTask() {
+    var Assist = global.OneToneHomeAssistClient;
+    if (!Assist || typeof Assist.cancelOrganize !== 'function') {
+      organizeBusy = false;
+      syncOrganizeChrome();
+      return;
+    }
+    Assist.cancelOrganize().then(function () {
+      organizeBusy = false;
+      syncOrganizeChrome();
+      var S = store();
+      if (S) {
+        S.setValidationNotice({
+          kind: 'assist_cancelled',
+          message: t('ha2OrganizeCancelled', '已取消整理（提供商侧可能仍在计费）')
+        });
+      }
+    });
+  }
+
   function send() {
     var S = store();
     var D = dock();
@@ -1994,6 +3480,26 @@
     S.setDraft(draft, { silent: true });
     var draftRemember = String(draft).trim();
     if (!draftRemember && !(snap.materials && snap.materials.length)) return;
+
+    // WorkBuddy local LLM chat (default) — does not focus WorkBuddy.exe.
+    if (wbUsesLocalChat(c.id, snap)) {
+      if (!draftRemember) {
+        S.setValidationNotice({
+          kind: 'wb_need_text',
+          message: t('ha2WbNeedText', '本机对话请先写一句（材料请用桌面模式投递）')
+        });
+        return;
+      }
+      if (!wbLocalCache) {
+        refreshWbLocal(true).then(function () {
+          if (!mounted) return;
+          sendWbLocal(draftRemember, c);
+        });
+        return;
+      }
+      sendWbLocal(draftRemember, c);
+      return;
+    }
 
     var matching = null;
     for (var i = 0; i < snap.agents.length; i++) {
@@ -2025,14 +3531,56 @@
       return;
     }
 
-    var text = D && D.assembledText ? D.assembledText(draft) : draft;
+    var PrepSend = global.OneToneHomePromptPrep;
+    if (
+      PrepSend &&
+      PrepSend._model &&
+      PrepSend._model().organizedDraft &&
+      PrepSend._model().organizedDraft.stale &&
+      PrepSend._model().activeDraft === 'organized'
+    ) {
+      var proceedStale = true;
+      try {
+        proceedStale = global.confirm
+          ? global.confirm(
+              t(
+                'ha2OrganizeStaleConfirm',
+                '材料或原稿已变化，整理稿可能过期。仍要发送当前整理稿吗？'
+              )
+            )
+          : true;
+      } catch (_) {}
+      if (!proceedStale) return;
+    }
+    var sendBody =
+      PrepSend && typeof PrepSend.buildSendBody === 'function'
+        ? PrepSend.buildSendBody({
+            attachEvidence: true,
+            projectPath: ctx.projectPath || null,
+            targetKind: c.id
+          })
+        : null;
+    var text =
+      sendBody && String(sendBody.body || '').trim()
+        ? String(sendBody.body)
+        : D && D.assembledText
+          ? D.assembledText(draft)
+          : draft;
+    var snapId =
+      (sendBody && sendBody.snapshotId) ||
+      (PrepSend && PrepSend._model && PrepSend._model().lastSendSnapshotId) ||
+      null;
     S.setDeliveryReceipt({
       phase: 'sending',
       outcome: 'delivery_attempt',
       title: t('ha2AttemptingTo', '正在尝试投递到') + ' ' + c.name,
       message: S.windowsLabel(c.id),
       verified: false,
-      inputConfirmed: false
+      inputConfirmed: false,
+      snapshotId: snapId,
+      taskScopeId:
+        (sendBody && sendBody.taskScopeId) ||
+        (PrepSend && PrepSend._model ? PrepSend._model().taskScopeId : null)
     });
 
     var clipWrite =
@@ -2090,7 +3638,8 @@
             title: t('ha2PastedConfirmed', '已确认粘贴到输入框') + ' · ' + c.name,
             message: t('ha2FgAndComposer', '目标前台与输入框均已确认'),
             verified: true,
-            inputConfirmed: true
+            inputConfirmed: true,
+            snapshotId: snapId
           });
           S.setDraft('', { silent: true });
           syncDraftMirrors('');
@@ -2160,6 +3709,55 @@
       if (nodes[i] === active) continue;
       if (nodes[i].value !== text) nodes[i].value = text;
     }
+  }
+
+  function onChange(e) {
+    var el = e && e.target;
+    if (!el || !el.matches) return;
+    if (el.matches('[data-ha2-allow-metered]')) {
+      var AssistM = global.OneToneHomeAssistClient;
+      if (AssistM && AssistM.setAllowMetered) {
+        AssistM.setAllowMetered(!!el.checked);
+        refreshAssistReady();
+        var SM = store();
+        if (SM) {
+          SM.setValidationNotice({
+            kind: 'assist_metered',
+            message: el.checked
+              ? t(
+                  'ha2MeteredOn',
+                  '已允许计量额度整理（会产生费用）。仍可直接发送原稿。'
+                )
+              : t(
+                  'ha2MeteredOff',
+                  '仅尝试零价模型。无可用时请勾选允许计量额度，或直接发送。'
+                )
+          });
+        }
+      }
+      return;
+    }
+    if (!el.matches('[data-ha2-wb-model]')) return;
+    var id = String(el.getAttribute('data-wb-id') || '');
+    var model = String(el.value || '');
+    if (!id || !model) return;
+    invoke('cmd_workbuddy_local_account_set_model', { id: id, model: model })
+      .then(function (res) {
+        if (res && res.snapshot) {
+          wbLocalCache = projectWbLocal(res.snapshot);
+          return wbLocalCache;
+        }
+        return refreshWbLocal(true);
+      })
+      .catch(function () {
+        return refreshWbLocal(true);
+      })
+      .then(function () {
+        if (mounted) {
+          syncWbModelHost('workbuddy');
+          syncWbChatChrome('workbuddy');
+        }
+      });
   }
 
   function onInput(e) {
@@ -2491,11 +4089,90 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-assist-keys],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop]'
     );
     if (!tEl) return;
     var S = store();
     var D = dock();
+    if (tEl.hasAttribute('data-ha2-wb-page-back')) {
+      closeWbChatPage();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-page-clear')) {
+      wbChatTurns = [];
+      saveWbChatTurns();
+      wbStreamingText = '';
+      wbStreamingTurnId = '';
+      paintWbTranscript();
+      toast(t('ha2WbChatCleared', '已清空本机对话'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-page-send')) {
+      sendWbPageDraft();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-page-stop')) {
+      stopWbLocalStream();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-mode')) {
+      if (wbChatBusy || tEl.disabled || tEl.getAttribute('aria-disabled') === 'true') return;
+      if (S && S.setWbSendMode) S.setWbSendMode(tEl.getAttribute('data-ha2-wb-mode'));
+      syncWbChatChrome('workbuddy');
+      var snapMode = S && S.getSnapshot();
+      if (snapMode) {
+        var sendBtnMode = root && root.querySelector('[data-ha2-send]');
+        if (sendBtnMode) {
+          var okMode = canSendNow(snapMode) && !wbChatBusy;
+          sendBtnMode.disabled = !okMode;
+          sendBtnMode.title = okMode
+            ? wbUsesLocalChat('workbuddy', snapMode)
+              ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+              : t('ha2SendHint', '发送（Ctrl+Enter）')
+            : t('ha2SendNeedDraft', '先写一句再发送');
+        }
+        paint(snapMode);
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-work-mode')) {
+      if (tEl.disabled || tEl.getAttribute('aria-disabled') === 'true') return;
+      if (S && S.setWorkMode) S.setWorkMode(tEl.getAttribute('data-ha2-work-mode'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-handoff-open')) {
+      handoffOpen = true;
+      handoffSummary = buildHandoffSummaryFromChat();
+      handoffTargetKind = handoffTargetKind || 'cursor';
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-handoff-cancel')) {
+      handoffOpen = false;
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-handoff-apply')) {
+      applyHandoffToDraft();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-transcript-toggle')) {
+      wbTranscriptCollapsed = !wbTranscriptCollapsed;
+      paintWbTranscript();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-wb-chat-clear')) {
+      wbChatTurns = [];
+      saveWbChatTurns();
+      wbTranscriptCollapsed = false;
+      paintWbTranscript();
+      toast(t('ha2WbChatCleared', '已清空本机对话'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-open-wb-config')) {
+      openWbAgentConfig();
+      return;
+    }
     // Keyboard activation (Enter/Space) lands here; pointer path already handled above.
     if (tEl.hasAttribute('data-ha2-mat-expand')) {
       expandMatText(tEl.getAttribute('data-ha2-mat-expand'));
@@ -2594,6 +4271,50 @@
     }
     if (tEl.hasAttribute('data-ha2-send') || tEl.hasAttribute('data-ha2-retry')) {
       send();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-pcx')) {
+      var Pcx = global.OneToneHomeProjectContext;
+      if (Pcx && typeof Pcx.openDrawer === 'function') Pcx.openDrawer();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-organize')) {
+      runOrganizeTask();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-organize-cancel')) {
+      cancelOrganizeTask();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-assist-keys')) {
+      var AssistKeys = global.OneToneHomeAssistClient;
+      if (AssistKeys && AssistKeys.openProviderKeys) AssistKeys.openProviderKeys();
+      else {
+        S.setValidationNotice({
+          kind: 'assist_keys',
+          message: t(
+            'ha2AssistKeysHint',
+            '请到 Soft Pad 页面配置 DeepSeek / Kimi 等提供商密钥'
+          )
+        });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-enable-metered')) {
+      var AssistEn = global.OneToneHomeAssistClient;
+      if (AssistEn && AssistEn.setAllowMetered) {
+        AssistEn.setAllowMetered(true);
+        var box = root && root.querySelector('[data-ha2-allow-metered]');
+        if (box) box.checked = true;
+        refreshAssistReady();
+        S.setValidationNotice({
+          kind: 'assist_metered',
+          message: t(
+            'ha2MeteredOn',
+            '已允许计量额度整理（会产生费用）。仍可直接发送原稿。'
+          )
+        });
+      }
       return;
     }
     if (tEl.hasAttribute('data-ha2-remove')) {
@@ -2697,8 +4418,11 @@
     var S = store();
     if (!S) return;
     S.mount();
+    ensureWbStreamListen();
     root.addEventListener('click', onClick);
     root.addEventListener('pointerdown', onMatTogglePointerDown, true);
+    root.addEventListener('change', onChange);
+    refreshAssistReady();
     root.addEventListener('input', onInput);
     root.addEventListener('compositionstart', onCompositionStart);
     root.addEventListener('compositionend', onCompositionEnd);
@@ -2736,6 +4460,11 @@
     mounted = true;
     paint(S.getSnapshot());
     refreshAllAgentAims();
+    refreshWbLocal(true).then(function () {
+      if (!mounted) return;
+      var snap = S.getSnapshot();
+      syncWbModelHost((snap && snap.selectedKind) || '');
+    });
   }
 
   function show() {
@@ -2748,6 +4477,12 @@
       S.refresh('show');
     }
     refreshAllAgentAims();
+    // Soft Pad may have changed default model while this view was hidden.
+    refreshWbLocal(true).then(function () {
+      if (!mounted) return;
+      var snap = S && S.getSnapshot();
+      syncWbModelHost((snap && snap.selectedKind) || '');
+    });
   }
 
   function hide() {

@@ -553,6 +553,17 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .hook-meta{margin:8px 0 0;font-size:11px;color:var(--faint);line-height:1.45}
 .hook-meta code{font-family:var(--mono);font-size:10.5px;color:var(--mute)}
 .hook-hint{margin:6px 0 0;font-size:11.5px;color:var(--faint);line-height:1.45}
+.wb-local{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.wb-local__head{font-size:12px;font-weight:800;margin:0 0 4px;color:var(--ink)}
+.hook-watch-row select[data-wb-act="model"],
+.hook-dock select[data-wb-act="model"]{max-width:168px;font:inherit;font-size:11.5px;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:#fff;flex-shrink:0}
+.wb-local-row{padding:8px 0;border-bottom:1px solid var(--line)}
+.wb-local-row:last-of-type{border-bottom:0}
+.wb-local-row.is-off{opacity:.62}
+.wb-local-row__main{font-size:12.5px;font-weight:750;line-height:1.35}
+.wb-local-row__main small{display:block;font-size:11px;font-weight:650;color:var(--faint);margin-top:2px}
+.wb-local-row__acts{margin-top:6px}
+.wb-local-row__acts select{max-width:160px;font:inherit;font-size:11.5px;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:#fff}
 .topbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 8px}
 .topbar-grid .row{margin:0;padding:7px 8px}
 .topbar-mgr{display:flex;flex-direction:column;gap:10px}
@@ -1697,6 +1708,142 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 
   var miniBodies={}; /* replaced by paintMiniD */
 
+  function escAttr(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+  function escText(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  }
+
+  var wbOauthPollTimer=0;
+  function stopWbOauthPoll(){
+    if(wbOauthPollTimer){ clearInterval(wbOauthPollTimer); wbOauthPollTimer=0; }
+  }
+  function ensureWbOauthPoll(){
+    var snap=state.settingsSnap||{};
+    var wb=snap.workbuddyLocal||{};
+    var pending=wb.oauthPending||null;
+    var pid=pending&&pending.pendingId?String(pending.pendingId):'';
+    if(!pid){ stopWbOauthPoll(); return; }
+    if(wbOauthPollTimer) return;
+    wbOauthPollTimer=setInterval(function(){
+      var s2=state.settingsSnap||{};
+      var w2=s2.workbuddyLocal||{};
+      var p2=w2.oauthPending||null;
+      var id2=p2&&p2.pendingId?String(p2.pendingId):'';
+      if(!id2){ stopWbOauthPoll(); return; }
+      postSettingsCmd('wbLocalOauthPoll',{ pendingId:id2 });
+    }, 1800);
+  }
+
+  /** Default-account model <select> HTML (shared by dock home + local panel). */
+  function workbuddyDefaultModelSelectHtml(wb){
+    wb=wb||{};
+    var defId=String(wb.defaultAccountId||'');
+    var accounts=Array.isArray(wb.accounts)?wb.accounts:[];
+    var def=null;
+    for(var i=0;i<accounts.length;i++){
+      var a=accounts[i];
+      if(a&&String(a.id||'')===defId){ def=a; break; }
+    }
+    if(!def){
+      for(var j=0;j<accounts.length;j++){
+        if(accounts[j]&&accounts[j].enabled&&accounts[j].isDefault){ def=accounts[j]; break; }
+      }
+    }
+    if(!def||!def.enabled) return '';
+    var models=Array.isArray(def.models)?def.models:[];
+    if(!models.length) return '';
+    var opts=models.map(function(m){
+      m=m||{};
+      var id=String(m.id||'');
+      var sel=id&&id===String(def.selectedModel||'')?' selected':'';
+      return '<option value="'+escAttr(id)+'"'+sel+'>'+escText(m.name||id)+'</option>';
+    }).join('');
+    return '<select data-wb-act="model" data-wb-id="'+escAttr(def.id)+'" title="模型" aria-label="模型">'+opts+'</select>';
+  }
+
+  /** WorkBuddy 本机模型账号（OAuth 为主，Key 为次）；额度旁显示当前默认账号。
+   * 登录后：默认模型选择放在面板首页（额度旁），不埋在账号行动作里。 */
+  function workbuddyLocalPanelHtml(wb){
+    wb=wb||{};
+    var accounts=Array.isArray(wb.accounts)?wb.accounts:[];
+    var curLabel=wb.defaultLabel||'';
+    var curFp=wb.defaultFingerprint||'';
+    var curKind=wb.defaultAuthKind||'';
+    var pending=wb.oauthPending||null;
+    var quotaLine=curLabel
+      ? ('额度旁账号 · <b>'+escText(curLabel)+'</b>'+(curKind?' · '+escText(curKind==='oauth'?'OAuth':'Key'):'')+(curFp?' · '+escText(curFp):''))
+      : '额度旁账号 · 未登录（首页 local 对话需先登录或添加 Key）';
+    var waitHtml='';
+    if(pending&&pending.pendingId){
+      var authUrl=String(pending.authUrl||'');
+      waitHtml=
+        '<div class="wb-local-wait" data-wb-pending="'+escAttr(pending.pendingId)+'">'+
+          '<p class="hook-meta">等待浏览器授权… 若页面提示「登录链接不完整」，点「复制登录链接」粘贴到浏览器打开。</p>'+
+          '<div class="btn-row">'+
+            '<button type="button" class="btn primary" data-wb-act="oauth-done" data-wb-pending="'+escAttr(pending.pendingId)+'">我已完成</button>'+
+            (authUrl
+              ? '<button type="button" class="btn" data-wb-act="oauth-copy" data-wb-url="'+escAttr(authUrl)+'">复制登录链接</button>'
+              : '')+
+            '<button type="button" class="btn" data-wb-act="oauth-cancel" data-wb-pending="'+escAttr(pending.pendingId)+'">取消</button>'+
+          '</div>'+
+        '</div>';
+    }
+    var rows=accounts.map(function(a){
+      a=a||{};
+      var st=String(a.verifyStatus||'pending');
+      var stLbl=st==='ok'?'通':(st==='fail'?'失败':'待测');
+      var kind=String(a.authKind||'api_key')==='oauth'?'OAuth':'Key';
+      var removeLbl=kind==='OAuth'?'登出':'删除';
+      // Default account model lives on panel home; non-default keep per-row select.
+      var modelOpts='';
+      if(!a.isDefault){
+        modelOpts=(Array.isArray(a.models)?a.models:[]).map(function(m){
+          m=m||{};
+          var id=String(m.id||'');
+          var sel=id&&id===String(a.selectedModel||'')?' selected':'';
+          return '<option value="'+escAttr(id)+'"'+sel+'>'+escText(m.name||id)+'</option>';
+        }).join('');
+      }
+      return (
+        '<div class="wb-local-row'+(a.enabled?'':' is-off')+(a.isDefault?' is-default':'')+'" data-wb-id="'+escAttr(a.id)+'">'+
+          '<div class="wb-local-row__main">'+
+            '<b>'+escText(a.label||'WorkBuddy')+'</b>'+
+            ' <span class="badge">'+kind+'</span>'+
+            (a.isDefault?' <span class="badge ok">默认</span>':'')+
+            (a.enabled?'':' <span class="badge warn">禁用</span>')+
+            ' <span class="badge '+(st==='ok'?'ok':'warn')+'">'+stLbl+'</span>'+
+            '<small>'+escText(a.keyFingerprint||a.maskedKey||a.uid||'')+(a.lastError?' · '+escText(a.lastError):'')+'</small>'+
+          '</div>'+
+          '<div class="wb-local-row__acts btn-row">'+
+            (modelOpts
+              ? ('<select data-wb-act="model" data-wb-id="'+escAttr(a.id)+'" title="模型">'+modelOpts+'</select>')
+              : '')+
+            (a.isDefault?'':'<button type="button" class="btn" data-wb-act="default" data-wb-id="'+escAttr(a.id)+'">默认</button>')+
+            '<button type="button" class="btn" data-wb-act="verify" data-wb-id="'+escAttr(a.id)+'">测通</button>'+
+            '<button type="button" class="btn" data-wb-act="refresh" data-wb-id="'+escAttr(a.id)+'">刷新模型</button>'+
+            '<button type="button" class="tog'+(a.enabled?' on':'')+'" data-wb-act="enabled" data-wb-id="'+escAttr(a.id)+'" title="启用"></button>'+
+            '<button type="button" class="btn" data-wb-act="remove" data-wb-id="'+escAttr(a.id)+'">'+removeLbl+'</button>'+
+          '</div>'+
+        '</div>'
+      );
+    }).join('');
+    return (
+      '<div class="wb-local" data-wb-local="1">'+
+        '<div class="wb-local__head">本机模型 · 账号</div>'+
+        '<p class="hook-meta">'+quotaLine+'</p>'+
+        waitHtml+
+        (rows||'<p class="hook-meta">还没有账号。点「登录」用浏览器授权，或添加 API Key。</p>')+
+        '<div class="btn-row" style="margin-top:8px">'+
+          '<button type="button" class="btn primary" data-wb-act="oauth-start"'+(pending&&pending.pendingId?' disabled':'')+'>登录（浏览器）</button>'+
+          '<button type="button" class="btn" data-wb-act="add">添加 Key</button>'+
+          '<button type="button" class="btn" disabled title="后续">国际（后续）</button>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
   function softPadBodies(){
     var mode=state.ambientMode==='solid'?'solid':'status';
     var rgb=state.ambientRgb||'#7c3aed';
@@ -1741,6 +1888,10 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     var watchRows=watching.map(function(row){
       var isOpen=openId===row.agent;
       var dock='';
+      // 登录后：默认模型切换挂在监视列表首页行，不必展开账号区。
+      var wbRowModel=row.agent==='workbuddy'
+        ? workbuddyDefaultModelSelectHtml(snap.workbuddyLocal||{})
+        : '';
       if(isOpen){
         var prim=row.primaryAction||null;
         var act=prim==='install'?'install':'copy';
@@ -1752,6 +1903,9 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             '<span style="display:inline-flex;align-items:center;gap:8px;margin-top:6px">本机活动统计 <button type="button" class="tog'+(cursorOn?' on':'')+'" data-cursor-activity-tog></button></span>'
           );
         }
+        var wbLocalHtml=row.agent==='workbuddy'
+          ? workbuddyLocalPanelHtml(snap.workbuddyLocal||{})
+          : '';
         dock=
           '<div class="hook-dock hook-dock--inline" data-hook-dock="1">'+
             '<div class="btn-row">'+
@@ -1761,6 +1915,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
               '<button type="button" class="btn" data-settings-act="refresh">刷新</button>'+
             '</div>'+
             (detailBits.length?'<p class="hook-meta">'+detailBits.join(' · ')+'</p>':'')+
+            wbLocalHtml+
           '</div>';
       }
       return (
@@ -1768,6 +1923,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           '<div class="hook-watch-row" data-agent-hook="'+row.agent+'">'+
             '<span class="ico">'+agentIconHtml(row.agent,row.label)+'</span>'+
             '<div class="nm">'+row.label+'<small>'+(row.phaseLabel||'未接入')+(row.enabled?' · 灯开':'')+'</small></div>'+
+            wbRowModel+
             '<span class="badge '+(row.badgeClass||'warn')+'">'+(row.phaseLabel||'未接入')+'</span>'+
           '</div>'+
           dock+
@@ -2111,8 +2267,8 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     else padHost.removeAttribute('data-busy-off');
 
     if(faceLive&&showFace&&padPaint){
-      var appKindMap={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
-      var kindToApp={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax',qoder:'Qoder',trae:'Trae',gemini:'Gemini'};
+      var appKindMap={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',WorkBuddy:'workbuddy',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
+      var kindToApp={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax',workbuddy:'WorkBuddy',qoder:'Qoder',trae:'Trae',gemini:'Gemini'};
       var focus=onHookLeaf?(state.hookOpen||''):(appKindMap[state.app]||String(state.app||'').toLowerCase());
       var enabled=agentsOrdered().filter(function(r){ return r.enabled; });
       var chips=enabled.map(function(row){
@@ -2357,6 +2513,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   function applySettingsPayload(payload){
     payload=payload||{};
     state.settingsSnap=payload;
+    ensureWbOauthPoll();
     if(payload.topbar&&Array.isArray(payload.topbar.agents)) syncTopbarOrder(payload.topbar.agents);
     /* Soft Pad 默认开：接入页不再暴露总开关 */
     state.padEnabled=true;
@@ -2681,6 +2838,76 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           }
         });
       });
+      scope.querySelectorAll('[data-wb-act]').forEach(function(el){
+        var bindEv=el.tagName==='SELECT'?'change':'click';
+        el.addEventListener(bindEv,function(e){
+          e.stopPropagation();
+          var act=el.getAttribute('data-wb-act');
+          var id=el.getAttribute('data-wb-id')||'';
+          var pendingId=el.getAttribute('data-wb-pending')||'';
+          if(act==='oauth-start'){
+            // Poll starts after settings snap gains oauthPending (applySettingsPayload).
+            postSettingsCmd('wbLocalOauthStart',{ region:'cn' });
+            return;
+          }
+          if(act==='oauth-done'){
+            if(pendingId) postSettingsCmd('wbLocalOauthPoll',{ pendingId:pendingId });
+            ensureWbOauthPoll();
+            return;
+          }
+          if(act==='oauth-copy'){
+            var url=el.getAttribute('data-wb-url')||'';
+            if(!url) return;
+            var done=function(ok){
+              try{ el.textContent=ok?'已复制':'复制失败'; }catch(_){}
+              setTimeout(function(){ try{ el.textContent='复制登录链接'; }catch(_){} }, 1600);
+            };
+            if(navigator.clipboard&&navigator.clipboard.writeText){
+              navigator.clipboard.writeText(url).then(function(){ done(true); }).catch(function(){ done(false); });
+            }else{
+              try{
+                var ta=document.createElement('textarea');
+                ta.value=url; ta.setAttribute('readonly','');
+                ta.style.position='fixed'; ta.style.left='-9999px';
+                document.body.appendChild(ta); ta.select();
+                done(!!document.execCommand('copy'));
+                document.body.removeChild(ta);
+              }catch(_){ done(false); }
+            }
+            return;
+          }
+          if(act==='oauth-cancel'){
+            postSettingsCmd('wbLocalOauthCancel',{ pendingId:pendingId||'' });
+            stopWbOauthPoll();
+            return;
+          }
+          if(act==='add'){
+            var key='';
+            var label='';
+            try{ label=window.prompt('账号别名（可空）','')||''; }catch(_){}
+            try{ key=window.prompt('粘贴 WorkBuddy / CodeBuddy API Key（仅本机）','')||''; }catch(_){}
+            if(key) postSettingsCmd('wbLocalAdd',{ label:label, key:key });
+            return;
+          }
+          if(!id) return;
+          if(act==='remove'){
+            if(!window.confirm('移除此本机账号？')) return;
+            postSettingsCmd('wbLocalRemove',{ id:id });
+          }else if(act==='default'){
+            postSettingsCmd('wbLocalSetDefault',{ id:id });
+          }else if(act==='enabled'){
+            var on=!(el.classList&&el.classList.contains('on'));
+            postSettingsCmd('wbLocalSetEnabled',{ id:id, enabled:on });
+          }else if(act==='verify'){
+            postSettingsCmd('wbLocalVerify',{ id:id });
+          }else if(act==='refresh'){
+            postSettingsCmd('wbLocalRefreshModels',{ id:id });
+          }else if(act==='model'){
+            postSettingsCmd('wbLocalSetModel',{ id:id, model:el.value||'' });
+          }
+        });
+      });
+      ensureWbOauthPoll();
     }
     function wireTopbarMgr(root){
       var scope=root||detail;
@@ -2770,7 +2997,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       });
       scope.querySelectorAll('[data-agent-hook]').forEach(function(row){
         row.addEventListener('click',function(e){
-          if(e.target.closest('[data-settings-act],.tog,button.btn')) return;
+          if(e.target.closest('[data-settings-act],.tog,button.btn,select[data-wb-act]')) return;
           var id=row.getAttribute('data-agent-hook')||'';
           state.hookOpen=state.hookOpen===id?'':id;
           detail.innerHTML=pages.softPad();
@@ -3015,7 +3242,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       {l:'活跃',v:'—',miss:true}
     ]
   };
-  var APP_TO_KIND={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
+  var APP_TO_KIND={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',WorkBuddy:'workbuddy',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
 
   function postDataNestCmd(cmd,extra){
     var frame=document.getElementById('agentDataNestFrame');
