@@ -15,6 +15,7 @@ const STEPS = [
   { name: 'home-assist-ownership', cmd: 'npm', args: ['run', 'test:home-assist-ownership'] },
   { name: 'home-assist-ui-checklist', cmd: 'npm', args: ['run', 'test:home-assist-ui-checklist'] },
   { name: 'home-project-context', cmd: 'npm', args: ['run', 'test:home-project-context'] },
+  { name: 'home-context-concierge', cmd: 'npm', args: ['run', 'test:home-context-concierge'] },
   { name: 'home-prompt-prep', cmd: 'npm', args: ['run', 'test:home-prompt-prep'] },
   { name: 'home-agent-v2', cmd: 'npm', args: ['run', 'test:home-agent-v2'] },
   {

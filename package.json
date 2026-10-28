@@ -34,6 +34,7 @@
     "test:home-assist-ownership": "node scripts/test-home-assist-ownership.mjs",
     "test:home-assist-ipc-contract": "node scripts/test-home-assist-ipc-contract.mjs",
     "test:home-project-context": "node scripts/test-home-project-context.mjs",
+    "test:home-context-concierge": "node scripts/test-home-context-concierge.mjs",
     "test:home-assist-ui-checklist": "node scripts/test-home-assist-ui-checklist.mjs",
     "verify:phase2-rc": "node scripts/phase2-rc-auto-verify.mjs",
     "test:home-prompt-prep": "node scripts/test-home-prompt-prep.mjs",

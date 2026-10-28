@@ -1,9 +1,12 @@
 [[set]]
 identifier = "project-context-ipc"
-description = "Main-window-only selective project material IPC (Phase2)"
+description = "Main-window-only selective project material IPC (Phase2 / Phase2.5)"
 permissions = [
   "allow-cmd-project-context-open",
   "allow-cmd-project-context-close",
   "allow-cmd-project-context-query",
   "allow-cmd-project-context-cancel",
+  "allow-cmd-project-context-grant-find-materials",
+  "allow-cmd-project-context-open-confirmed",
+  "allow-cmd-project-context-revoke-grant",
 ]

@@ -286,6 +286,12 @@ assert.doesNotMatch(shell, /midComposerHtml|data-ha2-mid-draft|data-ha2-mid>/);
 assert.match(shell, /permissionHtml|ha2-permission/);
 assert.match(shell, /homeContentHtml[\s\S]*situationHtml[\s\S]*ha2-list/);
 assert.match(shell, /ha2-compose[\s\S]*data-ha2-draft/);
+// Consult above draft; host patched each paint; dock height reserves main pad.
+assert.match(shell, /data-ha2-consult-host[\s\S]*ha2-compose[\s\S]*data-ha2-draft/);
+assert.match(shell, /syncDockReserve|ha2-dock-reserve/);
+assert.match(shell, /consultHost\.innerHTML = consultStripHtml/);
+assert.match(css, /--ha2-dock-reserve/);
+assert.match(css, /\.ha2-dock\{[\s\S]*max-height/);
 assert.match(shell, /classifyActionResult/);
 assert.match(shell, /verified_paste|AttemptedUnverified|ha2AttemptedUnverified/);
 assert.match(shell, /compositionstart|onCompositionStart/);
@@ -441,8 +447,35 @@ assert.ok(PP && PP.normalizeAbsolutePath);
   assert.match(withPath, /voice-pilot/);
   assert.match(withPath, /home local chat context/);
   assert.match(withPath, /不能读写磁盘|看不到磁盘/);
+  assert.match(withPath, /只回答用户目标|禁止/);
+  assert.match(withPath, /样式\/UI|无 OCR/);
+  assert.doesNotMatch(withPath, /你是 OneTone 首页的 WorkBuddy 本机讨论助手/);
   const noPath = Caps.buildLocalChatSystemPrompt({});
   assert.match(noPath, /未选定/);
+
+  assert.equal(typeof Caps.compactLocalChatUserText, 'function');
+  const compact = Caps.compactLocalChatUserText(
+    [
+      '## 目标',
+      '换一个 logo',
+      '',
+      '## 用户观察',
+      '- （无）',
+      '',
+      '## 已确认证据',
+      '- `image.png`（截图；未宣称已 OCR）',
+      '',
+      '## 请求',
+      '先定位相关路径并说明依据；证据不足只调查，不假定根因。',
+      '',
+      '## 验收标准',
+      '- 能说明依据'
+    ].join('\n')
+  );
+  assert.match(compact, /换一个 logo/);
+  assert.match(compact, /image\.png/);
+  assert.doesNotMatch(compact, /建议检查|验收标准|给 Cursor/);
+  assert.equal(Caps.compactLocalChatUserText('直接问：按钮点了没反应'), '直接问：按钮点了没反应');
 
   // available must derive from status — never hand-written independently
   const entry = Caps.entry('partial', 'x', []);

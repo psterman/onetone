@@ -1,6 +1,7 @@
 //! Local read-only project context (Phase2). No writes / scripts / agent tool loop.
 
 mod contracts;
+mod find_grant;
 mod git_evidence;
 mod passport;
 mod reader;
@@ -8,6 +9,10 @@ mod scope;
 mod search;
 
 pub use contracts::*;
+pub use find_grant::{
+    grant_find_materials, open_confirmed, revoke_grant, GrantDto, GrantFindMaterialsArgs,
+    OpenConfirmedArgs, RevokeGrantArgs,
+};
 pub use scope::{close, open_at, open_with_dialog, require_scope, revoke_window};
 
 use std::sync::Arc;

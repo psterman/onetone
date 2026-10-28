@@ -51,6 +51,8 @@
   /** Assist organize in-flight (UI busy; Prep.assist is source of truth). */
   var organizeBusy = false;
   var assistReadyCache = null;
+  /** Keep main bottom pad ≥ absolute dock height (consult/materials grow). */
+  var dockReserveRo = null;
 
   function loadWbChatTurns() {
     try {
@@ -1469,7 +1471,9 @@
         ? (reason
             ? t('ha2AssistReasonCode', '原因码') + ': ' + reason
             : t('ha2AssistCanDirectSend', '整理失败不影响直接发送原稿'))
-        : t('ha2ValidationHint', '尚未尝试投递');
+        : n.kind === 'consult'
+          ? t('ha2ConsultConfirmHint', '请在下方会诊记录点「理解正确」')
+          : t('ha2ValidationHint', '尚未尝试投递');
     var cta = '';
     if (isWbCfg) {
       cta =
@@ -2279,6 +2283,279 @@
     );
   }
 
+  function concierge() {
+    return global.OneToneHomeContextConcierge || null;
+  }
+
+  function draftTextNow() {
+    var ta = root && root.querySelector('[data-ha2-draft]');
+    if (ta && typeof ta.value === 'string') return ta.value;
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    return (snap && snap.draft) || '';
+  }
+
+  /** Phase2.5 consult strip — never claims diagnosis complete / root cause found. */
+  function consultStripHtml(_snap) {
+    var C = concierge();
+    if (!C || typeof C.getPublicState !== 'function') return '';
+    // Same gate as「手动添加材料」— flag off must hide find-materials CTA (A′.1).
+    if (typeof C.featureEnabled === 'function' && !C.featureEnabled()) return '';
+    var st = C.getPublicState();
+    var Skills = global.OneToneHomeAssistSkills;
+    var skillOpts = Skills && Skills.FLOW_SKILLS ? Skills.FLOW_SKILLS : {};
+    var skillSelect =
+      '<label class="ha2-consult-skill"><span class="ha2-sr-only">任务类型</span><select data-ha2-consult-skill>' +
+      Object.keys(skillOpts)
+        .map(function (id) {
+          var sk = skillOpts[id];
+          return (
+            '<option value="' +
+            esc(id) +
+            '"' +
+            (st.flowSkillId === id ? ' selected' : '') +
+            '>' +
+            esc((sk && sk.label) || id) +
+            '</option>'
+          );
+        })
+        .join('') +
+      '</select></label>';
+    var disp = st.display;
+    var lines =
+      disp && disp.lines && disp.lines.length
+        ? disp.lines
+            .map(function (ln) {
+              return '<p class="ha2-consult-line">' + esc(ln) + '</p>';
+            })
+            .join('')
+        : '<p class="ha2-consult-line ha2-consult-muted">' +
+          esc(t('ha2ConsultHint', '会诊记录：先复述问题，再按证据推进，不臆测根因')) +
+          '</p>';
+    var confBadge =
+      disp && disp.status === 'user_confirmed'
+        ? '<span class="ha2-consult-badge">' + esc(t('ha2ConsultConfirmed', '已确认理解')) + '</span>'
+        : disp && disp.status === 'suggested'
+          ? '<span class="ha2-consult-badge is-suggested">' +
+            esc(t('ha2ConsultSuggested', '建议稿（待确认）')) +
+            '</span>'
+          : '';
+    var q = st.lastDecision && st.lastDecision.question;
+    var qHtml = '';
+    if (q && q.prompt) {
+      qHtml =
+        '<div class="ha2-consult-q" data-ha2-consult-q>' +
+        '<p>' +
+        esc(q.prompt) +
+        '</p><div class="ha2-consult-opts">' +
+        (q.options || [])
+          .map(function (opt) {
+            return (
+              '<button type="button" class="ha2-link" data-ha2-consult-answer="' +
+              esc(opt) +
+              '">' +
+              esc(opt) +
+              '</button>'
+            );
+          })
+          .join('') +
+        '<button type="button" class="ha2-link" data-ha2-consult-skip>' +
+        esc(t('ha2ConsultSkip', '跳过')) +
+        '</button></div></div>';
+    }
+    var cands = st.candidates || [];
+    var candHtml = '';
+    if (cands.length) {
+      candHtml =
+        '<div class="ha2-consult-cands"><p class="ha2-consult-muted">' +
+        esc(t('ha2ConsultCands', '相关材料（采用后才会发送）')) +
+        '</p>' +
+        cands
+          .map(function (c, i) {
+            return (
+              '<div class="ha2-consult-cand"><span>' +
+              esc(c.label || c.displayPath || '') +
+              '</span> <small>' +
+              esc(c.reason || '') +
+              '</small> <button type="button" class="ha2-link" data-ha2-consult-adopt="' +
+              i +
+              '">' +
+              esc(t('ha2ConsultAdopt', '采用')) +
+              '</button></div>'
+            );
+          })
+          .join('') +
+        '</div>';
+    } else if (st.grant) {
+      candHtml =
+        '<div class="ha2-consult-cands"><p class="ha2-consult-muted">' +
+        esc(
+          t(
+            'ha2ConsultCandsEmpty',
+            '已授权查找，但还没有可采用候选。可在草稿写关键词后再点「查找材料」。'
+          )
+        ) +
+        '</p></div>';
+    }
+    var grantHint = st.grant
+      ? '<span class="ha2-consult-muted">' +
+        esc(t('ha2ConsultGranted', '已授权查找：') + (st.grant.displayName || '')) +
+        '</span>'
+      : '';
+    return (
+      '<div class="ha2-consult" data-ha2-consult aria-label="' +
+      esc(t('ha2ConsultTitle', '会诊记录')) +
+      '">' +
+      '<div class="ha2-consult-head"><strong>' +
+      esc(t('ha2ConsultTitle', '会诊记录')) +
+      '</strong>' +
+      confBadge +
+      skillSelect +
+      '</div>' +
+      '<div class="ha2-consult-body">' +
+      lines +
+      '</div>' +
+      qHtml +
+      candHtml +
+      '<div class="ha2-consult-acts">' +
+      '<button type="button" class="ha2-link" data-ha2-consult-clarify>' +
+      esc(st.ctaClarify || t('ha2ConsultClarify', '帮我说清楚问题')) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-consult-confirm>' +
+      esc(t('ha2ConsultConfirm', '理解正确')) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-consult-compile>' +
+      esc(t('ha2ConsultCompile', '生成检查单')) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-consult-find>' +
+      esc(t('ha2ConsultFind', '为此项目查找材料')) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-consult-skip-all>' +
+      esc(t('ha2ConsultDirect', '跳过会诊')) +
+      '</button>' +
+      grantHint +
+      '</div></div>'
+    );
+  }
+
+  function runConsultClarify() {
+    var C = concierge();
+    var S = store();
+    if (!C) return;
+    var raw = draftTextNow();
+    C.restateLocal(raw);
+    var decision = C.decide(raw);
+    if (decision && decision.action === 'suggest_evidence') {
+      C.suggestEvidence({ rawText: raw }).then(function () {
+        if (S) paint(S.getSnapshot());
+      });
+    }
+    if (S) {
+      S.setValidationNotice({
+        kind: 'consult',
+        message: t('ha2ConsultRestated', '已生成问题复述（建议稿，请确认）')
+      });
+      paint(S.getSnapshot());
+    }
+  }
+
+  function runConsultCompile() {
+    var C = concierge();
+    var S = store();
+    if (!C || !C.compileTask) return;
+    var pack = C.compileTask({ rawText: draftTextNow() });
+    if (!pack || !pack.body) return;
+    syncDraftMirrors(pack.body);
+    if (S && S.setDraft) S.setDraft(pack.body, { silent: true });
+    var Prep = global.OneToneHomePromptPrep;
+    if (Prep && Prep.setDraftBody) {
+      try {
+        Prep.setDraftBody(pack.body, { skipSync: true });
+      } catch (_) {}
+    }
+    if (S) {
+      S.setValidationNotice({
+        kind: 'consult',
+        message: t(
+          'ha2ConsultCompiled',
+          pack.level === 'conditional_change'
+            ? '已按当前证据生成有条件修改建议（可再编辑后发送）'
+            : '已生成调查检查单（可再编辑后发送）'
+        )
+      });
+      paint(S.getSnapshot());
+    }
+  }
+
+  function runConsultFindMaterials() {
+    var C = concierge();
+    var S = store();
+    if (!C) return;
+    var projectId =
+      (S && S.getSnapshot && S.getSnapshot().project && S.getSnapshot().project.id) ||
+      (S && S.getSnapshot && S.getSnapshot().focusDto && S.getSnapshot().focusDto.project &&
+        S.getSnapshot().focusDto.project.id) ||
+      '';
+    var ok = false;
+    try {
+      ok = global.confirm
+        ? global.confirm(
+            t(
+              'ha2ConsultFindConfirm',
+              '允许 OneTone 在当前任务中按预算寻找候选材料？候选正文仍需你确认后才会发送。'
+            )
+          )
+        : false;
+    } catch (_) {}
+    if (!ok) return;
+    if (!projectId) {
+      if (S) {
+        S.setValidationNotice({
+          kind: 'consult',
+          message: t('ha2ConsultNoProject', '请先确认当前项目，或使用「手动添加材料」')
+        });
+      }
+      return;
+    }
+    C.syncCapsule({ projectId: projectId });
+    C.requestFindMaterials(projectId)
+      .then(function () {
+        return C.suggestEvidence({ rawText: draftTextNow() });
+      })
+      .then(function (res) {
+        if (!S) return;
+        var n = (res && res.candidates && res.candidates.length) || 0;
+        S.setValidationNotice({
+          kind: 'consult',
+          message:
+            n > 0
+              ? t('ha2ConsultFindDone', '已查找候选；采用后才会进入发送材料') +
+                ' · ' +
+                n +
+                t('ha2ConsultFindCount', ' 条（未采用）')
+              : t(
+                  'ha2ConsultFindEmpty',
+                  '已授权但未找到候选 — 草稿写个关键词（如 README / error）再点查找'
+                )
+        });
+        paint(S.getSnapshot());
+      })
+      .catch(function (err) {
+        if (S) {
+          S.setValidationNotice({
+            kind: 'consult',
+            message:
+              t('ha2ConsultFindFail', '暂时无法查找工程材料') +
+              ' · ' +
+              String((err && err.message) || err || '') +
+              ' · ' +
+              t('ha2ConsultFindFailNext', '仍可直接发送或手动添加材料')
+          });
+          paint(S.getSnapshot());
+        }
+      });
+  }
+
   function dockStaticHtml(snap) {
     var c = currentCat(snap);
     var caps = snap.capabilities || {};
@@ -2292,6 +2569,10 @@
       '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop>' +
       '<div data-ha2-wb-transcript-host>' +
       wbTranscriptHtml(c.id) +
+      '</div>' +
+      /* Consult above draft so restatement is not buried under the editor. */
+      '<div data-ha2-consult-host>' +
+      consultStripHtml(snap) +
       '</div>' +
       '<div class="ha2-compose"><label class="ha2-sr-only" for="ha2-draft-input">' +
       esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
@@ -2348,7 +2629,7 @@
       esc(t('ha2AimClear', '清除')) +
       '</button></div>' +
       '<button type="button" class="ha2-link ha2-pcx" data-ha2-pcx title="' +
-      esc(t('ha2AddProjectMaterials', '添加工程材料')) +
+      esc(t('ha2AddProjectMaterials', '手动添加材料')) +
       '"' +
       (global.OneToneHomeProjectContext &&
       global.OneToneHomeProjectContext.featureEnabled &&
@@ -2356,7 +2637,7 @@
         ? ''
         : ' hidden') +
       '>' +
-      esc(t('ha2AddProjectMaterials', '添加工程材料')) +
+      esc(t('ha2AddProjectMaterialsManual', '手动添加材料')) +
       '</button>' +
       '<button type="button" class="ha2-btn ha2-organize" data-ha2-organize title="' +
       esc(t('ha2OrganizeTask', '整理任务')) +
@@ -2495,6 +2776,27 @@
     if (S) S.setPickerOpen(false);
   }
 
+  function syncDockReserve() {
+    if (!root) return;
+    var main = root.querySelector('.ha2-main');
+    var zone = root.querySelector('.ha2-dock-zone');
+    if (!main || !zone) return;
+    var h = Math.ceil(zone.getBoundingClientRect().height || 0);
+    // Fade + breathing room so receipts above dock are not clipped.
+    var pad = Math.max(190, h + 28);
+    root.style.setProperty('--ha2-dock-reserve', pad + 'px');
+  }
+
+  function ensureDockReserveObserver() {
+    if (dockReserveRo || !root || typeof global.ResizeObserver !== 'function') return;
+    var zone = root.querySelector('.ha2-dock-zone');
+    if (!zone) return;
+    dockReserveRo = new global.ResizeObserver(function () {
+      syncDockReserve();
+    });
+    dockReserveRo.observe(zone);
+  }
+
   function ensureShell(snap) {
     if (!root) return;
     if (!shellBuilt) {
@@ -2506,6 +2808,8 @@
       if (dockHost) dockHost.innerHTML = dockStaticHtml(snap);
       var ta = root.querySelector('[data-ha2-draft]');
       if (ta) ta.value = snap.draft || '';
+      ensureDockReserveObserver();
+      syncDockReserve();
     }
     if (!root.querySelector('[data-ha2-wb-page-host]')) {
       var shell = root.querySelector('.ha2-shell');
@@ -2611,6 +2915,9 @@
     if (ta) {
       ta.placeholder = t('ha2DraftPlaceholder', '写给') + (c.name ? ' ' + c.name + '…' : '…');
     }
+    var consultHost = root.querySelector('[data-ha2-consult-host]');
+    if (consultHost) consultHost.innerHTML = consultStripHtml(snap);
+
     var attachHost = root.querySelector('[data-ha2-attach-host]');
     if (attachHost) {
       var matFocus =
@@ -2702,6 +3009,8 @@
     patchCrumb(snap);
     patchContent(snap, viewChanged);
     patchDockMeta(snap);
+    ensureDockReserveObserver();
+    syncDockReserve();
   }
 
   function refreshAimForSelected() {
@@ -3221,6 +3530,14 @@
     return pending.length ? Promise.all(pending) : Promise.resolve();
   }
 
+  function compactWbLocalUserText(raw) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.compactLocalChatUserText === 'function') {
+      return Caps.compactLocalChatUserText(raw);
+    }
+    return String(raw || '').trim();
+  }
+
   function sendWbLocal(draftRemember, c) {
     var S = store();
     if (wbChatBusy) return;
@@ -3240,6 +3557,10 @@
       });
       return;
     }
+
+    // Checklist markdown → short goal turn (avoid section-fill replies).
+    draftRemember = compactWbLocalUserText(draftRemember);
+    if (!draftRemember) return;
 
     wbChatBusy = true;
     wbTranscriptCollapsed = false;
@@ -3411,9 +3732,23 @@
         if (res.adopted === false && res.reason === 'stale') {
           return;
         }
+        // Phase2.5: organize output is suggested ProblemBrief only — never auto user_confirmed.
+        try {
+          var PrepOrg = global.OneToneHomePromptPrep;
+          var modelOrg = PrepOrg && PrepOrg._model && PrepOrg._model();
+          var structured =
+            modelOrg && modelOrg.organizedDraft && modelOrg.organizedDraft.structured;
+          var Conc = concierge();
+          if (Conc && Conc.adoptOrganizeSuggested && structured) {
+            Conc.adoptOrganizeSuggested(structured, {});
+          }
+        } catch (_) {}
         S.setValidationNotice({
           kind: 'assist_done',
-          message: t('ha2OrganizeDone', '已生成整理稿，可编辑后发送；恢复原稿可切回')
+          message: t(
+            'ha2OrganizeDone',
+            '已生成整理稿（建议稿，请在会诊记录确认理解）；可编辑后发送'
+          )
         });
         var Prep = global.OneToneHomePromptPrep;
         if (Prep && Prep.setActiveDraft) Prep.setActiveDraft('organized');
@@ -3714,6 +4049,13 @@
   function onChange(e) {
     var el = e && e.target;
     if (!el || !el.matches) return;
+    if (el.matches('[data-ha2-consult-skill]')) {
+      var Csk = concierge();
+      if (Csk && Csk.setFlowSkill) Csk.setFlowSkill(el.value);
+      var Ssk = store();
+      if (Ssk) paint(Ssk.getSnapshot());
+      return;
+    }
     if (el.matches('[data-ha2-allow-metered]')) {
       var AssistM = global.OneToneHomeAssistClient;
       if (AssistM && AssistM.setAllowMetered) {
@@ -4089,7 +4431,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-assist-keys],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop]'
     );
     if (!tEl) return;
     var S = store();
@@ -4276,6 +4618,74 @@
     if (tEl.hasAttribute('data-ha2-pcx')) {
       var Pcx = global.OneToneHomeProjectContext;
       if (Pcx && typeof Pcx.openDrawer === 'function') Pcx.openDrawer();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-clarify')) {
+      runConsultClarify();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-confirm')) {
+      var Cc = concierge();
+      if (Cc && Cc.confirmUnderstanding) Cc.confirmUnderstanding();
+      if (S) {
+        S.setValidationNotice({
+          kind: 'consult',
+          message: t('ha2ConsultConfirmedNotice', '已确认问题理解（会诊记录）')
+        });
+        paint(S.getSnapshot());
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-compile')) {
+      runConsultCompile();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-find')) {
+      runConsultFindMaterials();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-skip-all')) {
+      var Cskip = concierge();
+      if (Cskip && Cskip.resetConsult) Cskip.resetConsult();
+      if (S) {
+        S.setValidationNotice({
+          kind: 'consult',
+          message: t('ha2ConsultSkipped', '已跳过会诊，可直接整理或发送')
+        });
+        paint(S.getSnapshot());
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-skip')) {
+      var Cq = concierge();
+      if (Cq && Cq.answerQuestion) Cq.answerQuestion('', { skipped: true });
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-answer')) {
+      var ans = tEl.getAttribute('data-ha2-consult-answer') || '';
+      var Ca = concierge();
+      if (Ca && Ca.answerQuestion) Ca.answerQuestion(ans);
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-consult-adopt')) {
+      var idx = parseInt(tEl.getAttribute('data-ha2-consult-adopt'), 10);
+      var Cad = concierge();
+      if (Cad && Cad.adoptCandidate) {
+        Cad.adoptCandidate(idx).then(function (res) {
+          if (S) {
+            S.setValidationNotice({
+              kind: 'consult',
+              message: res && res.ok
+                ? t('ha2ConsultAdopted', '已采用材料')
+                : t('ha2ConsultAdoptFail', '采用失败，可手动添加材料')
+            });
+            if (S.syncMaterialsFromPrep) S.syncMaterialsFromPrep();
+            paint(S.getSnapshot());
+          }
+        });
+      }
       return;
     }
     if (tEl.hasAttribute('data-ha2-organize')) {

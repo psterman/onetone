@@ -16,13 +16,13 @@ Task organize: implemented, conditionally ready
 Free-only remote path: ready when eligible (zero_price) model exists
 Direct send path: ready
 
-Phase2 status: RC（候选发布版）— 等待桌面真机验收
+Phase2 status: RC（候选发布版）— 桌面 A/B 已人工通过；远程 C skipped
 Phase2 implementation: passed
 Phase2 automated verification: passed
 Phase2.0 preflight gate: passed
-Phase2 local desktop verification: pending
-Phase2 remote organize verification: pending
-Phase2 release acceptance: pending
+Phase2 local desktop verification: passed
+Phase2 remote organize verification: skipped
+Phase2 release acceptance: passed
 ```
 
 **Phase2 试验性指标（目标意向；样本不足=未测量，不判失败）：** 准备时间 −30% / 粘贴 −50% / 未确认过期发送 0 / 无模型直发 ≥ Phase1。当前：**未测量**。
@@ -30,15 +30,14 @@ Phase2 release acceptance: pending
 发布前检查：
 
 - 模拟路径：**已过** `npm run test:home-assist-ui-checklist`（≠ 真机点击；仍有 `device_check_remaining`）
-- 真机：本机需**重建** `onetone.exe` 后按 [phase2-rc-acceptance.md](./phase2-rc-acceptance.md) 验收；首页整理区截图仍待补
+- 桌面 A/B：操作员引导九步全绿（2026-10-28）— 见 [phase2-rc-acceptance.md](./phase2-rc-acceptance.md)
 - 文案：失败禁止裸「整理失败」；`no_free_model` 提示下一步；dock 勾选「允许计量额度」+ 失败 CTA
 - 分层状态：[phase2-gate-record.md](./phase2-gate-record.md)
 
 仍未完成（须保持明确）：
 
-- 真实远程整理尚未验证
-- 真机首页整理区截图 / 八步点击尚未验证
-- Phase2 桌面本地闭环 A、Git 闭环 B、发布验收尚未通过
+- 真实远程整理尚未验证（remote skipped）
+- Phase2.5 会诊 / 临时读权 / Concierge：见 [phase2.5-audit.md](./phase2.5-audit.md)
 - Phase3 接续记忆与 Skill 导出未接入
 
 ## 统一条目形状
@@ -70,10 +69,17 @@ Phase1 conditional (ready 依赖配置):
 - usage reporting (real or estimated-labeled)
 
 Phase2 RC (flag default off → session not_wired until enabled;
-  desktop / remote / release still pending):
+  desktop A/B passed; remote skipped):
 - project_passport / project_evidence / project_search
 - project_diff_summary then project_diff_excerpt
 - read_project: partial only when projectContextEnabled; never implies write/run
+
+
+Phase2.5 (automated green 2026-10-28; desktop A′ pending human):
+- flow skills + consult skeleton (local); model still task_organize only
+- backend find-materials grant + open_confirmed (+ success/root-drift unit tests)
+- concierge on-demand; suggested!=user_confirmed; verified!=user_reported
+- NOT release-accepted until A′ click-through evidence (C skipped)
 
 Phase3 not_wired:
 - structured continuation memory
@@ -88,12 +94,12 @@ Phase3 not_wired:
 | `text_chat` | `cmd_workbuddy_local_chat` | available（仅 WorkBuddy 本机） | 讨论；桌面投递 ≠ 本机聊 |
 | `agent_task` | `cmd_agent_center_*` | partial | 聚焦 / 续跑 / 中断；非沙箱 |
 | `task_organize` | `cmd_assist_run` / `cmd_assist_cancel` | partial→available | `implemented: true`；本地假传输已验证；**真实提供商未验证**；`ready` 依赖 Soft Pad 密钥与 callPolicy |
-| `read_project` | `cmd_project_context_*` | not_wired→partial | 受限选择性读取；默认 flag 关；桌面真机 pending；非全库分析 |
+| `read_project` | `cmd_project_context_*` | not_wired→partial | 受限选择性读取；默认 flag 关；桌面 A/B 已过；非全库分析 |
 | `project_passport` | query(passport) | not_wired→partial | 根白名单名片 + 用户点选规则 |
 | `project_evidence` | query(read_excerpt) | not_wired→partial | 选定文件片段 |
 | `project_search` | query(search) | not_wired→partial | 字面搜索后选入 |
-| `project_diff_summary` | query(git_changes) | not_wired→partial | staged/unstaged 列表；桌面 Git 闭环 pending |
-| `project_diff_excerpt` | query(git_diff) | not_wired→partial | 单文件有限 patch；桌面 Git 闭环 pending |
+| `project_diff_summary` | query(git_changes) | not_wired→partial | staged/unstaged 列表；桌面 Git 闭环已过 |
+| `project_diff_excerpt` | query(git_diff) | not_wired→partial | 单文件有限 patch；桌面 Git 闭环已过 |
 | `write_project` | — | not_wired | 修改代码：暂未接入 |
 | `run_command` | — | not_wired | 无沙箱命令 |
 | `approval_execute` | — | not_wired | 仅「前往处理」；禁止「已允许」 |

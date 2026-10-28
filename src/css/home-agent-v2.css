@@ -32,7 +32,11 @@
 .ha2-crumb button:focus-visible,.ha2-link:focus-visible{
   outline:2px solid var(--ha2-accent);outline-offset:2px;
 }
-.ha2-main{flex:1;min-height:0;overflow-y:auto;padding:23px 28px 190px}
+/* Bottom pad tracks dock height (--ha2-dock-reserve set by syncDockReserve). */
+.ha2-main{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:23px 28px var(--ha2-dock-reserve, 320px);
+}
 .ha2-content{width:min(950px,100%);margin:0 auto}
 .ha2-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
 .ha2-head h1{font-size:22px;line-height:1.15;letter-spacing:-.02em;margin:0 0 5px;font-weight:700}
@@ -293,6 +297,8 @@
   pointer-events:auto;width:min(950px,100%);margin:0 auto;
   display:flex;flex-direction:column;gap:8px;
   padding:10px 14px 12px;
+  /* Consult + materials can grow — scroll inside dock so main receipts stay visible. */
+  max-height:min(62vh,560px);overflow-x:hidden;overflow-y:auto;
   background:color-mix(in srgb, var(--ha2-surface) 96%, transparent);
   border:1px solid var(--ha2-line);
   border-radius:14px;
@@ -969,6 +975,33 @@ html[data-theme="dark"] .ha2-picker.is-menu .ha2-picker-row:focus-visible{outlin
 }
 .home-pcx-stale-row{padding:6px 0;border-bottom:1px solid var(--ha2-line,#333);font-size:12px}
 .home-pcx-stale-acts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+
+/* Phase2.5 light consult strip */
+.ha2-consult{
+  margin:8px 0 10px;padding:10px 12px;border:1px solid var(--ha2-line);
+  border-radius:11px;background:color-mix(in srgb, var(--ha2-muted) 6%, var(--ha2-surface));
+}
+.ha2-consult-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px}
+.ha2-consult-head strong{font-size:12.5px;font-weight:650}
+.ha2-consult-skill select{
+  font:inherit;font-size:12px;border:1px solid var(--ha2-line);border-radius:8px;
+  background:var(--ha2-surface);color:inherit;padding:3px 6px;
+}
+.ha2-consult-badge{
+  font-size:10.5px;padding:1px 6px;border-radius:999px;
+  background:color-mix(in srgb, var(--ha2-accent) 14%, transparent);color:var(--ha2-muted);
+}
+.ha2-consult-badge.is-suggested{
+  background:color-mix(in srgb, var(--ha2-muted) 14%, transparent);
+}
+.ha2-consult-body{font-size:12.5px;line-height:1.45}
+.ha2-consult-line{margin:0 0 4px}
+.ha2-consult-muted{color:var(--ha2-muted);font-size:12px;margin:0 0 4px}
+.ha2-consult-q{margin:8px 0;padding:8px;border-radius:8px;background:color-mix(in srgb, var(--ha2-muted) 8%, transparent)}
+.ha2-consult-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ha2-consult-cands{margin:8px 0}
+.ha2-consult-cand{margin:4px 0;font-size:12px}
+.ha2-consult-acts{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:8px}
 
 @media(prefers-reduced-motion:reduce){
   .now-home.is-home-agent-v2 *{transition:none!important}

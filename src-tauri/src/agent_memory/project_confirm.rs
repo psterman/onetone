@@ -32,6 +32,31 @@ pub fn is_project_confirmed(project_id: &str) -> bool {
     .unwrap_or(false)
 }
 
+/// Confirmed project → validated workspace root. Returns None if unconfirmed, missing, or identity drifted.
+pub fn confirmed_workspace_root(project_id: &str) -> Option<(std::path::PathBuf, String)> {
+    let pid = project_id.trim();
+    if pid.is_empty() || !is_project_confirmed(pid) {
+        return None;
+    }
+    let (name, root_opt) = with_read_path(|conn| {
+        conn.query_row(
+            "SELECT display_name, workspace_path FROM projects WHERE project_id = ?1",
+            params![pid],
+            |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)),
+        )
+        .map_err(|e| format!("project lookup: {e}"))
+    })
+    .ok()?;
+    let root_s = root_opt.filter(|s| !s.trim().is_empty())?;
+    let path = std::path::PathBuf::from(&root_s);
+    let canon = validate_workspace_path(&path)?;
+    let derived = project_id_from_path(&canon);
+    if derived != pid {
+        return None;
+    }
+    Some((canon, name))
+}
+
 pub fn confirm_project(
     project_root: Option<&str>,
     project_id: Option<&str>,

@@ -301,6 +301,7 @@
 
   /**
    * System prompt for WorkBuddy in-app local chat. Honest: path context only, no fake FS.
+   * Keep short — models echo long role text into the user-facing reply.
    * @param {{
    *   projectPath?: string|null,
    *   projectName?: string|null,
@@ -330,19 +331,71 @@
       name = parts[parts.length - 1] || '';
     }
     var lines = [
-      '你是 OneTone 首页的 WorkBuddy 本机讨论助手（思考/方案，不打开桌面 WorkBuddy，也不改仓库）。',
-      '请在用户当前工作区语境下回答；没有文件内容时不要编造路径、diff 或命令输出。'
+      'OneTone 本机讨论：只回答用户目标，给最短可执行步骤。',
+      '禁止：开场自白、复述系统限制、按模板填空、重复用户原话。',
+      '无文件正文勿编造路径/diff/输出；不能读写磁盘——要改仓库时一句交 Cursor。',
+      '有截图但无像素时：仍按文字目标直接给方案。样式/UI 类给出层次、间距、对比、信息密度等具体改法，勿只回复「无 OCR / 请指明元素」。'
     ];
     if (path) {
-      lines.push('当前项目路径：' + path);
-      if (name) lines.push('项目名：' + name);
+      lines.push('项目：' + (name ? name + ' · ' : '') + path);
     } else {
-      lines.push('当前未选定项目路径；若问题依赖仓库细节，请先说明缺少项目语境。');
+      lines.push('未选定项目；缺仓库细节时先点明缺什么。');
     }
-    if (work) lines.push('近期工作线索：' + work);
-    if (mats.length) lines.push('已附材料（仅名称，无正文）：' + mats.join('、'));
-    lines.push('你不能读写磁盘；需要改代码或查文件时，建议用户交接给 Cursor / 桌面模式。');
+    if (work) lines.push('工作线索：' + work);
+    if (mats.length) lines.push('已附材料名：' + mats.join('、'));
     return lines.join('\n');
+  }
+
+  /**
+   * Collapse Phase2.5 triage markdown into a short local-chat user turn.
+   * Full checklist is for Cursor handoff; models echo it section-by-section if sent raw.
+   */
+  function compactLocalChatUserText(raw) {
+    raw = String(raw || '').trim();
+    if (!raw) return '';
+    var looksTriage =
+      /^##\s*目标/m.test(raw) ||
+      /##\s*已确认证据/.test(raw) ||
+      /##\s*请求/.test(raw) ||
+      /##\s*建议检查/.test(raw) ||
+      /##\s*给 Cursor/.test(raw) ||
+      /##\s*验收标准/.test(raw);
+    if (!looksTriage) return raw;
+
+    function sectionBody(titleRe) {
+      var m = raw.match(titleRe);
+      return m ? String(m[1] || '').trim() : '';
+    }
+    function firstLine(block) {
+      var line = String(block || '')
+        .split(/\n/)
+        .map(function (l) {
+          return l.replace(/^\s*[-*]\s*/, '').trim();
+        })
+        .filter(Boolean)[0];
+      return line || '';
+    }
+    var emptyish = function (s) {
+      s = String(s || '').trim();
+      return !s || s === '（无）' || s === '(无)' || s === '（待用户确认）';
+    };
+
+    var goal = firstLine(sectionBody(/##\s*目标\s*\n+([\s\S]*?)(?=\n##\s|$)/));
+    var observed = firstLine(sectionBody(/##\s*用户观察\s*\n+([\s\S]*?)(?=\n##\s|$)/));
+    var mats = [];
+    var ev = sectionBody(/##\s*已确认证据\s*\n+([\s\S]*?)(?=\n##\s|$)/);
+    if (ev) {
+      ev.replace(/`([^`]+)`/g, function (_, p) {
+        if (p && mats.indexOf(p) < 0) mats.push(p);
+      });
+    }
+
+    var bits = [];
+    if (!emptyish(goal)) bits.push(goal);
+    if (!emptyish(observed) && observed !== goal) bits.push('现象：' + observed);
+    if (mats.length) bits.push('材料：' + mats.slice(0, 4).join('、'));
+    if (!bits.length) bits.push(raw.slice(0, 240));
+    return bits.join('\n');
   }
 
   /** Fail-closed empty projection when module consumers call without Caps loaded. */
@@ -376,6 +429,7 @@
     projectSession: projectSession,
     resolveHomeTimelineWorkspace: resolveHomeTimelineWorkspace,
     buildLocalChatSystemPrompt: buildLocalChatSystemPrompt,
+    compactLocalChatUserText: compactLocalChatUserText,
     closedCapabilities: closedCapabilities,
     closedPermissions: closedPermissions
   };

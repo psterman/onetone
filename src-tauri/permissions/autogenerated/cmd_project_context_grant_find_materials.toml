@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-project-context-grant-find-materials"
+description = "Enables the cmd_project_context_grant_find_materials command without any pre-configured scope."
+commands.allow = ["cmd_project_context_grant_find_materials"]
+
+[[permission]]
+identifier = "deny-cmd-project-context-grant-find-materials"
+description = "Denies the cmd_project_context_grant_find_materials command without any pre-configured scope."
+commands.deny = ["cmd_project_context_grant_find_materials"]

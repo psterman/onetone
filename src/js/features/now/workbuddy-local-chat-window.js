@@ -38,6 +38,48 @@
     });
   }
 
+  /** Inline markdown-ish: **bold** and `code` only. Input must already be escaped. */
+  function inlineFmt(s) {
+    return s
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  /**
+   * Mechanical text → HTML (no LLM, no reflow of wording):
+   * "- " bullets → <ul>, "# " heading lines → .wb-h, rest → <p>.
+   */
+  function formatBody(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var out = [];
+    var inList = false;
+    for (var i = 0; i <= lines.length; i++) {
+      var raw = i < lines.length ? lines[i] : '';
+      var bullet = i < lines.length ? raw.match(/^\s*[-•*]\s+(.*)$/) : null;
+      if (bullet) {
+        if (!inList) {
+          out.push('<ul>');
+          inList = true;
+        }
+        out.push('<li>' + inlineFmt(esc(bullet[1])) + '</li>');
+        continue;
+      }
+      if (inList) {
+        out.push('</ul>');
+        inList = false;
+      }
+      if (i === lines.length) break;
+      if (!raw.trim()) continue;
+      var head = raw.match(/^\s*#{1,4}\s+(.*)$/);
+      if (head) {
+        out.push('<div class="wb-h">' + inlineFmt(esc(head[1])) + '</div>');
+        continue;
+      }
+      out.push('<p>' + inlineFmt(esc(raw)) + '</p>');
+    }
+    return out.join('');
+  }
+
   function loadTurns() {
     try {
       var raw = global.localStorage && global.localStorage.getItem(WB_CHAT_KEY);
@@ -111,9 +153,9 @@
           streamCls +
           '"><span class="wb-turn-role">' +
           roleHtml +
-          '</span><pre class="wb-turn-body">' +
-          esc(t.text || '') +
-          '</pre></div>'
+          '</span><div class="wb-turn-body">' +
+          formatBody(t.text || '') +
+          '</div></div>'
         );
       })
       .join('');

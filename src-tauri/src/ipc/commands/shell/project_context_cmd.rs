@@ -1,5 +1,6 @@
 use crate::project_context::{
-    self, CancelArgs, CloseArgs, ContextError, OpenArgs, QueryArgs, QueryResult, ScopeDto,
+    self, CancelArgs, CloseArgs, ContextError, GrantDto, GrantFindMaterialsArgs, OpenArgs,
+    OpenConfirmedArgs, QueryArgs, QueryResult, RevokeGrantArgs, ScopeDto,
 };
 use serde::Serialize;
 use tauri::Window;
@@ -66,4 +67,32 @@ pub fn cmd_project_context_cancel(
     Ok(CancelState {
         state: state.into(),
     })
+}
+
+/// Phase2.5: user confirms "find materials" for a confirmed project → temporary grant.
+#[tauri::command]
+pub fn cmd_project_context_grant_find_materials(
+    window: Window,
+    args: GrantFindMaterialsArgs,
+) -> Result<GrantDto, String> {
+    project_context::grant_find_materials(&window_label(&window), &args).map_err(map_err)
+}
+
+/// Phase2.5: open scope only with matching backend grant (no FE absolute path).
+#[tauri::command]
+pub fn cmd_project_context_open_confirmed(
+    window: Window,
+    args: OpenConfirmedArgs,
+) -> Result<ScopeDto, String> {
+    project_context::open_confirmed(&window_label(&window), &args).map_err(map_err)
+}
+
+#[tauri::command]
+pub fn cmd_project_context_revoke_grant(
+    window: Window,
+    args: RevokeGrantArgs,
+) -> Result<serde_json::Value, String> {
+    let revoked =
+        project_context::revoke_grant(&window_label(&window), &args).map_err(map_err)?;
+    Ok(serde_json::json!({ "revoked": revoked }))
 }

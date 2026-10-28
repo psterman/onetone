@@ -44,6 +44,8 @@ pub enum ContextError {
     Timeout,
     IoError,
     CancelledDialog,
+    /// Phase2.5: find-materials grant missing / mismatched / project identity drifted.
+    GrantRequired,
 }
 
 impl ContextError {
@@ -65,6 +67,7 @@ impl ContextError {
             Self::Timeout => "timeout",
             Self::IoError => "io_error",
             Self::CancelledDialog => "cancelled",
+            Self::GrantRequired => "grant_required",
         }
     }
 }

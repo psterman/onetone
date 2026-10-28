@@ -28,7 +28,8 @@
     cancelled: '已取消',
     timeout: '读取超时，请缩小范围后重试',
     io_error: '无法读取该位置，请检查权限后重试',
-    offline: '当前无法读取远程服务，但仍可直接交接'
+    offline: '当前无法读取远程服务，但仍可直接交接',
+    grant_required: '需要先确认「为此项目查找材料」后才能读取工程候选'
   };
 
   function featureEnabled() {
@@ -183,6 +184,7 @@
 
   function pushCandidates(list) {
     candidates = (list || []).filter(Boolean);
+    syncConsultCandidates(candidates);
     return candidates.slice();
   }
 
@@ -883,10 +885,11 @@
           escapeHtml((c.content || '').slice(0, 1200)) +
           '</pre><button type="button" data-adopt="' +
           i +
-          '">加入材料</button></div>'
+          '">采用</button></div>'
         );
       })
       .join('');
+    syncConsultCandidates(candidates);
     el.onclick = function (ev) {
       var a = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-adopt');
       if (a == null) return;
@@ -915,17 +918,49 @@
             ? ' L' + (row.provenance.range.start || '') + '-' + (row.provenance.range.end || '')
             : '';
         lastBudgetHint =
-          '已加入材料：' +
+          '已采用：' +
           (row.name || '') +
           rangeHint +
           ' · 可在下方交接区直发（无需整理）';
         paintStatus();
-        toast('已加入材料：' + (row.name || '工程材料'));
+        toast('已采用：' + (row.name || '工程材料'));
+        // Drop adopted preview from consult strip so A′.3「未采用→采用」对照清楚.
+        syncConsultCandidates([]);
+        var S = global.OneToneHomeAgentV2Store;
+        if (S && S.syncMaterialsFromPrep) {
+          try {
+            S.syncMaterialsFromPrep();
+          } catch (_) {}
+        }
+        if (S && S.setValidationNotice) {
+          S.setValidationNotice({
+            kind: 'consult',
+            message: '已采用材料，进入发送区'
+          });
+        }
       } else {
         paintStatus();
-        toast(lastError || '加入材料失败');
+        toast(lastError || '采用失败');
       }
     };
+  }
+
+  /** Keep HA2 consult「采用」in sync with drawer previews (same adopt gate). */
+  function syncConsultCandidates(list) {
+    var C = global.OneToneHomeContextConcierge;
+    if (!C || typeof C.setCandidatesFromPcx !== 'function') return;
+    try {
+      C.setCandidatesFromPcx(list || []);
+    } catch (_) {}
+    var S = global.OneToneHomeAgentV2Store;
+    if (S && typeof S.setValidationNotice === 'function' && (list || []).length) {
+      try {
+        S.setValidationNotice({
+          kind: 'consult',
+          message: '待采用 ' + list.length + ' 条 — 会诊条或预览下点「采用」'
+        });
+      } catch (_) {}
+    }
   }
 
   function escapeHtml(s) {
@@ -945,11 +980,70 @@
     return true;
   }
 
+  /** Phase2.5: backend-native find-materials grant (not FE-only consent). */
+  function grantFindMaterials(projectId, _taskScopeId) {
+    if (!featureEnabled()) {
+      return Promise.reject(new Error('feature_disabled'));
+    }
+    var ts = _taskScopeId || taskScopeId();
+    var pid = String(projectId || '').trim();
+    if (!ts || !pid) return Promise.reject(new Error('scope_required'));
+    return invoke('cmd_project_context_grant_find_materials', {
+      taskScopeId: ts,
+      projectId: pid
+    }).catch(function (err) {
+      setError(err);
+      return Promise.reject(err);
+    });
+  }
+
+  /** Phase2.5: open scope only with matching grant; never send absolute path. */
+  function openConfirmedProject(projectId, _taskScopeId) {
+    if (!featureEnabled()) {
+      return Promise.reject(new Error('feature_disabled'));
+    }
+    var ts = _taskScopeId || taskScopeId();
+    var pid = String(projectId || '').trim();
+    if (!ts || !pid) return Promise.reject(new Error('scope_required'));
+    return invoke('cmd_project_context_open_confirmed', {
+      taskScopeId: ts,
+      projectId: pid
+    })
+      .then(function (scope) {
+        activeScope = scope || null;
+        candidates = [];
+        lastError = '';
+        lastBudgetHint = scope
+          ? '已授权查找：' + (scope.displayName || scope.displayRoot || '')
+          : '';
+        paintCandidates();
+        return scope;
+      })
+      .catch(function (err) {
+        setError(err);
+        return Promise.reject(err);
+      });
+  }
+
+  function revokeFindGrant(opts) {
+    opts = opts || {};
+    return invoke('cmd_project_context_revoke_grant', {
+      grantId: opts.grantId || null,
+      taskScopeId: opts.taskScopeId || taskScopeId() || null,
+      projectId: opts.projectId || null
+    }).catch(function () {
+      return { revoked: false };
+    });
+  }
+
   global.OneToneHomeProjectContext = {
     FLAG_KEY: FLAG_KEY,
     featureEnabled: featureEnabled,
     reasonMessage: reasonMessage,
     openProject: openProject,
+    openConfirmedProject: openConfirmedProject,
+    grantFindMaterials: grantFindMaterials,
+    revokeFindGrant: revokeFindGrant,
     closeProject: closeProject,
     queryContext: queryContext,
     adoptEvidence: adoptEvidence,
