@@ -92,17 +92,17 @@ Phase3 not_wired:
 | 能力 id | 模块 / IPC | status | reason / 首页展示 |
 |---------|------------|--------|-------------------|
 | `text_chat` | `cmd_workbuddy_local_chat` | available（仅 WorkBuddy 本机） | 讨论；桌面投递 ≠ 本机聊 |
-| `agent_task` | `cmd_agent_center_*` | partial | 聚焦 / 续跑 / 中断；非沙箱 |
-| `task_organize` | `cmd_assist_run` / `cmd_assist_cancel` | partial→available | `implemented: true`；本地假传输已验证；**真实提供商未验证**；`ready` 依赖 Soft Pad 密钥与 callPolicy |
+| `agent_task` | `cmd_agent_center_*` + `cmd_agent_task_*` | partial | 外部 Agent 控制；flag `onetone.agentTaskRuntime=1` 时投影内置单 Agent Task Runtime |
+| `task_organize` | `cmd_assist_run` / `cmd_assist_cancel` | partial→available | **仅任务整理**；与 `agent_task` Runtime 分离 |
 | `read_project` | `cmd_project_context_*` | not_wired→partial | 受限选择性读取；默认 flag 关；桌面 A/B 已过；非全库分析 |
 | `project_passport` | query(passport) | not_wired→partial | 根白名单名片 + 用户点选规则 |
 | `project_evidence` | query(read_excerpt) | not_wired→partial | 选定文件片段 |
 | `project_search` | query(search) | not_wired→partial | 字面搜索后选入 |
 | `project_diff_summary` | query(git_changes) | not_wired→partial | staged/unstaged 列表；桌面 Git 闭环已过 |
 | `project_diff_excerpt` | query(git_diff) | not_wired→partial | 单文件有限 patch；桌面 Git 闭环已过 |
-| `write_project` | — | not_wired | 修改代码：暂未接入 |
-| `run_command` | — | not_wired | 无沙箱命令 |
-| `approval_execute` | — | not_wired | 仅「前往处理」；禁止「已允许」 |
+| `write_project` | `cmd_agent_task_*` | not_wired→partial | 仅 Task Runtime grant 内；默认 `write_with_approval` |
+| `run_command` | `cmd_agent_task_*` | not_wired→partial | 仅 `check_id` 白名单，非任意 shell |
+| `approval_execute` | `cmd_agent_task_approve_patch` | not_wired→partial | patch 审批 token（task+patch+file hash+version） |
 | `diff` | TM `cmd_tm_diff_summary` | **partial** | 仅打开项目时间线（非会话绑定 Diff） |
 | `rollback` | TM `cmd_tm_restore` | **partial** | 同上；恢复在 Time Machine |
 
@@ -113,8 +113,8 @@ Phase3 not_wired:
 | 权限 id | status | available |
 |---------|--------|-----------|
 | `read_project` | not_wired（flag 开且 scope 授予后可为 partial） | false（默认） |
-| `write_project` | not_wired | false |
-| `run_safe_command` | not_wired | false |
+| `write_project` | not_wired（ATR flag + task grant 后 partial） | false（默认） |
+| `run_safe_command` | not_wired（ATR check_id 白名单） | false（默认） |
 | `run_risky_command` | not_wired | false |
 | `network_access` | not_wired | false |
 | `external_path_access` | not_wired | false |
@@ -127,17 +127,29 @@ Phase3 not_wired:
 
 ## Assist Runtime
 
-- Soft Pad 密钥后端读取；WorkBuddy 账号独立
+- ATR 编辑主路径：WorkBuddy OAuth（登录拿账号模型 / freemodel）；Soft Pad 密钥为次选
+- Soft Pad 密钥后端读取；WorkBuddy 账号独立（OAuth / Key）
 - 费用三维：`pricing` / 账户额度展示 / `callPolicy`
 - 异步取消与 HTTP、deadline 竞争；取消不保证停计费
 - 出站经 `buildAssistInputSnapshot`（citeMode）
 - 真实提供商路径：**未验证**；勿把单元/模拟测试当作远程成功
+- **不等于** Agent Task Runtime（不写盘、无 tool loop）
+
+## Agent Task Runtime
+
+- 模块：`src-tauri/src/agent_task_runtime/`；事件 append-only；任务投影 + Checkpoint 仅投影
+- 默认 `write_with_approval`；模型只传 `check_id`；审批 token 绑定 task+patch+file hash+version
+- Flag：`onetone.agentTaskRuntime=1`（`OneToneHomeAgentTask`）
+- Phase E：start 绑定 `agent_memory` checkpoint（同 `checkpoint_id` 更新）；`reject_patch` 清 pending 回 running；首页审批卡 + 事件时间线；focus 优先投影 ATR checkpoint
+- Phase F：DeepSeek 原生 `tools`/`tool_calls`（content-JSON 仅一次回退）；事件导出 `cmd_agent_task_events`
+- Home edit 接缝：`workMode=edit` + flag → `startAndDriveAgentTask`（不经 WB/桌面投递）；approve/reject/input 后互斥 `driveDeepseek`；失败事件 `model_error`/`format_error`/`rate_limited`/`failed`
+- Fake 闭环已测（含 check 失败→repair→done）；DeepSeek 驱动：`cmd_agent_task_drive_deepseek`（需 Soft Pad 密钥）
 
 ## 相关文件
 
 - Prompt：[home-agent-workbench-prompt.md](./home-agent-workbench-prompt.md)
 - Phase2 预检：[phase2-gate-record.md](./phase2-gate-record.md)
 - Phase2 RC 验收：[phase2-rc-acceptance.md](./phase2-rc-acceptance.md)
-- FE：`home-assist-ownership.js`、`home-assist-client.js`、`home-prompt-prep.js`、`home-agent-v2.js`、`home-agent-capabilities.js`、`home-project-context.js`
-- BE：`src-tauri/src/assist_runtime/`、`src-tauri/src/project_context/`
-- 测试：`scripts/test-home-assist-ownership.mjs`、`scripts/test-home-project-context.mjs`、`cargo test --lib project_context`、`cargo test --lib assist_runtime`
+- FE：`home-assist-ownership.js`、`home-assist-client.js`、`home-prompt-prep.js`、`home-agent-v2.js`、`home-agent-capabilities.js`、`home-agent-task.js`、`home-project-context.js`
+- BE：`src-tauri/src/assist_runtime/`、`src-tauri/src/agent_task_runtime/`、`src-tauri/src/project_context/`、`src-tauri/src/agent_memory/`
+- 测试：`scripts/test-home-assist-ownership.mjs`、`scripts/test-home-agent-task.mjs`、`scripts/test-atr-phase-e-flag.mjs`、`scripts/test-atr-phase-f-export.mjs`、`cargo test --lib agent_task_runtime`

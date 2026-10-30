@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-task-ready"
+description = "Enables the cmd_agent_task_ready command without any pre-configured scope."
+commands.allow = ["cmd_agent_task_ready"]
+
+[[permission]]
+identifier = "deny-cmd-agent-task-ready"
+description = "Denies the cmd_agent_task_ready command without any pre-configured scope."
+commands.deny = ["cmd_agent_task_ready"]

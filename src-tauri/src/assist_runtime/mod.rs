@@ -7,10 +7,12 @@ mod models;
 mod router;
 
 pub use cancel::cancel as cancel_request;
+pub use client::extract_assistant_text;
 pub use contracts::{
     AssistCancelRequest, AssistCancelResponse, AssistReadyStatus, AssistRunRequest,
     AssistRunResponse, CallPolicy,
 };
+pub use models::{model_catalog, ModelEntry};
 pub use router::{ready_status, run_live};
 
 #[cfg(test)]

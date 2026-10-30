@@ -11,6 +11,7 @@
   var COALESCE_MS = 120;
   var POLL_MS = 15000;
   var WB_MODE_KEY = 'onetone.ha2.wbSendMode';
+  var WORK_MODE_KEY = 'onetone.ha2.workMode';
 
   var CATALOG = [
     { id: 'codex', name: 'Codex', appId: 'codex-chat', icon: 'icons/app-target/codex.png' },
@@ -46,8 +47,8 @@
     userLocked: false,
     /** WorkBuddy send mode: local = in-app chat; desktop = paste to exe. */
     wbSendMode: 'local',
-    /** User intent for home session: think | readonly | edit */
-    workMode: 'think',
+    /** User intent: think(对话) | edit(工作). Loaded from localStorage below. */
+    workMode: 'edit',
     /** Honest handoff tracking — never a fake external sessionId. */
     handoffId: null,
     /** Absolute project path locked with Agent when userLocked. */
@@ -80,8 +81,24 @@
       agents: { source: null, observedAt: 0, freshness: 'unknown' },
       inventory: { source: null, observedAt: 0, freshness: 'unknown' },
       delivery: { source: null, observedAt: 0, verified: false }
-    }
+    },
+    /** ATR (opt-in flag) — never invent status without IPC. */
+    activeAgentTaskId: null,
+    agentTaskGrant: false,
+    agentTask: null,
+    agentTaskEvents: [],
+    /** Recent ATR tasks on the edit-dialogue page (active + prior). */
+    agentTaskStack: []
   };
+
+  var ATR_STACK_MAX = 12;
+
+  var atrPollTimer = 0;
+  var ATR_POLL_MS = 1200;
+  /** Prevent double start from rapid Send. */
+  var atrSendInFlight = null;
+  /** taskId → in-flight drive Promise (approve/poll/continue must share). */
+  var atrDriveInFlightByTask = Object.create(null);
 
   var listeners = [];
   var unsubs = [];
@@ -110,7 +127,29 @@
     } catch (_) {}
   }
 
+  function loadWorkMode() {
+    try {
+      var raw = global.localStorage && global.localStorage.getItem(WORK_MODE_KEY);
+      var Caps = capsApi();
+      var next =
+        Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(raw) : String(raw || '');
+      // Primary UI is chat|work — migrate legacy readonly → think.
+      if (next === 'readonly') next = 'think';
+      if (next === 'think' || next === 'edit') return next;
+    } catch (_) {}
+    return 'edit';
+  }
+
+  function persistWorkMode(mode) {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(WORK_MODE_KEY, mode === 'edit' ? 'edit' : 'think');
+      }
+    } catch (_) {}
+  }
+
   state.wbSendMode = loadWbSendMode();
+  state.workMode = loadWorkMode();
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -1300,6 +1339,12 @@
       agentId: ctx.agentId || null,
       handoffId: state.handoffId
     };
+    var Atr = global.OneToneHomeAgentTask;
+    if (Atr && typeof Atr.capabilityInput === 'function') {
+      input = Object.assign(input, Atr.capabilityInput({
+        agentTaskGrant: !!(state.activeAgentTaskId && state.agentTaskGrant)
+      }));
+    }
     if (Caps && typeof Caps.projectSession === 'function') {
       return Caps.projectSession(input);
     }
@@ -1377,7 +1422,17 @@
         inventory: Object.assign({}, state.evidence.inventory),
         delivery: Object.assign({}, state.evidence.delivery)
       },
-      composing: composing
+      composing: composing,
+      activeAgentTaskId: state.activeAgentTaskId,
+      agentTaskGrant: !!state.agentTaskGrant,
+      agentTask: state.agentTask ? Object.assign({}, state.agentTask) : null,
+      agentTaskEvents: state.agentTaskEvents.slice(),
+      agentTaskStack: (state.agentTaskStack || []).map(function (row) {
+        return {
+          task: row.task ? Object.assign({}, row.task) : null,
+          events: (row.events || []).slice()
+        };
+      })
     };
   }
 
@@ -1620,6 +1675,624 @@
    * Fast path: Center + attention + Focus → paint ready.
    * Slow path: inventory (EnumWindows/CLI) + homeSnap — must not gate first paint.
    */
+  function atrApi() {
+    return global.OneToneHomeAgentTask || null;
+  }
+
+  function atrFeatureOn() {
+    var A = atrApi();
+    return !!(A && A.featureEnabled && A.featureEnabled());
+  }
+
+  function rememberAgentTask(dto, events) {
+    if (!dto || !dto.taskId) return;
+    var id = String(dto.taskId);
+    var row = {
+      task: Object.assign({}, dto),
+      events: Array.isArray(events) ? events.slice() : []
+    };
+    var list = (state.agentTaskStack || []).slice();
+    var i;
+    var found = false;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && list[i].task && String(list[i].task.taskId) === id) {
+        list[i] = row;
+        found = true;
+        break;
+      }
+    }
+    if (!found) list.push(row);
+    if (list.length > ATR_STACK_MAX) {
+      list = list.slice(list.length - ATR_STACK_MAX);
+    }
+    state.agentTaskStack = list;
+  }
+
+  function setActiveAgentTask(taskId, opts) {
+    opts = opts || {};
+    state.activeAgentTaskId = taskId ? String(taskId) : null;
+    state.agentTaskGrant = !!opts.grant || !!state.activeAgentTaskId;
+    var A = atrApi();
+    if (A && A.writeActiveId) A.writeActiveId(state.activeAgentTaskId);
+    if (state.activeAgentTaskId) {
+      ensureAtrPoll();
+      return refreshAgentTask().then(function () {
+        emit();
+        return state.agentTask;
+      });
+    }
+    stopAtrPoll();
+    state.agentTask = null;
+    state.agentTaskEvents = [];
+    emit();
+    return Promise.resolve(null);
+  }
+
+  function refreshAgentTask() {
+    var A = atrApi();
+    var id = state.activeAgentTaskId;
+    if (!A || !id || !atrFeatureOn()) {
+      return Promise.resolve(null);
+    }
+    return Promise.all([
+      A.status(id).catch(function () {
+        return null;
+      }),
+      A.events(id).catch(function () {
+        return [];
+      })
+    ]).then(function (pair) {
+      var dto = pair[0];
+      var evs = pair[1] || [];
+      if (dto) {
+        state.agentTask = dto;
+        state.agentTaskGrant = true;
+        if (
+          atrSendInFlight &&
+          (dto.status === 'running' ||
+            dto.status === 'verifying' ||
+            dto.status === 'repair' ||
+            dto.status === 'review')
+        ) {
+          var turn = dto.currentTurn != null ? dto.currentTurn : 0;
+          var tools = dto.toolCallCount != null ? dto.toolCallCount : 0;
+          atrNotice(
+            'atr_driving',
+            '执行中 · 第 ' + turn + ' 步' + (tools ? ' · ' + tools + ' 次工具' : '') + ' · ' + (dto.status || ''),
+            { code: 'driving', taskId: dto.taskId, status: dto.status }
+          );
+        }
+        if (
+          dto.status === 'done' ||
+          dto.status === 'failed' ||
+          dto.status === 'cancelled'
+        ) {
+          /* keep id for timeline until user clears */
+        }
+      }
+      state.agentTaskEvents = Array.isArray(evs) ? evs : [];
+      if (state.agentTask) rememberAgentTask(state.agentTask, state.agentTaskEvents);
+      return dto;
+    });
+  }
+
+  function ensureAtrPoll() {
+    if (atrPollTimer || !atrFeatureOn() || !state.activeAgentTaskId) return;
+    atrPollTimer = global.setInterval(function () {
+      if (!state.mounted || !state.activeAgentTaskId) return;
+      refreshAgentTask().then(function () {
+        if (state.mounted) emit();
+      });
+    }, ATR_POLL_MS);
+  }
+
+  function stopAtrPoll() {
+    if (atrPollTimer) {
+      clearInterval(atrPollTimer);
+      atrPollTimer = 0;
+    }
+  }
+
+  function atrBusyStatuses() {
+    return {
+      running: 1,
+      verifying: 1,
+      repair: 1,
+      review: 1
+    };
+  }
+
+  function isAgentTaskBusy(status) {
+    return !!atrBusyStatuses()[String(status || '')];
+  }
+
+  function isAgentTaskBlockingNew(status) {
+    var s = String(status || '');
+    return (
+      isAgentTaskBusy(s) || s === 'waiting' || s === 'interrupted'
+    );
+  }
+
+  function confirmedProjectPath() {
+    var ctx = resolveTargetContext();
+    var path = ctx && ctx.projectPath ? String(ctx.projectPath).trim() : '';
+    if (!path) return null;
+    var proj = (state.focusDto && state.focusDto.project) || {};
+    var confirmed =
+      !!proj.confirmed ||
+      !!(state.userLocked && state.lockedProjectPath) ||
+      !!(state.evidence && state.evidence.project && state.evidence.project.verified);
+    return confirmed ? path : null;
+  }
+
+  /** Path we can send ATR against — confirmed, or known workspace root awaiting confirm. */
+  function atrCandidateProjectPath() {
+    var confirmed = confirmedProjectPath();
+    if (confirmed) return confirmed;
+    var ctx = resolveTargetContext();
+    var path = ctx && ctx.projectPath ? String(ctx.projectPath).trim() : '';
+    return path || null;
+  }
+
+  /** Confirm Focus project if needed, then return workspace root for ATR. */
+  function ensureAtrWorkspaceRoot() {
+    var ready = confirmedProjectPath();
+    if (ready) return Promise.resolve(ready);
+    var path = atrCandidateProjectPath();
+    if (!path) return Promise.resolve(null);
+    var Focus = global.OneToneHomeFocusStore;
+    if (!Focus || typeof Focus.confirmProject !== 'function') {
+      // Fallback: treat user-locked path as enough for this session.
+      if (state.userLocked && path) {
+        state.lockedProjectPath = path;
+        state.lockedProjectSource = state.lockedProjectSource || 'user_locked';
+        return Promise.resolve(path);
+      }
+      return Promise.resolve(null);
+    }
+    var proj = (state.focusDto && state.focusDto.project) || {};
+    return Focus.confirmProject({
+      projectRoot: path,
+      projectId: proj.id || null
+    })
+      .then(function () {
+        state.lockedProjectPath = path;
+        state.lockedProjectSource = 'atr_auto_confirm';
+        state.userLocked = true;
+        emit();
+        return confirmedProjectPath() || path;
+      })
+      .catch(function () {
+        // Still allow ATR if we have a concrete path the user is staring at.
+        state.lockedProjectPath = path;
+        state.lockedProjectSource = 'atr_path_fallback';
+        state.userLocked = true;
+        return path;
+      });
+  }
+
+  function atrNotice(kind, message, extra) {
+    setValidationNotice(
+      Object.assign(
+        {
+          kind: kind,
+          message: message || kind
+        },
+        extra || {}
+      )
+    );
+  }
+
+  function driveActiveIfRunning(opts) {
+    opts = opts || {};
+    var A = atrApi();
+    var id = state.activeAgentTaskId;
+    if (!A || !id) return Promise.resolve(state.agentTask);
+    return refreshAgentTask().then(function (dto) {
+      var t = dto || state.agentTask;
+      if (!t) return null;
+      var st = String(t.status || '');
+      // After approve → verifying; after reject/input → running; resume may leave running.
+      var shouldDrive =
+        st === 'running' ||
+        st === 'verifying' ||
+        st === 'repair' ||
+        st === 'review' ||
+        opts.force;
+      if (!shouldDrive) {
+        emit();
+        return t;
+      }
+      if (atrDriveInFlightByTask[id]) {
+        return atrDriveInFlightByTask[id];
+      }
+      var driveFn =
+        opts.useFake && A.driveFake
+          ? function () {
+              return A.driveFake(id, opts.fakeSteps || []);
+            }
+          : function () {
+              var provider =
+                opts.provider ||
+                (A.readProvider && A.readProvider()) ||
+                undefined;
+              return A.drive ? A.drive(id, provider) : A.driveDeepseek(id);
+            };
+      var p = driveFn()
+        .then(function (driven) {
+          if (driven) state.agentTask = driven;
+          return refreshAgentTask().then(function () {
+            emit();
+            return state.agentTask;
+          });
+        })
+        .catch(function (err) {
+          var raw = String((err && err.message) || err || 'drive_failed');
+          var code = (err && err.code) || 'drive_failed';
+          if (/max_turns|stuck_loop|budget_exhausted/i.test(raw)) code = 'budget_exhausted';
+          var msg =
+            code === 'budget_exhausted'
+              ? /stuck_loop/i.test(raw)
+                ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
+                : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
+              : '编辑任务失败：' + raw;
+          atrNotice('atr_' + code, msg, {
+            code: code,
+            actions: ['abandon']
+          });
+          return refreshAgentTask().then(function () {
+            emit();
+            return state.agentTask;
+          });
+        })
+        .then(
+          function (result) {
+            delete atrDriveInFlightByTask[id];
+            return result;
+          },
+          function (err) {
+            delete atrDriveInFlightByTask[id];
+            return Promise.reject(err);
+          }
+        );
+      atrDriveInFlightByTask[id] = p;
+      return p;
+    });
+  }
+
+  function pendingApprovalTokenOf(task) {
+    task = task || {};
+    var tok = task.pendingApprovalToken || task.pending_approval_token || '';
+    if (tok) return String(tok);
+    var evs = state.agentTaskEvents || [];
+    for (var i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i];
+      if (!e || e.kind !== 'waiting_approval' || !e.payload) continue;
+      var p = e.payload.approvalToken || e.payload.approval_token;
+      if (p) return String(p);
+    }
+    return '';
+  }
+
+  function approveAgentPatch(opts) {
+    opts = opts || {};
+    var A = atrApi();
+    var t = state.agentTask;
+    var token = pendingApprovalTokenOf(t);
+    if (!A || !t || !token) {
+      return Promise.reject(new Error('no_pending'));
+    }
+    if (opts.persistAutonomous && A.writePermissionMode) {
+      A.writePermissionMode('write_autonomous');
+    }
+    return A.approvePatch(t.taskId, token, {
+      persistAutonomous: !!opts.persistAutonomous
+    }).then(function (dto) {
+      state.agentTask = dto;
+      return driveActiveIfRunning();
+    });
+  }
+
+  function rejectAgentPatch() {
+    var A = atrApi();
+    var t = state.agentTask;
+    var token = pendingApprovalTokenOf(t);
+    if (!A || !t || !token) {
+      return Promise.reject(new Error('no_pending'));
+    }
+    return A.rejectPatch(t.taskId, token).then(function (dto) {
+      state.agentTask = dto;
+      return driveActiveIfRunning();
+    });
+  }
+
+  function submitAgentInput(text) {
+    var A = atrApi();
+    var t = state.agentTask;
+    if (!A || !t) return Promise.reject(new Error('no_task'));
+    return A.submitUserInput(t.taskId, text).then(function (dto) {
+      state.agentTask = dto;
+      return driveActiveIfRunning();
+    });
+  }
+
+  function resumeAgentTask() {
+    var A = atrApi();
+    var id = state.activeAgentTaskId;
+    if (!A || !id) return Promise.reject(new Error('no_task'));
+    return A.resume(id).then(function (dto) {
+      state.agentTask = dto;
+      return driveActiveIfRunning();
+    });
+  }
+
+  function resumeAndDriveAgentTask() {
+    return resumeAgentTask();
+  }
+
+  function abandonAgentTask() {
+    var A = atrApi();
+    var id = state.activeAgentTaskId;
+    if (!A || !id || !A.abandon) return Promise.reject(new Error('no_task'));
+    return A.abandon(id).then(function (dto) {
+      rememberAgentTask(dto || state.agentTask, state.agentTaskEvents);
+      state.agentTask = dto || null;
+      state.activeAgentTaskId = null;
+      state.agentTaskGrant = false;
+      state.agentTaskEvents = [];
+      stopAtrPoll();
+      atrNotice('atr_abandoned', '已放弃当前编辑任务');
+      emit();
+      return dto;
+    });
+  }
+
+  /**
+   * Abandon blocking ATR task, then immediately start a new one with the current draft.
+   * @param {{ goal: string, materialsSummary?: string, provider?: string, useFakeDriver?: boolean, driveFakeSteps?: string[] }} opts
+   */
+  function abandonAndStartAgentTask(opts) {
+    opts = opts || {};
+    var goal = String(opts.goal || '').trim();
+    if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
+      atrNotice('atr_need_goal', '请写清要改什么（例如：给 README 加使用说明）');
+      return Promise.resolve(null);
+    }
+    return abandonAgentTask()
+      .catch(function (err) {
+        // No active task is fine — still allow sending the draft.
+        if (String((err && err.message) || err) === 'no_task') return null;
+        return Promise.reject(err);
+      })
+      .then(function () {
+        return startAndDriveAgentTask(opts);
+      });
+  }
+
+  /**
+   * Home edit send → ATR. Surfaces all failures via validationNotice.
+   * @param {{ goal: string, materialsSummary?: string, useFakeDriver?: boolean, driveFakeSteps?: string[] }} opts
+   */
+  function startAndDriveAgentTask(opts) {
+    opts = opts || {};
+    if (atrSendInFlight) return atrSendInFlight;
+
+    var A = atrApi();
+    if (!A || !atrFeatureOn()) {
+      atrNotice('atr_not_ready', 'Agent Task Runtime 未开启', { code: 'not_ready' });
+      return Promise.resolve(null);
+    }
+
+    var existing = state.agentTask;
+    var est = existing && existing.status;
+    var goal = String(opts.goal || '').trim();
+    if (existing && isAgentTaskBlockingNew(est)) {
+      // Explicit new goal while prior task still live → replace (busy / waiting / interrupted).
+      if (goal && goal.length >= 2 && !/^[\d\s.]+$/.test(goal)) {
+        atrNotice('atr_abandon_and_send', '正在放弃旧任务并发送当前输入…', {
+          code: 'abandon_and_send',
+          taskId: existing.taskId,
+          status: est
+        });
+        return abandonAndStartAgentTask(opts);
+      }
+      if (isAgentTaskBusy(est)) {
+        atrNotice('atr_busy', '编辑任务进行中，请等待完成或放弃后再发', {
+          code: 'busy',
+          taskId: existing.taskId,
+          status: est
+        });
+      } else if (est === 'waiting') {
+        atrNotice('atr_waiting', '编辑任务等待确认 — 可继续、放弃，或放弃并发送当前输入', {
+          code: 'waiting',
+          taskId: existing.taskId,
+          status: est,
+          actions: ['continue', 'abandon', 'abandon_and_send']
+        });
+      } else if (est === 'interrupted') {
+        atrNotice('atr_interrupted', '有可恢复的中断任务 — 恢复、放弃，或放弃并发送当前输入', {
+          code: 'interrupted',
+          taskId: existing.taskId,
+          status: est,
+          actions: ['resume', 'abandon', 'abandon_and_send']
+        });
+      }
+      return Promise.resolve(null);
+    }
+
+    if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
+      atrNotice('atr_need_goal', '请写清要改什么（例如：给 README 加使用说明）');
+      return Promise.resolve(null);
+    }
+
+    atrSendInFlight = ensureAtrWorkspaceRoot()
+      .then(function (path) {
+        if (!path) {
+          atrNotice('atr_need_project', '请先在工作区确认项目后再发送', {
+            code: 'need_project'
+          });
+          return null;
+        }
+        var provider =
+          opts.provider || (A.readProvider && A.readProvider()) || undefined;
+        atrNotice(
+          'atr_starting',
+          '正在启动' + (provider ? '（' + provider + '）' : '') + '…',
+          { code: 'starting' }
+        );
+        return A.runGoal({
+          goal: goal,
+          workspaceRoot: path,
+          materialsSummary: opts.materialsSummary || '',
+          permissionMode:
+            opts.permissionMode ||
+            (A.readPermissionMode && A.readPermissionMode()) ||
+            'write_with_approval',
+          useFakeDriver: !!opts.useFakeDriver,
+          driveFakeSteps: opts.driveFakeSteps,
+          provider: provider,
+          onStarted: function (dto) {
+            if (!dto || !dto.taskId) return;
+            state.activeAgentTaskId = dto.taskId;
+            state.agentTaskGrant = true;
+            state.agentTask = dto;
+            state.agentTaskEvents = [];
+            rememberAgentTask(dto, []);
+            if (A.writeActiveId) A.writeActiveId(dto.taskId);
+            ensureAtrPoll();
+            atrNotice(
+              'atr_driving',
+              '模型执行中' + (provider ? '（' + provider + '）' : '') + ' · 可点放弃',
+              {
+                code: 'driving',
+                taskId: dto.taskId,
+                actions: ['abandon']
+              }
+            );
+            emit();
+          }
+        });
+      })
+      .then(function (dto) {
+        if (!dto) return null;
+        if (dto.taskId) {
+          state.activeAgentTaskId = dto.taskId;
+          state.agentTaskGrant = true;
+          state.agentTask = dto;
+          if (A.writeActiveId) A.writeActiveId(dto.taskId);
+          ensureAtrPoll();
+        }
+        return refreshAgentTask().then(function () {
+          var st = (state.agentTask && state.agentTask.status) || (dto && dto.status) || '';
+          if (st === 'waiting') {
+            atrNotice('atr_waiting', '等待确认补丁 — 请批准或拒绝', {
+              code: 'waiting',
+              taskId: dto.taskId,
+              status: st,
+              actions: ['continue', 'abandon']
+            });
+          } else if (st === 'done') {
+            state.validationNotice = null;
+            setDeliveryReceipt({
+              phase: 'done',
+              outcome: 'local_replied',
+              kind: 'agent_task',
+              title: '编辑任务已完成',
+              message: 'done',
+              verified: false,
+              taskId: dto.taskId
+            });
+          } else {
+            state.validationNotice = null;
+            setDeliveryReceipt({
+              phase: 'done',
+              outcome: 'local_replied',
+              kind: 'agent_task',
+              title: 'Agent 任务已更新',
+              message: st || 'running',
+              verified: false,
+              taskId: dto.taskId
+            });
+          }
+          emit();
+          return state.agentTask;
+        });
+      })
+      .catch(function (err) {
+        var code = (err && err.code) || 'drive_failed';
+        var rawMsg = String((err && err.message) || err || '');
+        var budget =
+          /max_turns|stuck_loop|budget_exhausted/i.test(rawMsg) ||
+          /max_turns|stuck_loop|budget_exhausted/i.test(String(code));
+        if (budget) code = 'budget_exhausted';
+        var formatFail =
+          /parse_|not_json|format_error|no_tool_calls|unsupported_shape/i.test(rawMsg) ||
+          code === 'format_error';
+        if (formatFail) code = 'format_error';
+        if (
+          /workbuddy_unconfigured/i.test(rawMsg) ||
+          code === 'workbuddy_unconfigured' ||
+          /workbuddy_edit_disabled/i.test(rawMsg) ||
+          code === 'workbuddy_edit_disabled'
+        ) {
+          code = 'workbuddy_unconfigured';
+        }
+        var msg =
+          code === 'workbuddy_unconfigured'
+            ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+            : code === 'provider_unconfigured' ||
+                /_unconfigured$/.test(String(code))
+              ? code.indexOf('workbuddy') >= 0
+                ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+                : '请登录 WorkBuddy，或配置 Soft Pad 密钥后选择已就绪引擎'
+              : code === 'not_ready'
+                ? 'Agent Task Runtime 未就绪'
+                : code === 'start_failed'
+                  ? '启动任务失败：' + rawMsg
+                  : code === 'budget_exhausted'
+                    ? /stuck_loop/i.test(rawMsg)
+                      ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
+                      : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
+                    : code === 'format_error'
+                      ? '模型没有按工具格式行动 — 换 WorkBuddy 模型或 Soft Pad 引擎后重试'
+                      : '编辑任务失败：' + rawMsg.slice(0, 120);
+        // start may have written activeId before drive failed — keep for timeline.
+        if (A.readActiveId) {
+          var sid = A.readActiveId();
+          if (sid) {
+            state.activeAgentTaskId = sid;
+            state.agentTaskGrant = true;
+            ensureAtrPoll();
+          }
+        }
+        atrNotice('atr_' + code, msg, {
+          code: code,
+          actions:
+            code === 'budget_exhausted' ||
+            code === 'drive_failed' ||
+            code === 'format_error'
+              ? ['abandon']
+              : undefined
+        });
+        return refreshAgentTask().then(function () {
+          emit();
+          return null;
+        });
+      })
+      .then(
+        function (result) {
+          atrSendInFlight = null;
+          return result;
+        },
+        function (err) {
+          atrSendInFlight = null;
+          return Promise.reject(err);
+        }
+      );
+
+    return atrSendInFlight;
+  }
+
   function refresh(reason) {
     if (refreshInFlight) return refreshInFlight;
     lastRefreshAt = Date.now();
@@ -1648,7 +2321,20 @@
       return null;
     });
 
-    var run = Promise.all([centerP, attnP, focusP]).then(function (v) {
+    var atrHydrate = Promise.resolve(null);
+    if (atrFeatureOn()) {
+      var A0 = atrApi();
+      if (!state.activeAgentTaskId && A0 && A0.readActiveId) {
+        state.activeAgentTaskId = A0.readActiveId();
+        if (state.activeAgentTaskId) state.agentTaskGrant = true;
+      }
+      if (state.activeAgentTaskId) {
+        ensureAtrPoll();
+        atrHydrate = refreshAgentTask();
+      }
+    }
+
+    var run = Promise.all([centerP, attnP, focusP, atrHydrate]).then(function (v) {
       applyCenterResult(v[0]);
       if (v[1]) state.attention = v[1];
       applyFocusBundle(v[2]);
@@ -1846,7 +2532,10 @@
     var Caps = capsApi();
     var next =
       Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(mode) : String(mode || 'think');
-    if (next !== 'think' && next !== 'readonly' && next !== 'edit') next = 'think';
+    if (next === 'readonly') next = 'think';
+    if (next !== 'think' && next !== 'edit') next = 'think';
+    // Always persist (incl. alias normalize) so localStorage mirrors effective mode.
+    persistWorkMode(next);
     if (state.workMode === next && !opts.force) return;
     state.workMode = next;
     if (!opts.silent) emit();
@@ -1999,6 +2688,7 @@
   function dispose() {
     state.mounted = false;
     state.visible = false;
+    stopAtrPoll();
     unbindSubscriptions();
     refreshInFlight = null;
   }
@@ -2049,6 +2739,19 @@
     syncMaterialsFromPrep: syncMaterialsFromPrep,
     mayAct: mayAct,
     buildSessionProjection: buildSessionProjection,
+    setActiveAgentTask: setActiveAgentTask,
+    refreshAgentTask: refreshAgentTask,
+    approveAgentPatch: approveAgentPatch,
+    rejectAgentPatch: rejectAgentPatch,
+    submitAgentInput: submitAgentInput,
+    resumeAgentTask: resumeAgentTask,
+    resumeAndDriveAgentTask: resumeAndDriveAgentTask,
+    abandonAgentTask: abandonAgentTask,
+    abandonAndStartAgentTask: abandonAndStartAgentTask,
+    startAndDriveAgentTask: startAndDriveAgentTask,
+    driveActiveIfRunning: driveActiveIfRunning,
+    confirmedProjectPath: confirmedProjectPath,
+    isAgentTaskBlockingNew: isAgentTaskBlockingNew,
     __testOnly: {
       projectAgent: projectAgent,
       resolveKind: resolveKind,
@@ -2089,6 +2792,7 @@
       setWorkMode: setWorkMode,
       setHandoffId: setHandoffId,
       WB_MODE_KEY: WB_MODE_KEY,
+      WORK_MODE_KEY: WORK_MODE_KEY,
       COALESCE_MS: COALESCE_MS,
       LAST_GOOD_KEY: LAST_GOOD_KEY,
       LAST_GOOD_MAX_AGE_MS: LAST_GOOD_MAX_AGE_MS,

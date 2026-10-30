@@ -41,8 +41,10 @@ pub use capability_resolver::{
     resolve_resume, CapabilityEvidenceBundle, ResolvedCapability,
 };
 pub use checkpoint::{
-    create_checkpoint, latest_checkpoint_for_project, latest_checkpoint_for_session,
-    maybe_auto_checkpoint, resume_checkpoint,
+    atr_checkpoint_id, create_checkpoint, create_or_get_atr_checkpoint, ensure_atr_session,
+    get_checkpoint, latest_atr_checkpoint_for_project, latest_checkpoint_for_project,
+    latest_checkpoint_for_session, maybe_auto_checkpoint, resume_checkpoint, update_checkpoint,
+    PROVIDER_ONETONE_ATR,
 };
 pub use claude_background::{ClaudeBackgroundProbe, ClaudeProbeCache, ProbePolicy};
 pub use codex_background::{
@@ -68,6 +70,7 @@ pub use model::{
     CheckpointDto, ContinuationBrief, MemoryRecordDto, ProjectMatch, SessionCandidate,
     PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
 };
+pub use project::{project_id_from_path, validate_workspace_path};
 pub use project_confirm::{
     confirm_project, confirmed_workspace_root, is_project_confirmed, list_known_projects,
     KnownProjectDto,

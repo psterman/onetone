@@ -330,6 +330,14 @@ assert.doesNotMatch(shell, /t\('ha2OrganizeFailed',\s*'整理失败'\)/);
 assert.match(shell, /已填入草稿/);
 assert.doesNotMatch(shell, /已开始编码/);
 assert.match(css, /\.ha2-session-chrome|\.ha2-mode-btn|\.ha2-handoff/);
+assert.match(css, /\.ha2-mode-boundary|\.ha2-task-core|\.ha2-work-confirm/);
+assert.match(css, /\.ha2-send\.is-labeled|\.ha2-work-secondary/);
+assert.match(shell, /syncModeChrome|taskCoreHtml|workConfirmGateHtml/);
+assert.match(shell, /atrUserStepLine|degradedNextHint|atrFailureNextHint/);
+assert.match(shell, /ha2ModeBoundaryWork|ha2ModeBoundaryChat/);
+assert.match(shell, /生成执行计划|批准并开始|批准并执行/);
+assert.match(shell, /data-ha2-work-secondary|data-ha2-work-confirm/);
+assert.match(shell, /write_with_approval/);
 assert.match(shell, /data-ha2-go-agent/);
 assert.match(shell, /ha2-row-main/);
 assert.match(shell, /workspaceCapsuleRowHtml|data-ha2-workspace-row/);
@@ -407,6 +415,11 @@ assert.ok(Store && Store.__testOnly, 'store exports __testOnly');
 assert.ok(Caps && Caps.projectSession, 'capabilities module loaded');
 assert.ok(Triad && Triad.composerHtml && Triad.agentGridHtml);
 assert.ok(PP && PP.normalizeAbsolutePath);
+assert.equal(
+  Caps.looksLikeWorkspaceEditGoal('根据最新的情况更新一个readme2的文档，说明更新内容，并发到桌面'),
+  true
+);
+assert.equal(Caps.looksLikeWorkspaceEditGoal('这个方案怎么看？'), false);
 
 // --- Capability contract ---
 {
@@ -447,7 +460,7 @@ assert.ok(PP && PP.normalizeAbsolutePath);
   assert.match(withPath, /voice-pilot/);
   assert.match(withPath, /home local chat context/);
   assert.match(withPath, /不能读写磁盘|看不到磁盘/);
-  assert.match(withPath, /只回答用户目标|禁止/);
+  assert.match(withPath, /少改写、少说教|结构化呈现|Mermaid/);
   assert.match(withPath, /样式\/UI|无 OCR/);
   assert.doesNotMatch(withPath, /你是 OneTone 首页的 WorkBuddy 本机讨论助手/);
   const noPath = Caps.buildLocalChatSystemPrompt({});
@@ -1197,11 +1210,21 @@ assert.equal(st.loadLastGood(), null);
   assert.equal(snap.session.capabilities.text_chat.available, false);
   assert.equal(sandbox.localStorage.getItem('onetone.ha2.wbSendMode'), 'desktop');
 
+  // Legacy readonly → 对话 (primary UI is chat|work only).
   Store.setWorkMode('readonly');
   snap = Store.getSnapshot();
-  assert.equal(snap.session.mode, 'readonly');
-  assert.equal(snap.session.modeEffective, false);
-  assert.ok(snap.session.modeReason);
+  assert.equal(snap.session.mode, 'think');
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'think');
+
+  Store.setWorkMode('work');
+  snap = Store.getSnapshot();
+  assert.equal(snap.session.mode, 'edit');
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'edit');
+
+  Store.setWorkMode('chat');
+  snap = Store.getSnapshot();
+  assert.equal(snap.session.mode, 'think');
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'think');
 
   // All permissions not_wired / no fake toggles
   const perms = snap.session.permissions;

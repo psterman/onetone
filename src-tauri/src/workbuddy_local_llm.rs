@@ -32,6 +32,8 @@ const OAUTH_REFRESH_SKEW_MS: u64 = 5 * 60 * 1000;
 const MODELS_CACHE_MS: u64 = 10 * 60 * 1000;
 const HTTP_TIMEOUT_SECS: u64 = 20;
 const CHAT_TIMEOUT_SECS: u64 = 180;
+/// ATR tool turns — keep short so home UI isn't stuck on「正在调用」for minutes.
+const AGENT_CHAT_TIMEOUT_SECS: u64 = 45;
 const UA: &str = "CLI/unknown CodeBuddy/2.136.0 OneTone";
 
 fn default_auth_kind() -> String {
@@ -975,6 +977,393 @@ pub fn chat_once(
     }))
 }
 
+/// ATR chat: default WorkBuddy account has a selected model.
+pub fn atr_ready() -> bool {
+    default_account()
+        .map(|a| a.enabled && !a.selected_model.trim().is_empty())
+        .unwrap_or(false)
+}
+
+pub fn atr_selected_model() -> Option<String> {
+    default_account().and_then(|a| {
+        let m = a.selected_model.trim();
+        if m.is_empty() {
+            None
+        } else {
+            Some(m.to_string())
+        }
+    })
+}
+
+/// ATR edit listing: requires a prior native tool-calling probe pass for this account+model.
+pub fn atr_edit_ready() -> bool {
+    atr_ready() && atr_edit_probe_status() == "pass"
+}
+
+/// `unknown` | `pass` | `fail` — never hits the network.
+pub fn atr_edit_probe_status() -> &'static str {
+    let Some(acct) = default_account() else {
+        return "unknown";
+    };
+    if !acct.enabled || acct.selected_model.trim().is_empty() {
+        return "unknown";
+    }
+    let key = probe_cache_key(&acct.id, &acct.selected_model);
+    match load_probe_cache() {
+        Some(c) if c.key == key => {
+            if c.ok {
+                "pass"
+            } else {
+                "fail"
+            }
+        }
+        _ => "unknown",
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ToolProbeCache {
+    key: String,
+    ok: bool,
+    at_ms: u64,
+}
+
+fn probe_cache_path() -> PathBuf {
+    effective_data_root().join("workbuddy-atr-tool-probe.json")
+}
+
+fn probe_cache_key(account_id: &str, model: &str) -> String {
+    format!("{}\0{}", account_id.trim(), model.trim())
+}
+
+fn load_probe_cache() -> Option<ToolProbeCache> {
+    let raw = fs::read_to_string(probe_cache_path()).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+fn save_probe_cache(c: &ToolProbeCache) {
+    let _ = fs::write(
+        probe_cache_path(),
+        serde_json::to_string_pretty(c).unwrap_or_else(|_| "{}".into()),
+    );
+}
+
+/// Live probe: tools + tool_choice=required must yield a native `finish` tool_call (not prose).
+pub fn probe_native_tool_calling(force: bool) -> Result<bool, String> {
+    let acct = default_account().ok_or_else(|| "workbuddy_unconfigured".to_string())?;
+    if !acct.enabled || acct.selected_model.trim().is_empty() {
+        return Err("workbuddy_unconfigured".into());
+    }
+    let key = probe_cache_key(&acct.id, &acct.selected_model);
+    if !force {
+        if let Some(c) = load_probe_cache() {
+            if c.key == key {
+                return Ok(c.ok);
+            }
+        }
+    }
+
+    let tools = json!([{
+        "type": "function",
+        "function": {
+            "name": "finish",
+            "description": "Mark the probe complete.",
+            "parameters": {
+                "type": "object",
+                "properties": { "summary": { "type": "string" } },
+                "required": ["summary"]
+            }
+        }
+    }]);
+    let messages = vec![
+        json!({
+            "role": "system",
+            "content": "Call the finish tool with summary=\"ok\". Do not write any other text."
+        }),
+        json!({ "role": "user", "content": "probe" }),
+    ];
+    let mut prepared = prepare_chat(None, None, &messages, Some(64))?;
+    if let Some(obj) = prepared.body.as_object_mut() {
+        obj.remove("reasoning_effort");
+        obj.insert("tools".into(), tools);
+        obj.insert("tool_choice".into(), json!("required"));
+        obj.insert("temperature".into(), json!(0.0));
+    }
+    let text = post_agent_chat(&prepared)?;
+    let ok = response_has_native_tool_call(&text, "finish");
+    save_probe_cache(&ToolProbeCache {
+        key,
+        ok,
+        at_ms: now_ms(),
+    });
+    Ok(ok)
+}
+
+/// Native OpenAI-style tool_calls only — content JSON does not count (edit reliability).
+pub fn response_has_native_tool_call(text: &str, want_name: &str) -> bool {
+    let trimmed = text.trim_start();
+    if !(trimmed.starts_with("data:") || text.contains("\ndata:")) {
+        if let Ok(v) = serde_json::from_str::<Value>(text) {
+            let root = v.get("data").cloned().unwrap_or(v);
+            return tool_calls_include_name(
+                root.pointer("/choices/0/message/tool_calls")
+                    .and_then(|c| c.as_array()),
+                want_name,
+            );
+        }
+        return false;
+    }
+    let mut tool_calls: Vec<Value> = Vec::new();
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("data:") {
+            let data = rest.trim();
+            if data.is_empty() || data == "[DONE]" {
+                if data == "[DONE]" {
+                    break;
+                }
+                continue;
+            }
+            if let Ok(v) = serde_json::from_str::<Value>(data) {
+                ingest_tool_calls_from_value(&mut tool_calls, &v);
+            }
+        }
+    }
+    tool_calls_include_name(Some(&tool_calls), want_name)
+}
+
+fn tool_calls_include_name(calls: Option<&Vec<Value>>, want_name: &str) -> bool {
+    let Some(arr) = calls else {
+        return false;
+    };
+    arr.iter().any(|c| {
+        c.pointer("/function/name")
+            .and_then(|n| n.as_str())
+            .or_else(|| c.get("name").and_then(|n| n.as_str()))
+            == Some(want_name)
+    })
+}
+
+/// Agent Task Runtime turn: stream chat with `tools`, return ATR tool-call JSON.
+/// `tool_choice`: OpenAI-style (`"required"`, `"auto"`, or forced function object).
+pub fn agent_tool_turn(
+    messages: &[Value],
+    tools: &Value,
+    max_tokens: Option<u32>,
+    tool_choice: &Value,
+) -> Result<String, String> {
+    let mut prepared = prepare_chat(None, None, messages, max_tokens)?;
+    if let Some(obj) = prepared.body.as_object_mut() {
+        obj.remove("reasoning_effort");
+        obj.insert("tools".into(), tools.clone());
+        obj.insert("tool_choice".into(), tool_choice.clone());
+        obj.insert("temperature".into(), json!(0.1));
+    }
+    let text = post_agent_chat(&prepared)?;
+    aggregate_agent_tool_response(&text)
+}
+
+/// Content-protocol turn (no tools) — for models that ignore native function calling.
+/// Expects a single ATR tool JSON object in assistant content.
+pub fn agent_json_turn(messages: &[Value], max_tokens: Option<u32>) -> Result<String, String> {
+    let mut prepared = prepare_chat(None, None, messages, max_tokens)?;
+    if let Some(obj) = prepared.body.as_object_mut() {
+        obj.remove("reasoning_effort");
+        obj.remove("tools");
+        obj.remove("tool_choice");
+        obj.insert("temperature".into(), json!(0.0));
+    }
+    let text = post_agent_chat(&prepared)?;
+    aggregate_agent_tool_response(&text)
+}
+
+fn post_agent_chat(prepared: &PreparedChat) -> Result<String, String> {
+    let client = reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_secs(8))
+        .timeout(Duration::from_secs(AGENT_CHAT_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let req = client
+        .post(&prepared.chat_url)
+        .header("Content-Type", "application/json")
+        .header("Accept", "text/event-stream")
+        .header("X-Product", "SaaS")
+        .header("User-Agent", UA)
+        .json(&prepared.body);
+    let resp = apply_auth_headers(req, &prepared.auth)
+        .send()
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    let text = resp.text().map_err(|e| e.to_string())?;
+    if status.as_u16() == 401 || status.as_u16() == 403 {
+        if prepared.meta.auth_kind == AUTH_KIND_OAUTH {
+            mark_account_auth_fail(&prepared.meta.id, "authExpired");
+            return Err("authExpired".into());
+        }
+        return Err("no_key".into());
+    }
+    if status.as_u16() == 429 {
+        return Err("rate_limited".into());
+    }
+    if !status.is_success() {
+        return Err(format!("http_status_{}", status.as_u16()));
+    }
+    Ok(text)
+}
+
+fn merge_tool_call_delta(acc: &mut Vec<Value>, delta_calls: &[Value]) {
+    for d in delta_calls {
+        let idx = d.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
+        while acc.len() <= idx {
+            acc.push(json!({
+                "id": "",
+                "type": "function",
+                "function": { "name": "", "arguments": "" }
+            }));
+        }
+        let slot = &mut acc[idx];
+        if let Some(id) = d.get("id").and_then(|v| v.as_str()).filter(|s| !s.is_empty()) {
+            slot.as_object_mut()
+                .unwrap()
+                .insert("id".into(), json!(id));
+        }
+        if let Some(ty) = d.get("type").and_then(|v| v.as_str()) {
+            slot.as_object_mut()
+                .unwrap()
+                .insert("type".into(), json!(ty));
+        }
+        if let Some(f) = d.get("function").and_then(|v| v.as_object()) {
+            let dest = slot
+                .get_mut("function")
+                .and_then(|v| v.as_object_mut())
+                .unwrap();
+            if let Some(name) = f.get("name").and_then(|v| v.as_str()).filter(|s| !s.is_empty()) {
+                dest.insert("name".into(), json!(name));
+            }
+            if let Some(args) = f.get("arguments").and_then(|v| v.as_str()) {
+                let prev = dest
+                    .get("arguments")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                dest.insert("arguments".into(), json!(format!("{prev}{args}")));
+            }
+        }
+    }
+}
+
+fn ingest_tool_calls_from_value(acc: &mut Vec<Value>, root: &Value) {
+    if let Some(arr) = root
+        .pointer("/choices/0/delta/tool_calls")
+        .or_else(|| root.pointer("/choices/0/message/tool_calls"))
+        .and_then(|c| c.as_array())
+    {
+        merge_tool_call_delta(acc, arr);
+    }
+    if let Some(inner) = root.get("data") {
+        ingest_tool_calls_from_value(acc, inner);
+    }
+}
+
+fn strip_content_fence(content: &str) -> String {
+    let trimmed = content.trim();
+    let trimmed = trimmed
+        .strip_prefix("```json")
+        .or_else(|| trimmed.strip_prefix("```"))
+        .unwrap_or(trimmed);
+    trimmed.strip_suffix("```").unwrap_or(trimmed).trim().to_string()
+}
+
+fn aggregate_agent_tool_response(text: &str) -> Result<String, String> {
+    // Non-SSE JSON body (rare): reuse OpenAI message shape.
+    let trimmed = text.trim_start();
+    if !(trimmed.starts_with("data:") || text.contains("\ndata:")) {
+        if let Ok(v) = serde_json::from_str::<Value>(text) {
+            let root = v.get("data").cloned().unwrap_or(v);
+            if let Some(calls) = root
+                .pointer("/choices/0/message/tool_calls")
+                .and_then(|c| c.as_array())
+            {
+                if !calls.is_empty() {
+                    return Ok(json!({ "tool_calls": calls }).to_string());
+                }
+            }
+            let mut content = String::new();
+            let mut reasoning = String::new();
+            ingest_choice_payload(&mut content, &mut reasoning, &root);
+            let body = if content.trim().is_empty() {
+                reasoning
+            } else {
+                content
+            };
+            let stripped = strip_content_fence(&body);
+            return content_as_tool_json(&stripped);
+        }
+    }
+
+    let mut content = String::new();
+    let mut reasoning = String::new();
+    let mut usage = Value::Null;
+    let mut tool_calls: Vec<Value> = Vec::new();
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("data:") {
+            let data = rest.trim();
+            if data.is_empty() {
+                continue;
+            }
+            if data == "[DONE]" {
+                break;
+            }
+            if let Ok(v) = serde_json::from_str::<Value>(data) {
+                ingest_tool_calls_from_value(&mut tool_calls, &v);
+            }
+        }
+        if ingest_chat_sse_line(&mut content, &mut reasoning, &mut usage, line) {
+            break;
+        }
+    }
+    let tool_calls: Vec<Value> = tool_calls
+        .into_iter()
+        .filter(|c| {
+            c.pointer("/function/name")
+                .and_then(|n| n.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false)
+        })
+        .collect();
+    if !tool_calls.is_empty() {
+        return Ok(json!({ "tool_calls": tool_calls }).to_string());
+    }
+    if content.trim().is_empty() && !reasoning.trim().is_empty() {
+        content = reasoning;
+    }
+    let stripped = strip_content_fence(&content);
+    content_as_tool_json(&stripped)
+}
+
+/// Reject chatty prose. Full ATR parse happens in the driver; here only gate obvious monologue.
+/// (Do not call into agent_task_runtime — that would cycle: ATR workbuddy → this module.)
+fn content_as_tool_json(stripped: &str) -> Result<String, String> {
+    if stripped.is_empty() {
+        return Err("no_tool_calls".into());
+    }
+    let t = stripped.trim();
+    if let Ok(v) = serde_json::from_str::<Value>(t) {
+        if v.get("tool").is_some()
+            || v.get("tool_calls").is_some()
+            || v.get("name").is_some()
+        {
+            return Ok(stripped.to_string());
+        }
+        return Err("no_tool_calls".into());
+    }
+    // Embedded JSON in prose — let ATR salvage; still require a tool marker.
+    if t.contains("\"tool\"") || t.contains("\"tool_calls\"") {
+        return Ok(stripped.to_string());
+    }
+    Err("no_tool_calls".into())
+}
+
 /// Open (or focus) the OneTone local-chat webview and optionally seed turns.
 pub fn open_chat_window(app: &AppHandle, seed: Option<Value>) -> Result<Value, String> {
     let (win, created) = crate::overlay_window::ensure_overlay_window(
@@ -1885,6 +2274,28 @@ mod tests {
     fn fingerprint_stable() {
         assert_eq!(fingerprint("sk-abcdefghijklmnopqrstuvwxyz"), fingerprint("sk-abcdefghijklmnopqrstuvwxyz"));
         assert_ne!(fingerprint("sk-abcdefghijklmnopqrstuvwxyz"), fingerprint("sk-zzzzzzzzzzzzzzzzzzzzzzzz"));
+    }
+
+    #[test]
+    fn native_tool_call_probe_accepts_sse_finish() {
+        let sse = concat!(
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"finish\",\"arguments\":\"\"}}]}}]}\n",
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"summary\\\":\\\"ok\\\"}\"}}]}}]}\n",
+            "data: [DONE]\n"
+        );
+        assert!(response_has_native_tool_call(sse, "finish"));
+        assert!(!response_has_native_tool_call(sse, "inspect_workspace"));
+    }
+
+    #[test]
+    fn native_tool_call_probe_rejects_prose_only() {
+        let sse = "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\ndata: [DONE]\n";
+        assert!(!response_has_native_tool_call(sse, "finish"));
+        let body = r#"{"choices":[{"message":{"content":"{\"tool\":\"finish\",\"arguments\":{\"summary\":\"ok\"}}"}}]}"#;
+        assert!(
+            !response_has_native_tool_call(body, "finish"),
+            "content JSON must not unlock edit"
+        );
     }
 
     #[test]

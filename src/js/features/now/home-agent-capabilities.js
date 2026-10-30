@@ -52,9 +52,25 @@
 
   function normalizeWorkMode(mode) {
     var m = String(mode || 'think').toLowerCase();
+    // Codex-style aliases: chat↔think, work↔edit. readonly kept for old storage only.
+    if (m === 'chat' || m === 'dialogue' || m === 'talk') return 'think';
+    if (m === 'work' || m === 'agent' || m === 'edit' || m === 'write' || m === 'code') {
+      return 'edit';
+    }
     if (m === 'readonly' || m === 'read' || m === 'read_only') return 'readonly';
-    if (m === 'edit' || m === 'write' || m === 'code') return 'edit';
     return 'think';
+  }
+
+  /**
+   * Goals that clearly want workspace writes / desktop export — not chat-only.
+   * Used to auto-promote 对话→工作 so "更新 readme2 发到桌面" does not silently chat.
+   */
+  function looksLikeWorkspaceEditGoal(text) {
+    var s = String(text || '').trim();
+    if (!s) return false;
+    return /readme2?|\.md\b|放到桌面|发到桌面|复制到桌面|导出到桌面|export.*desktop|写(入|到|一个|个).{0,12}(文件|文档|readme)|更新.{0,16}(文档|文件|readme)|改(代码|文件)|创建.{0,12}(文件|文档)|apply_patch|propose_changes|export_to_desktop/i.test(
+      s
+    );
   }
 
   /**
@@ -120,10 +136,7 @@
               : '本机文本对话仅 WorkBuddy 本机模式可用',
             []
           ),
-      agent_task: entry('partial', '可聚焦 / 续跑 / 中断外部 Agent，非沙箱任务', [
-        'cmd_agent_center_snapshot',
-        'cmd_agent_center_action'
-      ]),
+      agent_task: projectAgentTask(input),
       // implemented always; available/ready depends on Soft Pad keys + callPolicy (see projectTaskOrganize).
       task_organize: projectTaskOrganize(input),
       read_project: projectReadProject(input),
@@ -132,9 +145,9 @@
       project_search: projectContextCap(input, 'search'),
       project_diff_summary: projectContextCap(input, 'diff_summary'),
       project_diff_excerpt: projectContextCap(input, 'diff_excerpt'),
-      write_project: entry('not_wired', '首页尚未接入文件修改管道', []),
-      run_command: entry('not_wired', '无带权限模型的本地命令沙箱', []),
-      approval_execute: entry('not_wired', '首页尚未接入授权执行', []),
+      write_project: projectWriteProject(input),
+      run_command: projectRunCommand(input),
+      approval_execute: projectApprovalExecute(input),
       // TM has real diff/restore; home only opens project timeline (no session-bound diff).
       diff: entry('partial', '仅支持打开项目时间线（会话 Git patch 见 project_diff_*）', [
         'cmd_tm_diff_summary',
@@ -151,6 +164,84 @@
   function projectContextFlagOn(input) {
     // Pure projection — callers pass projectContextEnabled; never touch localStorage/IPC here.
     return !!(input && input.projectContextEnabled === true);
+  }
+
+  /**
+   * Internal Agent Task Runtime (event-sourced tool loop) vs external Agent Center control.
+   * Pass agentTaskRuntime: true when ATR IPC is available / flag on.
+   */
+  function projectAgentTask(input) {
+    input = input || {};
+    if (input.agentTaskRuntime === true) {
+      var atr = entry('partial', '单 Agent 受控工具循环（默认写盘需批准；非多 Agent）', [
+        'cmd_agent_task_start',
+        'cmd_agent_task_status',
+        'cmd_agent_task_approve_patch',
+        'cmd_agent_task_cancel',
+        'cmd_agent_task_ready'
+      ]);
+      atr.implemented = true;
+      atr.ready = true;
+      return atr;
+    }
+    return entry('partial', '可聚焦 / 续跑 / 中断外部 Agent；内置 Task Runtime 默认未投影', [
+      'cmd_agent_center_snapshot',
+      'cmd_agent_center_action'
+    ]);
+  }
+
+  function projectWriteProject(input) {
+    input = input || {};
+    if (input.agentTaskRuntime === true && input.agentTaskGrant === true) {
+      var w = entry('partial', '仅 Agent Task grant 内写盘（write_with_approval）', [
+        'cmd_agent_task_approve_patch',
+        'cmd_agent_task_start'
+      ]);
+      w.implemented = true;
+      w.ready = true;
+      return w;
+    }
+    if (input.agentTaskRuntime === true) {
+      var p = entry('partial', '写盘管道已实现；需启动任务并授予工作区后可用', [
+        'cmd_agent_task_start'
+      ]);
+      p.implemented = true;
+      p.ready = false;
+      return p;
+    }
+    return entry('not_wired', '首页尚未接入文件修改管道', []);
+  }
+
+  function projectRunCommand(input) {
+    input = input || {};
+    if (input.agentTaskRuntime === true && input.agentTaskGrant === true) {
+      var r = entry('partial', '仅允许 check_id 白名单检查（非任意 shell）', [
+        'cmd_agent_task_start'
+      ]);
+      r.implemented = true;
+      r.ready = true;
+      return r;
+    }
+    if (input.agentTaskRuntime === true) {
+      var p = entry('partial', '结构化检查已实现；需任务 grant', ['cmd_agent_task_start']);
+      p.implemented = true;
+      p.ready = false;
+      return p;
+    }
+    return entry('not_wired', '无带权限模型的本地命令沙箱', []);
+  }
+
+  function projectApprovalExecute(input) {
+    input = input || {};
+    if (input.agentTaskRuntime === true) {
+      var a = entry('partial', 'apply_patch 审批 token（绑定 task+patch+file hash+version）', [
+        'cmd_agent_task_approve_patch'
+      ]);
+      a.implemented = true;
+      a.ready = true;
+      return a;
+    }
+    return entry('not_wired', '首页尚未接入授权执行', []);
   }
 
   /** Selective read only — never implies write/run/approval or full-repo agent mode. */
@@ -226,6 +317,18 @@
       out.read_project.implemented = true;
       out.read_project.ready = false;
     }
+    var wp = projectWriteProject(input || {});
+    if (wp.implemented) {
+      out.write_project = entry(wp.status, wp.reason, wp.ipcHints);
+      out.write_project.implemented = true;
+      out.write_project.ready = !!wp.ready;
+    }
+    var rc = projectRunCommand(input || {});
+    if (rc.implemented) {
+      out.run_safe_command = entry(rc.status, rc.reason, rc.ipcHints);
+      out.run_safe_command.implemented = true;
+      out.run_safe_command.ready = !!rc.ready;
+    }
     return out;
   }
 
@@ -257,15 +360,22 @@
       modeReason =
         (Caps.read_project && Caps.read_project.reason) || '只读分析暂未接入';
     } else {
-      modeEffective = !!(
-        Caps.write_project &&
-        Caps.write_project.available &&
-        Caps.approval_execute &&
-        Caps.approval_execute.available
-      );
+      // ATR path: implemented write + approval (flag via agentTaskRuntime projection).
+      // Do not require .available — partial caps keep available=false by design.
+      var Atr = typeof global !== 'undefined' ? global.OneToneHomeAgentTask : null;
+      if (Atr && typeof Atr.editModeSelectable === 'function') {
+        modeEffective = Atr.editModeSelectable(Caps);
+      } else {
+        modeEffective = !!(
+          Caps.write_project &&
+          Caps.write_project.implemented &&
+          Caps.approval_execute &&
+          Caps.approval_execute.implemented
+        );
+      }
       modeReason = modeEffective
         ? ''
-        : '修改代码需文件修改、授权执行与 Diff；当前暂未接入';
+        : '修改代码需开启 Agent Task Runtime，并具备写盘与审批管道';
     }
 
     return {
@@ -331,10 +441,11 @@
       name = parts[parts.length - 1] || '';
     }
     var lines = [
-      'OneTone 本机讨论：只回答用户目标，给最短可执行步骤。',
-      '禁止：开场自白、复述系统限制、按模板填空、重复用户原话。',
-      '无文件正文勿编造路径/diff/输出；不能读写磁盘——要改仓库时一句交 Cursor。',
-      '有截图但无像素时：仍按文字目标直接给方案。样式/UI 类给出层次、间距、对比、信息密度等具体改法，勿只回复「无 OCR / 请指明元素」。'
+      'OneTone 对话模式：按用户目标作答；少改写、少说教，信息尽量原样传递。',
+      '鼓励结构化呈现：列表、表格、步骤、短原型草图、Mermaid（flowchart / sequence）。',
+      '本机对话不能读写磁盘；需要改文件时一句提示可切「工作」模式即可。',
+      '仅当用户明确要求交接/导出给其他 Agent 时，再给可粘贴的短交接说明。',
+      '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。'
     ];
     if (path) {
       lines.push('项目：' + (name ? name + ' · ' : '') + path);
@@ -344,6 +455,131 @@
     if (work) lines.push('工作线索：' + work);
     if (mats.length) lines.push('已附材料名：' + mats.join('、'));
     return lines.join('\n');
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function inlineFmtEscaped(escaped) {
+    return String(escaped || '')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  /**
+   * Presentation-only: markdown-ish → HTML (lists / headings / tables / fenced code+mermaid).
+   * Does not rewrite wording — mechanical layout for 对话预览.
+   */
+  function formatChatBodyHtml(text) {
+    var src = String(text || '');
+    if (!src) return '';
+    var parts = [];
+    var re = /```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/g;
+    var last = 0;
+    var m;
+    while ((m = re.exec(src))) {
+      if (m.index > last) parts.push({ kind: 'md', text: src.slice(last, m.index) });
+      parts.push({
+        kind: 'fence',
+        lang: String(m[1] || '').toLowerCase(),
+        text: m[2] || ''
+      });
+      last = m.index + m[0].length;
+    }
+    if (last < src.length) parts.push({ kind: 'md', text: src.slice(last) });
+    if (!parts.length) parts.push({ kind: 'md', text: src });
+
+    function flushTable(rows, out) {
+      if (!rows.length) return;
+      out.push('<table class="ha2-md-table"><tbody>');
+      var r;
+      for (r = 0; r < rows.length; r++) {
+        var cells = rows[r];
+        var tag = r === 0 ? 'th' : 'td';
+        out.push(
+          '<tr>' +
+            cells
+              .map(function (c) {
+                return '<' + tag + '>' + inlineFmtEscaped(escHtml(c)) + '</' + tag + '>';
+              })
+              .join('') +
+            '</tr>'
+        );
+      }
+      out.push('</tbody></table>');
+      rows.length = 0;
+    }
+
+    function renderMd(chunk) {
+      var lines = String(chunk || '').split(/\r?\n/);
+      var out = [];
+      var inList = false;
+      var tableRows = [];
+      var i;
+      for (i = 0; i <= lines.length; i++) {
+        var raw = i < lines.length ? lines[i] : '';
+        var table = i < lines.length ? raw.match(/^\s*\|(.+)\|\s*$/) : null;
+        var sep = i < lines.length && /^\s*\|?\s*:?-{3,}.*\|/.test(raw);
+        if (table && !sep) {
+          if (inList) {
+            out.push('</ul>');
+            inList = false;
+          }
+          tableRows.push(
+            table[1].split('|').map(function (c) {
+              return String(c || '').trim();
+            })
+          );
+          continue;
+        }
+        if (tableRows.length) flushTable(tableRows, out);
+        if (sep) continue;
+        var bullet = i < lines.length ? raw.match(/^\s*[-•*]\s+(.*)$/) : null;
+        if (bullet) {
+          if (!inList) {
+            out.push('<ul>');
+            inList = true;
+          }
+          out.push('<li>' + inlineFmtEscaped(escHtml(bullet[1])) + '</li>');
+          continue;
+        }
+        if (inList) {
+          out.push('</ul>');
+          inList = false;
+        }
+        if (i === lines.length) break;
+        if (!raw.trim()) continue;
+        var head = raw.match(/^\s*#{1,4}\s+(.*)$/);
+        if (head) {
+          out.push('<div class="ha2-md-h">' + inlineFmtEscaped(escHtml(head[1])) + '</div>');
+          continue;
+        }
+        out.push('<p>' + inlineFmtEscaped(escHtml(raw)) + '</p>');
+      }
+      return out.join('');
+    }
+
+    return parts
+      .map(function (p) {
+        if (p.kind === 'fence') {
+          var cls =
+            p.lang === 'mermaid' ? 'ha2-md-mermaid' : 'ha2-md-code';
+          var label = p.lang ? '<span class="ha2-md-lang">' + escHtml(p.lang) + '</span>' : '';
+          return (
+            '<pre class="' +
+            cls +
+            '">' +
+            label +
+            escHtml(p.text.replace(/\s+$/, '')) +
+            '</pre>'
+          );
+        }
+        return renderMd(p.text);
+      })
+      .join('');
   }
 
   /**
@@ -421,6 +657,7 @@
     entry: entry,
     normalizeWbSendMode: normalizeWbSendMode,
     normalizeWorkMode: normalizeWorkMode,
+    looksLikeWorkspaceEditGoal: looksLikeWorkspaceEditGoal,
     isWaitingForUserStatus: isWaitingForUserStatus,
     projectRole: projectRole,
     projectTaskOrganize: projectTaskOrganize,
@@ -429,6 +666,7 @@
     projectSession: projectSession,
     resolveHomeTimelineWorkspace: resolveHomeTimelineWorkspace,
     buildLocalChatSystemPrompt: buildLocalChatSystemPrompt,
+    formatChatBodyHtml: formatChatBodyHtml,
     compactLocalChatUserText: compactLocalChatUserText,
     closedCapabilities: closedCapabilities,
     closedPermissions: closedPermissions

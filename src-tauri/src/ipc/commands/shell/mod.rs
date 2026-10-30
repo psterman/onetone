@@ -1,5 +1,6 @@
 mod action_history_cmd;
 mod assist_runtime_cmd;
+mod agent_task_runtime_cmd;
 mod agent_center_cmd;
 mod agent_home_cmd;
 mod coach_hud_cmd;
@@ -31,6 +32,7 @@ mod workspace_layout_cmd;
 
 pub use action_history_cmd::*;
 pub use assist_runtime_cmd::*;
+pub use agent_task_runtime_cmd::*;
 pub use agent_center_cmd::*;
 pub use agent_home_cmd::*;
 pub use coach_hud_cmd::*;

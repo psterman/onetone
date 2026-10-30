@@ -39,8 +39,20 @@
   var wbStreamModel = '';
   var wbDoneUnsub = null;
   var wbDeltaUnsub = null;
-  /** In-app chat page (left meta + right streaming Q&A). */
+  /** In-app chat page (left meta + right streaming Q&A). Also hosts ATR edit progress. */
   var wbChatPageOpen = false;
+  /** Last ATR taskId we auto-opened the page for. */
+  var atrWbAutoTaskId = '';
+  /** Send → force ATR page open even before agentTask lands (paint-only open was unreliable). */
+  var atrWbPageForced = false;
+  /** User hit ← 返回; don't keep reopening until next send / new taskId. */
+  var atrWbPageUserClosed = false;
+  /** Goal text shown on pending ATR page before first status arrives. */
+  var atrWbPagePendingGoal = '';
+  /** ATR page only paints local-chat turns at/after this ms (hide prior「交 Cursor」闲聊). */
+  var atrChatSinceMs = 0;
+  /** ATR step log: collapsed shows last sentence only (per taskId). */
+  var atrLogExpandedById = {};
   var wbStreamingText = '';
   var wbStreamingTurnId = '';
   var wbPollTimer = 0;
@@ -48,9 +60,22 @@
   var handoffOpen = false;
   var handoffSummary = '';
   var handoffTargetKind = '';
+  /** Work-mode confirm gate — open before startAndDriveAgentTask. */
+  var workConfirmOpen = false;
+  var workConfirmGoal = '';
+  var workConfirmMatSum = '';
   /** Assist organize in-flight (UI busy; Prep.assist is source of truth). */
   var organizeBusy = false;
   var assistReadyCache = null;
+  /** ATR Soft Pad / WorkBuddy providers from cmd_agent_task_ready. */
+  var atrProvidersCache = null;
+  var atrProvidersFetchGen = 0;
+  /** Inline WorkBuddy OAuth login on home (freemodel — not Soft Pad API keys). */
+  var atrWbLoginForced = false;
+  var atrWbLoginBusy = false;
+  var atrWbLoginPendingId = '';
+  var atrWbLoginPollTimer = 0;
+  var atrWbLoginStatus = ''; // '' | pending | fail | expired
   /** Keep main bottom pad ≥ absolute dock height (consult/materials grow). */
   var dockReserveRo = null;
 
@@ -206,10 +231,10 @@
   wbChatTurns = loadWbChatTurns();
 
   function toast(msg) {
-    var T = global.OneToneToast;
+    var T = global.OneToneAppToast || global.OneToneToast;
     if (T && T.show) {
       try {
-        T.show(String(msg || ''));
+        T.show(String(msg || ''), 'scheme');
         return;
       } catch (_) {}
     }
@@ -411,6 +436,364 @@
     host.innerHTML = wbModelSelectHtml(kind);
   }
 
+  function atrProviderSelectHtml(snap) {
+    if (!atrEditPathOn(snap)) return '';
+    var list =
+      (atrProvidersCache && Array.isArray(atrProvidersCache.providers) && atrProvidersCache.providers) ||
+      [];
+    if (!list.length) {
+      return (
+        '<select class="ha2-atr-provider" data-ha2-atr-provider disabled title="' +
+        esc(t('ha2AtrEngine', 'ATR 编辑引擎')) +
+        '"><option>' +
+        esc(t('ha2AtrProviderLoading', '加载模型…')) +
+        '</option></select>'
+      );
+    }
+    var A = global.OneToneHomeAgentTask;
+    var selected =
+      (A && A.readProvider && A.readProvider()) ||
+      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
+      '';
+    var opts = list
+      .map(function (p) {
+        p = p || {};
+        var id = String(p.id || '');
+        if (!id) return '';
+        var kind = String(p.kind || '');
+        var ready = !!p.ready && p.editCapable !== false;
+        var lab = String(p.label || id);
+        if (!ready) {
+          if (kind === 'workbuddy') {
+            lab = String(p.label || 'WorkBuddy · 未登录');
+          } else {
+            lab = lab + ' · 未配置';
+          }
+        }
+        var sel = ready && id === String(selected) ? ' selected' : '';
+        return (
+          '<option value="' +
+          esc(id) +
+          '"' +
+          sel +
+          (ready ? '' : ' disabled') +
+          '>' +
+          esc(lab) +
+          '</option>'
+        );
+      })
+      .filter(Boolean)
+      .join('');
+    return (
+      '<select class="ha2-atr-provider" data-ha2-atr-provider title="' +
+      esc(t('ha2AtrEngine', 'ATR 编辑引擎')) +
+      '" aria-label="' +
+      esc(t('ha2AtrEngine', 'ATR 编辑引擎')) +
+      '">' +
+      opts +
+      '</select>'
+    );
+  }
+
+  function atrProviderSig(snap) {
+    if (!atrEditPathOn(snap)) return '';
+    var A = global.OneToneHomeAgentTask;
+    var sel = (A && A.readProvider && A.readProvider()) || '';
+    var list =
+      (atrProvidersCache && Array.isArray(atrProvidersCache.providers) && atrProvidersCache.providers) ||
+      [];
+    return (
+      String(sel) +
+      '\0' +
+      list
+        .map(function (p) {
+          return (
+            String((p && p.id) || '') +
+            ':' +
+            (p && p.ready && p.editCapable !== false ? '1' : '0') +
+            ':' +
+            String((p && p.editProbe) || '')
+          );
+        })
+        .join(',')
+    );
+  }
+
+  function syncAtrProviderHost(snap) {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-atr-provider-host]');
+    if (!host) return;
+    var sig = atrProviderSig(snap);
+    if (host.getAttribute('data-sig') === sig) return;
+    host.setAttribute('data-sig', sig);
+    host.innerHTML = atrProviderSelectHtml(snap);
+  }
+
+  function atrWbChatReady() {
+    if (atrProvidersCache && atrProvidersCache.workbuddyReady) return true;
+    if (atrProvidersCache && atrProvidersCache.workbuddyChatReady) return true;
+    var list =
+      (atrProvidersCache && Array.isArray(atrProvidersCache.providers) && atrProvidersCache.providers) ||
+      [];
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i] || {};
+      if (String(row.kind || '') === 'workbuddy' || String(row.id || '') === 'workbuddy') {
+        return !!(row.ready && row.editCapable !== false);
+      }
+    }
+    return false;
+  }
+
+  function atrWbLoginShouldShow(snap) {
+    if (!atrEditPathOn(snap)) return false;
+    if (atrWbLoginForced) return true;
+    return !atrWbChatReady();
+  }
+
+  function atrWbLoginHtml(snap) {
+    if (!atrWbLoginShouldShow(snap)) return '';
+    var busy = atrWbLoginBusy || atrWbLoginStatus === 'pending';
+    var statusLine = '';
+    if (atrWbLoginStatus === 'pending') {
+      statusLine = t('ha2AtrWbLoginPending', '请在浏览器完成登录…');
+    } else if (atrWbLoginStatus === 'fail') {
+      statusLine = t('ha2AtrWbLoginFail', '登录失败，请重试');
+    } else if (atrWbLoginStatus === 'expired') {
+      statusLine = t('ha2AtrWbLoginExpired', '登录超时，请重试');
+    } else {
+      statusLine = t(
+        'ha2AtrWbLoginHint',
+        '登录 WorkBuddy 后用账号模型编辑，无需粘贴 API Key'
+      );
+    }
+    return (
+      '<div class="ha2-atr-wb-login" data-ha2-atr-wb-login>' +
+      '<div class="ha2-atr-wb-login-hd">' +
+      '<b>' +
+      esc(t('ha2AtrWbLoginTitle', '登录 WorkBuddy 开始编辑')) +
+      '</b><span>' +
+      esc(statusLine) +
+      '</span></div>' +
+      '<div class="ha2-atr-wb-login-row">' +
+      '<button type="button" class="ha2-btn primary" data-ha2-atr-wb-login' +
+      (busy ? ' disabled' : '') +
+      '>' +
+      esc(
+        busy
+          ? t('ha2AtrWbLoggingIn', '登录中…')
+          : t('ha2AtrWbLoginCta', '登录 WorkBuddy')
+      ) +
+      '</button>' +
+      (busy
+        ? '<button type="button" class="ha2-link" data-ha2-atr-wb-login-cancel>' +
+          esc(t('ha2AtrWbLoginCancel', '取消')) +
+          '</button>'
+        : '') +
+      (atrWbChatReady()
+        ? '<button type="button" class="ha2-link" data-ha2-atr-wb-login-dismiss>' +
+          esc(t('ha2AtrWbLoginDismiss', '收起')) +
+          '</button>'
+        : '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+          esc(t('ha2WbGoConfig', '完整配置')) +
+          '</button>') +
+      '</div></div>'
+    );
+  }
+
+  function atrWbLoginSig(snap) {
+    if (!atrWbLoginShouldShow(snap)) return 'off';
+    return (
+      'on\0' +
+      (atrWbChatReady() ? '1' : '0') +
+      '\0' +
+      (atrWbLoginBusy ? '1' : '0') +
+      '\0' +
+      atrWbLoginStatus +
+      '\0' +
+      (atrWbLoginForced ? '1' : '0')
+    );
+  }
+
+  function syncAtrWbLoginHost(snap) {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-atr-wb-login-host]');
+    if (!host) return;
+    var sig = atrWbLoginSig(snap);
+    if (host.getAttribute('data-sig') === sig) return;
+    host.setAttribute('data-sig', sig);
+    host.innerHTML = atrWbLoginHtml(snap);
+  }
+
+  function stopAtrWbLoginPoll() {
+    if (atrWbLoginPollTimer) {
+      try {
+        global.clearTimeout(atrWbLoginPollTimer);
+      } catch (_) {}
+      atrWbLoginPollTimer = 0;
+    }
+  }
+
+  function openAtrWbLoginInline() {
+    var snap = store() && store().getSnapshot && store().getSnapshot();
+    if (!atrEditPathOn(snap || {})) return false;
+    atrWbLoginForced = true;
+    syncAtrWbLoginHost(snap || {});
+    return true;
+  }
+
+  function finishAtrWbLoginOk() {
+    stopAtrWbLoginPoll();
+    atrWbLoginPendingId = '';
+    atrWbLoginBusy = false;
+    atrWbLoginStatus = '';
+    atrWbLoginForced = false;
+    var A = global.OneToneHomeAgentTask;
+    if (A && A.writeProvider) A.writeProvider('workbuddy');
+    toast(t('ha2AtrWbLoginOk', '已登录 WorkBuddy，可开始编辑'));
+    return refreshAtrProviders(true).then(function () {
+      if (!mounted) return;
+      var snap = store() && store().getSnapshot && store().getSnapshot();
+      syncAtrProviderHost(snap);
+      syncAtrWbLoginHost(snap);
+      paint(snap);
+    });
+  }
+
+  function pollAtrWbLogin(pendingId) {
+    if (!pendingId || pendingId !== atrWbLoginPendingId) return;
+    invoke('cmd_workbuddy_local_oauth_poll', { pendingId: pendingId })
+      .then(function (res) {
+        if (pendingId !== atrWbLoginPendingId) return;
+        var st = res && res.status;
+        if (st === 'ok') {
+          return finishAtrWbLoginOk();
+        }
+        if (st === 'fail' || st === 'expired') {
+          stopAtrWbLoginPoll();
+          atrWbLoginBusy = false;
+          atrWbLoginPendingId = '';
+          atrWbLoginStatus = st === 'expired' ? 'expired' : 'fail';
+          syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+          return;
+        }
+        atrWbLoginStatus = 'pending';
+        syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+        atrWbLoginPollTimer = global.setTimeout(function () {
+          pollAtrWbLogin(pendingId);
+        }, 1500);
+      })
+      .catch(function () {
+        if (pendingId !== atrWbLoginPendingId) return;
+        stopAtrWbLoginPoll();
+        atrWbLoginBusy = false;
+        atrWbLoginPendingId = '';
+        atrWbLoginStatus = 'fail';
+        syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+      });
+  }
+
+  function startAtrWbLoginInline() {
+    if (atrWbLoginBusy) return;
+    stopAtrWbLoginPoll();
+    atrWbLoginBusy = true;
+    atrWbLoginStatus = 'pending';
+    atrWbLoginForced = true;
+    syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+    invoke('cmd_workbuddy_local_oauth_start', { region: 'cn' })
+      .then(function (res) {
+        var pendingId = res && res.pendingId ? String(res.pendingId) : '';
+        if (!pendingId) {
+          atrWbLoginBusy = false;
+          atrWbLoginStatus = 'fail';
+          syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+          toast(t('ha2AtrWbLoginFail', '登录失败，请重试'));
+          return;
+        }
+        atrWbLoginPendingId = pendingId;
+        pollAtrWbLogin(pendingId);
+      })
+      .catch(function (err) {
+        atrWbLoginBusy = false;
+        atrWbLoginPendingId = '';
+        atrWbLoginStatus = 'fail';
+        syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+        toast(String((err && err.message) || err || 'oauth_start_failed'));
+      });
+  }
+
+  function cancelAtrWbLoginInline() {
+    var pendingId = atrWbLoginPendingId;
+    stopAtrWbLoginPoll();
+    atrWbLoginBusy = false;
+    atrWbLoginStatus = '';
+    atrWbLoginPendingId = '';
+    if (pendingId) {
+      invoke('cmd_workbuddy_local_oauth_cancel', { pendingId: pendingId }).catch(function () {});
+    }
+    syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+  }
+
+  var atrWbProbeGen = 0;
+
+  /** Background diagnostic only — does not gate editCapable. */
+  function maybeProbeWorkbuddyEdit(info) {
+    if (!info || !info.workbuddyChatReady) return;
+    var A = global.OneToneHomeAgentTask;
+    if (!A || !A.probeWorkbuddy) return;
+    var gen = ++atrWbProbeGen;
+    A.probeWorkbuddy(false)
+      .then(function (next) {
+        if (gen !== atrWbProbeGen) return;
+        if (next) atrProvidersCache = next;
+      })
+      .catch(function () {});
+  }
+
+  function refreshAtrProviders(force) {
+    var A = global.OneToneHomeAgentTask;
+    if (!A || !A.featureEnabled || !A.featureEnabled() || !A.ready) {
+      atrProvidersCache = null;
+      return Promise.resolve(null);
+    }
+    if (!force && atrProvidersCache) return Promise.resolve(atrProvidersCache);
+    var gen = ++atrProvidersFetchGen;
+    return A.ready()
+      .then(function (info) {
+        if (gen !== atrProvidersFetchGen) return atrProvidersCache;
+        atrProvidersCache = info || null;
+        var cur = A.readProvider && A.readProvider();
+        var curOk = false;
+        var plist = (info && info.providers) || [];
+        for (var i = 0; i < plist.length; i++) {
+          var row = plist[i] || {};
+          var id = String(row.id || '').toLowerCase();
+          if (
+            id === String(cur || '').toLowerCase() &&
+            row.ready &&
+            row.editCapable !== false
+          ) {
+            curOk = true;
+            break;
+          }
+        }
+        if (A.writeProvider && info && info.selectedDefault && (!cur || !curOk)) {
+          A.writeProvider(info.selectedDefault);
+        }
+        maybeProbeWorkbuddyEdit(info);
+        if (mounted) {
+          var snapNow = store() && store().getSnapshot && store().getSnapshot();
+          if (atrWbChatReady()) atrWbLoginForced = false;
+          syncAtrWbLoginHost(snapNow);
+        }
+        return atrProvidersCache;
+      })
+      .catch(function () {
+        if (gen !== atrProvidersFetchGen) return atrProvidersCache;
+        atrProvidersCache = atrProvidersCache || { providers: [] };
+        return atrProvidersCache;
+      });
+  }
+
   function refreshWbLocal(force) {
     if (!force && wbLocalCache) return Promise.resolve(wbLocalCache);
     var gen = ++wbLocalFetchGen;
@@ -518,6 +901,26 @@
       esc(t('ha2WbRoleUser', '我')) +
       '</span>'
     );
+  }
+
+  /** Presentation shell only — does not rewrite model wording. */
+  function wbTurnBodyHtml(text, streaming) {
+    if (streaming) {
+      return (
+        '<pre class="ha2-wb-page-turn-text is-plain">' +
+        esc(text || '…') +
+        '</pre>'
+      );
+    }
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.formatChatBodyHtml === 'function') {
+      return (
+        '<div class="ha2-wb-page-turn-text ha2-md">' +
+        Caps.formatChatBodyHtml(text) +
+        '</div>'
+      );
+    }
+    return '<pre class="ha2-wb-page-turn-text is-plain">' + esc(text || '') + '</pre>';
   }
 
   function wbTranscriptHtml(kind) {
@@ -751,11 +1154,14 @@
   }
 
   function pulseHtml(snap) {
+    // Work + ATR live: hide agent pulse — task core owns status credibility.
+    if (atrEditPathOn(snap) && atrTaskShouldSurface(snap)) return '';
     // Mac pulse: eligible work first; else running targets before idle discovered.
     var rows = (store() && store().workRows && store().workRows(3)) || [];
     var chips = [];
     var seen = {};
     var i;
+    var maxChips = atrEditPathOn(snap) ? 1 : 4;
     for (i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (!r || !r.kind || seen[r.kind]) continue;
@@ -765,12 +1171,13 @@
         name: (r.cat && r.cat.name) || r.kind,
         status: r.status
       });
+      if (chips.length >= maxChips) break;
     }
     if (!chips.length) {
       var targets = (snap.targets || []).slice().sort(function (a, b) {
         return (b && b.running ? 1 : 0) - (a && a.running ? 1 : 0);
       });
-      for (i = 0; i < targets.length && chips.length < 4; i++) {
+      for (i = 0; i < targets.length && chips.length < maxChips; i++) {
         var tg = targets[i];
         if (!tg || !tg.kind || !tg.discovered || seen[tg.kind]) continue;
         seen[tg.kind] = true;
@@ -779,8 +1186,8 @@
           name: tg.label || tg.kind,
           status: tg.running ? 'running' : 'idle',
           label: tg.running
-            ? (tg.label || tg.kind) + ' · 已打开'
-            : (tg.label || tg.kind) + ' · 已发现'
+            ? (tg.label || tg.kind) + ' · ' + t('ha2PulseFg', '前台')
+            : (tg.label || tg.kind) + ' · ' + t('ha2PulseOptional', '可选')
         });
       }
     }
@@ -820,13 +1227,44 @@
     var receiptLocal = !!(receipt && receipt.kind === 'local_chat');
     var modeLocal = wbUsesLocalChat((snap && snap.selectedKind) || '', snap);
     var isLocalChat = receiptLocal || (!receipt && modeLocal);
-    var deliv = isLocalChat
-      ? t('ha2PillNoLocalChat', '尚未本机对话')
-      : t('ha2PillNoDelivery', '尚未投递');
+    var atrEdit = atrEditPathOn(snap);
+    var atrTask = snap && snap.agentTask;
+    var atrLive = atrTaskShouldSurface(snap);
+    var atrNoticeOn =
+      !!(notice && (String(notice.kind || '').indexOf('atr_') === 0 || notice.code));
+    var deliv =
+      atrEdit || atrLive
+        ? t('ha2PillNoEditTask', '尚未启动编辑')
+        : isLocalChat
+          ? t('ha2PillNoLocalChat', '尚未本机对话')
+          : t('ha2PillNoDelivery', '尚未投递');
     var tone = '';
+    var atrPillOpen = false;
     if (notice && notice.kind === 'missing_project') {
       deliv = notice.message || t('ha2NeedProject', '先选定项目');
       tone = ' is-warn';
+    } else if (atrTask && atrLive) {
+      var turnP = atrTask.currentTurn != null ? atrTask.currentTurn : 0;
+      var toolsP = atrTask.toolCallCount != null ? atrTask.toolCallCount : 0;
+      deliv =
+        t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turnP || 0)) +
+        (toolsP
+          ? ' · ' + t('ha2AtrToolN', '{n} 次工具').replace('{n}', String(toolsP))
+          : '') +
+        ' · ' +
+        String(atrTask.status || '');
+      tone =
+        atrTask.status === 'failed' || atrTask.status === 'interrupted'
+          ? ' is-warn'
+          : atrTask.status === 'done'
+            ? ' is-ok'
+            : '';
+      atrPillOpen = true;
+    } else if (atrEdit && atrNoticeOn) {
+      deliv = notice.message || t('ha2PillEditFailed', '编辑任务失败');
+      tone =
+        notice.code === 'starting' || notice.kind === 'atr_starting' ? '' : ' is-warn';
+      atrPillOpen = !!(notice.code === 'driving' || notice.code === 'starting');
     } else if (receipt) {
       if (receipt.phase === 'sending' || receipt.outcome === 'delivery_attempt') {
         deliv =
@@ -855,19 +1293,31 @@
       }
     }
     // Target lives on task-menu / dock chip — no second「发送到 X」echo.
-    return (
-      '<div class="ha2-pills" data-ha2-pills>' +
-      '<span class="ha2-pill' +
-      tone +
-      '"><i aria-hidden="true"></i><span class="ha2-pill-lbl">' +
+    // ATR live pill opens the steps/dialogue page (not just a truncated status).
+    var pillInner =
+      '<i aria-hidden="true"></i><span class="ha2-pill-lbl">' +
       esc(
-        receiptLocal || isLocalChat
-          ? t('ha2PillLocalChat', '本机对话')
-          : t('ha2PillDelivery', '投递')
+        atrEdit
+          ? t('ha2PillEditTask', '编辑')
+          : receiptLocal || isLocalChat
+            ? t('ha2PillLocalChat', '本机对话')
+            : t('ha2PillDelivery', '投递')
       ) +
       '</span><span class="ha2-pill-val">' +
       esc(truncateLabel(deliv, 28)) +
-      '</span></span></div>'
+      '</span>';
+    return (
+      '<div class="ha2-pills" data-ha2-pills>' +
+      (atrPillOpen
+        ? '<button type="button" class="ha2-pill ha2-pill--btn' +
+          tone +
+          '" data-ha2-atr-open-page title="' +
+          esc(t('ha2AtrOpenPage', '查看步骤对话')) +
+          '">' +
+          pillInner +
+          '</button>'
+        : '<span class="ha2-pill' + tone + '">' + pillInner + '</span>') +
+      '</div>'
     );
   }
 
@@ -897,10 +1347,561 @@
     return null;
   }
 
+  function atrEventLabel(e) {
+    e = e || {};
+    var kind = String(e.kind || '');
+    var tool = String(e.toolName || '');
+    var map = {
+      started: t('ha2AtrEvStarted', '已启动'),
+      task_started: t('ha2AtrEvStarted', '已启动'),
+      tool_call: t('ha2AtrEvTool', '调用工具'),
+      tool_result: t('ha2AtrEvResult', '工具结果'),
+      tool_error: t('ha2AtrEvToolErr', '工具失败'),
+      format_retry: t('ha2AtrEvFormatRetry', '格式重试'),
+      format_error: t('ha2AtrEvFormatFail', '模型未按工具格式行动'),
+      model_error: t('ha2AtrEvModelErr', '模型调用失败'),
+      budget_exhausted: t('ha2AtrEvBudget', '步数用尽'),
+      rate_limited: t('ha2AtrEvRate', '请求过于频繁'),
+      waiting_approval: t('ha2AtrEvWaitApprove', '等待批准补丁'),
+      waiting_user: t('ha2AtrEvWaitInput', '等待你补充'),
+      waiting_user_input: t('ha2AtrEvWaitInput', '等待你补充'),
+      user_input: t('ha2AtrEvUserIn', '你已补充'),
+      patch_applied: t('ha2AtrEvApplied', '已写入'),
+      exported_desktop: t('ha2AtrEvExported', '已放到桌面'),
+      done: t('ha2AtrEvDone', '任务完成'),
+      task_done: t('ha2AtrEvDone', '任务完成'),
+      failed: t('ha2AtrEvFailed', '任务失败'),
+      task_failed: t('ha2AtrEvFailed', '任务失败'),
+      interrupted: t('ha2AtrEvInterrupted', '已中断'),
+      task_interrupted: t('ha2AtrEvInterrupted', '已中断'),
+      cancelled: t('ha2AtrEvCancelled', '已取消'),
+      task_cancelled: t('ha2AtrEvCancelled', '已取消')
+    };
+    var base = map[kind] || kind || t('ha2AtrEvStep', '步骤');
+    var turn = e.turn != null ? Number(e.turn) : 0;
+    var step =
+      turn > 0 ? t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turn)) + ' · ' : '';
+    return step + (tool ? base + ' · ' + tool : base);
+  }
+
+  /** User-facing short step — no tool JSON / modelExcerpt. */
+  function atrUserStepLine(e) {
+    e = e || {};
+    var kind = String(e.kind || '');
+    var tool = String(e.toolName || e.tool || '');
+    var p = e.payload || {};
+    var args = p.arguments && typeof p.arguments === 'object' ? p.arguments : {};
+    var path = String(p.path || args.path || (p.result && p.result.path) || '');
+    var dest = String(p.dest || (p.result && p.result.dest) || '');
+    var turn = e.turn != null ? Number(e.turn) : 0;
+    var step =
+      turn > 0 ? t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turn)) + ' · ' : '';
+    var line = '';
+    if (kind === 'started' || kind === 'task_started') {
+      line = t('ha2AtrEvStarted', '已启动');
+    } else if (kind === 'tool_call') {
+      if (/list_dir|list_files|workspace|glob|check/i.test(tool)) {
+        line = t('ha2AtrUserCheckWs', '检查工作区');
+      } else if (/read/i.test(tool)) {
+        line = path
+          ? t('ha2AtrUserRead', '已读取') + ' ' + path
+          : t('ha2AtrUserRead', '已读取');
+      } else if (/write|patch|apply|edit|replace/i.test(tool)) {
+        line = path
+          ? t('ha2AtrUserPropose', '拟定修改') + ' ' + path
+          : t('ha2AtrUserPropose', '拟定修改');
+      } else if (/export|desktop|copy_to/i.test(tool)) {
+        line = t('ha2AtrUserExportPrep', '准备放到桌面');
+      } else {
+        line = t('ha2AtrEvTool', '调用工具') + (tool ? ' · ' + tool : '');
+      }
+    } else if (kind === 'tool_result') {
+      if (/read/i.test(tool)) {
+        line = path
+          ? t('ha2AtrUserRead', '已读取') + ' ' + path
+          : t('ha2AtrUserRead', '已读取');
+      } else if (/write|patch|apply|edit|replace/i.test(tool)) {
+        line = path
+          ? t('ha2AtrEvApplied', '已写入') + ' ' + path
+          : t('ha2AtrEvApplied', '已写入');
+      } else if (/export|desktop|copy_to/i.test(tool) || dest) {
+        line = t('ha2AtrEvExported', '已放到桌面') + (dest ? ' · ' + dest : '');
+      } else if (/list_dir|list_files|workspace|glob|check/i.test(tool)) {
+        line = t('ha2AtrUserCheckWs', '检查工作区');
+      } else {
+        line = t('ha2AtrEvResult', '工具结果') + (tool ? ' · ' + tool : '');
+      }
+    } else if (kind === 'tool_error') {
+      line =
+        t('ha2AtrEvToolErr', '工具失败') +
+        (p.error ? ' · ' + String(p.error).slice(0, 120) : '');
+    } else if (kind === 'waiting_approval') {
+      line = path
+        ? t('ha2AtrUserWaitConfirm', '等待确认') + ' · ' + path
+        : t('ha2AtrUserWaitConfirm', '等待确认');
+    } else if (kind === 'waiting_user' || kind === 'waiting_user_input') {
+      line = t('ha2AtrEvWaitInput', '等待你补充');
+    } else if (kind === 'patch_applied') {
+      line = path
+        ? t('ha2AtrEvApplied', '已写入') + ' ' + path
+        : t('ha2AtrEvApplied', '已写入');
+    } else if (kind === 'exported_desktop') {
+      line = t('ha2AtrEvExported', '已放到桌面') + (dest ? ' · ' + dest : '');
+    } else if (kind === 'format_error') {
+      line = t(
+        'ha2AtrFormatNext',
+        '模型未按工具格式行动。可换引擎/模型，或改写目标后重试；也可放弃当前任务。'
+      );
+    } else if (kind === 'done' || kind === 'task_done') {
+      line = t('ha2AtrEvDone', '任务完成');
+    } else if (kind === 'failed' || kind === 'task_failed') {
+      line =
+        t('ha2AtrEvFailed', '任务失败') +
+        (p.error || p.message ? ' · ' + String(p.error || p.message).slice(0, 120) : '');
+    } else {
+      line = atrEventLabel(e);
+      return line;
+    }
+    return step + line;
+  }
+
+  function atrEventDetail(e) {
+    var p = (e && e.payload) || {};
+    var args = p.arguments && typeof p.arguments === 'object' ? p.arguments : {};
+    var bits = [];
+    if (p.question) bits.push(String(p.question).slice(0, 480));
+    if (p.summary) bits.push(String(p.summary).slice(0, 480));
+    if (p.reason) bits.push(String(p.reason).slice(0, 480));
+    if (p.message) bits.push(String(p.message).slice(0, 480));
+    if (args.summary) bits.push(String(args.summary).slice(0, 480));
+    if (args.rationale) bits.push(String(args.rationale).slice(0, 480));
+    if (p.rationale) bits.push(String(p.rationale).slice(0, 480));
+    if (p.path || args.path) {
+      bits.push('path: ' + String(p.path || args.path));
+    }
+    if (args.query) bits.push('query: ' + String(args.query).slice(0, 200));
+    if (args.new_content) {
+      bits.push(String(args.new_content).slice(0, 420));
+    }
+    if (p.text) bits.push(String(p.text).slice(0, 480));
+    if (p.error) bits.push(String(p.error).slice(0, 240));
+    if (p.modelExcerpt || p.modelRaw || p.raw) {
+      bits.push(
+        String(p.modelExcerpt || p.modelRaw || p.raw).slice(0, 640)
+      );
+    }
+    if (p.result != null) {
+      try {
+        var r = p.result;
+        if (r && typeof r === 'object') {
+          if (r.rationale) bits.push(String(r.rationale).slice(0, 400));
+          if (r.summary) bits.push(String(r.summary).slice(0, 400));
+          if (r.path) bits.push('path: ' + String(r.path));
+          if (r.dest) bits.push('桌面: ' + String(r.dest));
+        }
+        var s = typeof r === 'string' ? r : JSON.stringify(r);
+        bits.push(String(s).slice(0, 560));
+      } catch (_) {}
+    }
+    // Dedup while preserving order.
+    var seen = {};
+    return bits
+      .map(function (b) {
+        return String(b || '').trim();
+      })
+      .filter(function (b) {
+        if (!b || seen[b]) return false;
+        seen[b] = 1;
+        return true;
+      })
+      .join('\n');
+  }
+
+  function atrRuntimeOn() {
+    var A = global.OneToneHomeAgentTask;
+    return !!(A && A.featureEnabled && A.featureEnabled());
+  }
+
+  /** Live ATR task — surface even if UI is on 对话 (do not hide mid-run). */
+  function atrTaskShouldSurface(snap) {
+    if (!atrRuntimeOn()) return false;
+    var task = snap && snap.agentTask;
+    if (!task || !task.status) return false;
+    var st = String(task.status || '');
+    return (
+      st === 'running' ||
+      st === 'verifying' ||
+      st === 'repair' ||
+      st === 'review' ||
+      st === 'waiting' ||
+      st === 'interrupted' ||
+      st === 'failed' ||
+      st === 'done'
+    );
+  }
+
+  /** Page chrome for live ATR or forced-open-after-send. */
+  function atrWbPageMode(snap) {
+    return !!(atrWbPageForced || atrTaskShouldSurface(snap));
+  }
+
+  /** Open ATR steps/dialogue page immediately (send path). */
+  function openAtrEditPage(goal) {
+    atrWbPageForced = true;
+    atrWbPageUserClosed = false;
+    atrWbPagePendingGoal = String(goal || '').trim();
+    atrChatSinceMs = Date.now();
+    openWbChatPage();
+  }
+
+  function atrTaskWaitingReason(task) {
+    task = task || {};
+    return String(task.waitingReason || task.waiting_reason || '');
+  }
+
+  function atrPendingApprovalToken(snap) {
+    var task = snap && snap.agentTask;
+    var tok =
+      (task && (task.pendingApprovalToken || task.pending_approval_token)) || '';
+    if (tok) return String(tok);
+    var evs = (snap && snap.agentTaskEvents) || [];
+    for (var i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i];
+      if (!e || e.kind !== 'waiting_approval' || !e.payload) continue;
+      var p = e.payload.approvalToken || e.payload.approval_token;
+      if (p) return String(p);
+    }
+    return '';
+  }
+
+  function atrPendingApprovalPath(snap) {
+    var task = snap && snap.agentTask;
+    var files = (task && task.changedFiles) || [];
+    if (files && files.length) return String(files[0] || '');
+    var evs = (snap && snap.agentTaskEvents) || [];
+    for (var i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i];
+      if (!e || e.kind !== 'waiting_approval' || !e.payload) continue;
+      if (e.payload.path) return String(e.payload.path);
+    }
+    return '';
+  }
+
+  function atrNeedsApproval(snap) {
+    var task = snap && snap.agentTask;
+    if (!task || String(task.status || '') !== 'waiting') return false;
+    if (atrTaskWaitingReason(task) === 'approval') return true;
+    return !!atrPendingApprovalToken(snap);
+  }
+
+  function atrActsHtml(snap) {
+    var task = snap && snap.agentTask;
+    if (!task) return '';
+    var st = String(task.status || '');
+    var acts = [];
+    if (st === 'waiting') {
+      if (atrNeedsApproval(snap) && atrPendingApprovalToken(snap)) {
+        acts.push(
+          '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
+            esc(t('ha2AtrApproveRun', '批准并执行')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-approve-all>' +
+            esc(t('ha2AtrApproveAll', '同意所有任务')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-reject>' +
+            esc(t('ha2AtrRejectPlan', '拒绝方案')) +
+            '</button>'
+        );
+      } else {
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+            esc(t('ha2AtrAbandon', '放弃')) +
+            '</button>'
+        );
+      }
+    } else if (st === 'interrupted') {
+      acts.push(
+        '<button type="button" class="ha2-btn primary" data-ha2-atr-resume>' +
+          esc(t('ha2AtrResume', '恢复当前任务')) +
+          '</button>'
+      );
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+          esc(t('ha2AtrAbandon', '放弃')) +
+          '</button>'
+      );
+    } else if (
+      st === 'running' ||
+      st === 'verifying' ||
+      st === 'repair' ||
+      st === 'review' ||
+      st === 'failed'
+    ) {
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+          esc(t('ha2AtrAbandon', '放弃')) +
+          '</button>'
+      );
+    }
+    return acts.join('');
+  }
+
+  function atrWrittenFiles(snap) {
+    var task = snap && snap.agentTask;
+    var files = (task && task.changedFiles) || [];
+    if (files && files.length) return files.slice();
+    var evs = (snap && snap.agentTaskEvents) || [];
+    var out = [];
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i];
+      if (
+        !e ||
+        (e.kind !== 'patch_applied' &&
+          e.kind !== 'done' &&
+          e.kind !== 'exported_desktop')
+      )
+        continue;
+      var r = e.payload && e.payload.result;
+      var p =
+        (e.payload && (e.payload.path || (r && r.path))) ||
+        (r && r.dest) ||
+        '';
+      if (p && out.indexOf(p) < 0) out.push(p);
+      if (r && r.dest && out.indexOf(r.dest) < 0) out.push(r.dest);
+    }
+    return out;
+  }
+
+  /** Main-column gate — Approve must be visible without hunting the left rail. */
+  function atrMainGateHtml(snap) {
+    var task = snap && snap.agentTask;
+    if (!task) return '';
+    var st = String(task.status || '');
+    var path = atrPendingApprovalPath(snap);
+    var token = atrPendingApprovalToken(snap);
+    var files = atrWrittenFiles(snap);
+    var fileLine = files.length ? files.join(', ') : path;
+    var title = '';
+    var detail = '';
+    if (st === 'done') {
+      title = t('ha2AtrDoneTitle', '编辑任务已完成');
+      detail = fileLine
+        ? t('ha2AtrDoneWrote', '已写入') + ' ' + fileLine
+        : t('ha2AtrDoneOk', '改动已写入工作区。');
+    } else if (st === 'failed') {
+      title = t('ha2AtrFailedTitle', '编辑任务失败');
+      detail =
+        atrFailureNextHint(snap) +
+        (fileLine
+          ? '\n' + t('ha2AtrWroteButFail', '已写入') + ' ' + fileLine
+          : '');
+    } else if (st === 'interrupted') {
+      title = t('ha2AtrInterruptedTitle', '编辑任务已中断');
+      detail = t('ha2AtrNextResume', '下一步：恢复当前任务，或放弃后按新目标重发。');
+    } else if (st === 'waiting' && atrNeedsApproval(snap)) {
+      title = t('ha2AtrNeedsYou', '编辑任务等待确认');
+      detail =
+        t(
+          'ha2AtrGateApprove',
+          '批准并执行：本任务剩余写入不再询问。同意所有：以后新任务也不再询问。'
+        ) +
+        (fileLine ? '\n' + fileLine : '');
+    } else if (st === 'waiting') {
+      title = t('ha2AtrEvWaitInput', '等待你补充');
+      detail = t('ha2AtrNextInput', '下一步：在下方补充说明，继续当前编辑任务。');
+    } else {
+      return '';
+    }
+    var acts = atrActsHtml(snap);
+    return (
+      '<div class="ha2-wb-page-gate" data-ha2-atr-gate data-atr-status="' +
+      esc(st) +
+      '"' +
+      (token ? ' data-has-token="1"' : '') +
+      '><div class="ha2-wb-page-gate-copy"><b>' +
+      esc(title) +
+      '</b><span>' +
+      esc(detail) +
+      '</span></div>' +
+      (acts ? '<div class="ha2-wb-page-gate-acts">' + acts + '</div>' : '') +
+      '</div>'
+    );
+  }
+
+  /** ATR progress / gate card — separate from Codex Soft Pad completion observation. */
+  function atrTaskPanelHtml(snap) {
+    var A = global.OneToneHomeAgentTask;
+    if (!A || !A.featureEnabled || !A.featureEnabled()) return '';
+    // Keep visible after flipping to 对话 — otherwise mid-run tasks vanish and sends divert to chat.
+    var task = snap && snap.agentTask;
+    if (!task || !task.status) return '';
+    var st = String(task.status || '');
+    var busy = st === 'running' || st === 'verifying' || st === 'repair' || st === 'review';
+    if (!(busy || st === 'waiting' || st === 'interrupted' || st === 'failed')) return '';
+
+    var reason = String(task.waitingReason || '');
+    var files = Array.isArray(task.changedFiles) ? task.changedFiles : [];
+    var evs = (snap.agentTaskEvents || []).slice(-12);
+    var pendingPath = '';
+    for (var ei = evs.length - 1; ei >= 0; ei--) {
+      if (evs[ei] && evs[ei].kind === 'waiting_approval' && evs[ei].payload) {
+        pendingPath = String(evs[ei].payload.path || '');
+        break;
+      }
+    }
+    var turn = task.currentTurn != null ? task.currentTurn : 0;
+    var tools = task.toolCallCount != null ? task.toolCallCount : 0;
+    var provider =
+      (A.readProvider && A.readProvider()) ||
+      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
+      '';
+    var title =
+      st === 'waiting'
+        ? t('ha2AtrNeedsYou', '编辑任务等待确认')
+        : st === 'interrupted'
+          ? t('ha2AtrInterruptedTitle', '编辑任务已中断')
+          : st === 'failed'
+            ? t('ha2AtrFailedTitle', '编辑任务失败')
+            : t('ha2AtrDrivingTitle', '编辑任务执行中');
+    var progressBits = [];
+    if (provider) progressBits.push(String(provider));
+    progressBits.push(
+      t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turn || 0))
+    );
+    if (tools) {
+      progressBits.push(
+        t('ha2AtrToolN', '{n} 次工具').replace('{n}', String(tools))
+      );
+    }
+    progressBits.push(st);
+    var fileLine = '';
+    if (st === 'waiting') {
+      fileLine = files.length
+        ? files.join(', ')
+        : pendingPath
+          ? pendingPath + ' · ' + t('ha2AtrPendingFile', '待批准（尚未写入）')
+          : t('ha2AtrPendingFile', '待批准补丁（尚未写入）');
+    } else if (files.length) {
+      fileLine = files.join(', ');
+    } else if (task.lastError) {
+      fileLine = String(task.lastError).slice(0, 160);
+    }
+
+    var lastEv = evs.length ? evs[evs.length - 1] : null;
+    var lastLine = lastEv
+      ? atrUserStepLine(lastEv)
+      : busy
+        ? t('ha2AtrEvPending', '等待模型下一步…')
+        : '';
+    if (st === 'failed') {
+      lastLine = atrFailureNextHint(snap);
+    }
+
+    var acts = [];
+    acts.push(
+      '<button type="button" class="ha2-btn primary" data-ha2-atr-open-page>' +
+        esc(t('ha2AtrOpenPage', '查看步骤对话')) +
+        '</button>'
+    );
+    if (st === 'waiting') {
+      if (reason === 'approval' && task.pendingApprovalToken) {
+        acts.push(
+          '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
+            esc(t('ha2AtrApproveRun', '批准并执行')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-approve-all>' +
+            esc(t('ha2AtrApproveAll', '同意所有任务')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-reject>' +
+            esc(t('ha2AtrRejectPlan', '拒绝方案')) +
+            '</button>'
+        );
+      } else if (reason === 'user_input') {
+        acts.push(
+          '<button type="button" class="ha2-btn primary" data-ha2-atr-input>' +
+            esc(t('ha2AtrContinue', '继续输入')) +
+            '</button>'
+        );
+      }
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+          esc(t('ha2AtrAbandon', '放弃')) +
+          '</button>'
+      );
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon-send>' +
+          esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+          '</button>'
+      );
+    } else if (st === 'interrupted') {
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-resume>' +
+          esc(t('ha2AtrResume', '恢复当前任务')) +
+          '</button>'
+      );
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+          esc(t('ha2AtrAbandon', '放弃')) +
+          '</button>'
+      );
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon-send>' +
+          esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+          '</button>'
+      );
+    } else {
+      acts.push(
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+          esc(t('ha2AtrAbandon', '放弃')) +
+          '</button>'
+      );
+    }
+
+    return (
+      '<div class="ha2-approve ha2-atr-approve ha2-atr-panel" data-ha2-approve data-ha2-atr-card data-atr-status="' +
+      esc(st) +
+      '" role="status">' +
+      '<div class="ha2-approve-copy"><b>' +
+      esc(title) +
+      '</b><span>' +
+      esc(task.goal || '') +
+      '</span><span class="ha2-atr-progress">' +
+      esc(progressBits.join(' · ')) +
+      '</span>' +
+      (fileLine
+        ? '<span class="ha2-atr-files">' + esc(fileLine) + '</span>'
+        : '') +
+      '</div>' +
+      (lastLine
+        ? '<p class="ha2-atr-last ha2-atr-timeline" data-ha2-atr-timeline>' +
+          esc(lastLine) +
+          '</p>'
+        : '') +
+      '<div class="ha2-approve-acts">' +
+      acts.join('') +
+      '</div></div>'
+    );
+  }
+
+  function atrWaitingHtml(snap) {
+    return atrTaskPanelHtml(snap);
+  }
+
   function approveHtml(snap) {
+    var atr = atrTaskPanelHtml(snap);
+    if (atr) return atr;
     var agent = approvalTarget(snap);
     if (!agent) return '';
-    // Backend does not wire approval.approve/reject yet — never label「批准/已允许」.
+    // External Agent Center: no approve/reject wire — open target only.
     var acts = [
       '<button type="button" class="ha2-btn primary" data-ha2-go-agent="' +
         esc(agent.kind || '') +
@@ -963,86 +1964,108 @@
   }
 
   function sessionModeLabel(mode) {
-    if (mode === 'readonly') return t('ha2ModeReadonly', '只读分析');
-    if (mode === 'edit') return t('ha2ModeEdit', '修改代码');
-    return t('ha2ModeThink', '思考 / 方案');
+    if (mode === 'edit') return t('ha2ModeWork', '工作');
+    return t('ha2ModeChat', '对话');
   }
 
-  function sessionChromeHtml(snap) {
-    var session = snap && snap.session;
-    if (!session) return '';
-    var role = session.role || 'code';
-    var mode = session.mode || 'think';
+  function modeBoundaryCopy(mode) {
+    if (mode === 'edit') {
+      return t(
+        'ha2ModeBoundaryWork',
+        '工作模式会读取并可能修改项目文件；开始前先确认，写入前再批准。'
+      );
+    }
+    return t(
+      'ha2ModeBoundaryChat',
+      '对话模式只讨论与出方案，不会读写项目文件。'
+    );
+  }
+
+  /** Codex-style 对话|工作 segment — home chrome + in-page rail. */
+  function workModeSegmentHtml(snap, opts) {
+    opts = opts || {};
+    var session = (snap && snap.session) || {};
+    var mode =
+      (snap && snap.workMode) === 'edit' || session.mode === 'edit' ? 'edit' : 'think';
     var effective = !!session.modeEffective;
-    var roleHint =
-      role === 'think'
-        ? t('ha2RoleThink', '讨论与整理')
-        : t('ha2RoleCode', '投递到代码 Agent');
+    var AtrMode = global.OneToneHomeAgentTask;
+    var editOk =
+      AtrMode && typeof AtrMode.editModeSelectable === 'function'
+        ? AtrMode.editModeSelectable(session.capabilities)
+        : !!(
+            session.capabilities &&
+            session.capabilities.write_project &&
+            session.capabilities.write_project.implemented &&
+            session.capabilities.approval_execute &&
+            session.capabilities.approval_execute.implemented
+          );
     var modes = [
-      { id: 'think', label: sessionModeLabel('think') },
-      { id: 'readonly', label: sessionModeLabel('readonly') },
-      { id: 'edit', label: sessionModeLabel('edit') }
+      {
+        id: 'think',
+        label: sessionModeLabel('think'),
+        title: t('ha2ModeChatHint', '本机对话：讨论、方案、给其他模型的步骤说明'),
+        disabled: false
+      },
+      {
+        id: 'edit',
+        label: sessionModeLabel('edit'),
+        title: editOk
+          ? t('ha2ModeWorkHint', '工作：在项目里读文件、改代码（需确认时会停下）')
+          : t('ha2ModeNotWired', '暂未接入') +
+            ' · ' +
+            ((session.capabilities &&
+              session.capabilities.write_project &&
+              session.capabilities.write_project.reason) ||
+              t('ha2AtrNeedFlag', '开启 Agent Task Runtime')),
+        disabled: !editOk
+      }
     ];
     var modeBtns = modes
       .map(function (m) {
         var on = m.id === mode;
-        var disabled =
-          m.id === 'readonly'
-            ? !(session.capabilities && session.capabilities.read_project && session.capabilities.read_project.available)
-            : m.id === 'edit'
-              ? !(
-                  session.capabilities &&
-                  session.capabilities.write_project &&
-                  session.capabilities.write_project.available
-                )
-              : false;
-        // think always selectable as intent; effective still gated by text_chat.
-        var title = disabled
-          ? t('ha2ModeNotWired', '暂未接入') +
-            (m.id === 'readonly'
-              ? ' · ' + ((session.capabilities.read_project && session.capabilities.read_project.reason) || '')
-              : ' · ' + ((session.capabilities.write_project && session.capabilities.write_project.reason) || ''))
-          : on && !effective && session.modeReason
-            ? session.modeReason
-            : m.label;
+        var title =
+          on && !effective && session.modeReason ? session.modeReason : m.title;
         return (
           '<button type="button" class="ha2-mode-btn' +
           (on ? ' is-on' : '') +
-          (disabled ? ' is-disabled' : '') +
+          (m.disabled ? ' is-disabled' : '') +
           '"' +
-          (disabled ? ' disabled aria-disabled="true"' : '') +
-          ' data-ha2-work-mode="' +
+          (m.disabled ? ' disabled aria-disabled="true"' : '') +
+          ' role="radio" aria-checked="' +
+          (on ? 'true' : 'false') +
+          '" data-ha2-work-mode="' +
           esc(m.id) +
           '" title="' +
           esc(title) +
           '">' +
           esc(m.label) +
-          (disabled ? ' · ' + esc(t('ha2NotWiredShort', '暂未接入')) : '') +
+          (m.disabled ? ' · ' + esc(t('ha2NotWiredShort', '暂未接入')) : '') +
           '</button>'
         );
       })
       .join('');
+    return (
+      '<div class="ha2-mode-row ha2-mode-row--segment' +
+      (opts.compact ? ' is-compact' : '') +
+      '" role="radiogroup" aria-label="' +
+      esc(t('ha2WorkMode', '对话 / 工作')) +
+      '">' +
+      modeBtns +
+      '</div>'
+    );
+  }
 
-    var perms = session.permissions || {};
-    var permIds = Object.keys(perms);
-    var permBits = [];
-    var pi;
-    for (pi = 0; pi < permIds.length; pi++) {
-      var p = perms[permIds[pi]];
-      if (p && p.available) continue; // only toggles for available — none today
-      permBits.push(
-        '<li class="ha2-perm-item is-pending" data-perm="' +
-          esc(permIds[pi]) +
-          '"><span>' +
-          esc(permIds[pi]) +
-          '</span><em>' +
-          esc(t('ha2PermPending', '暂未接入')) +
-          '</em></li>'
-      );
-    }
-
+  function sessionChromeHtml(snap) {
+    var session = snap && snap.session;
+    if (!session) return '';
+    var mode = session.mode === 'edit' ? 'edit' : 'think';
+    var effective = !!session.modeEffective;
+    var roleHint =
+      mode === 'edit'
+        ? t('ha2RoleWork', '读改项目文件与代码')
+        : t('ha2RoleChat', '聊思路、整理方案（可交接给其他模型）');
     var handoffBtn = '';
-    if (role === 'think' && wbChatTurns.length) {
+    if (mode === 'think' && wbChatTurns.length) {
       handoffBtn =
         '<button type="button" class="ha2-link" data-ha2-handoff-open>' +
         esc(t('ha2HandoffOpen', '整理并交接任务')) +
@@ -1050,8 +2073,16 @@
     }
 
     return (
-      '<div class="ha2-session-chrome" data-ha2-session-chrome>' +
-      '<div class="ha2-session-role"><b>' +
+      '<div class="ha2-session-chrome" data-ha2-session-chrome data-work-mode="' +
+      esc(mode) +
+      '">' +
+      workModeSegmentHtml(snap) +
+      '<p class="ha2-mode-boundary" data-ha2-mode-boundary data-mode="' +
+      esc(mode) +
+      '">' +
+      esc(modeBoundaryCopy(mode)) +
+      '</p>' +
+      '<div class="ha2-session-role" data-ha2-session-role><b>' +
       esc(roleHint) +
       '</b>' +
       (effective
@@ -1061,21 +2092,290 @@
           '</span>') +
       handoffBtn +
       '</div>' +
-      '<div class="ha2-mode-row" role="group" aria-label="' +
-      esc(t('ha2WorkMode', '工作模式')) +
-      '">' +
-      modeBtns +
-      '</div>' +
-      (permBits.length
-        ? '<ul class="ha2-perm-list" data-ha2-perm-list aria-label="' +
-          esc(t('ha2Permissions', '权限')) +
-          '">' +
-          permBits.join('') +
-          '</ul>'
-        : '') +
       handoffPanelHtml(snap) +
       '</div>'
     );
+  }
+
+  function materialsSummaryLine(snap) {
+    try {
+      var mats = (snap && snap.materials) || [];
+      if (!mats.length) return '';
+      return mats
+        .slice(0, 8)
+        .map(function (m) {
+          return String((m && (m.title || m.path || m.name || m.content)) || '').slice(0, 80);
+        })
+        .filter(Boolean)
+        .join('; ');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function atrProviderLabel(snap) {
+    var A = global.OneToneHomeAgentTask;
+    var id =
+      (A && A.readProvider && A.readProvider()) ||
+      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
+      '';
+    var list =
+      (atrProvidersCache && Array.isArray(atrProvidersCache.providers) && atrProvidersCache.providers) ||
+      [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && String(list[i].id) === String(id)) {
+        return String(list[i].label || id);
+      }
+    }
+    return id || t('ha2AtrProviderUnset', '未选引擎');
+  }
+
+  function atrTaskBusy(snap) {
+    var st = String((snap && snap.agentTask && snap.agentTask.status) || '');
+    return (
+      st === 'running' || st === 'verifying' || st === 'repair' || st === 'review'
+    );
+  }
+
+  function workPrimaryCtaLabel(snap) {
+    if (atrNeedsApproval(snap)) return t('ha2AtrApproveRun', '批准并执行');
+    if (workConfirmOpen) return t('ha2WorkConfirmStart', '批准并开始');
+    if (atrTaskBusy(snap)) return t('ha2AtrViewProgress', '查看进度');
+    return t('ha2WorkPlanCta', '生成执行计划');
+  }
+
+  /** Keep draft/send chrome aligned with 对话|工作 after mode flips. */
+  function syncModeChrome(snap) {
+    if (!root) return;
+    snap = snap || (store() && store().getSnapshot()) || {};
+    var atrEdit = atrEditPathOn(snap);
+    var draftLabel = atrEdit
+      ? t('ha2AtrDraftLabel', '描述要改的代码或文件')
+      : t('ha2DraftLabelChat', '继续讨论或整理方案');
+    var draftPh = atrEdit
+      ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
+      : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
+    var ta = root.querySelector('.ha2-compose [data-ha2-draft]');
+    if (ta && document.activeElement !== ta) {
+      ta.placeholder = draftPh;
+      ta.setAttribute('aria-label', draftLabel);
+    }
+    var sendBtn = root.querySelector('[data-ha2-send]');
+    if (sendBtn) {
+      var sendOk = canSendNow(snap);
+      var label = atrEdit
+        ? workPrimaryCtaLabel(snap)
+        : t('ha2SendMessage', '发送消息');
+      sendBtn.disabled = !sendOk;
+      sendBtn.classList.toggle('is-labeled', !!atrEdit);
+      sendBtn.setAttribute('aria-label', label);
+      sendBtn.title = sendOk
+        ? atrEdit
+          ? label + '（Ctrl+Enter）'
+          : t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+        : t('ha2SendNeedDraft', '先写一句再发送');
+      sendBtn.textContent = atrEdit ? label : '↑';
+    }
+    var secondary = root.querySelectorAll('[data-ha2-work-secondary]');
+    var i;
+    var Pcx = global.OneToneHomeProjectContext;
+    for (i = 0; i < secondary.length; i++) {
+      if (atrEdit) {
+        secondary[i].hidden = true;
+      } else if (secondary[i].hasAttribute('data-ha2-pcx')) {
+        secondary[i].hidden = !(
+          Pcx &&
+          Pcx.featureEnabled &&
+          Pcx.featureEnabled()
+        );
+      } else {
+        secondary[i].hidden = false;
+      }
+    }
+  }
+
+  function closeWorkConfirm() {
+    workConfirmOpen = false;
+    workConfirmGoal = '';
+    workConfirmMatSum = '';
+  }
+
+  function startConfirmedWorkTask(goal, matSum) {
+    var S = store();
+    var text = String(goal || '').trim();
+    if (!S || !S.startAndDriveAgentTask || !text) return Promise.resolve();
+    closeWorkConfirm();
+    openAtrEditPage(text);
+    return S.startAndDriveAgentTask({
+      goal: text,
+      materialsSummary: String(matSum || '')
+    }).then(function () {
+      if (!mounted) return;
+      paint(S.getSnapshot());
+    });
+  }
+
+  function taskCoreHtml(snap) {
+    if (!atrEditPathOn(snap)) return '';
+    var task = snap && snap.agentTask;
+    var st = task ? String(task.status || '') : '';
+    var goal =
+      (workConfirmOpen && workConfirmGoal) ||
+      (task && task.goal) ||
+      String((snap && snap.draft) || '').trim() ||
+      '';
+    var mats =
+      (workConfirmOpen && workConfirmMatSum) ||
+      materialsSummaryLine(snap) ||
+      t('ha2MatNone', '无额外材料');
+    var next = '';
+    if (workConfirmOpen) {
+      next = t('ha2WorkConfirmNext', '确认项目、材料与引擎后开始');
+    } else if (atrNeedsApproval(snap)) {
+      next = t('ha2AtrNextApprove', '批准后才会写入文件');
+    } else if (atrTaskBusy(snap)) {
+      next = t('ha2AtrNextRunning', '查看进度，或放弃当前任务');
+    } else if (st === 'waiting') {
+      next = t('ha2AtrNextInput', '下一步：在下方补充说明，继续当前编辑任务。');
+    } else if (st === 'done') {
+      var files = atrWrittenFiles(snap);
+      next = files.length
+        ? t('ha2AtrDoneWrote', '已写入') + ' ' + files.join(', ')
+        : t('ha2AtrDoneOk', '改动已写入工作区。');
+    } else if (st === 'failed' || st === 'interrupted') {
+      next = atrFailureNextHint(snap);
+    } else {
+      next = t('ha2WorkPlanNext', '写清目标后生成执行计划');
+    }
+    function row(lab, val) {
+      return (
+        '<div class="ha2-task-core-row"><span>' +
+        esc(lab) +
+        '</span><b>' +
+        esc(val || '—') +
+        '</b></div>'
+      );
+    }
+    return (
+      '<div class="ha2-task-core" data-ha2-task-core>' +
+      row(t('ha2Project', '项目'), targetProjectLabel(snap)) +
+      row(t('ha2AtrProvider', '引擎'), atrProviderLabel(snap)) +
+      row(t('ha2Goal', '目标'), goal || '—') +
+      row(t('ha2Materials', '材料'), mats) +
+      '<div class="ha2-task-core-next">' +
+      esc(next) +
+      '</div></div>'
+    );
+  }
+
+  function workConfirmGateHtml(snap) {
+    if (!workConfirmOpen || !atrEditPathOn(snap)) return '';
+    var goal = workConfirmGoal || '';
+    var path =
+      (snap && snap.targetContext && snap.targetContext.projectPath) || '';
+    var mats =
+      workConfirmMatSum ||
+      materialsSummaryLine(snap) ||
+      t('ha2MatNone', '无额外材料');
+    return (
+      '<div class="ha2-work-confirm" data-ha2-work-confirm role="region" aria-label="' +
+      esc(t('ha2WorkConfirmTitle', '确认后开始执行')) +
+      '"><b>' +
+      esc(t('ha2WorkConfirmTitle', '确认后开始执行')) +
+      '</b><div class="ha2-work-confirm-meta">' +
+      '<div><span>' +
+      esc(t('ha2Goal', '目标')) +
+      '</span> ' +
+      esc(goal) +
+      '</div><div><span>' +
+      esc(t('ha2Project', '项目')) +
+      '</span> ' +
+      esc(targetProjectLabel(snap)) +
+      (path ? ' · ' + esc(path) : '') +
+      '</div><div><span>' +
+      esc(t('ha2Materials', '材料')) +
+      '</span> ' +
+      esc(mats) +
+      '</div><div><span>' +
+      esc(t('ha2AtrProvider', '引擎')) +
+      '</span> ' +
+      esc(atrProviderLabel(snap)) +
+      '</div><div><span>' +
+      esc(t('ha2WriteGate', '写入')) +
+      '</span> ' +
+      esc(
+        t(
+          'ha2WriteWithApproval',
+          'write_with_approval · 写入前再批准'
+        )
+      ) +
+      '</div></div><div class="ha2-work-confirm-acts">' +
+      '<button type="button" class="ha2-btn primary" data-ha2-work-confirm-start>' +
+      esc(t('ha2WorkConfirmStart', '批准并开始')) +
+      '</button><button type="button" class="ha2-btn" data-ha2-work-confirm-cancel>' +
+      esc(t('ha2WorkConfirmCancel', '取消')) +
+      '</button></div></div>'
+    );
+  }
+
+  function atrFailureNextHint(snap) {
+    var task = snap && snap.agentTask;
+    var err = String((task && (task.lastError || task.last_error)) || '');
+    var evs = (snap && snap.agentTaskEvents) || [];
+    var i;
+    var formatFail = /format/i.test(err);
+    for (i = evs.length - 1; i >= 0 && !formatFail; i--) {
+      if (evs[i] && String(evs[i].kind || '') === 'format_error') formatFail = true;
+    }
+    if (formatFail) {
+      return t(
+        'ha2AtrFormatNext',
+        '模型未按工具格式行动。可换引擎/模型，或改写目标后重试；也可放弃当前任务。'
+      );
+    }
+    if (err) return err.slice(0, 200);
+    return t('ha2AtrFailedNext', '可放弃后改写目标重试，或换引擎后再生成执行计划。');
+  }
+
+  function degradedNextHint(snap) {
+    var bits = [];
+    var ctx = (snap && snap.targetContext) || {};
+    if (!ctx.projectPath) {
+      bits.push(t('ha2DegradedNeedProject', '缺项目：先在底栏选定项目路径'));
+    }
+    if (atrEditPathOn(snap)) {
+      var list =
+        (atrProvidersCache &&
+          Array.isArray(atrProvidersCache.providers) &&
+          atrProvidersCache.providers) ||
+        [];
+      var ready = false;
+      var i;
+      for (i = 0; i < list.length; i++) {
+        if (list[i] && list[i].ready && list[i].editCapable !== false) {
+          ready = true;
+          break;
+        }
+      }
+      if (!list.length) {
+        bits.push(t('ha2DegradedNeedEngine', '缺引擎：打开工作模式后选择 ATR 引擎'));
+      } else if (!ready) {
+        bits.push(
+          t(
+            'ha2DegradedNeedAccount',
+            '缺账号：登录 WorkBuddy 或配置 Soft Pad 密钥'
+          )
+        );
+      }
+    }
+    if (!bits.length) {
+      return t(
+        'ha2DegradedHint',
+        '当前依据不足 · 检查项目、引擎或账号后重试'
+      );
+    }
+    return bits.join(' · ');
   }
 
   function buildHandoffSummaryFromChat() {
@@ -1194,7 +2494,33 @@
   function situationHtml(snap) {
     var ctx = contextLabels();
     var task = taskVm(snap);
+    var atrLive = atrEditPathOn(snap) && atrTaskShouldSurface(snap);
     var banner = primaryBannerHtml(snap);
+    // One primary status: ATR / confirm gate beats Soft Pad alert.
+    var statusHtml = '';
+    if (workConfirmOpen && atrEditPathOn(snap)) {
+      statusHtml = workConfirmGateHtml(snap);
+    } else if (banner.kind === 'needsYou') {
+      statusHtml = banner.html;
+    } else if (!atrLive && banner.kind === 'alert') {
+      statusHtml = banner.html;
+    }
+    var taskBlock = atrEditPathOn(snap)
+      ? taskCoreHtml(snap)
+      : '<div class="ha2-task">' +
+        '<div class="ha2-task-body">' +
+        (task.kicker
+          ? '<div class="ha2-task-kicker">' + esc(task.kicker) + '</div>'
+          : '') +
+        '<h2 class="ha2-task-title">' +
+        esc(task.title) +
+        '</h2>' +
+        (task.sub ? '<p class="ha2-task-sub">' + esc(task.sub) + '</p>' : '') +
+        '</div>' +
+        '<button type="button" class="ha2-task-menu" data-ha2-menu-picker aria-haspopup="listbox">' +
+        esc(task.menu) +
+        ' ▾</button></div>' +
+        pillsHtml(snap);
     return (
       '<div class="ha2-situation" data-ha2-situation>' +
       '<div class="ha2-ctx">' +
@@ -1211,22 +2537,9 @@
       esc(ctx.habit) +
       '</button></div>' +
       sessionChromeHtml(snap) +
-      '<div class="ha2-task">' +
-      '<div class="ha2-task-body">' +
-      (task.kicker
-        ? '<div class="ha2-task-kicker">' + esc(task.kicker) + '</div>'
-        : '') +
-      '<h2 class="ha2-task-title">' +
-      esc(task.title) +
-      '</h2>' +
-      (task.sub ? '<p class="ha2-task-sub">' + esc(task.sub) + '</p>' : '') +
-      '</div>' +
-      '<button type="button" class="ha2-task-menu" data-ha2-menu-picker aria-haspopup="listbox">' +
-      esc(task.menu) +
-      ' ▾</button></div>' +
-      pillsHtml(snap) +
+      taskBlock +
       pulseHtml(snap) +
-      (banner.kind === 'needsYou' || banner.kind === 'alert' ? banner.html : '') +
+      statusHtml +
       '</div>'
     );
   }
@@ -1429,6 +2742,8 @@
    * No aria-live: avoid re-announcing on every refresh.
    */
   function completionObservationHtml(snap) {
+    // ATR edit has its own progress card — don't stack Codex Soft Pad "完成观察" on top.
+    if (atrEditPathOn(snap)) return '';
     var list = (snap && snap.agents) || [];
     var done = null;
     for (var i = 0; i < list.length; i++) {
@@ -1462,38 +2777,124 @@
   function validationNoticeHtml(snap) {
     var n = snap && snap.validationNotice;
     if (!n) return '';
+    var atrCode = n.code ? String(n.code) : '';
+    // ATR panel already owns waiting/interrupted/busy CTAs + timeline — avoid twin cards.
+    if (
+      atrEditPathOn(snap) &&
+      snap.agentTask &&
+      (atrCode === 'waiting' ||
+        atrCode === 'interrupted' ||
+        atrCode === 'busy' ||
+        atrCode === 'driving' ||
+        atrCode === 'starting')
+    ) {
+      return '';
+    }
     var isWbCfg = n.kind === 'wb_no_account';
     var isAssistFail = n.kind === 'assist_failed' || n.kind === 'assist_missing';
     var reason = n.reason ? String(n.reason) : '';
-    var hint = isWbCfg
-      ? t('ha2WbNeedAccountHint', '账号与 Key 只在 Agent 页管理')
-      : isAssistFail
-        ? (reason
-            ? t('ha2AssistReasonCode', '原因码') + ': ' + reason
-            : t('ha2AssistCanDirectSend', '整理失败不影响直接发送原稿'))
-        : n.kind === 'consult'
-          ? t('ha2ConsultConfirmHint', '请在下方会诊记录点「理解正确」')
-          : t('ha2ValidationHint', '尚未尝试投递');
+    var hint = t('ha2ValidationHint', '尚未尝试投递');
+    if (isWbCfg) {
+      hint = t('ha2WbNeedAccountHint', '账号与 Key 只在 Agent 页管理');
+    } else if (isAssistFail) {
+      hint = reason
+        ? t('ha2AssistReasonCode', '原因码') + ': ' + reason
+        : t('ha2AssistCanDirectSend', '整理失败不影响直接发送原稿');
+    } else if (n.kind === 'consult') {
+      hint = t('ha2ConsultConfirmHint', '请在下方会诊记录点「理解正确」');
+    } else if (
+      atrCode === 'workbuddy_unconfigured' ||
+      atrCode === 'provider_unconfigured' ||
+      atrCode === 'deepseek_unconfigured' ||
+      /_unconfigured$/.test(atrCode)
+    ) {
+      hint = t(
+        'ha2AtrNeedModel',
+        '登录 WorkBuddy 用账号模型编辑；Soft Pad 密钥为次选'
+      );
+    } else if (atrCode === 'need_project') {
+      hint = t('ha2AtrNeedProjectHint', '在工作区确认当前项目后重试');
+    } else if (atrCode === 'abandon_and_send') {
+      hint = t('ha2AtrAbandonSendHint', '旧任务会先结束，再按当前输入启动新编辑');
+    } else if (atrCode === 'starting' || atrCode === 'driving') {
+      hint = t('ha2AtrDrivingHint', '后台在跑工具循环 — 可放弃；成功后会出现补丁确认');
+    } else if (atrCode === 'waiting') {
+      hint = t(
+        'ha2AtrWaitingHint',
+        '批准/拒绝补丁，或放弃；有新输入时可放弃并发送'
+      );
+    } else if (atrCode === 'interrupted') {
+      hint = t(
+        'ha2AtrInterruptedHint',
+        '恢复当前任务，或放弃；有新输入时可放弃并发送'
+      );
+    } else if (atrCode === 'budget_exhausted' || atrCode === 'drive_failed') {
+      hint = t('ha2AtrBudgetHint', '这不是投递失败 — 写清目标后重发，或放弃后重试');
+    } else if (atrCode === 'format_error') {
+      hint = t(
+        'ha2AtrFormatHint',
+        '请选用已登录的 WorkBuddy，或已配置密钥的 Soft Pad 引擎'
+      );
+    } else if (String(n.kind || '').indexOf('atr_') === 0) {
+      hint = t('ha2AtrFailHint', '编辑任务未完成（≠ 投递）');
+    }
     var cta = '';
     if (isWbCfg) {
       cta =
         '<button type="button" class="ha2-btn" data-ha2-open-wb-config>' +
         esc(t('ha2WbGoConfig', '去配置')) +
         '</button>';
-    } else if (reason === 'no_key') {
+    } else if (
+      reason === 'no_key' ||
+      atrCode === 'deepseek_unconfigured' ||
+      atrCode === 'provider_unconfigured' ||
+      atrCode === 'workbuddy_unconfigured' ||
+      /_unconfigured$/.test(atrCode)
+    ) {
       cta =
-        '<button type="button" class="ha2-btn" data-ha2-assist-keys>' +
-        esc(t('ha2AssistKeysShort', '密钥')) +
+        '<button type="button" class="ha2-btn primary" data-ha2-atr-wb-login-open>' +
+        esc(t('ha2AtrWbLoginCta', '登录 WorkBuddy')) +
         '</button>';
     } else if (reason === 'no_free_model') {
       cta =
         '<button type="button" class="ha2-btn" data-ha2-enable-metered>' +
         esc(t('ha2AllowMetered', '允许计量额度')) +
         '</button>';
+    } else if (atrCode === 'waiting') {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-atr-continue>' +
+        esc(t('ha2AtrContinueTask', '继续当前任务')) +
+        '</button><button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+        esc(t('ha2AtrAbandon', '放弃')) +
+        '</button><button type="button" class="ha2-btn primary" data-ha2-atr-abandon-send>' +
+        esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+        '</button>';
+    } else if (atrCode === 'interrupted') {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-atr-resume>' +
+        esc(t('ha2AtrResume', '恢复当前任务')) +
+        '</button><button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+        esc(t('ha2AtrAbandon', '放弃')) +
+        '</button><button type="button" class="ha2-btn primary" data-ha2-atr-abandon-send>' +
+        esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+        '</button>';
+    } else if (
+      atrCode === 'busy' ||
+      atrCode === 'driving' ||
+      atrCode === 'starting' ||
+      atrCode === 'budget_exhausted' ||
+      atrCode === 'drive_failed' ||
+      atrCode === 'format_error'
+    ) {
+      cta =
+        '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+        esc(t('ha2AtrAbandon', '放弃')) +
+        '</button>';
     }
     return (
       '<div class="ha2-receipt ha2-validation-notice" data-receipt-kind="validation"' +
       (reason ? ' data-assist-reason="' + esc(reason) + '"' : '') +
+      (atrCode ? ' data-atr-code="' + esc(atrCode) + '"' : '') +
       '>' +
       '<span class="ha2-receipt-mark">!</span><div class="ha2-grow"><b>' +
       esc(n.message || t('ha2NeedProject', '先选定项目')) +
@@ -1586,15 +2987,15 @@
     var S = store();
     var c = currentCat(snap);
     var win = S && S.windowsLabel ? S.windowsLabel(c.id) : '';
+    var hint =
+      mode === 'degraded'
+        ? degradedNextHint(snap)
+        : t('ha2PermHint', '需要权限才能向 Agent 投递文本');
     return (
       '<div class="ha2-permission" data-ha2-mode="' +
       esc(mode) +
       '"><span>' +
-      esc(
-        mode === 'degraded'
-          ? t('ha2DegradedHint', '当前依据不足 · 可重试或检查数据源')
-          : t('ha2PermHint', '需要权限才能向 Agent 投递文本')
-      ) +
+      esc(hint) +
       (win ? ' · ' + esc(win) : '') +
       '</span><button type="button" class="ha2-btn" data-ha2-refresh>' +
       esc(t('ha2Redetect', '重新检测')) +
@@ -1741,19 +3142,29 @@
   }
 
   function homeContentHtml(snap) {
+    var atrLive = atrEditPathOn(snap) && atrTaskShouldSurface(snap);
     var banner = primaryBannerHtml(snap);
-    var permOnly = banner.kind === 'permission' ? banner.html : permissionHtml(snap);
+    // Mutual exclusion: ATR / confirm / needsYou > permission > delivery > completion.
+    var permOnly = '';
+    if (!atrLive && !workConfirmOpen && banner.kind !== 'needsYou') {
+      permOnly =
+        banner.kind === 'permission' ? banner.html : permissionHtml(snap);
+    }
+    var delivery =
+      atrLive || atrEditPathOn(snap) ? '' : deliveryReceiptHtml(snap);
+    var completion =
+      atrLive || atrEditPathOn(snap) ? '' : completionObservationHtml(snap);
     return (
       permOnly +
       situationHtml(snap) +
       '<div data-ha2-completion-obs>' +
-      completionObservationHtml(snap) +
+      completion +
       '</div><div data-ha2-validation-notice>' +
       validationNoticeHtml(snap) +
       '</div><div data-ha2-delivery-receipt role="status" aria-live="polite" aria-atomic="true">' +
-      deliveryReceiptHtml(snap) +
+      delivery +
       '</div><div data-ha2-action-receipt role="status" aria-live="polite" aria-atomic="true">' +
-      actionReceiptHtml(snap) +
+      (atrLive || atrEditPathOn(snap) ? '' : actionReceiptHtml(snap)) +
       '</div>' +
       '<div class="ha2-section-head"><h3>' +
       esc(t('ha2Workspace', 'Agent 任务与会话')) +
@@ -1903,8 +3314,10 @@
     return 'ha2-cap';
   }
 
-  function capPanelText(caps) {
+  function capPanelText(caps, snap) {
     caps = caps || {};
+    // ATR edit uses WorkBuddy OAuth / Soft Pad keys as engines — Soft Pad runtime readiness is unrelated.
+    if (atrEditPathOn(snap || {})) return '';
     var bits = [];
     function bit(cap, label) {
       if (!cap) return;
@@ -2238,7 +3651,33 @@
     return parts[parts.length - 1] || ctx.projectPath;
   }
 
-  function canSendNow(snap, draftOverride) {
+  function atrEditPathOn(snap) {
+    var A = global.OneToneHomeAgentTask;
+    return !!(
+      snap &&
+      snap.workMode === 'edit' &&
+      A &&
+      A.featureEnabled &&
+      A.featureEnabled()
+    );
+  }
+
+  /** Edit mode: project context only — not a desktop Agent send target. */
+  function atrEditTargetChipHtml(snap) {
+    var projectLabel = targetProjectLabel(snap);
+    return (
+      '<span class="ha2-chip target is-atr-edit" data-ha2-atr-edit-chip title="' +
+      esc(t('ha2AtrEditChipTitle', 'ATR 编辑任务（非投递到桌面 Agent）')) +
+      '"><span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+      esc(t('ha2AtrEditChip', 'ATR 编辑')) +
+      '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+      esc(projectLabel) +
+      '</span></span></span>'
+    );
+  }
+
+  /** Why ↑ is blocked — edit/ATR never requires a desktop Agent selection. */
+  function sendBlockReason(snap, draftOverride) {
     var draft =
       draftOverride != null
         ? draftOverride
@@ -2247,10 +3686,23 @@
           : '';
     var hasContent =
       !!String(draft || '').trim() || !!(snap && snap.materials && snap.materials.length);
+    if (wbChatBusy) return t('ha2WbChatting', '正在回复…');
+    // Edit → ATR: allow approve / view progress / confirm without fresh draft.
+    if (String((snap && snap.workMode) || '') === 'edit') {
+      if (atrNeedsApproval(snap)) return '';
+      if (workConfirmOpen && workConfirmGoal) return '';
+      if (atrTaskBusy(snap)) return '';
+      if (!hasContent) return t('ha2SendNeedDraft', '先写一句再发送');
+      return '';
+    }
+    if (!hasContent) return t('ha2SendNeedDraft', '先写一句再发送');
     var ctx = snap && snap.targetContext;
-    var hasAgent = !!(ctx && ctx.kind);
-    // Project is a handoff hint only — composer aim + paste must not wait on it.
-    return hasContent && hasAgent;
+    if (!(ctx && ctx.kind)) return t('ha2PickAgent', '选择 Agent');
+    return '';
+  }
+
+  function canSendNow(snap, draftOverride) {
+    return !sendBlockReason(snap, draftOverride);
   }
 
   /** Center row agentId, or synthetic kind:… when inventory/FG picked an agent with no row. */
@@ -2295,147 +3747,9 @@
     return (snap && snap.draft) || '';
   }
 
-  /** Phase2.5 consult strip — never claims diagnosis complete / root cause found. */
+  /** Consult UI retired — home send goes ATR edit, not会诊. */
   function consultStripHtml(_snap) {
-    var C = concierge();
-    if (!C || typeof C.getPublicState !== 'function') return '';
-    // Same gate as「手动添加材料」— flag off must hide find-materials CTA (A′.1).
-    if (typeof C.featureEnabled === 'function' && !C.featureEnabled()) return '';
-    var st = C.getPublicState();
-    var Skills = global.OneToneHomeAssistSkills;
-    var skillOpts = Skills && Skills.FLOW_SKILLS ? Skills.FLOW_SKILLS : {};
-    var skillSelect =
-      '<label class="ha2-consult-skill"><span class="ha2-sr-only">任务类型</span><select data-ha2-consult-skill>' +
-      Object.keys(skillOpts)
-        .map(function (id) {
-          var sk = skillOpts[id];
-          return (
-            '<option value="' +
-            esc(id) +
-            '"' +
-            (st.flowSkillId === id ? ' selected' : '') +
-            '>' +
-            esc((sk && sk.label) || id) +
-            '</option>'
-          );
-        })
-        .join('') +
-      '</select></label>';
-    var disp = st.display;
-    var lines =
-      disp && disp.lines && disp.lines.length
-        ? disp.lines
-            .map(function (ln) {
-              return '<p class="ha2-consult-line">' + esc(ln) + '</p>';
-            })
-            .join('')
-        : '<p class="ha2-consult-line ha2-consult-muted">' +
-          esc(t('ha2ConsultHint', '会诊记录：先复述问题，再按证据推进，不臆测根因')) +
-          '</p>';
-    var confBadge =
-      disp && disp.status === 'user_confirmed'
-        ? '<span class="ha2-consult-badge">' + esc(t('ha2ConsultConfirmed', '已确认理解')) + '</span>'
-        : disp && disp.status === 'suggested'
-          ? '<span class="ha2-consult-badge is-suggested">' +
-            esc(t('ha2ConsultSuggested', '建议稿（待确认）')) +
-            '</span>'
-          : '';
-    var q = st.lastDecision && st.lastDecision.question;
-    var qHtml = '';
-    if (q && q.prompt) {
-      qHtml =
-        '<div class="ha2-consult-q" data-ha2-consult-q>' +
-        '<p>' +
-        esc(q.prompt) +
-        '</p><div class="ha2-consult-opts">' +
-        (q.options || [])
-          .map(function (opt) {
-            return (
-              '<button type="button" class="ha2-link" data-ha2-consult-answer="' +
-              esc(opt) +
-              '">' +
-              esc(opt) +
-              '</button>'
-            );
-          })
-          .join('') +
-        '<button type="button" class="ha2-link" data-ha2-consult-skip>' +
-        esc(t('ha2ConsultSkip', '跳过')) +
-        '</button></div></div>';
-    }
-    var cands = st.candidates || [];
-    var candHtml = '';
-    if (cands.length) {
-      candHtml =
-        '<div class="ha2-consult-cands"><p class="ha2-consult-muted">' +
-        esc(t('ha2ConsultCands', '相关材料（采用后才会发送）')) +
-        '</p>' +
-        cands
-          .map(function (c, i) {
-            return (
-              '<div class="ha2-consult-cand"><span>' +
-              esc(c.label || c.displayPath || '') +
-              '</span> <small>' +
-              esc(c.reason || '') +
-              '</small> <button type="button" class="ha2-link" data-ha2-consult-adopt="' +
-              i +
-              '">' +
-              esc(t('ha2ConsultAdopt', '采用')) +
-              '</button></div>'
-            );
-          })
-          .join('') +
-        '</div>';
-    } else if (st.grant) {
-      candHtml =
-        '<div class="ha2-consult-cands"><p class="ha2-consult-muted">' +
-        esc(
-          t(
-            'ha2ConsultCandsEmpty',
-            '已授权查找，但还没有可采用候选。可在草稿写关键词后再点「查找材料」。'
-          )
-        ) +
-        '</p></div>';
-    }
-    var grantHint = st.grant
-      ? '<span class="ha2-consult-muted">' +
-        esc(t('ha2ConsultGranted', '已授权查找：') + (st.grant.displayName || '')) +
-        '</span>'
-      : '';
-    return (
-      '<div class="ha2-consult" data-ha2-consult aria-label="' +
-      esc(t('ha2ConsultTitle', '会诊记录')) +
-      '">' +
-      '<div class="ha2-consult-head"><strong>' +
-      esc(t('ha2ConsultTitle', '会诊记录')) +
-      '</strong>' +
-      confBadge +
-      skillSelect +
-      '</div>' +
-      '<div class="ha2-consult-body">' +
-      lines +
-      '</div>' +
-      qHtml +
-      candHtml +
-      '<div class="ha2-consult-acts">' +
-      '<button type="button" class="ha2-link" data-ha2-consult-clarify>' +
-      esc(st.ctaClarify || t('ha2ConsultClarify', '帮我说清楚问题')) +
-      '</button>' +
-      '<button type="button" class="ha2-link" data-ha2-consult-confirm>' +
-      esc(t('ha2ConsultConfirm', '理解正确')) +
-      '</button>' +
-      '<button type="button" class="ha2-link" data-ha2-consult-compile>' +
-      esc(t('ha2ConsultCompile', '生成检查单')) +
-      '</button>' +
-      '<button type="button" class="ha2-link" data-ha2-consult-find>' +
-      esc(t('ha2ConsultFind', '为此项目查找材料')) +
-      '</button>' +
-      '<button type="button" class="ha2-link" data-ha2-consult-skip-all>' +
-      esc(t('ha2ConsultDirect', '跳过会诊')) +
-      '</button>' +
-      grantHint +
-      '</div></div>'
-    );
+    return '';
   }
 
   function runConsultClarify() {
@@ -2562,9 +3876,27 @@
     var appId = c.appId || '';
     var aim = (snap.aimByAppId && snap.aimByAppId[appId]) || {};
     var hasAim = !!aim.hasActive;
-    var panel = capPanelText(caps);
+    var panel = capPanelText(caps, snap);
     var projectLabel = targetProjectLabel(snap);
     var sendOk = canSendNow(snap);
+    var atrEdit = atrEditPathOn(snap);
+    var draftLabel = atrEdit
+      ? t('ha2AtrDraftLabel', '描述要改的代码或文件')
+      : t('ha2DraftLabelChat', '继续讨论或整理方案');
+    var draftPh = atrEdit
+      ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
+      : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
+    var targetChip = atrEdit
+      ? atrEditTargetChipHtml(snap)
+      : '<button type="button" class="ha2-chip target" data-ha2-picker title="' +
+        esc(t('ha2PickAgent', '选择 Agent')) +
+        '">' +
+        iconHtml(c, 'ha2-chip-icon') +
+        '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+        esc(c.name) +
+        '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+        esc(projectLabel) +
+        '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>';
     return (
       '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop>' +
       '<div data-ha2-wb-transcript-host>' +
@@ -2575,11 +3907,11 @@
       consultStripHtml(snap) +
       '</div>' +
       '<div class="ha2-compose"><label class="ha2-sr-only" for="ha2-draft-input">' +
-      esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
+      esc(draftLabel) +
       '</label><textarea id="ha2-draft-input" class="ha2-editor" data-ha2-draft aria-label="' +
-      esc(t('ha2DraftLabel', '写给 Agent 的内容')) +
+      esc(draftLabel) +
       '" placeholder="' +
-      esc(t('ha2DraftPlaceholder', '写给') + (c.name ? ' ' + c.name + '…' : '…')) +
+      esc(draftPh) +
       '" rows="3"></textarea></div>' +
       '<div data-ha2-attach-host>' +
       attachmentsHtml(snap) +
@@ -2605,20 +3937,15 @@
       agentCapBtn(caps, 'camera', t('ha2Camera', '摄像头')) +
       '</div><span class="ha2-spacer"></span>' +
       '<div class="ha2-agent-fuse" data-ha2-agent-fuse>' +
-      '<button type="button" class="ha2-chip target" data-ha2-picker title="' +
-      esc(t('ha2PickAgent', '选择 Agent')) +
-      '">' +
-      iconHtml(c, 'ha2-chip-icon') +
-      '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
-      esc(c.name) +
-      '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-      esc(projectLabel) +
-      '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>' +
+      targetChip +
       '<span class="ha2-wb-mode-host" data-ha2-wb-mode-host>' +
       wbModeToggleHtml(c.id, snap) +
       '</span>' +
       '<span class="ha2-wb-model-host" data-ha2-wb-model-host>' +
       wbModelSelectHtml(c.id) +
+      '</span>' +
+      '<span class="ha2-atr-provider-host" data-ha2-atr-provider-host>' +
+      atrProviderSelectHtml(snap) +
       '</span>' +
       aimChipHtml(hasAim) +
       '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
@@ -2628,55 +3955,79 @@
       '">' +
       esc(t('ha2AimClear', '清除')) +
       '</button></div>' +
-      '<button type="button" class="ha2-link ha2-pcx" data-ha2-pcx title="' +
+      '<button type="button" class="ha2-link ha2-pcx ha2-work-secondary" data-ha2-work-secondary data-ha2-pcx title="' +
       esc(t('ha2AddProjectMaterials', '手动添加材料')) +
       '"' +
-      (global.OneToneHomeProjectContext &&
-      global.OneToneHomeProjectContext.featureEnabled &&
-      global.OneToneHomeProjectContext.featureEnabled()
-        ? ''
-        : ' hidden') +
+      (atrEdit ||
+      !(
+        global.OneToneHomeProjectContext &&
+        global.OneToneHomeProjectContext.featureEnabled &&
+        global.OneToneHomeProjectContext.featureEnabled()
+      )
+        ? ' hidden'
+        : '') +
       '>' +
       esc(t('ha2AddProjectMaterialsManual', '手动添加材料')) +
       '</button>' +
-      '<button type="button" class="ha2-btn ha2-organize" data-ha2-organize title="' +
+      '<button type="button" class="ha2-btn ha2-organize ha2-work-secondary" data-ha2-work-secondary data-ha2-organize title="' +
       esc(t('ha2OrganizeTask', '整理任务')) +
-      '">' +
+      '"' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
       esc(t('ha2OrganizeTask', '整理任务')) +
       '</button>' +
       '<button type="button" class="ha2-link ha2-organize-cancel" data-ha2-organize-cancel hidden>' +
       esc(t('ha2OrganizeCancel', '取消整理')) +
       '</button>' +
-      '<label class="ha2-metered-toggle" title="' +
+      '<label class="ha2-metered-toggle ha2-work-secondary" data-ha2-work-secondary title="' +
       esc(
         t(
           'ha2AllowMeteredTitle',
           '允许计量额度：会产生费用；关闭时仅尝试零价模型'
         )
       ) +
-      '"><input type="checkbox" data-ha2-allow-metered />' +
+      '"' +
+      (atrEdit ? ' hidden' : '') +
+      '><input type="checkbox" data-ha2-allow-metered />' +
       esc(t('ha2AllowMetered', '允许计量额度')) +
       '</label>' +
-      '<button type="button" class="ha2-link" data-ha2-assist-keys title="' +
-      esc(t('ha2AssistKeys', '配置 Soft Pad 提供商密钥')) +
-      '">' +
+      '<button type="button" class="ha2-link ha2-work-secondary" data-ha2-work-secondary data-ha2-assist-keys title="' +
+      esc(
+        atrEdit
+          ? t('ha2AtrSoftPadKeysSecondary', 'Soft Pad 密钥（次选）')
+          : t('ha2AssistKeys', '配置 Soft Pad 提供商密钥')
+      ) +
+      '"' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
       esc(t('ha2AssistKeysShort', '密钥')) +
       '</button>' +
-      '<button type="button" class="ha2-send" data-ha2-send ' +
+      '<button type="button" class="ha2-send' +
+      (atrEdit ? ' is-labeled' : '') +
+      '" data-ha2-send ' +
       (sendOk ? '' : 'disabled') +
       ' title="' +
       esc(
         sendOk
-          ? wbUsesLocalChat(c.id, snap)
-            ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
-            : t('ha2SendHint', '发送（Ctrl+Enter）')
-          : !c.id
-            ? t('ha2PickAgent', '选择 Agent')
-            : t('ha2SendNeedDraft', '先写一句再发送')
+          ? atrEdit
+            ? workPrimaryCtaLabel(snap) + '（Ctrl+Enter）'
+            : wbUsesLocalChat(c.id, snap)
+              ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+              : t('ha2SendHint', '发送（Ctrl+Enter）')
+          : atrEdit
+            ? t('ha2SendNeedDraft', '先写一句再发送')
+            : !c.id
+              ? t('ha2PickAgent', '选择 Agent')
+              : t('ha2SendNeedDraft', '先写一句再发送')
       ) +
       '" aria-label="' +
-      esc(t('ha2Send', '发送')) +
-      '">↑</button></div>' +
+      esc(atrEdit ? workPrimaryCtaLabel(snap) : t('ha2Send', '发送')) +
+      '">' +
+      (atrEdit ? esc(workPrimaryCtaLabel(snap)) : '↑') +
+      '</button></div>' +
+      '<div data-ha2-atr-wb-login-host>' +
+      atrWbLoginHtml(snap) +
+      '</div>' +
       '<p class="ha2-send-scope-hint" data-ha2-send-scope-hint></p></section></div>'
     );
   }
@@ -2888,6 +4239,16 @@
     if (!root) return;
     var dockHost = root.querySelector('[data-ha2-dock-host]');
     if (!dockHost) return;
+    syncAtrProviderHost(snap);
+    syncAtrWbLoginHost(snap);
+    if (atrEditPathOn(snap)) {
+      refreshAtrProviders(!atrProvidersCache).then(function () {
+        if (!mounted) return;
+        var next = store() && store().getSnapshot();
+        syncAtrProviderHost(next);
+        syncAtrWbLoginHost(next);
+      });
+    }
     var ta = root.querySelector('.ha2-compose [data-ha2-draft]');
     var focused = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-ha2-draft]');
     var focusedEl = focused ? document.activeElement : null;
@@ -2899,21 +4260,58 @@
     }
 
     var c = currentCat(snap);
-    var chip = root.querySelector('.ha2-chip.target');
-    if (chip) {
-      chip.innerHTML =
-        iconHtml(c, 'ha2-chip-icon') +
-        '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
-        esc(c.name) +
-        '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-        esc(targetProjectLabel(snap)) +
-        '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span>';
+    var atrEdit = atrEditPathOn(snap);
+    var fuse = root.querySelector('[data-ha2-agent-fuse]');
+    if (fuse) {
+      var chipNow = fuse.querySelector('.ha2-chip.target, [data-ha2-atr-edit-chip]');
+      if (atrEdit) {
+        if (!chipNow || !chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
+          var wrapAtr = document.createElement('div');
+          wrapAtr.innerHTML = atrEditTargetChipHtml(snap);
+          var nextAtr = wrapAtr.firstChild;
+          if (chipNow && nextAtr) chipNow.replaceWith(nextAtr);
+          else if (nextAtr) fuse.insertBefore(nextAtr, fuse.firstChild);
+        } else {
+          var projEl = chipNow.querySelector('[data-ha2-dest-project]');
+          if (projEl) projEl.textContent = targetProjectLabel(snap);
+        }
+      } else if (chipNow && chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
+        var wrapBtn = document.createElement('div');
+        wrapBtn.innerHTML =
+          '<button type="button" class="ha2-chip target" data-ha2-picker title="' +
+          esc(t('ha2PickAgent', '选择 Agent')) +
+          '">' +
+          iconHtml(c, 'ha2-chip-icon') +
+          '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+          esc(c.name) +
+          '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+          esc(targetProjectLabel(snap)) +
+          '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>';
+        var nextBtn = wrapBtn.firstChild;
+        if (nextBtn) chipNow.replaceWith(nextBtn);
+      } else if (chipNow) {
+        chipNow.innerHTML =
+          iconHtml(c, 'ha2-chip-icon') +
+          '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+          esc(c.name) +
+          '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
+          esc(targetProjectLabel(snap)) +
+          '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span>';
+      }
     }
     if (!composing && !(store() && store().isComposing())) {
       syncDraftMirrors(snap.draft || '');
     }
     if (ta) {
-      ta.placeholder = t('ha2DraftPlaceholder', '写给') + (c.name ? ' ' + c.name + '…' : '…');
+      ta.placeholder = atrEdit
+        ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
+        : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
+      ta.setAttribute(
+        'aria-label',
+        atrEdit
+          ? t('ha2AtrDraftLabel', '描述要改的代码或文件')
+          : t('ha2DraftLabelChat', '继续讨论或整理方案')
+      );
     }
     var consultHost = root.querySelector('[data-ha2-consult-host]');
     if (consultHost) consultHost.innerHTML = consultStripHtml(snap);
@@ -2935,7 +4333,7 @@
     });
     var panelEl = root.querySelector('[data-ha2-cap-panel]');
     if (panelEl) {
-      var panel = capPanelText(caps);
+      var panel = capPanelText(caps, snap);
       panelEl.textContent = panel;
       panelEl.hidden = !panel;
       panelEl.classList.toggle('is-show', !!panel);
@@ -2946,21 +4344,7 @@
     syncAimChip(!!aim.hasActive);
     ensureWbModelForDock(c.id);
 
-    var sendBtn = root.querySelector('[data-ha2-send]');
-    if (sendBtn) {
-      var draftNow = snap.draft || (ta && ta.value) || '';
-      var ok = canSendNow(snap, draftNow) && !wbChatBusy;
-      sendBtn.disabled = !ok;
-      sendBtn.title = ok
-        ? wbUsesLocalChat(c.id, snap)
-          ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
-          : t('ha2SendHint', '发送（Ctrl+Enter）')
-        : wbChatBusy
-          ? t('ha2WbChatting', '正在回复…')
-          : !c.id
-            ? t('ha2PickAgent', '选择 Agent')
-            : t('ha2SendNeedDraft', '先写一句再发送');
-    }
+    syncModeChrome(snap);
     syncOrganizeChrome();
 
     var addWrap = root.querySelector('.ha2-add-wrap');
@@ -2995,7 +4379,8 @@
   function paint(snap) {
     if (!root || !snap) return;
     if (composing || (store() && store().isComposing())) {
-      // IME composition: do not rebuild Mid/Dock mirrors.
+      // IME: skip dock rebuild, but still refresh ATR steps (failure / tool results).
+      maybeOpenAtrWbPage(store().getSnapshot() || snap);
       return;
     }
     // Silent sync — never emit from inside a store subscriber paint.
@@ -3011,6 +4396,7 @@
     patchDockMeta(snap);
     ensureDockReserveObserver();
     syncDockReserve();
+    maybeOpenAtrWbPage(snap);
   }
 
   function refreshAimForSelected() {
@@ -3126,26 +4512,303 @@
     return list;
   }
 
-  function wbChatPageHtml() {
-    var snap = store() && store().getSnapshot();
-    var promptIn = {};
-    try {
-      promptIn = wbLocalPromptInput(snap) || {};
-    } catch (_) {}
-    var projectLeaf =
-      wbStreamProjectLeaf || String(promptIn.projectName || '').trim() || t('ha2NoProject', '未选项目');
-    var model = wbStreamModel || wbSelectedModelId() || '';
-    var J = global.OneToneHomeTaskJournal;
-    var activeTask = null;
-    try {
-      if (J && J.getActiveTaskId && J.getTask) {
-        activeTask = J.getTask(J.getActiveTaskId());
+  function atrLogPreviewLine(label, detail) {
+    var head = String(label || '').trim();
+    var extra = String(detail || '')
+      .split('\n')
+      .map(function (s) {
+        return String(s || '').trim();
+      })
+      .filter(function (s) {
+        return s && s !== head;
+      })[0];
+    if (extra) {
+      extra = extra.replace(/\s+/g, ' ').slice(0, 96);
+      return head ? head + ' · ' + extra : extra;
+    }
+    return head;
+  }
+
+  function atrLogEntriesFrom(task, events, pendingGoal) {
+    var out = [];
+    var goalText = (task && task.goal) || pendingGoal || '';
+    if (goalText) {
+      out.push(t('ha2AtrGoalRole', '目标') + '\n' + String(goalText));
+    }
+    var evs = events || [];
+    var i;
+    var sawTerminal = false;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i] || {};
+      var kind = String(e.kind || '');
+      if (
+        /^(failed|task_failed|cancelled|task_cancelled|format_error|model_error|budget_exhausted|rate_limited|done|task_done)$/.test(
+          kind
+        )
+      ) {
+        sawTerminal = true;
       }
-    } catch (_) {}
-    var taskTitle =
-      (activeTask && activeTask.title) || t('ha2WbTaskDefault', '本机对话');
-    var turns = wbPageTurnsForPaint();
-    var body =
+      // User-language step only; JSON / modelExcerpt stay out of the default log.
+      out.push(atrUserStepLine(e));
+    }
+    var st = String((task && task.status) || '');
+    var err = String((task && (task.lastError || task.last_error)) || '').trim();
+    // Failures must appear in the transcript — toast alone is easy to miss.
+    if ((st === 'failed' || st === 'cancelled') && err && !sawTerminal) {
+      out.push(
+        /format/i.test(err)
+          ? t(
+              'ha2AtrFormatNext',
+              '模型未按工具格式行动。可换引擎/模型，或改写目标后重试；也可放弃当前任务。'
+            )
+          : t('ha2AtrEvFailed', '任务失败') + '\n' + err
+      );
+    } else if (!evs.length && (pendingGoal || st === 'running' || st === 'intake')) {
+      out.push(
+        t('ha2AtrEvPending', '等待模型下一步…') +
+          '\n' +
+          t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…')
+      );
+    }
+    return out;
+  }
+
+  function atrLogEntries(snap) {
+    return atrLogEntriesFrom(
+      snap && snap.agentTask,
+      snap && snap.agentTaskEvents,
+      atrWbPagePendingGoal
+    );
+  }
+
+  function atrTaskLogItems(snap) {
+    var list = ((snap && snap.agentTaskStack) || []).slice();
+    var active = snap && snap.agentTask;
+    var activeId = active && active.taskId ? String(active.taskId) : '';
+    var i;
+    var found = false;
+    if (activeId) {
+      for (i = 0; i < list.length; i++) {
+        if (list[i] && list[i].task && String(list[i].task.taskId) === activeId) {
+          list[i] = {
+            task: active,
+            events: (snap.agentTaskEvents && snap.agentTaskEvents.length
+              ? snap.agentTaskEvents
+              : list[i].events) || []
+          };
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        list.push({ task: active, events: snap.agentTaskEvents || [] });
+      }
+    } else if (atrWbPageForced && atrWbPagePendingGoal) {
+      list.push({
+        task: {
+          taskId: '__pending__',
+          goal: atrWbPagePendingGoal,
+          status: 'running'
+        },
+        events: [],
+        pending: true
+      });
+    }
+    return list;
+  }
+
+  function atrLogPlainFromItem(item) {
+    item = item || {};
+    return atrLogEntriesFrom(
+      item.task,
+      item.events,
+      item.pending ? atrWbPagePendingGoal : ''
+    ).join('\n\n');
+  }
+
+  function copyAtrLog(taskId) {
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    var items = atrTaskLogItems(snap);
+    var id = String(taskId || '');
+    var item = null;
+    var i;
+    if (id) {
+      for (i = 0; i < items.length; i++) {
+        if (items[i] && items[i].task && String(items[i].task.taskId) === id) {
+          item = items[i];
+          break;
+        }
+      }
+    }
+    if (!item) item = items[items.length - 1];
+    var text = atrLogPlainFromItem(item);
+    if (!text) {
+      toast(t('ha2AtrLogCopyEmpty', '没有可复制的步骤'));
+      return;
+    }
+    var copied = false;
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (_) {
+      copied = false;
+    }
+    function markCopied(ok) {
+      var btn =
+        root &&
+        root.querySelector(
+          '[data-ha2-atr-log-copy="' + String(id).replace(/"/g, '') + '"]'
+        );
+      if (btn) {
+        btn.textContent = ok
+          ? t('ha2AtrLogCopied', '已复制')
+          : t('ha2AtrLogCopyFail', '复制失败');
+      }
+      toast(
+        ok
+          ? t('ha2AtrLogCopied', '已复制步骤')
+          : t('ha2AtrLogCopyFail', '复制失败，请手动选择文本')
+      );
+    }
+    if (copied) {
+      markCopied(true);
+      return;
+    }
+    var write =
+      global.navigator &&
+      global.navigator.clipboard &&
+      global.navigator.clipboard.writeText
+        ? global.navigator.clipboard.writeText(text)
+        : Promise.reject(new Error('clipboard_unavailable'));
+    write
+      .then(function () {
+        markCopied(true);
+      })
+      .catch(function () {
+        markCopied(false);
+      });
+  }
+
+  function atrLogCardHtml(item, activeId) {
+    item = item || {};
+    var task = item.task || {};
+    var id = String(task.taskId || '');
+    var isActive = !!(activeId && id === String(activeId));
+    // Steps default collapsed; pending start-only card stays open briefly.
+    var expanded =
+      atrLogExpandedById[id] != null ? !!atrLogExpandedById[id] : !!item.pending;
+    var entries = atrLogEntriesFrom(
+      task,
+      item.events,
+      item.pending ? atrWbPagePendingGoal : ''
+    );
+    if (!entries.length) return '';
+    var detailEntries = expanded
+      ? atrLogDetailEntriesFrom(
+          task,
+          item.events,
+          item.pending ? atrWbPagePendingGoal : ''
+        )
+      : entries;
+    var full = detailEntries.join('\n\n');
+    var last = atrLogPreviewLine(
+      String(entries[entries.length - 1] || '').split('\n')[0],
+      String(entries[entries.length - 1] || '')
+        .split('\n')
+        .slice(1)
+        .join('\n')
+    );
+    var n = entries.length;
+    var title =
+      String(task.goal || '').trim() || t('ha2AtrWorkTask', '当前工作任务');
+    var st = String(task.status || '');
+    return (
+      '<div class="ha2-atr-log' +
+      (expanded ? ' is-expanded' : '') +
+      (isActive ? ' is-active' : '') +
+      '" data-ha2-atr-log data-atr-task-id="' +
+      esc(id) +
+      '">' +
+      '<div class="ha2-atr-log-head"><b title="' +
+      esc(title) +
+      '">' +
+      esc(title) +
+      '</b><span>' +
+      esc(st || (item.pending ? '…' : '')) +
+      '</span></div>' +
+      '<div class="ha2-atr-log-bar">' +
+      '<button type="button" class="ha2-link" data-ha2-atr-log-toggle="' +
+      esc(id) +
+      '" aria-expanded="' +
+      (expanded ? 'true' : 'false') +
+      '">' +
+      esc(
+        expanded
+          ? t('ha2AtrLogCollapse', '收起详情')
+          : t('ha2AtrLogExpand', '展开详情') + (n > 1 ? ' · ' + n : '')
+      ) +
+      '</button>' +
+      '<button type="button" class="ha2-link" data-ha2-atr-log-copy="' +
+      esc(id) +
+      '">' +
+      esc(t('ha2AtrLogCopy', '复制')) +
+      '</button></div>' +
+      '<pre class="ha2-atr-log-text" data-ha2-atr-log-text tabindex="0">' +
+      esc(expanded ? full : last) +
+      '</pre></div>'
+    );
+  }
+
+  /** Expanded log: user steps + technical detail (JSON / excerpt). */
+  function atrLogDetailEntriesFrom(task, events, pendingGoal) {
+    var out = [];
+    var goalText = (task && task.goal) || pendingGoal || '';
+    if (goalText) {
+      out.push(t('ha2AtrGoalRole', '目标') + '\n' + String(goalText));
+    }
+    var evs = events || [];
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i] || {};
+      var line = atrUserStepLine(e);
+      var detail = atrEventDetail(e);
+      if (detail && detail !== line) line = line + '\n' + detail;
+      out.push(line);
+    }
+    if (!evs.length && pendingGoal) {
+      out.push(
+        t('ha2AtrEvPending', '等待模型下一步…') +
+          '\n' +
+          t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…')
+      );
+    }
+    return out.length ? out : atrLogEntriesFrom(task, events, pendingGoal);
+  }
+
+  function atrWbChatTurnsHtml(model) {
+    var since = atrChatSinceMs || 0;
+    var all = wbPageTurnsForPaint().filter(Boolean);
+    var turns = all.filter(function (turn) {
+      if (turn.streaming) return true;
+      if (!since) return true;
+      var at = Number(turn.at || 0);
+      // Missing at → keep (loaded/legacy rows); else only turns after this ATR open.
+      return !at || at >= since;
+    });
+    // If filter wiped everything but we still have chat, keep the latest few.
+    if (!turns.length && all.length) turns = all.slice(-8);
+    if (!turns.length) return '';
+    return (
+      '<div class="ha2-atr-chat-sep">' +
+      esc(t('ha2AtrChatSep', '本次任务后的讨论')) +
+      '</div>' +
       turns
         .map(function (turn) {
           var role = turn.role === 'assistant' ? 'assistant' : 'user';
@@ -3153,26 +4816,145 @@
             '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
             role +
             (turn.streaming ? ' is-streaming' : '') +
-            '"><span class="ha2-wb-page-turn-role">' +
+              '"><span class="ha2-wb-page-turn-role">' +
             wbTurnRoleHtml(role, turn.model || model) +
-            '</span><pre class="ha2-wb-page-turn-text">' +
-            esc(turn.text || '') +
-            '</pre></div>'
+            '</span>' +
+            wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
+            '</div>'
           );
         })
-        .join('') ||
-      '<div class="ha2-wb-page-empty">' +
-        esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
-        '</div>';
+        .join('')
+    );
+  }
+
+  function atrWbPageTranscriptHtml(snap) {
+    var items = atrTaskLogItems(snap);
+    var activeId =
+      (snap && snap.agentTask && snap.agentTask.taskId) || '';
+    var cards = [];
+    var i;
+    for (i = 0; i < items.length; i++) {
+      var html = atrLogCardHtml(items[i], activeId);
+      if (html) cards.push(html);
+    }
+    var model = wbStreamModel || wbSelectedModelId() || '';
+    var chatHtml = atrWbChatTurnsHtml(model);
+    if (!cards.length && !chatHtml) {
+      return (
+        '<div class="ha2-wb-page-empty">' +
+        esc(t('ha2AtrPageEmpty', '编辑步骤会出现在这里')) +
+        '</div>'
+      );
+    }
+    // Steps first; then local-chat only after this ATR open (not prior 交 Cursor 闲聊).
+    return cards.join('') + chatHtml;
+  }
+
+  function wbChatPageHtml() {
+    var snap = store() && store().getSnapshot();
+    var atrMode = atrWbPageMode(snap);
+    var atrTask = (atrMode && snap && snap.agentTask) || null;
+    var promptIn = {};
+    try {
+      promptIn = wbLocalPromptInput(snap) || {};
+    } catch (_) {}
+    var projectLeaf =
+      wbStreamProjectLeaf || String(promptIn.projectName || '').trim() || t('ha2NoProject', '未选项目');
+    var model = wbStreamModel || wbSelectedModelId() || '';
+    var A = global.OneToneHomeAgentTask;
+    var provider =
+      (A && A.readProvider && A.readProvider()) ||
+      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
+      '';
+    var J = global.OneToneHomeTaskJournal;
+    var activeTask = null;
+    try {
+      if (J && J.getActiveTaskId && J.getTask) {
+        activeTask = J.getTask(J.getActiveTaskId());
+      }
+    } catch (_) {}
+    var taskTitle = atrMode
+      ? String((atrTask && atrTask.goal) || atrWbPagePendingGoal || '').slice(
+          0,
+          80
+        ) || t('ha2AtrWorkTask', '当前工作任务')
+      : (activeTask && activeTask.title) || t('ha2WbTaskDefault', '本机对话');
+    var turns = wbPageTurnsForPaint();
+    var body = atrMode
+      ? atrWbPageTranscriptHtml(snap)
+      : turns
+          .map(function (turn) {
+            var role = turn.role === 'assistant' ? 'assistant' : 'user';
+            return (
+              '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
+              role +
+              (turn.streaming ? ' is-streaming' : '') +
+              '"><span class="ha2-wb-page-turn-role">' +
+              wbTurnRoleHtml(role, turn.model || model) +
+              '</span>' +
+              wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
+              '</div>'
+            );
+          })
+          .join('') ||
+        '<div class="ha2-wb-page-empty">' +
+          esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
+          '</div>';
+    var logN = atrMode ? atrTaskLogItems(snap).length : 0;
+    var turnN = atrTask && atrTask.currentTurn != null ? atrTask.currentTurn : 0;
+    var toolsN = atrTask && atrTask.toolCallCount != null ? atrTask.toolCallCount : 0;
+    var statusLine = atrMode
+      ? atrTask
+        ? t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turnN || 0)) +
+          (toolsN
+            ? ' · ' +
+              t('ha2AtrToolN', '{n} 次工具').replace('{n}', String(toolsN))
+            : '') +
+          ' · ' +
+          String(atrTask.status || '')
+        : t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…')
+      : '';
+    var draftPh = atrMode
+      ? atrTask &&
+        String(atrTask.status) === 'waiting' &&
+        String(atrTask.waitingReason || '') === 'user_input'
+        ? t('ha2AtrPageInputPh', '补充说明…（Ctrl+Enter 继续任务）')
+        : t('ha2AtrPageDraftPh', '继续讨论步骤或结果…（Ctrl+Enter）')
+      : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
+    var railActs = atrMode
+      ? atrActsHtml(snap) +
+        '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+        esc(t('ha2WbOpenConfig', '账号设置')) +
+        '</button>'
+      : '<button type="button" class="ha2-link" data-ha2-wb-page-clear>' +
+        esc(t('ha2WbChatClear', '清空')) +
+        '</button>' +
+        '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+        esc(t('ha2WbOpenConfig', '账号设置')) +
+        '</button>';
     return (
-      '<div class="ha2-wb-page" data-ha2-wb-page>' +
+      '<div class="ha2-wb-page' +
+      (atrMode ? ' is-atr-edit' : '') +
+      '" data-ha2-wb-page' +
+      (atrMode ? ' data-ha2-atr-page' : '') +
+      '>' +
       '<aside class="ha2-wb-page-rail">' +
       '<button type="button" class="ha2-link ha2-wb-page-back" data-ha2-wb-page-back>' +
-      esc(t('ha2WbPageBack', '← 返回首页')) +
+      esc(
+        atrMode
+          ? t('ha2AtrPageBack', '← 返回')
+          : t('ha2WbPageBack', '← 返回首页')
+      ) +
       '</button>' +
       '<div class="ha2-wb-page-rail-title">' +
-      esc(t('ha2WbPageTitle', 'WorkBuddy 本机对话')) +
+      esc(
+        atrMode
+          ? t('ha2AtrWorkTask', '当前工作任务') +
+            (logN > 1 ? ' · ' + logN : '')
+          : t('ha2WbPageTitle', 'WorkBuddy 本机对话')
+      ) +
       '</div>' +
+      workModeSegmentHtml(snap, { compact: true }) +
       '<div class="ha2-wb-page-rail-meta">' +
       '<div><span>' +
       esc(t('ha2WbTask', '任务')) +
@@ -3188,35 +4970,56 @@
       '">' +
       esc(projectLeaf) +
       '</b></div>' +
-      '<div><span>' +
-      esc(t('ha2WbModel', '模型')) +
-      '</span><b>' +
-      esc(model || '—') +
-      '</b></div>' +
-      '<div><span>' +
-      esc(t('ha2WbSendMode', '发送方式')) +
-      '</span><b>' +
-      esc(t('ha2WbModeLocal', '本机')) +
-      '</b></div></div>' +
+      (atrMode
+        ? '<div><span>' +
+          esc(t('ha2AtrStatus', '状态')) +
+          '</span><b>' +
+          esc(statusLine || '—') +
+          '</b></div><div><span>' +
+          esc(t('ha2AtrProvider', '引擎')) +
+          '</span><b>' +
+          esc(provider || '—') +
+          '</b></div>'
+        : '<div><span>' +
+          esc(t('ha2WbModel', '模型')) +
+          '</span><b>' +
+          esc(model || '—') +
+          '</b></div><div><span>' +
+          esc(t('ha2WbSendMode', '发送方式')) +
+          '</span><b>' +
+          esc(t('ha2WbModeLocal', '本机')) +
+          '</b></div>') +
+      '</div>' +
       '<p class="ha2-wb-page-rail-hint">' +
-      esc(t('ha2WbPageHint', '不打开 WorkBuddy.exe；在右侧继续讨论。任务整理请到「对话历史」右键菜单。')) +
+      esc(
+        atrMode || (snap && snap.workMode) === 'edit'
+          ? t(
+              'ha2AtrPageHint',
+              '工作模式：右侧显示读改步骤。对话模式只会聊方案、不会改文件。'
+            )
+          : t(
+              'ha2WbPageHint',
+              '对话模式：只讨论与生成方案。要真正改文件请切到「工作」。'
+            )
+      ) +
       '</p>' +
       '<div class="ha2-wb-page-rail-acts">' +
-      '<button type="button" class="ha2-link" data-ha2-wb-page-clear>' +
-      esc(t('ha2WbChatClear', '清空')) +
-      '</button>' +
-      '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
-      esc(t('ha2WbOpenConfig', '账号设置')) +
-      '</button></div></aside>' +
+      railActs +
+      '</div></aside>' +
       '<section class="ha2-wb-page-main">' +
       '<div class="ha2-wb-page-transcript" data-ha2-wb-page-transcript>' +
       body +
       '</div>' +
+      (atrMode ? atrMainGateHtml(snap) : '') +
       '<div class="ha2-wb-page-compose">' +
       '<textarea data-ha2-wb-page-draft rows="2" placeholder="' +
-      esc(t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）')) +
+      esc(
+        (snap && snap.workMode) === 'edit'
+          ? t('ha2AtrPageDraftPh', '描述要改什么…（Ctrl+Enter，工作模式会真正读写文件）')
+          : draftPh
+      ) +
       '" aria-label="' +
-      esc(t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）')) +
+      esc(draftPh) +
       '"></textarea>' +
       '<div class="ha2-wb-page-compose-acts">' +
       (wbChatBusy
@@ -3232,6 +5035,164 @@
     );
   }
 
+  function maybeOpenAtrWbPage(snap) {
+    var live = atrTaskShouldSurface(snap);
+    var id = live ? String((snap.agentTask && snap.agentTask.taskId) || '') : '';
+    // Real task bound — drop the synthetic 「正在启动」placeholder goal.
+    if (id && atrWbPagePendingGoal) atrWbPagePendingGoal = '';
+    // New task after user closed → reopen once.
+    if (live && id && atrWbPageUserClosed && id !== atrWbAutoTaskId) {
+      atrWbPageUserClosed = false;
+      atrWbPageForced = true;
+      atrWbAutoTaskId = id;
+      openWbChatPage();
+      return;
+    }
+    if (atrWbPageUserClosed && !atrWbPageForced) {
+      return;
+    }
+    if (atrWbPageForced || live) {
+      if (id) atrWbAutoTaskId = id;
+      if (!wbChatPageOpen) openWbChatPage();
+      else paintWbChatPage();
+    }
+  }
+
+  /** Live-update ATR/chat page without destroying the compose textarea (poll jank / IME). */
+  function patchWbChatPageLive(host, snap) {
+    snap = snap || (store() && store().getSnapshot()) || {};
+    var atrMode = atrWbPageMode(snap);
+    var atrTask = (atrMode && snap.agentTask) || null;
+    var prevTranscript = host.querySelector('[data-ha2-wb-page-transcript]');
+    var keepScroll = prevTranscript ? prevTranscript.scrollTop : 0;
+    // Only pin to bottom when already near end — never yank while reading history.
+    var stickBottom = false;
+    if (prevTranscript) {
+      stickBottom =
+        prevTranscript.scrollHeight -
+          prevTranscript.scrollTop -
+          prevTranscript.clientHeight <
+        72;
+    }
+    var model = wbStreamModel || wbSelectedModelId() || '';
+    var turns = wbPageTurnsForPaint();
+    var body = atrMode
+      ? atrWbPageTranscriptHtml(snap)
+      : turns
+          .map(function (turn) {
+            var role = turn.role === 'assistant' ? 'assistant' : 'user';
+            return (
+              '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
+              role +
+              (turn.streaming ? ' is-streaming' : '') +
+              '"><span class="ha2-wb-page-turn-role">' +
+              wbTurnRoleHtml(role, turn.model || model) +
+              '</span>' +
+              wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
+              '</div>'
+            );
+          })
+          .join('') ||
+        '<div class="ha2-wb-page-empty">' +
+          esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
+          '</div>';
+    if (prevTranscript) prevTranscript.innerHTML = body;
+    var main = host.querySelector('.ha2-wb-page-main');
+    if (main) {
+      var gate = main.querySelector('[data-ha2-atr-gate]');
+      var gateHtml = atrMode ? atrMainGateHtml(snap) : '';
+      if (gateHtml) {
+        if (gate) gate.outerHTML = gateHtml;
+        else {
+          var compose = main.querySelector('.ha2-wb-page-compose');
+          if (compose) compose.insertAdjacentHTML('beforebegin', gateHtml);
+        }
+      } else if (gate) {
+        gate.remove();
+      }
+      var acts = main.querySelector('.ha2-wb-page-compose-acts');
+      if (acts) {
+        acts.innerHTML =
+          (wbChatBusy
+            ? '<button type="button" class="ha2-btn" data-ha2-wb-page-stop>' +
+              esc(t('ha2WbChatStop', '停止')) +
+              '</button>'
+            : '') +
+          '<button type="button" class="ha2-btn primary" data-ha2-wb-page-send' +
+          (wbChatBusy ? ' disabled' : '') +
+          '>' +
+          esc(t('ha2Send', '发送')) +
+          '</button>';
+      }
+      var draftEl = main.querySelector('[data-ha2-wb-page-draft]');
+      if (draftEl && document.activeElement !== draftEl) {
+        var draftPh =
+          atrMode &&
+          atrTask &&
+          String(atrTask.status) === 'waiting' &&
+          String(atrTask.waitingReason || '') === 'user_input'
+            ? t('ha2AtrPageInputPh', '补充说明…（Ctrl+Enter 继续任务）')
+            : (snap && snap.workMode) === 'edit'
+              ? t(
+                  'ha2AtrPageDraftPh',
+                  '描述要改什么…（Ctrl+Enter，工作模式会真正读写文件）'
+                )
+              : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
+        draftEl.placeholder = draftPh;
+        draftEl.setAttribute('aria-label', draftPh);
+      }
+    }
+    var page = host.querySelector('[data-ha2-wb-page]');
+    if (page) page.classList.toggle('is-atr-edit', !!atrMode);
+    if (atrMode) page && page.setAttribute('data-ha2-atr-page', '');
+    else if (page) page.removeAttribute('data-ha2-atr-page');
+    var turnN = atrTask && atrTask.currentTurn != null ? atrTask.currentTurn : 0;
+    var toolsN = atrTask && atrTask.toolCallCount != null ? atrTask.toolCallCount : 0;
+    var statusLine = atrMode
+      ? atrTask
+        ? t('ha2AtrStepN', '第 {n} 步').replace('{n}', String(turnN || 0)) +
+          (toolsN
+            ? ' · ' +
+              t('ha2AtrToolN', '{n} 次工具').replace('{n}', String(toolsN))
+            : '') +
+          ' · ' +
+          String(atrTask.status || '')
+        : t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…')
+      : '';
+    var metaBs = host.querySelectorAll('.ha2-wb-page-rail-meta b');
+    // Meta order: task, project, [status, engine] | [model, sendMode]
+    if (atrMode && metaBs.length >= 3 && statusLine) {
+      metaBs[2].textContent = statusLine;
+    }
+    var railActs = host.querySelector('.ha2-wb-page-rail-acts');
+    if (railActs) {
+      railActs.innerHTML = atrMode
+        ? atrActsHtml(snap) +
+          '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+          esc(t('ha2WbOpenConfig', '账号设置')) +
+          '</button>'
+        : '<button type="button" class="ha2-link" data-ha2-wb-page-clear>' +
+          esc(t('ha2WbChatClear', '清空')) +
+          '</button>' +
+          '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+          esc(t('ha2WbOpenConfig', '账号设置')) +
+          '</button>';
+    }
+    var modeHost = host.querySelector('.ha2-mode-row--segment');
+    if (modeHost) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = workModeSegmentHtml(snap, { compact: true });
+      if (wrap.firstChild) modeHost.replaceWith(wrap.firstChild);
+    }
+    var transcript = host.querySelector('[data-ha2-wb-page-transcript]');
+    if (transcript) {
+      try {
+        if (stickBottom) transcript.scrollTop = transcript.scrollHeight;
+        else transcript.scrollTop = keepScroll;
+      } catch (_) {}
+    }
+  }
+
   function paintWbChatPage() {
     if (!root) return;
     var host = root.querySelector('[data-ha2-wb-page-host]');
@@ -3244,22 +5205,16 @@
     }
     host.hidden = false;
     root.classList.add('is-wb-chat-page');
+    var snap = store() && store().getSnapshot();
+    var atrMode = atrWbPageMode(snap);
+    var page = host.querySelector('[data-ha2-wb-page]');
     var draftEl = host.querySelector('[data-ha2-wb-page-draft]');
-    var keepDraft = draftEl ? String(draftEl.value || '') : '';
-    var keepFocus = document.activeElement === draftEl;
-    var selStart = draftEl ? draftEl.selectionStart : 0;
-    var selEnd = draftEl ? draftEl.selectionEnd : 0;
-    host.innerHTML = wbChatPageHtml();
-    var nextDraft = host.querySelector('[data-ha2-wb-page-draft]');
-    if (nextDraft) {
-      nextDraft.value = keepDraft;
-      if (keepFocus) {
-        try {
-          nextDraft.focus();
-          nextDraft.setSelectionRange(selStart, selEnd);
-        } catch (_) {}
-      }
+    // ATR poll / stream: never rebuild textarea (IME 「自动回车」/ 卡顿).
+    if (page && draftEl) {
+      patchWbChatPageLive(host, snap);
+      return;
     }
+    host.innerHTML = wbChatPageHtml();
     var transcript = host.querySelector('[data-ha2-wb-page-transcript]');
     if (transcript) {
       try {
@@ -3275,7 +5230,26 @@
 
   function closeWbChatPage() {
     wbChatPageOpen = false;
+    atrWbPageForced = false;
+    atrWbPageUserClosed = true;
+    atrWbPagePendingGoal = '';
     paintWbChatPage();
+  }
+
+  function promoteWorkModeForEditGoal(S, snap, text) {
+    if (!S || String((snap && snap.workMode) || '') === 'edit') return snap;
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (
+      !Caps ||
+      typeof Caps.looksLikeWorkspaceEditGoal !== 'function' ||
+      !Caps.looksLikeWorkspaceEditGoal(text)
+    ) {
+      return snap;
+    }
+    if (!atrRuntimeOn()) return snap;
+    if (S.setWorkMode) S.setWorkMode('edit');
+    toast(t('ha2AutoSwitchedWork', '已切到「工作」：这类目标会改项目文件'));
+    return (S.getSnapshot && S.getSnapshot()) || snap;
   }
 
   function sendWbPageDraft() {
@@ -3283,8 +5257,91 @@
     var ta = root && root.querySelector('[data-ha2-wb-page-draft]');
     var text = ta ? String(ta.value || '').trim() : '';
     if (!text) return;
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    snap = promoteWorkModeForEditGoal(S, snap, text);
+    var atrTask = snap && snap.agentTask;
+    var atrSt = atrTask ? String(atrTask.status || '') : '';
+    var atrReason = atrTask ? String(atrTask.waitingReason || '') : '';
+    if (
+      atrTask &&
+      atrSt === 'waiting' &&
+      atrReason === 'user_input' &&
+      S &&
+      S.submitAgentInput
+    ) {
+      if (ta) ta.value = '';
+      S.submitAgentInput(text)
+        .then(function () {
+          if (!mounted) return;
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'input_failed'));
+        });
+      return;
+    }
+    // 工作模式（含写文件意图自动切换）：确认门后再 drive。
+    if (String((snap && snap.workMode) || '') === 'edit') {
+      if (!S || !S.startAndDriveAgentTask || !atrRuntimeOn()) {
+        toast(
+          t(
+            'ha2AtrNeedFlag',
+            '修改代码需开启 Agent Task Runtime（勿设 onetone.agentTaskRuntime=0）'
+          )
+        );
+        return;
+      }
+      if (atrNeedsApproval(snap) && S.approveAgentPatch) {
+        S.approveAgentPatch()
+          .then(function () {
+            if (!mounted) return;
+            toast(t('ha2AtrApproved', '已同意这次任务'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'approve_failed'));
+          });
+        return;
+      }
+      if (atrTaskBusy(snap)) {
+        openAtrEditPage((atrTask && atrTask.goal) || text);
+        return;
+      }
+      if (ta) ta.value = '';
+      if (workConfirmOpen) {
+        startConfirmedWorkTask(workConfirmGoal || text, workConfirmMatSum).catch(
+          function (err) {
+            toast(String((err && err.message) || err || 'atr_failed'));
+          }
+        );
+        return;
+      }
+      workConfirmOpen = true;
+      workConfirmGoal = text;
+      workConfirmMatSum = materialsSummaryLine(snap);
+      if (wbChatPageOpen) paintWbChatPage();
+      paint(S.getSnapshot());
+      return;
+    }
+    // ATR still running while UI is on 对话 — don't divert into local chat.
+    if (
+      atrTask &&
+      (atrSt === 'running' ||
+        atrSt === 'verifying' ||
+        atrSt === 'repair' ||
+        atrSt === 'review' ||
+        (atrSt === 'waiting' && atrReason === 'approval'))
+    ) {
+      toast(
+        t(
+          'ha2AtrWaitSteps',
+          '编辑任务进行中 — 右侧步骤会实时更新；完成或等待补充后再发'
+        )
+      );
+      return;
+    }
     if (ta) ta.value = '';
-    var snap = store() && store().getSnapshot();
     var c = currentCat(snap || {});
     sendWbLocal(text, c);
   }
@@ -3645,20 +5702,30 @@
       metered.checked = !!Assist.allowMetered();
       metered.disabled = !!running;
     }
-    if (hint && Assist && typeof Assist.sendScopeHint === 'function') {
-      var scopeLine = Assist.sendScopeHint() || '';
-      var readyLine = '';
-      if (assistReadyCache) {
-        if (assistReadyCache.ready) {
-          readyLine = t('ha2AssistReady', '整理可用');
-        } else {
-          readyLine =
-            (Assist.formatFailureNotice &&
-              Assist.formatFailureNotice(assistReadyCache.reason || 'no_free_model')) ||
-            '';
+    if (hint) {
+      var snapHint = store() && store().getSnapshot && store().getSnapshot();
+      if (atrEditPathOn(snapHint)) {
+        var AtrH = global.OneToneHomeAgentTask;
+        var pid = (AtrH && AtrH.readProvider && AtrH.readProvider()) || '';
+        hint.textContent = t(
+          'ha2AtrSendScope',
+          '编辑任务走 Agent Runtime' + (pid ? ' · 提供商 ' + pid : '') + '（与 Soft Pad「整理任务」密钥无关）'
+        );
+      } else if (Assist && typeof Assist.sendScopeHint === 'function') {
+        var scopeLine = Assist.sendScopeHint() || '';
+        var readyLine = '';
+        if (assistReadyCache) {
+          if (assistReadyCache.ready) {
+            readyLine = t('ha2AssistReady', '整理可用');
+          } else {
+            readyLine =
+              (Assist.formatFailureNotice &&
+                Assist.formatFailureNotice(assistReadyCache.reason || 'no_free_model')) ||
+              '';
+          }
         }
+        hint.textContent = readyLine ? scopeLine + ' · ' + readyLine : scopeLine;
       }
-      hint.textContent = readyLine ? scopeLine + ' · ' + readyLine : scopeLine;
     }
   }
 
@@ -3802,6 +5869,90 @@
     var snap = S.getSnapshot();
     var c = currentCat(snap);
     var ctx = snap.targetContext || (S.resolveTargetContext && S.resolveTargetContext()) || {};
+    var draft = snap.draft || '';
+    var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
+    if (dockTa) draft = dockTa.value;
+    S.setDraft(draft, { silent: true });
+    var draftRemember = String(draft).trim();
+    var editMode = String((snap && snap.workMode) || '') === 'edit';
+    if (
+      !draftRemember &&
+      !(snap.materials && snap.materials.length) &&
+      !(editMode && (atrNeedsApproval(snap) || workConfirmOpen || atrTaskBusy(snap)))
+    ) {
+      return;
+    }
+
+    // Write-like goals in 对话 → auto 工作 (otherwise toast "已发送" but never touches files).
+    snap = promoteWorkModeForEditGoal(S, snap, draftRemember);
+    editMode = String((snap && snap.workMode) || '') === 'edit';
+
+    // Edit mode → ATR only (never WorkBuddy local chat / desktop paste).
+    // Must run before the desktop-Agent gate — ATR uses Soft Pad/WorkBuddy providers.
+    if (editMode) {
+      if (!S.startAndDriveAgentTask || !atrRuntimeOn()) {
+        S.setValidationNotice({
+          kind: 'atr_not_ready',
+          message: t(
+            'ha2AtrNeedFlag',
+            '修改代码需开启 Agent Task Runtime（勿设 onetone.agentTaskRuntime=0）'
+          )
+        });
+        return;
+      }
+      // Waiting write approval → main CTA is 批准并执行.
+      if (atrNeedsApproval(snap) && S.approveAgentPatch) {
+        S.approveAgentPatch()
+          .then(function () {
+            if (!mounted) return;
+            toast(t('ha2AtrApproved', '已同意这次任务'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'approve_failed'));
+          });
+        return;
+      }
+      // Running → 查看进度 (open steps page; do not start another drive).
+      if (atrTaskBusy(snap)) {
+        openAtrEditPage(
+          (snap.agentTask && snap.agentTask.goal) || draftRemember || workConfirmGoal
+        );
+        return;
+      }
+      var matSum = materialsSummaryLine(snap);
+      // Confirm gate open → 批准并开始.
+      if (workConfirmOpen) {
+        var confirmGoal = workConfirmGoal || draftRemember;
+        if (!confirmGoal) {
+          S.setValidationNotice({
+            kind: 'atr_need_goal',
+            message: t('ha2AtrNeedGoal', '请先写清要改什么')
+          });
+          return;
+        }
+        startConfirmedWorkTask(confirmGoal, workConfirmMatSum || matSum).catch(
+          function (err) {
+            toast(String((err && err.message) || err || 'atr_failed'));
+          }
+        );
+        return;
+      }
+      if (!draftRemember) {
+        S.setValidationNotice({
+          kind: 'atr_need_goal',
+          message: t('ha2AtrNeedGoal', '请先写清要改什么')
+        });
+        return;
+      }
+      // Idle → 生成执行计划 opens confirm gate; does not drive yet.
+      workConfirmOpen = true;
+      workConfirmGoal = draftRemember;
+      workConfirmMatSum = matSum;
+      paint(S.getSnapshot());
+      return;
+    }
+
     if (!c.id) {
       S.setValidationNotice({
         kind: 'missing_agent',
@@ -3809,14 +5960,8 @@
       });
       return;
     }
-    var draft = snap.draft || '';
-    var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
-    if (dockTa) draft = dockTa.value;
-    S.setDraft(draft, { silent: true });
-    var draftRemember = String(draft).trim();
-    if (!draftRemember && !(snap.materials && snap.materials.length)) return;
 
-    // WorkBuddy local LLM chat (default) — does not focus WorkBuddy.exe.
+    // WorkBuddy local LLM chat — only in think mode.
     if (wbUsesLocalChat(c.id, snap)) {
       if (!draftRemember) {
         S.setValidationNotice({
@@ -3936,6 +6081,7 @@
           throw new Error(t('ha2AimNeedTarget', '先选发送目标，再发送'));
         }
         // aim_not_confirmed: still paste — Rust falls back to profile / layout anchors.
+        // Project is a handoff hint only — never gate send on projectPath.
         return invoke('cmd_agent_center_action', {
           args: {
             agentId: agentId,
@@ -4049,6 +6195,12 @@
   function onChange(e) {
     var el = e && e.target;
     if (!el || !el.matches) return;
+    if (el.matches('[data-ha2-atr-provider]')) {
+      var Atr = global.OneToneHomeAgentTask;
+      var pid = String(el.value || '').trim();
+      if (Atr && Atr.writeProvider && pid) Atr.writeProvider(pid);
+      return;
+    }
     if (el.matches('[data-ha2-consult-skill]')) {
       var Csk = concierge();
       if (Csk && Csk.setFlowSkill) Csk.setFlowSkill(el.value);
@@ -4128,26 +6280,28 @@
     }
   }
 
+  function isHa2ComposeTarget(el) {
+    return !!(
+      el &&
+      el.matches &&
+      (el.matches('[data-ha2-draft]') ||
+        el.matches('[data-ha2-mat-text]') ||
+        el.matches('[data-ha2-wb-page-draft]'))
+    );
+  }
+
   function onCompositionStart(e) {
-    if (
-      !e.target.matches ||
-      !(e.target.matches('[data-ha2-draft]') || e.target.matches('[data-ha2-mat-text]'))
-    ) {
-      return;
-    }
+    if (!isHa2ComposeTarget(e.target)) return;
     composing = true;
     if (store() && store().setComposing) store().setComposing(true);
   }
 
   function onCompositionEnd(e) {
-    if (
-      !e.target.matches ||
-      !(e.target.matches('[data-ha2-draft]') || e.target.matches('[data-ha2-mat-text]'))
-    ) {
-      return;
-    }
+    if (!isHa2ComposeTarget(e.target)) return;
     composing = false;
     if (store() && store().setComposing) store().setComposing(false);
+    // Page draft is not mirrored to store draft — skip onInput for it.
+    if (e.target.matches && e.target.matches('[data-ha2-wb-page-draft]')) return;
     onInput(e);
   }
 
@@ -4431,11 +6585,144 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-resume],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send]'
     );
     if (!tEl) return;
     var S = store();
     var D = dock();
+    if (tEl.hasAttribute('data-ha2-atr-open-page')) {
+      atrWbPageUserClosed = false;
+      atrWbPageForced = true;
+      openWbChatPage();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-continue')) {
+      if (S && S.setValidationNotice) S.setValidationNotice(null);
+      paint(S && S.getSnapshot ? S.getSnapshot() : null);
+      toast(t('ha2AtrSeeApproval', '请在上方审批卡处理'));
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-resume')) {
+      if (S && S.resumeAndDriveAgentTask) {
+        S.resumeAndDriveAgentTask()
+          .then(function () {
+            toast(t('ha2AtrResumed', '已恢复任务'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'resume_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-abandon-send')) {
+      if (S && S.abandonAndStartAgentTask) {
+        var snapSend = S.getSnapshot ? S.getSnapshot() : {};
+        var draftSend = (snapSend && snapSend.draft) || '';
+        var dockTaSend = root && root.querySelector('.ha2-compose [data-ha2-draft]');
+        if (dockTaSend) draftSend = dockTaSend.value;
+        draftSend = String(draftSend || '').trim();
+        if (!draftSend) {
+          toast(t('ha2AtrNeedGoal', '请先写清要改什么'));
+          return;
+        }
+        S.setDraft(draftSend, { silent: true });
+        var matSumSend = '';
+        try {
+          var matsSend = (snapSend && snapSend.materials) || [];
+          if (matsSend.length) {
+            matSumSend = matsSend
+              .slice(0, 8)
+              .map(function (m) {
+                return String((m && (m.title || m.path || m.name)) || '').slice(0, 80);
+              })
+              .filter(Boolean)
+              .join('; ');
+          }
+        } catch (_) {}
+        openAtrEditPage(draftSend);
+        S.abandonAndStartAgentTask({
+          goal: draftSend,
+          materialsSummary: matSumSend
+        })
+          .then(function () {
+            if (!mounted) return;
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'abandon_send_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-abandon')) {
+      if (S && S.abandonAgentTask) {
+        S.abandonAgentTask()
+          .then(function () {
+            atrWbPageForced = false;
+            atrWbPagePendingGoal = '';
+            toast(t('ha2AtrAbandoned', '已放弃任务'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'abandon_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-approve-all')) {
+      if (S && S.approveAgentPatch) {
+        S.approveAgentPatch({ persistAutonomous: true })
+          .then(function () {
+            toast(t('ha2AtrApprovedAll', '已同意所有任务，之后写入不再询问'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'approve_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-approve')) {
+      if (S && S.approveAgentPatch) {
+        S.approveAgentPatch()
+          .then(function () {
+            toast(t('ha2AtrApproved', '已同意这次任务'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'approve_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-reject')) {
+      if (S && S.rejectAgentPatch) {
+        S.rejectAgentPatch()
+          .then(function () {
+            toast(t('ha2AtrRejected', '已拒绝方案，任务继续'));
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'reject_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-input')) {
+      var answer = global.prompt(t('ha2AtrAskInput', '回复 Agent 任务'), '');
+      if (answer == null) return;
+      if (S && S.submitAgentInput) {
+        S.submitAgentInput(answer)
+          .then(function () {
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            toast(String((err && err.message) || err || 'input_failed'));
+          });
+      }
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-wb-page-back')) {
       closeWbChatPage();
       return;
@@ -4479,7 +6766,25 @@
     }
     if (tEl.hasAttribute('data-ha2-work-mode')) {
       if (tEl.disabled || tEl.getAttribute('aria-disabled') === 'true') return;
+      closeWorkConfirm();
       if (S && S.setWorkMode) S.setWorkMode(tEl.getAttribute('data-ha2-work-mode'));
+      if (wbChatPageOpen) paintWbChatPage();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-work-confirm-cancel')) {
+      closeWorkConfirm();
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-work-confirm-start')) {
+      var startGoal = workConfirmGoal || '';
+      if (!startGoal) {
+        toast(t('ha2AtrNeedGoal', '请先写清要改什么'));
+        return;
+      }
+      startConfirmedWorkTask(startGoal, workConfirmMatSum).catch(function (err) {
+        toast(String((err && err.message) || err || 'atr_failed'));
+      });
       return;
     }
     if (tEl.hasAttribute('data-ha2-handoff-open')) {
@@ -4496,6 +6801,21 @@
     }
     if (tEl.hasAttribute('data-ha2-handoff-apply')) {
       applyHandoffToDraft();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-log-toggle')) {
+      var togId = tEl.getAttribute('data-ha2-atr-log-toggle') || '';
+      var logCard = tEl.closest && tEl.closest('[data-ha2-atr-log]');
+      // Prefer live DOM class — active cards default expanded without a map entry.
+      var wasExpanded = logCard
+        ? logCard.classList.contains('is-expanded')
+        : !!atrLogExpandedById[togId];
+      atrLogExpandedById[togId] = !wasExpanded;
+      paintWbChatPage();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-log-copy')) {
+      copyAtrLog(tEl.getAttribute('data-ha2-atr-log-copy'));
       return;
     }
     if (tEl.hasAttribute('data-ha2-wb-transcript-toggle')) {
@@ -4710,6 +7030,24 @@
       }
       return;
     }
+    if (tEl.hasAttribute('data-ha2-atr-wb-login-open')) {
+      openAtrWbLoginInline();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-wb-login')) {
+      startAtrWbLoginInline();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-wb-login-cancel')) {
+      cancelAtrWbLoginInline();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-wb-login-dismiss')) {
+      atrWbLoginForced = false;
+      atrWbLoginStatus = '';
+      syncAtrWbLoginHost(S && S.getSnapshot ? S.getSnapshot() : null);
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-enable-metered')) {
       var AssistEn = global.OneToneHomeAssistClient;
       if (AssistEn && AssistEn.setAllowMetered) {
@@ -4828,6 +7166,7 @@
     var S = store();
     if (!S) return;
     S.mount();
+    // workMode already restored from localStorage in store — do not force edit.
     ensureWbStreamListen();
     root.addEventListener('click', onClick);
     root.addEventListener('pointerdown', onMatTogglePointerDown, true);

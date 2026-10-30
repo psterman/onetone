@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-task-submit-user-input"
+description = "Enables the cmd_agent_task_submit_user_input command without any pre-configured scope."
+commands.allow = ["cmd_agent_task_submit_user_input"]
+
+[[permission]]
+identifier = "deny-cmd-agent-task-submit-user-input"
+description = "Denies the cmd_agent_task_submit_user_input command without any pre-configured scope."
+commands.deny = ["cmd_agent_task_submit_user_input"]

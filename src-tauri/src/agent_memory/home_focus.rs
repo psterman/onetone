@@ -2,7 +2,8 @@
 
 use crate::agent_attention::{self, AttentionState};
 use crate::agent_memory::checkpoint::{
-    latest_checkpoint_for_project, latest_checkpoint_for_session,
+    latest_atr_checkpoint_for_project, latest_checkpoint_for_project,
+    latest_checkpoint_for_session,
 };
 use crate::agent_memory::model::{
     CheckpointDto, HomeSessionDto, ProbeStatus, ProjectMatch, PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
@@ -142,29 +143,53 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
     let confirmed = project.id != UNKNOWN_PROJECT_ID && is_project_confirmed(&project.id);
 
     let session = read_best_session(&project.id);
-    let checkpoint = session
-        .as_ref()
-        .and_then(|s| latest_checkpoint_for_session(&s.session_id))
-        .or_else(|| {
-            if project.id != UNKNOWN_PROJECT_ID {
-                latest_checkpoint_for_project(&project.id)
-            } else {
-                None
-            }
-        });
+    let atr_checkpoint = if project.id != UNKNOWN_PROJECT_ID {
+        latest_atr_checkpoint_for_project(&project.id)
+    } else {
+        None
+    };
+    let checkpoint = atr_checkpoint.clone().or_else(|| {
+        session
+            .as_ref()
+            .and_then(|s| latest_checkpoint_for_session(&s.session_id))
+            .or_else(|| {
+                if project.id != UNKNOWN_PROJECT_ID {
+                    latest_checkpoint_for_project(&project.id)
+                } else {
+                    None
+                }
+            })
+    });
 
     let provider_status = provider_status(refreshing, &probe_status, consent);
-    let (work, source) = derive_work(
-        now,
-        &probe_status,
-        last_probe_ms,
-        has_sessions,
-        refreshing,
-        session.as_ref(),
-        checkpoint.as_ref(),
-        &project,
-        confirmed,
-    );
+    let (work, source) = if let Some(ref atr) = atr_checkpoint {
+        derive_work_from_atr(now, atr, &probe_status, refreshing)
+            .unwrap_or_else(|| {
+                derive_work(
+                    now,
+                    &probe_status,
+                    last_probe_ms,
+                    has_sessions,
+                    refreshing,
+                    session.as_ref(),
+                    checkpoint.as_ref(),
+                    &project,
+                    confirmed,
+                )
+            })
+    } else {
+        derive_work(
+            now,
+            &probe_status,
+            last_probe_ms,
+            has_sessions,
+            refreshing,
+            session.as_ref(),
+            checkpoint.as_ref(),
+            &project,
+            confirmed,
+        )
+    };
 
     let next_action = derive_next_action(
         &work.status,
@@ -388,6 +413,101 @@ fn provider_status(refreshing: bool, probe: &str, consent: bool) -> String {
     }
 }
 
+/// Prefer bound ATR checkpoint when fresh enough for home projection.
+fn derive_work_from_atr(
+    now: u64,
+    atr: &CheckpointDto,
+    probe: &str,
+    refreshing: bool,
+) -> Option<(HomeFocusWork, HomeFocusSource)> {
+    let age = now.saturating_sub(atr.updated_at);
+    if age > RESUME_MAX_AGE_MS {
+        return None;
+    }
+    let freshness = if refreshing {
+        "cached"
+    } else if age < 120_000 {
+        "live"
+    } else {
+        "stale"
+    }
+    .to_string();
+    let title = usable_resume_step(atr.current_task.as_deref())
+        .unwrap_or_else(|| "当前 Agent 任务".into());
+    let reason = format!("probe={probe};atr_checkpoint");
+    match atr.status.as_str() {
+        "waiting" => Some((
+            HomeFocusWork {
+                status: "waiting".into(),
+                title,
+                description: atr
+                    .pending_questions
+                    .first()
+                    .cloned()
+                    .or_else(|| usable_resume_step(atr.next_action.as_deref()))
+                    .unwrap_or_else(|| "需要你确认一下。".into()),
+                updated_at: atr.updated_at,
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};waiting"),
+            },
+        )),
+        "interrupted" => Some((
+            HomeFocusWork {
+                status: "resumable".into(),
+                title,
+                description: usable_resume_step(atr.next_action.as_deref())
+                    .unwrap_or_else(|| "可以继续或放弃。".into()),
+                updated_at: atr.updated_at,
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};interrupted"),
+            },
+        )),
+        "running" | "verifying" | "repair" | "review" => Some((
+            HomeFocusWork {
+                status: "running".into(),
+                title,
+                description: usable_resume_step(atr.next_action.as_deref())
+                    .unwrap_or_else(|| "正在处理中。".into()),
+                updated_at: atr.updated_at,
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};running"),
+            },
+        )),
+        "done" if age <= COMPLETED_DISPLAY_MS => Some((
+            HomeFocusWork {
+                status: "completed".into(),
+                title,
+                description: "刚刚完成。".into(),
+                updated_at: atr.updated_at,
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};completed"),
+            },
+        )),
+        "failed" if age <= LIFECYCLE_TTL_MS => Some((
+            HomeFocusWork {
+                status: "error".into(),
+                title,
+                description: "上次任务遇到问题。".into(),
+                updated_at: atr.updated_at,
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};failed"),
+            },
+        )),
+        "cancelled" => None,
+        _ => None,
+    }
+}
+
 fn derive_work(
     now: u64,
     probe: &str,
@@ -584,6 +704,22 @@ fn derive_next_action(
         return Some(HomeFocusAction {
             title: "重试".into(),
             kind: "retry".into(),
+            executable: true,
+        });
+    }
+    if work_status == "waiting" {
+        return Some(HomeFocusAction {
+            title: "确认补丁".into(),
+            kind: "approve".into(),
+            executable: true,
+        });
+    }
+    if work_status == "resumable"
+        && checkpoint.is_some_and(|ck| ck.next_action.as_deref() == Some("继续任务或放弃"))
+    {
+        return Some(HomeFocusAction {
+            title: "继续任务".into(),
+            kind: "resume".into(),
             executable: true,
         });
     }

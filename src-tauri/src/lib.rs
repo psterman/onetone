@@ -84,6 +84,7 @@ mod shell_agent_hook_setup;
 mod shell_agent_usage;
 mod soft_pad_purpose;
 mod assist_runtime;
+mod agent_task_runtime;
 mod project_context;
 mod soft_pad_quota;
 mod soft_pad_runtime;
@@ -451,6 +452,8 @@ pub fn run() {
         .manage(app_state.clone())
         .setup(move |app| {
             app_log::log_line(&app_state, "startup", "setup begin");
+
+            crate::agent_task_runtime::boot();
 
             crate::agent_usage::start_codex_account_poll(app.handle().clone(), app_state.clone());
             crate::agent_usage::start_deepseek_balance_poll(
@@ -1354,6 +1357,20 @@ pub fn run() {
             ipc::cmd_assist_cancel,
             ipc::cmd_assist_ready,
             ipc::cmd_assist_status,
+            ipc::cmd_agent_task_start,
+            ipc::cmd_agent_task_status,
+            ipc::cmd_agent_task_events,
+            ipc::cmd_agent_task_cancel,
+            ipc::cmd_agent_task_approve_patch,
+            ipc::cmd_agent_task_reject_patch,
+            ipc::cmd_agent_task_submit_user_input,
+            ipc::cmd_agent_task_resume,
+            ipc::cmd_agent_task_abandon,
+            ipc::cmd_agent_task_drive_fake,
+            ipc::cmd_agent_task_drive_deepseek,
+            ipc::cmd_agent_task_drive,
+            ipc::cmd_agent_task_ready,
+            ipc::cmd_agent_task_probe_workbuddy,
             ipc::cmd_project_context_open,
             ipc::cmd_project_context_close,
             ipc::cmd_project_context_query,
