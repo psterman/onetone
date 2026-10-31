@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "scoring": {
+    "keyPoints": "each evaluation point: 0 uncovered / 1 covered (human)",
+    "citationSpotCheck": "support | not_support | unknown (human; program cannot prove support)",
+    "efficiency": "durationMs + ledger counts recorded separately; never summed into quality score"
+  },
+  "cases": [
+    {
+      "id": "compare-phone",
+      "type": "compare",
+      "topic": "荣耀 Magic8 Pro 和 vivo X300 Pro 怎么选？侧重拍照与续航",
+      "userConditions": {
+        "budget": "6000元以内",
+        "useCase": "日常拍照与通勤续航",
+        "constraints": "不要游戏向评测；需中文公开评测或官网参数"
+      },
+      "evaluationPoints": [
+        "两侧主摄像头与影像系统差异有据",
+        "续航/电池相关数据或测评有据",
+        "明确给出选择建议并对应决策标准",
+        "标出未确认或过期信息"
+      ]
+    },
+    {
+      "id": "status-wasm",
+      "type": "status",
+      "topic": "WebAssembly 现在能做什么？面向普通 Web 前端",
+      "userConditions": {
+        "budget": null,
+        "useCase": "在浏览器里加速计算或复用现有 C/Rust 库",
+        "constraints": "不讨论服务端 WASI 深水区；要列出成熟与不成熟边界"
+      },
+      "evaluationPoints": [
+        "给出当前典型可行场景",
+        "说明工具链/语言现状",
+        "指出限制与不适合场景",
+        "关键结论有来源编号"
+      ]
+    },
+    {
+      "id": "howto-hangzhou-hukou",
+      "type": "howto",
+      "topic": "在杭州办理居住证需要什么材料和步骤？",
+      "userConditions": {
+        "budget": null,
+        "useCase": "外地户籍在杭稳就业人员首次申领",
+        "constraints": "以官方或政务公开信息为准；注明可能因区县差异变化"
+      },
+      "evaluationPoints": [
+        "材料清单可执行",
+        "步骤或办理渠道清楚",
+        "提到时效/有效期或常见卡点",
+        "风险与未确认事项单独列出"
+      ]
+    },
+    {
+      "id": "fit-onetone",
+      "type": "fit",
+      "topic": "OneTone（一声）适不适合我用来把语音接到本地 AI 编程助手？",
+      "userConditions": {
+        "budget": "可接受一次性买断或当前定价档，不做企业采购",
+        "useCase": "Windows 上用语音唤醒，把话送进 Cursor/本地 Agent",
+        "constraints": "主要在公司内网笔记本；需要可关闭的隐私说明；不要云端强制上传原文"
+      },
+      "evaluationPoints": [
+        "对照预算与用途给出适合/不适合判断",
+        "列出匹配点与不匹配点",
+        "隐私/本地能力相关风险",
+        "未确认事项诚实写出"
+      ]
+    }
+  ]
+}

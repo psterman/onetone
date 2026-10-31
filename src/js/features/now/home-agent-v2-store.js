@@ -138,9 +138,9 @@
       var Caps = capsApi();
       var next =
         Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(raw) : String(raw || '');
-      // Primary UI is chat|work — migrate legacy readonly → think.
+      // Primary UI is chat|work|research — migrate legacy readonly → think.
       if (next === 'readonly') next = 'think';
-      if (next === 'think' || next === 'edit') return next;
+      if (next === 'think' || next === 'edit' || next === 'research') return next;
     } catch (_) {}
     return 'edit';
   }
@@ -148,7 +148,9 @@
   function persistWorkMode(mode) {
     try {
       if (global.localStorage) {
-        global.localStorage.setItem(WORK_MODE_KEY, mode === 'edit' ? 'edit' : 'think');
+        var v =
+          mode === 'edit' ? 'edit' : mode === 'research' ? 'research' : 'think';
+        global.localStorage.setItem(WORK_MODE_KEY, v);
       }
     } catch (_) {}
   }
@@ -1363,7 +1365,12 @@
         state.selectedKind === 'workbuddy' && state.wbSendMode === 'local'
           ? 'think'
           : 'code',
-      mode: state.workMode === 'readonly' || state.workMode === 'edit' ? state.workMode : 'think',
+      mode:
+        state.workMode === 'readonly' ||
+        state.workMode === 'edit' ||
+        state.workMode === 'research'
+          ? state.workMode
+          : 'think',
       modeEffective: false,
       modeReason: '能力投影模块未加载',
       projectPath: ctx.projectPath || null,
@@ -1398,6 +1405,10 @@
       selectedKind: state.selectedKind,
       wbSendMode: state.wbSendMode,
       workMode: state.workMode,
+      research:
+        global.OneToneHomeResearch && global.OneToneHomeResearch.getSnapshot
+          ? global.OneToneHomeResearch.getSnapshot()
+          : null,
       handoffId: state.handoffId,
       userLocked: state.userLocked,
       lockedProjectPath: state.lockedProjectPath,
@@ -2813,11 +2824,18 @@
     var next =
       Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(mode) : String(mode || 'think');
     if (next === 'readonly') next = 'think';
-    if (next !== 'think' && next !== 'edit') next = 'think';
+    if (next !== 'think' && next !== 'edit' && next !== 'research') next = 'think';
     // Always persist (incl. alias normalize) so localStorage mirrors effective mode.
     persistWorkMode(next);
     if (state.workMode === next && !opts.force) return;
     state.workMode = next;
+    try {
+      var R = global.OneToneHomeResearch;
+      if (next === 'research' && R && R.openConfig) {
+        var draft = String(state.draft || '').trim();
+        R.openConfig({ topic: draft || (R.getSnapshot && R.getSnapshot().config.topic) || '' });
+      }
+    } catch (_) {}
     if (!opts.silent) emit();
   }
 

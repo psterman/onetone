@@ -2378,6 +2378,7 @@
 
   function sessionModeLabel(mode) {
     if (mode === 'edit') return t('ha2ModeWork', '工作');
+    if (mode === 'research') return t('ha2ModeResearch', '调研');
     return t('ha2ModeChat', '对话');
   }
 
@@ -2388,18 +2389,437 @@
         '工作模式会读取并可能修改项目文件；开始前先确认，写入前再批准。'
       );
     }
+    if (mode === 'research') {
+      return t(
+        'ha2ModeBoundaryResearch',
+        '调研模式会搜索公开网页并综合成带来源的报告；无来源时只做材料整理。'
+      );
+    }
     return t(
       'ha2ModeBoundaryChat',
       '对话模式只讨论与出方案，不会读写项目文件。'
     );
   }
 
-  /** Codex-style 对话|工作 segment — home chrome + in-page rail. */
+  var researchPaintRaf = 0;
+  /** Open dossier file: '' | 'markdown' | 'html' | 'sources' */
+  var researchFilePreview = 'markdown';
+
+  /** Research progress: coalesce paints to one rAF — avoid fetch-loop jank. */
+  function paintResearchLive() {
+    if (researchPaintRaf) return;
+    researchPaintRaf = requestAnimationFrame
+      ? requestAnimationFrame(function () {
+          researchPaintRaf = 0;
+          paintResearchLiveNow();
+        })
+      : (setTimeout(function () {
+          researchPaintRaf = 0;
+          paintResearchLiveNow();
+        }, 32),
+        1);
+  }
+
+  function paintResearchLiveNow() {
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    if (!snap || snap.workMode !== 'research') {
+      if (S) paint(S.getSnapshot());
+      return;
+    }
+    var rs = snap.research || {};
+    var terminal = !!(rs.isTerminal || rs.status === 'failed');
+    if (terminal) {
+      if (wbChatPageOpen) paintWbChatPage();
+      else if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (wbChatPageOpen) {
+      var host = root && root.querySelector('[data-ha2-wb-page-host]');
+      if (host) {
+        var researchHost = host.querySelector('[data-ha2-research-host]');
+        var researchFocus =
+          document.activeElement &&
+          document.activeElement.closest &&
+          document.activeElement.closest('[data-ha2-research]');
+        if (
+          researchHost &&
+          !(researchFocus && researchHost.contains(document.activeElement))
+        ) {
+          researchHost.innerHTML = researchPanelHtml(snap);
+        }
+        var live = host.querySelector('[data-ha2-research-live]');
+        var bodyHtml = researchPageBodyHtml(snap);
+        if (live && bodyHtml.indexOf('data-ha2-research-live') >= 0) {
+          var wrapLive = document.createElement('div');
+          wrapLive.innerHTML = bodyHtml;
+          if (wrapLive.firstChild) live.replaceWith(wrapLive.firstChild);
+        } else {
+          var transcript = host.querySelector('[data-ha2-wb-page-transcript]');
+          if (transcript) transcript.innerHTML = bodyHtml;
+        }
+      }
+      return;
+    }
+    var sit = root && root.querySelector('[data-ha2-situation]');
+    if (sit) {
+      var panel = sit.querySelector('[data-ha2-research]');
+      var focusHome =
+        document.activeElement &&
+        document.activeElement.closest &&
+        document.activeElement.closest('[data-ha2-research]');
+      if (panel && !(focusHome && panel.contains(document.activeElement))) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = researchPanelHtml(snap);
+        if (wrap.firstChild) panel.replaceWith(wrap.firstChild);
+      } else if (!panel) {
+        paint(snap);
+      }
+    } else if (S) {
+      paint(snap);
+    }
+  }
+
+  function clearResearchComposeInputs() {
+    var pageTa = root && root.querySelector('[data-ha2-wb-page-draft]');
+    if (pageTa) pageTa.value = '';
+    var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
+    if (dockTa) dockTa.value = '';
+    var S = store();
+    if (S && S.setDraft) S.setDraft('', { silent: true });
+  }
+
+  function resolveResearchTopic(snap) {
+    var pageTa = root && root.querySelector('[data-ha2-wb-page-draft]');
+    var pageVal = pageTa ? String(pageTa.value || '').trim() : '';
+    if (pageVal) return pageVal;
+    var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
+    var dockVal = dockTa ? String(dockTa.value || '').trim() : '';
+    if (dockVal) return dockVal;
+    var draft = String((snap && snap.draft) || '').trim();
+    if (draft) return draft;
+    for (var i = wbChatTurns.length - 1; i >= 0; i--) {
+      if (wbChatTurns[i] && wbChatTurns[i].role === 'user') {
+        var t0 = String(wbChatTurns[i].text || '').trim();
+        if (t0) return t0;
+      }
+    }
+    var R = global.OneToneHomeResearch;
+    var prev =
+      (R && R.getSnapshot && R.getSnapshot().config && R.getSnapshot().config.topic) ||
+      '';
+    return String(prev || '').trim();
+  }
+
+  function researchPanelHtml(snap) {
+    if (!snap || snap.workMode !== 'research') return '';
+    var R = global.OneToneHomeResearch;
+    var rs =
+      (snap && snap.research) ||
+      (R && R.getSnapshot ? R.getSnapshot() : null) ||
+      {};
+    var status = String(rs.status || 'idle');
+    var cfg = rs.config || {};
+    var prog = rs.progress || {};
+    var err = rs.error;
+    var result = rs.result;
+    var label =
+      (R && R.statusLabel && R.statusLabel(status)) || status;
+    var modelHint = wbSelectedModelId() || '';
+    var head =
+      '<div class="ha2-research" data-ha2-research data-status="' +
+      esc(status) +
+      '"><div class="ha2-research-status"><b>' +
+      esc(label) +
+      '</b>' +
+      (modelHint
+        ? ' · <span class="ha2-research-model" title="' +
+          esc(t('ha2ResearchUsesModel', '沿用当前 WorkBuddy 模型')) +
+          '">' +
+          esc(modelHint) +
+          '</span>'
+        : '') +
+      (prog.sourcesFound
+        ? ' · ' +
+          esc(
+            t('ha2ResearchSources', '来源') +
+              ' ' +
+              String(prog.sourcesFetched || 0) +
+              '/' +
+              String(prog.sourcesFound)
+          )
+        : '') +
+      '</div>';
+    if (status !== 'configuring' && status !== 'idle' && prog.message) {
+      head +=
+        '<p class="ha2-research-msg">' + esc(prog.message) + '</p>';
+    }
+    if (
+      (status === 'searching' ||
+        status === 'fetching' ||
+        status === 'briefing' ||
+        status === 'reviewing' ||
+        status === 'synthesizing') &&
+      prog.sourcesFound
+    ) {
+      var pct = Math.min(
+        100,
+        Math.round(
+          ((Number(prog.sourcesFetched) || 0) / Math.max(1, Number(prog.sourcesFound))) *
+            100
+        )
+      );
+      if (status === 'synthesizing') pct = 100;
+      head +=
+        '<div class="ha2-research-bar" aria-hidden="true"><i style="width:' +
+        pct +
+        '%"></i></div>';
+    }
+    if (err) {
+      var hint =
+        (R && R.nextStepHint && R.nextStepHint(err)) || '';
+      head +=
+        '<p class="ha2-research-err">' +
+        esc(err.message || '') +
+        (hint ? ' — ' + esc(hint) : '') +
+        '</p>';
+    }
+    if (status === 'awaiting_approval') {
+      var plan = rs.plan || {};
+      var facets = plan.facets || [];
+      var pathNow = plan.path || 'fast';
+      var facetRows = facets
+        .map(function (f, idx) {
+          return (
+            '<label class="ha2-research-facet">' +
+            '<span>' +
+            esc(f.label || '面' + (idx + 1)) +
+            '</span>' +
+            '<input type="text" data-ha2-research-facet-q="' +
+            esc(f.id) +
+            '" value="' +
+            esc(f.query || '') +
+            '" /></label>'
+          );
+        })
+        .join('');
+      return (
+        head +
+        '<div class="ha2-research-config" data-ha2-research-config data-ha2-research-plan>' +
+        '<p class="ha2-research-msg">' +
+        esc(plan.pathReason || '') +
+        '</p>' +
+        '<div class="ha2-research-row">' +
+        '<label>' +
+        esc(t('ha2ResearchPath', '路径')) +
+        '<select data-ha2-research-path>' +
+        '<option value="fast"' +
+        (pathNow === 'fast' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchPathFast', '快速核实（仍查来源）')) +
+        '</option>' +
+        '<option value="faceted"' +
+        (pathNow === 'faceted' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchPathFaceted', '分工调研')) +
+        '</option></select></label></div>' +
+        (pathNow === 'faceted'
+          ? '<div class="ha2-research-facets" data-ha2-research-facets>' +
+            '<p class="ha2-research-msg">' +
+            esc(t('ha2ResearchFacetsHint', '将调查这些方面（可改查询词）')) +
+            '</p>' +
+            facetRows +
+            '</div>'
+          : '<p class="ha2-research-msg">' +
+            esc(
+              t(
+                'ha2ResearchFastHint',
+                '快速路径仍会搜索并抓取有限来源，给出可核查短答。'
+              )
+            ) +
+            '</p>') +
+        '<div class="ha2-research-actions">' +
+        '<button type="button" class="ha2-btn primary" data-ha2-research-confirm>' +
+        esc(t('ha2ResearchConfirm', '确认并开始')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-research-cancel>' +
+        esc(t('ha2ResearchCancel', '取消')) +
+        '</button></div></div></div>'
+      );
+    }
+    if (status === 'configuring' || status === 'idle') {
+      return (
+        head +
+        '<div class="ha2-research-config" data-ha2-research-config>' +
+        '<div class="ha2-research-row">' +
+        '<label>' +
+        esc(t('ha2ResearchDepth', '深度')) +
+        '<select data-ha2-research-depth>' +
+        '<option value="quick"' +
+        (cfg.depth === 'quick' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchDepthQuick', '快速')) +
+        '</option>' +
+        '<option value="standard"' +
+        (cfg.depth !== 'quick' && cfg.depth !== 'deep' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchDepthStandard', '标准')) +
+        '</option>' +
+        '<option value="deep"' +
+        (cfg.depth === 'deep' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchDepthDeep', '深度')) +
+        '</option></select></label>' +
+        '<label>' +
+        esc(t('ha2ResearchFormat', '输出')) +
+        '<select data-ha2-research-format>' +
+        '<option value="markdown"' +
+        (cfg.format !== 'html' ? ' selected' : '') +
+        '>Markdown</option>' +
+        '<option value="html"' +
+        (cfg.format === 'html' ? ' selected' : '') +
+        '>HTML</option></select></label></div>' +
+        '<div class="ha2-research-actions">' +
+        '<button type="button" class="ha2-btn primary" data-ha2-research-start>' +
+        esc(t('ha2ResearchStart', '开始调研')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-research-cancel>' +
+        esc(t('ha2ResearchCancel', '取消')) +
+        '</button></div></div></div>'
+      );
+    }
+    var body = '';
+    var live = prog.liveSources || [];
+    if (
+      !result &&
+      live.length &&
+      (status === 'fetching' || status === 'synthesizing' || status === 'searching')
+    ) {
+      body +=
+        '<ul class="ha2-research-sources ha2-research-sources--live">' +
+        live
+          .map(function (s) {
+            var st = String(s.state || 'pending');
+            var mark =
+              st === 'ok'
+                ? '✓'
+                : st === 'fail'
+                  ? '×'
+                  : st === 'snippet'
+                    ? '·'
+                    : st === 'fetching'
+                      ? '…'
+                      : '○';
+            return (
+              '<li data-state="' +
+              esc(st) +
+              '"><span class="ha2-research-sid">[' +
+              esc(s.id) +
+              ']</span> <span class="ha2-research-live-mark">' +
+              mark +
+              '</span> ' +
+              (s.url
+                ? '<a href="' +
+                  esc(s.url) +
+                  '" target="_blank" rel="noreferrer">' +
+                  esc(s.title || s.url) +
+                  '</a>'
+                : esc(s.title || '')) +
+              '</li>'
+            );
+          })
+          .join('') +
+        '</ul>';
+    } else if (result && result.sources && result.sources.length) {
+      body +=
+        '<ul class="ha2-research-sources">' +
+        result.sources
+          .map(function (s) {
+            return (
+              '<li><span class="ha2-research-sid">[' +
+              esc(s.id) +
+              ']</span> <a href="' +
+              esc(s.url) +
+              '" target="_blank" rel="noreferrer">' +
+              esc(s.title || s.url) +
+              '</a></li>'
+            );
+          })
+          .join('') +
+        '</ul>';
+    } else if (
+      status === 'completed_without_sources' ||
+      (result && result.status === 'completed_without_sources')
+    ) {
+      body +=
+        '<p class="ha2-research-msg">' +
+        esc(t('ha2ResearchNoSources', '基于已有材料整理（无网络来源）')) +
+        '</p>';
+    }
+    if (result) {
+      body +=
+        '<div class="ha2-research-file-rail" data-ha2-research-files>' +
+        '<button type="button" class="ha2-research-file' +
+        (researchFilePreview === 'markdown' ? ' is-on' : '') +
+        '" data-ha2-research-file="markdown">report.md</button>' +
+        '<button type="button" class="ha2-research-file' +
+        (researchFilePreview === 'html' ? ' is-on' : '') +
+        '" data-ha2-research-file="html">report.html</button>' +
+        '<button type="button" class="ha2-research-file' +
+        (researchFilePreview === 'sources' ? ' is-on' : '') +
+        '" data-ha2-research-file="sources">' +
+        esc(t('ha2ResearchSources', '来源')) +
+        '</button></div>' +
+        '<div class="ha2-research-actions">' +
+        '<button type="button" class="ha2-btn" data-ha2-research-export="markdown">' +
+        esc(t('ha2ResearchExportMd', '另存 Markdown')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-research-export="html">' +
+        esc(t('ha2ResearchExportHtml', '另存 HTML')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-research-restart>' +
+        esc(t('ha2ResearchRestart', '重新调研')) +
+        '</button>' +
+        (rs.lastExportPath
+          ? '<span class="ha2-research-path">' + esc(rs.lastExportPath) + '</span>'
+          : '') +
+        '</div>';
+    } else if (
+      status === 'searching' ||
+      status === 'fetching' ||
+      status === 'briefing' ||
+      status === 'reviewing' ||
+      status === 'synthesizing'
+    ) {
+      body +=
+        '<div class="ha2-research-actions">' +
+        '<button type="button" class="ha2-btn" data-ha2-research-cancel>' +
+        esc(t('ha2ResearchCancel', '取消')) +
+        '</button></div>';
+    } else if (status === 'failed') {
+      body +=
+        '<div class="ha2-research-actions">' +
+        '<button type="button" class="ha2-btn primary" data-ha2-research-restart>' +
+        esc(t('ha2ResearchRestart', '重新调研')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-research-cancel>' +
+        esc(t('ha2ResearchCancel', '关闭')) +
+        '</button></div>';
+    }
+    return head + body + '</div>';
+  }
+
+  /** Codex-style 对话|工作|调研 segment — home chrome + in-page rail. */
   function workModeSegmentHtml(snap, opts) {
     opts = opts || {};
     var session = (snap && snap.session) || {};
+    var wm = String((snap && snap.workMode) || session.mode || 'think');
     var mode =
-      (snap && snap.workMode) === 'edit' || session.mode === 'edit' ? 'edit' : 'think';
+      wm === 'edit' || session.mode === 'edit'
+        ? 'edit'
+        : wm === 'research' || session.mode === 'research'
+          ? 'research'
+          : 'think';
     var effective = !!session.modeEffective;
     var AtrMode = global.OneToneHomeAgentTask;
     var editOk =
@@ -2412,6 +2832,12 @@
             session.capabilities.approval_execute &&
             session.capabilities.approval_execute.implemented
           );
+    var researchOk = !!(
+      session.capabilities &&
+      session.capabilities.text_chat &&
+      (session.capabilities.text_chat.available ||
+        session.capabilities.text_chat.implemented)
+    );
     var modes = [
       {
         id: 'think',
@@ -2431,6 +2857,14 @@
               session.capabilities.write_project.reason) ||
               t('ha2AtrNeedFlag', '开启 Agent Task Runtime')),
         disabled: !editOk
+      },
+      {
+        id: 'research',
+        label: sessionModeLabel('research'),
+        title: researchOk
+          ? t('ha2ModeResearchHint', '调研：网络搜索、抓取来源、生成带来源的报告')
+          : t('ha2ModeResearchNeedLlm', '调研需本机大模型（WorkBuddy / Soft Pad）'),
+        disabled: false
       }
     ];
     var modeBtns = modes
@@ -2461,7 +2895,7 @@
       '<div class="ha2-mode-row ha2-mode-row--segment' +
       (opts.compact ? ' is-compact' : '') +
       '" role="radiogroup" aria-label="' +
-      esc(t('ha2WorkMode', '对话 / 工作')) +
+      esc(t('ha2WorkMode', '对话 / 工作 / 调研')) +
       '">' +
       modeBtns +
       '</div>'
@@ -2471,12 +2905,20 @@
   function sessionChromeHtml(snap) {
     var session = snap && snap.session;
     if (!session) return '';
-    var mode = session.mode === 'edit' ? 'edit' : 'think';
+    var wm = String((snap && snap.workMode) || session.mode || 'think');
+    var mode =
+      wm === 'edit' || session.mode === 'edit'
+        ? 'edit'
+        : wm === 'research' || session.mode === 'research'
+          ? 'research'
+          : 'think';
     var effective = !!session.modeEffective;
     var roleHint =
       mode === 'edit'
         ? t('ha2RoleWork', '读改项目文件与代码')
-        : t('ha2RoleChat', '聊思路、整理方案（可交接给其他模型）');
+        : mode === 'research'
+          ? ''
+          : t('ha2RoleChat', '聊思路、整理方案（可交接给其他模型）');
     var handoffBtn = '';
     if (mode === 'think' && wbChatTurns.length) {
       handoffBtn =
@@ -2490,22 +2932,29 @@
       esc(mode) +
       '">' +
       workModeSegmentHtml(snap) +
-      '<p class="ha2-mode-boundary" data-ha2-mode-boundary data-mode="' +
-      esc(mode) +
-      '">' +
-      esc(modeBoundaryCopy(mode)) +
-      '</p>' +
-      '<div class="ha2-session-role" data-ha2-session-role><b>' +
-      esc(roleHint) +
-      '</b>' +
-      (effective
+      (mode === 'research'
         ? ''
-        : '<span class="ha2-session-mode-note">' +
-          esc(session.modeReason || t('ha2ModeIneffective', '当前模式尚未真正生效')) +
-          '</span>') +
-      handoffBtn +
-      '</div>' +
+        : '<p class="ha2-mode-boundary" data-ha2-mode-boundary data-mode="' +
+          esc(mode) +
+          '">' +
+          esc(modeBoundaryCopy(mode)) +
+          '</p>') +
+      (mode === 'research' && !roleHint && effective && !handoffBtn
+        ? ''
+        : '<div class="ha2-session-role" data-ha2-session-role>' +
+          (roleHint ? '<b>' + esc(roleHint) + '</b>' : '') +
+          (effective
+            ? ''
+            : '<span class="ha2-session-mode-note">' +
+              esc(
+                session.modeReason ||
+                  t('ha2ModeIneffective', '当前模式尚未真正生效')
+              ) +
+              '</span>') +
+          handoffBtn +
+          '</div>') +
       handoffPanelHtml(snap) +
+      researchPanelHtml(snap) +
       '</div>'
     );
   }
@@ -2614,12 +3063,19 @@
     if (!root) return;
     snap = snap || (store() && store().getSnapshot()) || {};
     var atrEdit = atrEditPathOn(snap);
+    var isResearch =
+      String((snap && snap.workMode) || (snap.session && snap.session.mode) || '') ===
+      'research';
     var draftLabel = atrEdit
       ? t('ha2AtrDraftLabel', '描述要改的代码或文件')
-      : t('ha2DraftLabelChat', '继续讨论或整理方案');
+      : isResearch
+        ? t('ha2DraftLabelResearch', '调研主题或补充说明')
+        : t('ha2DraftLabelChat', '继续讨论或整理方案');
     var draftPh = atrEdit
       ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
-      : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
+      : isResearch
+        ? t('ha2DraftPlaceholderResearch', '也可在上方调研面板填写主题后开始…')
+        : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
     var ta = root.querySelector('.ha2-compose [data-ha2-draft]');
     if (ta && document.activeElement !== ta) {
       ta.placeholder = draftPh;
@@ -4793,10 +5249,21 @@
       }
       var sit = el.querySelector('[data-ha2-situation]');
       if (sit) {
+        var researchFocus =
+          document.activeElement &&
+          document.activeElement.closest &&
+          document.activeElement.closest('[data-ha2-research]');
         var wrap = document.createElement('div');
         wrap.innerHTML = situationHtml(snap);
         var next = wrap.firstChild;
-        if (next) sit.replaceWith(next);
+        if (next) {
+          if (researchFocus) {
+            var oldResearch = sit.querySelector('[data-ha2-research]');
+            var newResearch = next.querySelector('[data-ha2-research]');
+            if (oldResearch && newResearch) newResearch.replaceWith(oldResearch);
+          }
+          sit.replaceWith(next);
+        }
       }
       var list = el.querySelector('[data-ha2-list]');
       if (list) list.innerHTML = listHtml(snap);
@@ -5499,13 +5966,16 @@
           String(atrTask.status || '')
         : t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…')
       : '';
+    var researchMode = String((snap && snap.workMode) || '') === 'research';
     var draftPh = atrMode
       ? atrTask &&
         String(atrTask.status) === 'waiting' &&
         String(atrTask.waitingReason || '') === 'user_input'
         ? t('ha2AtrPageInputPh', '补充说明…（Ctrl+Enter 继续任务）')
         : t('ha2AtrPageDraftPh', '继续讨论步骤或结果…（Ctrl+Enter）')
-      : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
+      : researchMode
+        ? t('ha2ResearchPageDraftPh', '输入调研主题后发送，或点左侧「开始调研」…')
+        : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
     var railActs = atrMode
       ? atrActsHtml(snap) +
         '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
@@ -5517,11 +5987,16 @@
         '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
         esc(t('ha2WbOpenConfig', '账号设置')) +
         '</button>';
+    if (researchMode) {
+      body = researchPageBodyHtml(snap);
+    }
     return (
       '<div class="ha2-wb-page' +
       (atrMode ? ' is-atr-edit' : '') +
+      (researchMode ? ' is-research' : '') +
       '" data-ha2-wb-page' +
       (atrMode ? ' data-ha2-atr-page' : '') +
+      (researchMode ? ' data-ha2-research-page' : '') +
       '>' +
       '<aside class="ha2-wb-page-rail">' +
       '<button type="button" class="ha2-link ha2-wb-page-back" data-ha2-wb-page-back>' +
@@ -5536,10 +6011,15 @@
         atrMode
           ? t('ha2AtrWorkTask', '当前工作任务') +
             (logN > 1 ? ' · ' + logN : '')
-          : t('ha2WbPageTitle', 'WorkBuddy 本机对话')
+          : researchMode
+            ? t('ha2ResearchPageTitle', '调研')
+            : t('ha2WbPageTitle', 'WorkBuddy 本机对话')
       ) +
       '</div>' +
       workModeSegmentHtml(snap, { compact: true }) +
+      '<div data-ha2-research-host>' +
+      researchPanelHtml(snap) +
+      '</div>' +
       '<div class="ha2-wb-page-rail-meta">' +
       '<div><span>' +
       esc(t('ha2WbTask', '任务')) +
@@ -5575,19 +6055,21 @@
           esc(t('ha2WbModeLocal', '本机')) +
           '</b></div>') +
       '</div>' +
-      '<p class="ha2-wb-page-rail-hint">' +
-      esc(
-        atrMode || (snap && snap.workMode) === 'edit'
-          ? t(
-              'ha2AtrPageHint',
-              '工作模式：右侧显示读改步骤。对话模式只会聊方案、不会改文件。'
-            )
-          : t(
-              'ha2WbPageHint',
-              '对话模式：只讨论与生成方案。要真正改文件请切到「工作」。'
-            )
-      ) +
-      '</p>' +
+      (researchMode
+        ? ''
+        : '<p class="ha2-wb-page-rail-hint" data-ha2-wb-page-hint>' +
+          esc(
+            atrMode || (snap && snap.workMode) === 'edit'
+              ? t(
+                  'ha2AtrPageHint',
+                  '工作模式：右侧显示读改步骤。对话模式只会聊方案、不会改文件。'
+                )
+              : t(
+                  'ha2WbPageHint',
+                  '对话模式：只讨论与生成方案。要联网查资料请切到「调研」。'
+                )
+          ) +
+          '</p>') +
       '<div class="ha2-wb-page-rail-acts">' +
       railActs +
       '</div></aside>' +
@@ -5618,9 +6100,337 @@
       esc(
         atrMode && String((snap && snap.workMode) || '') === 'edit'
           ? workPrimaryCtaLabel(snap)
-          : t('ha2Send', '发送')
+          : researchMode
+            ? t('ha2ResearchStart', '开始调研')
+            : t('ha2Send', '发送')
       ) +
       '</button></div></div></section></div>'
+    );
+  }
+
+  function researchLiveFeedHtml(rs) {
+    var prog = (rs && rs.progress) || {};
+    var live = prog.liveSources || [];
+    var found = Number(prog.sourcesFound) || live.length || 0;
+    var done = Number(prog.sourcesFetched) || 0;
+    var pct =
+      rs.status === 'synthesizing'
+        ? 100
+        : found
+          ? Math.min(100, Math.round((done / found) * 100))
+          : rs.status === 'searching'
+            ? 8
+            : 0;
+    var rows =
+      live.length > 0
+        ? live
+            .map(function (s) {
+              var st = String(s.state || 'pending');
+              var label =
+                st === 'ok'
+                  ? t('ha2ResearchLiveOk', '已读取')
+                  : st === 'fail'
+                    ? t('ha2ResearchLiveFail', '失败')
+                    : st === 'snippet'
+                      ? t('ha2ResearchLiveSnippet', '仅摘要')
+                      : st === 'fetching'
+                        ? t('ha2ResearchLiveFetching', '读取中')
+                        : t('ha2ResearchLivePending', '等待');
+              var meta =
+                st === 'ok' && s.chars
+                  ? ' · ' + Math.round(Number(s.chars) / 100) / 10 + 'k'
+                  : '';
+              return (
+                '<li class="ha2-research-live-item is-' +
+                esc(st) +
+                '">' +
+                '<span class="ha2-research-live-state">' +
+                esc(label) +
+                '</span>' +
+                '<div class="ha2-research-live-main">' +
+                '<strong>' +
+                esc(s.title || s.url || s.id) +
+                '</strong>' +
+                (s.url
+                  ? '<a href="' +
+                    esc(s.url) +
+                    '" target="_blank" rel="noreferrer">' +
+                    esc(s.url) +
+                    '</a>'
+                  : '') +
+                '<em>' +
+                esc(label + meta) +
+                '</em></div></li>'
+              );
+            })
+            .join('')
+        : '<li class="ha2-research-live-item is-pending"><span class="ha2-research-live-state">' +
+          esc(t('ha2ResearchLivePending', '等待')) +
+          '</span><div class="ha2-research-live-main"><strong>' +
+          esc(prog.message || t('ha2ResearchRunning', '正在调研…')) +
+          '</strong></div></li>';
+    return (
+      '<div class="ha2-research-live" data-ha2-research-live>' +
+      '<div class="ha2-research-live-head">' +
+      '<b>' +
+      esc(prog.message || t('ha2ResearchRunning', '正在调研…')) +
+      '</b>' +
+      '<span>' +
+      esc(String(done) + '/' + String(found || '—')) +
+      '</span></div>' +
+      '<div class="ha2-research-bar ha2-research-bar--lg" aria-hidden="true"><i style="width:' +
+      pct +
+      '%"></i></div>' +
+      (Array.isArray(prog.queries) && prog.queries.length
+        ? '<p class="ha2-research-live-queries">' +
+          esc(t('ha2ResearchLiveQueries', '检索词')) +
+          '：' +
+          esc(prog.queries.join(' · ')) +
+          '</p>'
+        : '') +
+      (prog.currentUrl
+        ? '<p class="ha2-research-live-current">' +
+          esc(t('ha2ResearchLiveCurrent', '当前')) +
+          ' · <a href="' +
+          esc(prog.currentUrl) +
+          '" target="_blank" rel="noreferrer">' +
+          esc(prog.currentTitle || prog.currentUrl) +
+          '</a></p>'
+        : '') +
+      '<ul class="ha2-research-live-list">' +
+      rows +
+      '</ul></div>'
+    );
+  }
+
+  function researchNodesHtml(result, rs) {
+    var tasks =
+      (rs && rs.progress && rs.progress.tasks) ||
+      (rs && rs.tasks) ||
+      [];
+    var metrics = (result && result.metrics) || (rs && rs.metrics) || null;
+    var metricsHtml = '';
+    if (metrics) {
+      var fsc = metrics.facetSourceCoverage || {};
+      var kcc = metrics.keyClaimCiteRate || {};
+      metricsHtml =
+        '<div class="ha2-research-metrics" data-ha2-research-metrics>' +
+        esc(
+          'path=' +
+            (metrics.path || '') +
+            ' · ' +
+            (metrics.durationMs != null ? metrics.durationMs + 'ms' : '') +
+            ' · search ' +
+            (metrics.searchCount || 0) +
+            ' · fetch ok/fail ' +
+            (metrics.fetchOk || 0) +
+            '/' +
+            (metrics.fetchFail || 0) +
+            ' · model ' +
+            (metrics.modelCalls || 0) +
+            ' · facets ' +
+            (fsc.num || 0) +
+            '/' +
+            (fsc.den || 0) +
+            ' · claims ' +
+            (kcc.num || 0) +
+            '/' +
+            (kcc.den || 0)
+        ) +
+        '</div>';
+    }
+    if (!tasks.length) {
+      return (
+        metricsHtml +
+        '<div class="ha2-research-nodes" data-ha2-research-nodes">' +
+        '<div class="ha2-research-node is-on"><strong>' +
+        esc(t('ha2ResearchNodeEmpty', '暂无任务')) +
+        '</strong></div></div>'
+      );
+    }
+    return (
+      metricsHtml +
+      '<div class="ha2-research-nodes" data-ha2-research-nodes aria-label="' +
+      esc(t('ha2ResearchNodes', '调研任务')) +
+      '">' +
+      tasks
+        .map(function (n) {
+          var st = String(n.status || 'pending');
+          return (
+            '<div class="ha2-research-node' +
+            (st === 'completed' || st === 'running' ? ' is-on' : '') +
+            (st === 'running' ? ' is-focus' : '') +
+            (st === 'failed' ? ' is-fail' : '') +
+            '" data-node="' +
+            esc(n.id) +
+            '" data-task-status="' +
+            esc(st) +
+            '">' +
+            '<span class="ha2-research-node-role">' +
+            esc(n.kind || '') +
+            '</span>' +
+            '<strong>' +
+            esc(n.subject || n.id) +
+            '</strong>' +
+            '<em>' +
+            esc(n.detail || st) +
+            '</em></div>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function researchFilePreviewPaneHtml(result, R) {
+    var kind = researchFilePreview || 'markdown';
+    var md =
+      R && R.renderMarkdown ? R.renderMarkdown(result) : String(result.summary || '');
+    if (kind === 'html') {
+      var htmlDoc =
+        R && R.renderHtml ? R.renderHtml(result) : '<pre>' + esc(md) + '</pre>';
+      // Strip outer document chrome for embedded preview.
+      var bodyMatch = String(htmlDoc).match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      var inner = bodyMatch ? bodyMatch[1] : htmlDoc;
+      return (
+        '<div class="ha2-research-file-pane is-html" data-ha2-research-pane="html">' +
+        '<div class="ha2-research-file-pane-label">report.html</div>' +
+        '<div class="ha2-research-html-frame">' +
+        inner +
+        '</div></div>'
+      );
+    }
+    if (kind === 'sources') {
+      var srcs = result.sources || [];
+      return (
+        '<div class="ha2-research-file-pane is-sources" data-ha2-research-pane="sources">' +
+        '<div class="ha2-research-file-pane-label">' +
+        esc(t('ha2ResearchSources', '来源')) +
+        '</div>' +
+        (srcs.length
+          ? '<ol class="ha2-research-source-preview">' +
+            srcs
+              .map(function (s) {
+                return (
+                  '<li><b>[' +
+                  esc(s.id) +
+                  ']</b> ' +
+                  esc(s.title || '') +
+                  '<br/><a href="' +
+                  esc(s.url) +
+                  '" target="_blank" rel="noreferrer">' +
+                  esc(s.url) +
+                  '</a>' +
+                  (s.snippet
+                    ? '<p>' + esc(String(s.snippet).slice(0, 220)) + '</p>'
+                    : '') +
+                  '</li>'
+                );
+              })
+              .join('') +
+            '</ol>'
+          : '<p class="ha2-research-msg">' +
+            esc(t('ha2ResearchNoSources', '无来源')) +
+            '</p>') +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="ha2-research-file-pane is-md" data-ha2-research-pane="markdown">' +
+      '<div class="ha2-research-file-pane-label">report.md</div>' +
+      '<div class="ha2-research-preview-body">' +
+      wbTurnBodyHtml(md, false) +
+      '</div></div>'
+    );
+  }
+
+  function researchReportPreviewHtml(result, R, rs) {
+    var srcCount = (result.sources && result.sources.length) || 0;
+    return (
+      '<article class="ha2-research-preview" data-ha2-research-preview>' +
+      '<header class="ha2-research-preview-head">' +
+      '<p class="ha2-research-preview-kicker">' +
+      esc(t('ha2ResearchPreviewKicker', '调研成稿')) +
+      (result.model ? ' · ' + esc(result.model) : '') +
+      (srcCount
+        ? ' · ' +
+          esc(t('ha2ResearchSources', '来源') + ' ' + String(srcCount))
+        : '') +
+      '</p>' +
+      '<h1 class="ha2-research-preview-title">' +
+      esc(result.title || t('ha2ResearchTitle', '调研')) +
+      '</h1>' +
+      (result.summary
+        ? '<p class="ha2-research-preview-summary">' + esc(result.summary) + '</p>'
+        : '') +
+      '</header>' +
+      researchNodesHtml(result, rs || {}) +
+      '<div class="ha2-research-files-bar">' +
+      '<button type="button" class="ha2-research-file' +
+      (researchFilePreview === 'markdown' ? ' is-on' : '') +
+      '" data-ha2-research-file="markdown">report.md</button>' +
+      '<button type="button" class="ha2-research-file' +
+      (researchFilePreview === 'html' ? ' is-on' : '') +
+      '" data-ha2-research-file="html">report.html</button>' +
+      '<button type="button" class="ha2-research-file' +
+      (researchFilePreview === 'sources' ? ' is-on' : '') +
+      '" data-ha2-research-file="sources">' +
+      esc(t('ha2ResearchSourcesFile', 'sources')) +
+      '</button></div>' +
+      researchFilePreviewPaneHtml(result, R) +
+      '</article>'
+    );
+  }
+
+  function researchPageBodyHtml(snap) {
+    var R = global.OneToneHomeResearch;
+    var rs =
+      (snap && snap.research) ||
+      (R && R.getSnapshot ? R.getSnapshot() : null) ||
+      {};
+    var result = rs.result;
+    if (result) {
+      return researchReportPreviewHtml(result, R, rs);
+    }
+    if (rs.status === 'awaiting_approval') {
+      return (
+        '<div class="ha2-research-plan-page" data-ha2-research-live>' +
+        '<p class="ha2-research-msg">' +
+        esc(
+          t(
+            'ha2ResearchPlanPage',
+            '左侧确认路径与调查面后点「确认并开始」。'
+          )
+        ) +
+        '</p>' +
+        researchNodesHtml(null, rs) +
+        '</div>'
+      );
+    }
+    if (rs.isRunning) {
+      return (
+        researchNodesHtml(null, rs) + researchLiveFeedHtml(rs)
+      );
+    }
+    if (rs.status === 'failed' && rs.error) {
+      var hint =
+        (R && R.nextStepHint && R.nextStepHint(rs.error)) || rs.error.message || '';
+      return (
+        '<div class="ha2-wb-page-empty">' +
+        esc(rs.error.message || t('ha2ResearchFailed', '调研失败')) +
+        (hint ? '<br/>' + esc(hint) : '') +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="ha2-wb-page-empty">' +
+      esc(
+        t(
+          'ha2ResearchPageEmpty',
+          '在左侧填写主题后点「开始调研」，或在下方输入主题后发送。'
+        )
+      ) +
+      '</div>'
     );
   }
 
@@ -5661,6 +6471,7 @@
     snap = snap || (store() && store().getSnapshot()) || {};
     var atrMode = atrWbPageMode(snap);
     var atrTask = (atrMode && snap.agentTask) || null;
+    var researchMode = String((snap && snap.workMode) || '') === 'research';
     var prevTranscript = host.querySelector('[data-ha2-wb-page-transcript]');
     var keepScroll = prevTranscript ? prevTranscript.scrollTop : 0;
     // Only pin to bottom when already near end — never yank while reading history.
@@ -5676,24 +6487,26 @@
     var turns = wbPageTurnsForPaint();
     var body = atrMode
       ? atrWbPageTranscriptHtml(snap)
-      : turns
-          .map(function (turn) {
-            var role = turn.role === 'assistant' ? 'assistant' : 'user';
-            return (
-              '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
-              role +
-              (turn.streaming ? ' is-streaming' : '') +
-              '"><span class="ha2-wb-page-turn-role">' +
-              wbTurnRoleHtml(role, turn.model || model) +
-              '</span>' +
-              wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
-              '</div>'
-            );
-          })
-          .join('') ||
-        '<div class="ha2-wb-page-empty">' +
-          esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
-          '</div>';
+      : researchMode
+        ? researchPageBodyHtml(snap)
+        : turns
+            .map(function (turn) {
+              var role = turn.role === 'assistant' ? 'assistant' : 'user';
+              return (
+                '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
+                role +
+                (turn.streaming ? ' is-streaming' : '') +
+                '"><span class="ha2-wb-page-turn-role">' +
+                wbTurnRoleHtml(role, turn.model || model) +
+                '</span>' +
+                wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
+                '</div>'
+              );
+            })
+            .join('') ||
+          '<div class="ha2-wb-page-empty">' +
+            esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
+            '</div>';
     if (prevTranscript) prevTranscript.innerHTML = body;
     var main = host.querySelector('.ha2-wb-page-main');
     if (main) {
@@ -5747,15 +6560,68 @@
                   'ha2AtrPageDraftPh',
                   '描述要改什么…（Ctrl+Enter，工作模式会真正读写文件）'
                 )
-              : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
+              : researchMode
+                ? t(
+                    'ha2ResearchPageDraftPh',
+                    '输入调研主题后发送，或点左侧「开始调研」…'
+                  )
+                : t('ha2WbPageDraftPh', '继续讨论…（Ctrl+Enter 发送）');
         draftEl.placeholder = draftPh;
         draftEl.setAttribute('aria-label', draftPh);
       }
+      var sendBtn = main.querySelector('[data-ha2-wb-page-send]');
+      if (sendBtn && !wbChatBusy) {
+        sendBtn.textContent =
+          atrMode && String((snap && snap.workMode) || '') === 'edit'
+            ? workPrimaryCtaLabel(snap)
+            : researchMode
+              ? t('ha2ResearchStart', '开始调研')
+              : t('ha2Send', '发送');
+      }
     }
     var page = host.querySelector('[data-ha2-wb-page]');
-    if (page) page.classList.toggle('is-atr-edit', !!atrMode);
-    if (atrMode) page && page.setAttribute('data-ha2-atr-page', '');
-    else if (page) page.removeAttribute('data-ha2-atr-page');
+    if (page) {
+      page.classList.toggle('is-atr-edit', !!atrMode);
+      page.classList.toggle('is-research', !!researchMode);
+      if (atrMode) page.setAttribute('data-ha2-atr-page', '');
+      else page.removeAttribute('data-ha2-atr-page');
+      if (researchMode) page.setAttribute('data-ha2-research-page', '');
+      else page.removeAttribute('data-ha2-research-page');
+    }
+    var researchHost = host.querySelector('[data-ha2-research-host]');
+    if (researchHost) {
+      var researchFocusLive =
+        document.activeElement &&
+        document.activeElement.closest &&
+        document.activeElement.closest('[data-ha2-research]');
+      if (!researchFocusLive || !researchHost.contains(document.activeElement)) {
+        researchHost.innerHTML = researchPanelHtml(snap);
+      }
+    }
+    var hintEl = host.querySelector('[data-ha2-wb-page-hint]');
+    if (hintEl) {
+      if (researchMode) {
+        hintEl.hidden = true;
+      } else {
+        hintEl.hidden = false;
+        hintEl.textContent =
+          atrMode || (snap && snap.workMode) === 'edit'
+            ? t(
+                'ha2AtrPageHint',
+                '工作模式：右侧显示读改步骤。对话模式只会聊方案、不会改文件。'
+              )
+            : t(
+                'ha2WbPageHint',
+                '对话模式：只讨论与生成方案。要联网查资料请切到「调研」。'
+              );
+      }
+    }
+    var railTitle = host.querySelector('.ha2-wb-page-rail-title');
+    if (railTitle && !atrMode) {
+      railTitle.textContent = researchMode
+        ? t('ha2ResearchPageTitle', '调研')
+        : t('ha2WbPageTitle', 'WorkBuddy 本机对话');
+    }
     var turnN = atrTask && atrTask.currentTurn != null ? atrTask.currentTurn : 0;
     var toolsN = atrTask && atrTask.toolCallCount != null ? atrTask.toolCallCount : 0;
     var statusLine = atrMode
@@ -6052,6 +6918,23 @@
     var atrTask = snap && snap.agentTask;
     var atrSt = atrTask ? String(atrTask.status || '') : '';
     var atrReason = atrTask ? String(atrTask.waitingReason || '') : '';
+
+    if (String((snap && snap.workMode) || '') === 'research') {
+      var Rsend = global.OneToneHomeResearch;
+      if (!Rsend || !Rsend.start) {
+        toast(t('ha2ResearchMissing', '调研模块未加载'));
+        return;
+      }
+      clearResearchComposeInputs();
+      Rsend.start({ topic: text, autoConfirm: false })
+        .then(function () {
+          if (wbChatPageOpen) paintWbChatPage();
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'research_failed'));
+        });
+      return;
+    }
 
     if (String((snap && snap.workMode) || '') === 'edit') {
       dispatchEditModeSend(S, snap, text, materialsSummaryLine(snap), {
@@ -7108,6 +7991,26 @@
       }
       return;
     }
+    if (
+      el.matches('[data-ha2-research-depth]') ||
+      el.matches('[data-ha2-research-format]') ||
+      el.matches('[data-ha2-research-path]')
+    ) {
+      var Rcfg = global.OneToneHomeResearch;
+      if (el.matches('[data-ha2-research-path]') && Rcfg && Rcfg.updatePlan) {
+        Rcfg.updatePlan({ path: el.value });
+        if (wbChatPageOpen) paintWbChatPage();
+        else if (store()) paint(store().getSnapshot());
+        return;
+      }
+      if (Rcfg && Rcfg.updateConfig) {
+        var patch = {};
+        if (el.matches('[data-ha2-research-depth]')) patch.depth = el.value;
+        if (el.matches('[data-ha2-research-format]')) patch.format = el.value;
+        Rcfg.updateConfig(patch, { silent: true });
+      }
+      return;
+    }
     if (!el.matches('[data-ha2-wb-model]')) return;
     var id = String(el.getAttribute('data-wb-id') || '');
     var model = String(el.value || '');
@@ -7462,7 +8365,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -7720,8 +8623,148 @@
     if (tEl.hasAttribute('data-ha2-work-mode')) {
       if (tEl.disabled || tEl.getAttribute('aria-disabled') === 'true') return;
       closeWorkConfirm();
-      if (S && S.setWorkMode) S.setWorkMode(tEl.getAttribute('data-ha2-work-mode'));
+      var nextMode = tEl.getAttribute('data-ha2-work-mode');
+      if (nextMode === 'research') {
+        var topicSeed = '';
+        var draftTa = root && root.querySelector('[data-ha2-wb-page-draft]');
+        if (draftTa) topicSeed = String(draftTa.value || '').trim();
+        if (!topicSeed) {
+          for (var ti = wbChatTurns.length - 1; ti >= 0; ti--) {
+            if (wbChatTurns[ti] && wbChatTurns[ti].role === 'user') {
+              topicSeed = String(wbChatTurns[ti].text || '').trim();
+              if (topicSeed) break;
+            }
+          }
+        }
+        if (topicSeed && S && S.setDraft) S.setDraft(topicSeed, { silent: true });
+      }
+      if (S && S.setWorkMode) S.setWorkMode(nextMode);
       if (wbChatPageOpen) paintWbChatPage();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-start')) {
+      var Rstart = global.OneToneHomeResearch;
+      if (!Rstart || !Rstart.start) {
+        toast(t('ha2ResearchMissing', '调研模块未加载'));
+        return;
+      }
+      var panel = tEl.closest('[data-ha2-research]');
+      var depthEl = panel && panel.querySelector('[data-ha2-research-depth]');
+      var formatEl = panel && panel.querySelector('[data-ha2-research-format]');
+      var topic = resolveResearchTopic(S && S.getSnapshot && S.getSnapshot());
+      if (!String(topic || '').trim()) {
+        toast(t('ha2ResearchNeedTopic', '先在下方输入框写调研主题'));
+        return;
+      }
+      clearResearchComposeInputs();
+      Rstart.start({
+        topic: String(topic || '').trim(),
+        depth: (depthEl && depthEl.value) || 'standard',
+        format: (formatEl && formatEl.value) || 'markdown',
+        autoConfirm: false
+      })
+        .then(function () {
+          if (wbChatPageOpen) paintWbChatPage();
+          else if (S) paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'research_failed'));
+        });
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-confirm')) {
+      var Rconf = global.OneToneHomeResearch;
+      if (!Rconf || !Rconf.confirmAndRun) {
+        toast(t('ha2ResearchMissing', '调研模块未加载'));
+        return;
+      }
+      var planPanel = tEl.closest('[data-ha2-research]');
+      var pathEl = planPanel && planPanel.querySelector('[data-ha2-research-path]');
+      var facetInputs =
+        (planPanel && planPanel.querySelectorAll('[data-ha2-research-facet-q]')) || [];
+      if (Rconf.updatePlan) {
+        var facetPatch = [];
+        for (var fi = 0; fi < facetInputs.length; fi++) {
+          var inp = facetInputs[fi];
+          facetPatch.push({
+            id: inp.getAttribute('data-ha2-research-facet-q'),
+            query: inp.value,
+            label: (inp.previousElementSibling && inp.previousElementSibling.textContent) || ''
+          });
+        }
+        Rconf.updatePlan({
+          path: (pathEl && pathEl.value) || undefined,
+          facets: facetPatch.length ? facetPatch : undefined
+        });
+      }
+      Rconf.confirmAndRun({})
+        .then(function () {
+          if (wbChatPageOpen) paintWbChatPage();
+          else if (S) paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'research_failed'));
+        });
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-cancel')) {
+      var Rc = global.OneToneHomeResearch;
+      if (Rc && Rc.cancel) Rc.cancel();
+      if (S && S.setWorkMode) S.setWorkMode('think');
+      if (wbChatPageOpen) paintWbChatPage();
+      else if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-restart')) {
+      var Rr = global.OneToneHomeResearch;
+      if (Rr && Rr.openConfig) {
+        var prev = Rr.getSnapshot ? Rr.getSnapshot() : {};
+        Rr.openConfig({
+          topic: (prev.config && prev.config.topic) || '',
+          depth: (prev.config && prev.config.depth) || 'standard',
+          format: (prev.config && prev.config.format) || 'markdown'
+        });
+      }
+      if (wbChatPageOpen) paintWbChatPage();
+      else if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-file')) {
+      var fileKind = tEl.getAttribute('data-ha2-research-file') || 'markdown';
+      if (fileKind === researchFilePreview) {
+        // Toggle collapse → default back to markdown summary view still open.
+        researchFilePreview = fileKind;
+      } else {
+        researchFilePreview = fileKind;
+      }
+      if (wbChatPageOpen) paintWbChatPage();
+      else if (S) paint(S.getSnapshot());
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-research-export')) {
+      var Re = global.OneToneHomeResearch;
+      var fmt = tEl.getAttribute('data-ha2-research-export') || 'markdown';
+      if (!Re || !Re.exportReport) {
+        toast(t('ha2ResearchMissing', '调研模块未加载'));
+        return;
+      }
+      Re.exportReport(fmt)
+        .then(function (snapExp) {
+          var path =
+            (snapExp && snapExp.lastExportPath) ||
+            (Re.getSnapshot && Re.getSnapshot().lastExportPath) ||
+            '';
+          toast(
+            path
+              ? t('ha2ResearchExported', '已导出') + '：' + path
+              : t('ha2ResearchExported', '已导出')
+          );
+          if (wbChatPageOpen) paintWbChatPage();
+          else if (S) paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'export_failed'));
+        });
       return;
     }
     if (tEl.hasAttribute('data-ha2-work-confirm-cancel')) {
@@ -8160,6 +9203,15 @@
       if (!mounted) return;
       paint(snap);
     });
+    try {
+      var Rsub = global.OneToneHomeResearch;
+      if (Rsub && typeof Rsub.subscribe === 'function') {
+        Rsub.subscribe(function () {
+          if (!mounted) return;
+          paintResearchLive();
+        });
+      }
+    } catch (_) {}
     mounted = true;
     paint(S.getSnapshot());
     refreshAllAgentAims();

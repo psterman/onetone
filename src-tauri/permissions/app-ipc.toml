@@ -309,4 +309,7 @@ permissions = [
   "allow-cmd-soft-pad-paste-only",
   "allow-cmd-open-path",
   "allow-cmd-handoff-write-md",
+  "allow-cmd-research-web-search",
+  "allow-cmd-research-fetch-url",
+  "allow-cmd-research-export",
 ]

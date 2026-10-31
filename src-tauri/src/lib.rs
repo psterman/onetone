@@ -49,6 +49,7 @@ mod cursor_local_activity;
 mod cursor_local_activity;
 mod cursor_workflow;
 mod data_root;
+mod research;
 mod device_identity;
 mod gaze_monitor;
 mod gemini_hook_setup;
@@ -1192,6 +1193,9 @@ pub fn run() {
             ipc::cmd_weather_now,
             ipc::cmd_open_path,
             ipc::cmd_handoff_write_md,
+            ipc::cmd_research_web_search,
+            ipc::cmd_research_fetch_url,
+            ipc::cmd_research_export,
             ipc::cmd_pick_path,
             ipc::cmd_list_browser_bookmarks,
             ipc::cmd_data_root_status,

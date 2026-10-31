@@ -57,6 +57,15 @@
     if (m === 'work' || m === 'agent' || m === 'edit' || m === 'write' || m === 'code') {
       return 'edit';
     }
+    if (
+      m === 'research' ||
+      m === '调研' ||
+      m === 'investigate' ||
+      m === 'web_research' ||
+      m === 'webresearch'
+    ) {
+      return 'research';
+    }
     if (m === 'readonly' || m === 'read' || m === 'read_only') return 'readonly';
     return 'think';
   }
@@ -401,6 +410,12 @@
       modeReason = modeEffective
         ? ''
         : (Caps.text_chat && Caps.text_chat.reason) || '思考模式需本机文本对话';
+    } else if (mode === 'research') {
+      // Research uses the same local LLM channel as chat; search/fetch are separate IPC.
+      modeEffective = !!(Caps.text_chat && Caps.text_chat.available);
+      modeReason = modeEffective
+        ? ''
+        : (Caps.text_chat && Caps.text_chat.reason) || '调研模式需本机文本对话（WorkBuddy / Soft Pad）';
     } else if (mode === 'readonly') {
       modeEffective = !!(Caps.read_project && Caps.read_project.available);
       modeReason =

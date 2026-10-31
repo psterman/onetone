@@ -1240,7 +1240,7 @@ assert.equal(st.loadLastGood(), null);
   assert.equal(snap.session.capabilities.text_chat.available, false);
   assert.equal(sandbox.localStorage.getItem('onetone.ha2.wbSendMode'), 'desktop');
 
-  // Legacy readonly → 对话 (primary UI is chat|work only).
+  // Legacy readonly → 对话 (primary UI is chat|work|research).
   Store.setWorkMode('readonly');
   snap = Store.getSnapshot();
   assert.equal(snap.session.mode, 'think');
@@ -1255,6 +1255,14 @@ assert.equal(st.loadLastGood(), null);
   snap = Store.getSnapshot();
   assert.equal(snap.session.mode, 'think');
   assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'think');
+
+  Store.setWorkMode('research');
+  snap = Store.getSnapshot();
+  assert.equal(snap.session.mode, 'research');
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'research');
+  Store.setWorkMode('think');
+  snap = Store.getSnapshot();
+  assert.equal(snap.session.mode, 'think');
 
   // All permissions not_wired / no fake toggles
   const perms = snap.session.permissions;

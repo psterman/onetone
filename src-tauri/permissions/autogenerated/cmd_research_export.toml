@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-research-export"
+description = "Enables the cmd_research_export command without any pre-configured scope."
+commands.allow = ["cmd_research_export"]
+
+[[permission]]
+identifier = "deny-cmd-research-export"
+description = "Denies the cmd_research_export command without any pre-configured scope."
+commands.deny = ["cmd_research_export"]
