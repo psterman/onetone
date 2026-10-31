@@ -110,7 +110,7 @@ pub fn workbuddy_has_account() -> bool {
         .unwrap_or(false)
 }
 
-/// Legacy alias: same as chat ready (probe no longer gates edit listing).
+/// Chat/login ready. Normal editCapable comes from backend acceptance records.
 pub fn workbuddy_edit_ready() -> bool {
     workbuddy_chat_ready()
 }
@@ -160,6 +160,14 @@ mod tests {
             applied_tokens_json: "[]".into(),
             created_at: 0,
             updated_at: 0,
+            provider_id: None,
+            model_id: None,
+            config_fp: None,
+            driver_kind: "unknown".into(),
+            verify_intent: false,
+            sandbox_id: None,
+            expected_rel_path: None,
+            expected_content: None,
         }
     }
 

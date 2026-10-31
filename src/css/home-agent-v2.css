@@ -124,6 +124,24 @@
 }
 .ha2-atr-timeline li{margin:2px 0}
 .ha2-atr-timeline code{font-size:11px}
+.ha2-atr-stages{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;width:100%}
+.ha2-atr-stage{
+  font-size:11px;line-height:1.3;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--ha2-line);color:var(--ha2-muted);background:transparent;
+}
+.ha2-atr-stage.is-on{color:var(--ha2-ink);border-color:var(--ha2-ink)}
+.ha2-atr-stage.is-warn{color:var(--ha2-warn);border-color:var(--ha2-warn)}
+.ha2-atr-stage-note{display:block;width:100%;font-size:11px;color:var(--ha2-muted);margin-top:2px}
+.ha2-atr-details{margin:6px 0 0;width:100%;font-size:12px;color:var(--ha2-muted)}
+.ha2-atr-details summary{cursor:pointer;user-select:none}
+.ha2-atr-send-conflict{
+  display:flex;flex-direction:column;gap:6px;margin:8px 0 0;padding:8px 10px;
+  width:100%;border-radius:10px;border:1px solid var(--ha2-line);background:var(--ha2-surface);
+}
+.ha2-atr-send-conflict b{font-size:12.5px}
+.ha2-atr-send-conflict small{font-size:11px;color:var(--ha2-muted);line-height:1.35}
+.ha2-atr-send-conflict-acts{display:flex;flex-wrap:wrap;gap:6px}
+.ha2-atr-mode-row{width:100%;margin-top:4px}
 .ha2-approve{
   display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0 2px;
   border-radius:12px;

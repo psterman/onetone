@@ -18,7 +18,8 @@ const providers = read('src-tauri/src/agent_task_runtime/providers.rs');
 assert.match(providers, /workbuddy/);
 assert.match(providers, /DeepSeek/);
 assert.match(providers, /selectedDefault/);
-assert.match(providers, /preferred_edit_ready/);
+assert.match(providers, /recommended_try_edit|recommendedProvider/);
+assert.match(providers, /tryEdit/);
 assert.match(providers, /editCapable/);
 assert.match(providers, /workbuddyChatReady/);
 assert.match(providers, /probe_workbuddy_edit/);
@@ -27,7 +28,8 @@ assert.match(providers, /workbuddy_chat_ready/);
 assert.match(providers, /workbuddy_unconfigured/);
 assert.doesNotMatch(providers, /workbuddy_edit_disabled/);
 assert.doesNotMatch(providers, /编辑暂不可用/);
-assert.match(providers, /preferred_workbuddy_over_soft_pad_when_ready/);
+assert.match(providers, /recommend_workbuddy_when_try_edit/);
+assert.match(providers, /Value::Null/);
 
 const wb = read('src-tauri/src/agent_task_runtime/workbuddy.rs');
 assert.match(wb, /scripted_readme_step/);
@@ -61,8 +63,14 @@ assert.match(taskJs, /onStarted/);
 assert.match(taskJs, /maxSteps:\s*1/);
 assert.match(taskJs, /probeWorkbuddy/);
 assert.match(taskJs, /isEditCapableRow/);
-assert.match(taskJs, /Respect backend editCapable/);
-assert.match(taskJs, /workbuddyReady/);
+assert.match(taskJs, /locallyVerified|allowTryEdit|evaluateVerify|ensureVerifySandbox/);
+assert.match(taskJs, /workbuddyReady|enrichReadySnapshot/);
+assert.match(taskJs, /editCapable: editCapable|editCapable === true/);
+assert.doesNotMatch(
+  taskJs,
+  /editCapable:\s*verified/
+);
+assert.match(taskJs, /ensureVerifySandbox|cmd_agent_task_ensure_verify_sandbox/);
 
 const fe = read('src/js/features/now/home-agent-task.js');
 assert.match(fe, /onetone\.atr\.provider/);
@@ -94,21 +102,50 @@ assert.match(ui, /data-ha2-atr-open-page/);
 assert.match(ui, /data-ha2-atr-page/);
 assert.match(ui, /atrWbPageTranscriptHtml/);
 assert.match(ui, /data-ha2-atr-approve-all/);
-assert.match(ui, /批准并执行/);
-assert.match(ui, /同意这次任务/);
+assert.match(ui, /批准补丁写入|批准并执行/);
 assert.match(ui, /同意所有任务/);
 assert.match(ui, /拒绝方案/);
-assert.match(ui, /ha2AtrDoneTitle/);
+assert.match(ui, /data-ha2-atr-verify-engine|隔离验证/);
+assert.match(ui, /ensureVerifySandbox/);
+assert.match(ui, /edit_not_admitted/);
+assert.doesNotMatch(ui, /E:\/voice-pilot\/\.tmp-atr-e2e-sandbox/);
+assert.match(ui, /atrSendConflict|keep-draft|保留草稿/);
+assert.doesNotMatch(ui, /writeProvider\(info\.selectedDefault\)/);
+assert.match(
+  read('src/js/features/now/home-agent-v2-store.js'),
+  /evaluateVerify/
+);
+assert.match(
+  read('src/js/features/now/home-agent-v2-store.js'),
+  /edit_not_admitted/
+);
+assert.doesNotMatch(
+  read('src/js/features/now/home-agent-v2-store.js'),
+  /markEditVerified\(provider/
+);
+// FE isolation verify: sandboxId only — no FE-owned expected_* authority.
+assert.match(
+  read('src/js/features/now/home-agent-task.js'),
+  /sandboxId: opts\.sandboxId/
+);
+assert.doesNotMatch(
+  read('src/js/features/now/home-agent-task.js'),
+  /expectedContent: opts\.expectedContent/
+);
+assert.match(ui, /ha2AtrDoneQuietNoWrite|ha2AtrDoneQuietWrote/);
+assert.match(
+  read('src/js/features/now/home-agent-capabilities.js'),
+  /勿臆测「本机无网/
+);
 assert.doesNotMatch(ui, /ha2-wb-page-turn--strategy/);
-assert.match(ui, /opens confirm gate; does not drive yet/);
-assert.match(ui, /workConfirmOpen/);
-assert.match(ui, /workConfirmGateHtml|data-ha2-work-confirm/);
+assert.match(ui, /silent verify first if needed|ha2AtrVerifySilent/);
 assert.match(ui, /startConfirmedWorkTask/);
+assert.match(ui, /startAtrSandboxVerify/);
 assert.match(ui, /taskCoreHtml/);
 assert.match(ui, /atrUserStepLine/);
 assert.match(ui, /syncModeChrome/);
 assert.match(ui, /ha2ModeBoundaryWork|ha2ModeBoundaryChat/);
-assert.match(ui, /生成执行计划/);
+assert.match(ui, /开始执行|ha2WorkStartCta/);
 assert.match(ui, /当前工作任务/);
 assert.match(ui, /Steps first; then local-chat only after this ATR open/);
 assert.match(ui, /atrChatSinceMs = Date\.now/);
@@ -278,7 +315,16 @@ assert.match(ui, /workModeSegmentHtml/);
 assert.match(ui, /ha2ModeChat/);
 assert.match(ui, /ha2ModeWork/);
 assert.match(ui, /do not force edit/);
-assert.match(ui, /确认门后再 drive/);
+assert.match(ui, /dispatchEditModeSend|routeToChatInsteadOfEdit/);
+{
+  const routeChat = ui.match(
+    /function routeToChatInsteadOfEdit\([\s\S]*?\n  \/\*\*[\s\S]*?Work-mode send/
+  );
+  assert.ok(routeChat, 'routeToChatInsteadOfEdit block');
+  // Keep 工作 mode — answer via chat channel only, do not flip UI to 对话.
+  assert.doesNotMatch(routeChat[0], /setWorkMode\(\s*['"]think['"]\s*\)/);
+  assert.match(routeChat[0], /ha2WorkKeptChatAnswer|仍在「工作」/);
+}
 {
   const pageSend = ui.match(
     /function sendWbPageDraft\([\s\S]*?\n  function stopWbLocalStream/
@@ -286,8 +332,8 @@ assert.match(ui, /确认门后再 drive/);
   assert.ok(pageSend, 'sendWbPageDraft block');
   assert.match(pageSend[0], /promoteWorkModeForEditGoal/);
   assert.match(pageSend[0], /workMode[\s\S]*=== 'edit'/);
-  assert.match(pageSend[0], /workConfirmOpen|startConfirmedWorkTask/);
-  assert.match(pageSend[0], /openAtrEditPage/);
+  assert.match(pageSend[0], /dispatchEditModeSend/);
+  assert.match(ui, /abandonAndStartAgentTask|startConfirmedWorkTask/);
 }
 assert.match(
   read('src/js/features/now/home-agent-capabilities.js'),
@@ -300,8 +346,9 @@ assert.match(
 assert.match(store, /编辑任务进行中/);
 assert.match(store, /abandonAndStartAgentTask/);
 assert.match(store, /abandon_and_send/);
-assert.match(store, /正在放弃旧任务并发送当前输入/);
-assert.match(store, /放弃并发送当前输入/);
+assert.match(store, /preflightAtrStart/);
+assert.match(store, /旧任务已放弃，新任务未创建/);
+assert.match(store, /放弃并发送草稿/);
 assert.match(store, /workbuddy_unconfigured/);
 assert.match(store, /请先登录 WorkBuddy/);
 assert.match(store, /persistAutonomous/);
@@ -341,5 +388,7 @@ assert.match(
 const appIpc = read('src-tauri/permissions/app-ipc.toml');
 assert.match(appIpc, /allow-cmd-agent-task-drive"/);
 assert.match(appIpc, /allow-cmd-agent-task-probe-workbuddy"/);
+assert.match(appIpc, /allow-cmd-agent-task-ensure-verify-sandbox"/);
+assert.match(appIpc, /allow-cmd-agent-task-evaluate-verify"/);
 
 console.log('test-atr-provider-switch: ok');

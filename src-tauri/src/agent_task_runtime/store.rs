@@ -109,6 +109,72 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         )
         .map_err(|e| format!("atr migrate record: {e}"))?;
     }
+    let v2: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM atr_schema_migrations WHERE version = 2",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if v2 == 0 {
+        conn.execute_batch(
+            r#"
+            ALTER TABLE agent_tasks ADD COLUMN provider_id TEXT;
+            ALTER TABLE agent_tasks ADD COLUMN model_id TEXT;
+            ALTER TABLE agent_tasks ADD COLUMN config_fp TEXT;
+            ALTER TABLE agent_tasks ADD COLUMN driver_kind TEXT NOT NULL DEFAULT 'unknown';
+            ALTER TABLE agent_tasks ADD COLUMN verify_intent INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE agent_tasks ADD COLUMN sandbox_id TEXT;
+            ALTER TABLE agent_tasks ADD COLUMN expected_rel_path TEXT;
+            ALTER TABLE agent_tasks ADD COLUMN expected_content TEXT;
+            CREATE TABLE IF NOT EXISTS atr_edit_acceptances (
+              provider_id TEXT NOT NULL,
+              model_id TEXT NOT NULL,
+              config_fp TEXT NOT NULL,
+              accept_spec_version INTEGER NOT NULL,
+              task_id TEXT NOT NULL,
+              sandbox_id TEXT,
+              check_status TEXT NOT NULL,
+              created_at_ms INTEGER NOT NULL,
+              PRIMARY KEY (provider_id, model_id, config_fp, accept_spec_version)
+            );
+            UPDATE agent_tasks SET driver_kind = 'unknown' WHERE driver_kind IS NULL OR driver_kind = '';
+            "#,
+        )
+        .map_err(|e| format!("atr migrate v2: {e}"))?;
+        conn.execute(
+            "INSERT INTO atr_schema_migrations(version, applied_at_ms) VALUES (2, ?1)",
+            [now_ms() as i64],
+        )
+        .map_err(|e| format!("atr migrate v2 record: {e}"))?;
+    }
+    let v3: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM atr_schema_migrations WHERE version = 3",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if v3 == 0 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS atr_verify_sandboxes (
+              sandbox_id TEXT PRIMARY KEY,
+              workspace_root TEXT NOT NULL,
+              expected_rel_path TEXT NOT NULL,
+              expected_content TEXT NOT NULL,
+              bound_task_id TEXT,
+              created_at_ms INTEGER NOT NULL
+            );
+            "#,
+        )
+        .map_err(|e| format!("atr migrate v3: {e}"))?;
+        conn.execute(
+            "INSERT INTO atr_schema_migrations(version, applied_at_ms) VALUES (3, ?1)",
+            [now_ms() as i64],
+        )
+        .map_err(|e| format!("atr migrate v3 record: {e}"))?;
+    }
     Ok(())
 }
 
@@ -172,9 +238,31 @@ pub struct TaskRow {
     pub applied_tokens_json: String,
     pub created_at: u64,
     pub updated_at: u64,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+    pub config_fp: Option<String>,
+    /// `real` | `fake` | `unknown` — backend only; migrate old rows as unknown.
+    pub driver_kind: String,
+    pub verify_intent: bool,
+    pub sandbox_id: Option<String>,
+    pub expected_rel_path: Option<String>,
+    pub expected_content: Option<String>,
 }
 
 impl TaskRow {
+    pub fn bind_defaults() -> (
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        String,
+        bool,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    ) {
+        (None, None, None, "unknown".into(), false, None, None, None)
+    }
+
     pub fn to_dto(&self) -> TaskDto {
         TaskDto {
             task_id: self.task_id.clone(),
@@ -191,6 +279,14 @@ impl TaskRow {
             last_error: self.last_error.clone(),
             created_at: self.created_at,
             updated_at: self.updated_at,
+            provider_id: self.provider_id.clone(),
+            model_id: self.model_id.clone(),
+            config_fp: self.config_fp.clone(),
+            driver_kind: Some(self.driver_kind.clone()),
+            verify_intent: self.verify_intent,
+            sandbox_id: self.sandbox_id.clone(),
+            expected_rel_path: self.expected_rel_path.clone(),
+            expected_content: self.expected_content.clone(),
         }
     }
 }
@@ -221,13 +317,25 @@ fn map_task(r: &rusqlite::Row<'_>) -> rusqlite::Result<TaskRow> {
         applied_tokens_json: r.get(17)?,
         created_at: r.get::<_, i64>(18)? as u64,
         updated_at: r.get::<_, i64>(19)? as u64,
+        provider_id: r.get(20)?,
+        model_id: r.get(21)?,
+        config_fp: r.get(22)?,
+        driver_kind: r
+            .get::<_, Option<String>>(23)?
+            .unwrap_or_else(|| "unknown".into()),
+        verify_intent: r.get::<_, Option<i64>>(24)?.unwrap_or(0) != 0,
+        sandbox_id: r.get(25)?,
+        expected_rel_path: r.get(26)?,
+        expected_content: r.get(27)?,
     })
 }
 
 const TASK_SELECT: &str = "SELECT task_id, goal, workspace_root, permission_mode, status,
   waiting_reason, current_turn, tool_call_count, changed_files_json, baseline_dirty_json,
   pending_approval_token, pending_patch_json, fingerprints_json, checkpoint_id, last_error,
-  repair_count, format_retry_count, applied_tokens_json, created_at_ms, updated_at_ms
+  repair_count, format_retry_count, applied_tokens_json, created_at_ms, updated_at_ms,
+  provider_id, model_id, config_fp, driver_kind, verify_intent, sandbox_id,
+  expected_rel_path, expected_content
   FROM agent_tasks";
 
 pub fn get_task(conn: &Connection, task_id: &str) -> Result<Option<TaskRow>, String> {
@@ -364,8 +472,11 @@ pub fn insert_task(conn: &Connection, task: &TaskRow) -> Result<(), String> {
           current_turn, tool_call_count, changed_files_json, baseline_dirty_json,
           pending_approval_token, pending_patch_json, fingerprints_json, checkpoint_id,
           last_error, repair_count, format_retry_count, applied_tokens_json,
-          created_at_ms, updated_at_ms
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)",
+          created_at_ms, updated_at_ms,
+          provider_id, model_id, config_fp, driver_kind, verify_intent, sandbox_id,
+          expected_rel_path, expected_content
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,
+          ?21,?22,?23,?24,?25,?26,?27,?28)",
         params![
             task.task_id,
             task.goal,
@@ -386,10 +497,188 @@ pub fn insert_task(conn: &Connection, task: &TaskRow) -> Result<(), String> {
             task.format_retry_count as i64,
             task.applied_tokens_json,
             task.created_at as i64,
-            task.updated_at as i64
+            task.updated_at as i64,
+            task.provider_id,
+            task.model_id,
+            task.config_fp,
+            task.driver_kind,
+            if task.verify_intent { 1i64 } else { 0i64 },
+            task.sandbox_id,
+            task.expected_rel_path,
+            task.expected_content
         ],
     )
     .map_err(|e| format!("insert task: {e}"))?;
+    Ok(())
+}
+
+/// Persist provider bind / verify fields (same write lock as drive start).
+pub fn update_task_bind(conn: &Connection, task: &TaskRow) -> Result<(), String> {
+    conn.execute(
+        "UPDATE agent_tasks SET
+          provider_id=?1, model_id=?2, config_fp=?3, driver_kind=?4, verify_intent=?5,
+          sandbox_id=?6, expected_rel_path=?7, expected_content=?8, updated_at_ms=?9
+         WHERE task_id=?10",
+        params![
+            task.provider_id,
+            task.model_id,
+            task.config_fp,
+            task.driver_kind,
+            if task.verify_intent { 1i64 } else { 0i64 },
+            task.sandbox_id,
+            task.expected_rel_path,
+            task.expected_content,
+            now_ms() as i64,
+            task.task_id
+        ],
+    )
+    .map_err(|e| format!("update task bind: {e}"))?;
+    Ok(())
+}
+
+pub const ACCEPT_SPEC_VERSION: i64 = 1;
+
+#[derive(Debug, Clone)]
+pub struct EditAcceptance {
+    pub provider_id: String,
+    pub model_id: String,
+    pub config_fp: String,
+    pub accept_spec_version: i64,
+    pub task_id: String,
+    pub sandbox_id: Option<String>,
+    pub check_status: String,
+    pub created_at: u64,
+}
+
+pub fn upsert_edit_acceptance(conn: &Connection, row: &EditAcceptance) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO atr_edit_acceptances(
+           provider_id, model_id, config_fp, accept_spec_version, task_id, sandbox_id,
+           check_status, created_at_ms
+         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)
+         ON CONFLICT(provider_id, model_id, config_fp, accept_spec_version) DO UPDATE SET
+           task_id=excluded.task_id,
+           sandbox_id=excluded.sandbox_id,
+           check_status=excluded.check_status,
+           created_at_ms=excluded.created_at_ms",
+        params![
+            row.provider_id,
+            row.model_id,
+            row.config_fp,
+            row.accept_spec_version,
+            row.task_id,
+            row.sandbox_id,
+            row.check_status,
+            row.created_at as i64
+        ],
+    )
+    .map_err(|e| format!("upsert acceptance: {e}"))?;
+    Ok(())
+}
+
+pub fn find_edit_acceptance(
+    conn: &Connection,
+    provider_id: &str,
+    model_id: &str,
+    config_fp: &str,
+) -> Result<Option<EditAcceptance>, String> {
+    conn.query_row(
+        "SELECT provider_id, model_id, config_fp, accept_spec_version, task_id, sandbox_id,
+                check_status, created_at_ms
+         FROM atr_edit_acceptances
+         WHERE provider_id=?1 AND model_id=?2 AND config_fp=?3 AND accept_spec_version=?4",
+        params![
+            provider_id,
+            model_id,
+            config_fp,
+            ACCEPT_SPEC_VERSION
+        ],
+        |r| {
+            Ok(EditAcceptance {
+                provider_id: r.get(0)?,
+                model_id: r.get(1)?,
+                config_fp: r.get(2)?,
+                accept_spec_version: r.get(3)?,
+                task_id: r.get(4)?,
+                sandbox_id: r.get(5)?,
+                check_status: r.get(6)?,
+                created_at: r.get::<_, i64>(7)? as u64,
+            })
+        },
+    )
+    .optional()
+    .map_err(|e| format!("find acceptance: {e}"))
+}
+
+#[derive(Debug, Clone)]
+pub struct VerifySandboxRow {
+    pub sandbox_id: String,
+    pub workspace_root: String,
+    pub expected_rel_path: String,
+    pub expected_content: String,
+    pub bound_task_id: Option<String>,
+    pub created_at: u64,
+}
+
+pub fn insert_verify_sandbox(conn: &Connection, row: &VerifySandboxRow) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO atr_verify_sandboxes(
+           sandbox_id, workspace_root, expected_rel_path, expected_content,
+           bound_task_id, created_at_ms
+         ) VALUES (?1,?2,?3,?4,?5,?6)",
+        params![
+            row.sandbox_id,
+            row.workspace_root,
+            row.expected_rel_path,
+            row.expected_content,
+            row.bound_task_id,
+            row.created_at as i64
+        ],
+    )
+    .map_err(|e| format!("insert verify sandbox: {e}"))?;
+    Ok(())
+}
+
+pub fn get_verify_sandbox(
+    conn: &Connection,
+    sandbox_id: &str,
+) -> Result<Option<VerifySandboxRow>, String> {
+    conn.query_row(
+        "SELECT sandbox_id, workspace_root, expected_rel_path, expected_content,
+                bound_task_id, created_at_ms
+         FROM atr_verify_sandboxes WHERE sandbox_id = ?1",
+        params![sandbox_id],
+        |r| {
+            Ok(VerifySandboxRow {
+                sandbox_id: r.get(0)?,
+                workspace_root: r.get(1)?,
+                expected_rel_path: r.get(2)?,
+                expected_content: r.get(3)?,
+                bound_task_id: r.get(4)?,
+                created_at: r.get::<_, i64>(5)? as u64,
+            })
+        },
+    )
+    .optional()
+    .map_err(|e| format!("get verify sandbox: {e}"))
+}
+
+pub fn bind_verify_sandbox_task(
+    conn: &Connection,
+    sandbox_id: &str,
+    task_id: &str,
+) -> Result<(), String> {
+    let n = conn
+        .execute(
+            "UPDATE atr_verify_sandboxes SET bound_task_id = ?1
+             WHERE sandbox_id = ?2
+               AND (bound_task_id IS NULL OR bound_task_id = '' OR bound_task_id = ?1)",
+            params![task_id, sandbox_id],
+        )
+        .map_err(|e| format!("bind verify sandbox: {e}"))?;
+    if n != 1 {
+        return Err("sandbox_already_bound".into());
+    }
     Ok(())
 }
 
@@ -495,6 +784,14 @@ mod tests {
                 applied_tokens_json: "[]".into(),
                 created_at: now,
                 updated_at: now,
+                provider_id: None,
+                model_id: None,
+                config_fp: None,
+                driver_kind: "unknown".into(),
+                verify_intent: false,
+                sandbox_id: None,
+                expected_rel_path: None,
+                expected_content: None,
             };
             insert_task(conn, &task)?;
             append_event_and_update_task(

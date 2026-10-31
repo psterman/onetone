@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-task-evaluate-verify"
+description = "Enables the cmd_agent_task_evaluate_verify command without any pre-configured scope."
+commands.allow = ["cmd_agent_task_evaluate_verify"]
+
+[[permission]]
+identifier = "deny-cmd-agent-task-evaluate-verify"
+description = "Denies the cmd_agent_task_evaluate_verify command without any pre-configured scope."
+commands.deny = ["cmd_agent_task_evaluate_verify"]

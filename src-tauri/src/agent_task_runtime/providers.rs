@@ -6,7 +6,7 @@ use super::deepseek::{self, OpenAiCompatDriver};
 use super::workbuddy::{self, WorkbuddyDriver};
 use crate::soft_pad_quota::SoftPadQuotaProvider;
 
-/// Soft Pad providers in catalog display order, then WorkBuddy (OAuth freemodel primary).
+/// Soft Pad providers in catalog display order, then WorkBuddy (OAuth freemodel).
 const SOFT_PAD_ORDER: [SoftPadQuotaProvider; 4] = [
     SoftPadQuotaProvider::DeepSeek,
     SoftPadQuotaProvider::Kimi,
@@ -25,8 +25,8 @@ pub fn parse_provider_id(s: &str) -> Option<String> {
     SoftPadQuotaProvider::from_str(&t).map(|p| p.as_str().to_string())
 }
 
-fn workbuddy_label(ready: bool) -> String {
-    if ready {
+fn workbuddy_label(chat_ready: bool) -> String {
+    if chat_ready {
         return "WorkBuddy".into();
     }
     if workbuddy::workbuddy_has_account() {
@@ -36,77 +36,100 @@ fn workbuddy_label(ready: bool) -> String {
     }
 }
 
+/// tryEdit: preconditions for labeled verify/trial — not "safe normal edit".
+fn soft_pad_try_edit(ready: bool) -> bool {
+    ready
+}
+
+fn workbuddy_try_edit(chat_ready: bool, probe: &str) -> bool {
+    chat_ready && probe != "fail"
+}
+
 pub fn provider_ready_snapshot() -> Value {
     let mut providers = Vec::new();
     for p in SOFT_PAD_ORDER {
-        let ready = deepseek::soft_pad_provider_ready(p);
+        let chat_ready = deepseek::soft_pad_provider_ready(p);
+        let try_edit = soft_pad_try_edit(chat_ready);
         providers.push(json!({
             "id": p.as_str(),
             "label": p.label(),
-            "ready": ready,
-            "editCapable": ready,
-            "chatReady": ready,
+            // Legacy "ready" = chat/key present (not editCapable).
+            "ready": chat_ready,
+            "chatReady": chat_ready,
+            "tryEdit": try_edit,
+            // Normal project edit: backend acceptance only (see apply_acceptances).
+            "editCapable": false,
+            "locallyVerified": false,
             "modelId": deepseek::soft_pad_model_id(p),
             "kind": "soft_pad",
         }));
     }
 
-    // OAuth freemodel path: account + selected model = ATR edit ready (probe is diagnostic only).
-    let wb_ready = workbuddy::workbuddy_chat_ready();
+    let wb_chat = workbuddy::workbuddy_chat_ready();
     let wb_probe = workbuddy::workbuddy_edit_probe_status();
+    let wb_try = workbuddy_try_edit(wb_chat, wb_probe);
     let wb_model = workbuddy::workbuddy_model_id();
     providers.push(json!({
         "id": "workbuddy",
-        "label": workbuddy_label(wb_ready),
-        "ready": wb_ready,
-        "editCapable": wb_ready,
-        "chatReady": wb_ready,
+        "label": workbuddy_label(wb_chat),
+        "ready": wb_chat,
+        "chatReady": wb_chat,
+        "tryEdit": wb_try,
+        "editCapable": false,
+        "locallyVerified": false,
         "editProbe": wb_probe,
         "modelId": wb_model,
         "kind": "workbuddy",
     }));
 
-    let selected_default = preferred_edit_ready(&providers);
+    // Backend acceptance (config fingerprint match) is the only editCapable grant.
+    super::verify_accept::apply_acceptances_to_providers(&mut providers);
+
+    let recommended = recommended_try_edit(&providers);
     json!({
         "implemented": true,
         "deepseekReady": deepseek::deepseek_ready(),
-        "workbuddyReady": wb_ready,
-        "workbuddyChatReady": wb_ready,
+        "workbuddyReady": wb_chat,
+        "workbuddyChatReady": wb_chat,
         "providers": providers,
-        "selectedDefault": selected_default,
+        // Do not auto-pick a billing Soft Pad. FE keeps user choice; recommend is advisory.
+        "selectedDefault": Value::Null,
+        "recommendedProvider": recommended.0,
+        "recommendReason": recommended.1,
         "defaultPermissionMode": "write_with_approval",
+        "acceptSpecVersion": super::store::ACCEPT_SPEC_VERSION,
     })
 }
 
-/// Prefer WorkBuddy (OAuth freemodel) when ready, else Soft Pad catalog order.
-fn preferred_edit_ready(providers: &[Value]) -> Option<String> {
+/// Advisory only — never written by backend as the active engine.
+fn recommended_try_edit(providers: &[Value]) -> (Value, Value) {
     if providers.iter().any(|p| {
         p.get("id").and_then(|v| v.as_str()) == Some("workbuddy")
-            && p.get("ready").and_then(|v| v.as_bool()) == Some(true)
+            && p.get("tryEdit").and_then(|v| v.as_bool()) == Some(true)
     }) {
-        return Some("workbuddy".into());
+        return (
+            json!("workbuddy"),
+            json!("WorkBuddy 可聊天且工具探测未失败 — 建议先在隔离沙箱验证编辑"),
+        );
     }
     let prefer = ["deepseek", "kimi", "siliconflow", "openrouter"];
     for id in prefer {
         if providers.iter().any(|p| {
             p.get("id").and_then(|v| v.as_str()) == Some(id)
-                && p.get("ready").and_then(|v| v.as_bool()) == Some(true)
-                && p.get("kind").and_then(|v| v.as_str()) == Some("soft_pad")
+                && p.get("tryEdit").and_then(|v| v.as_bool()) == Some(true)
         }) {
-            return Some(id.to_string());
+            return (
+                json!(id),
+                json!(format!(
+                    "{id} Soft Pad 密钥已配置 — 建议先在隔离沙箱验证编辑（非 OAuth freemodel）"
+                )),
+            );
         }
     }
-    providers.iter().find_map(|p| {
-        if p.get("ready").and_then(|v| v.as_bool()) == Some(true) {
-            p.get("id").and_then(|v| v.as_str()).map(|s| s.to_string())
-        } else {
-            None
-        }
-    })
+    (Value::Null, Value::Null)
 }
 
 /// Run WorkBuddy native tool-calling probe; returns updated ready snapshot.
-/// Probe is diagnostic only — editCapable follows atr_ready (login + model).
 pub fn probe_workbuddy_edit(force: bool) -> Result<Value, String> {
     let _ = workbuddy::probe_workbuddy_edit(force)?;
     Ok(provider_ready_snapshot())
@@ -152,23 +175,18 @@ mod tests {
             .iter()
             .find(|p| p.get("id").and_then(|x| x.as_str()) == Some("workbuddy"))
             .expect("workbuddy row");
-        assert_eq!(wb.get("chatReady").and_then(|x| x.as_bool()).is_some(), true);
+        assert!(wb.get("chatReady").and_then(|x| x.as_bool()).is_some());
+        assert!(wb.get("tryEdit").and_then(|x| x.as_bool()).is_some());
         assert!(wb.get("editProbe").is_some());
-        // ready/editCapable track atr_ready (login + model), not a hard false.
-        let wb_ready = wb.get("ready").and_then(|x| x.as_bool()).unwrap_or(false);
-        assert_eq!(
-            wb.get("editCapable").and_then(|x| x.as_bool()),
-            Some(wb_ready)
-        );
+        // Backend never claims normal editCapable without FE locallyVerified overlay.
+        assert_eq!(wb.get("editCapable").and_then(|x| x.as_bool()), Some(false));
+        assert!(v.get("selectedDefault").unwrap().is_null());
+        let wb_chat = wb.get("chatReady").and_then(|x| x.as_bool()).unwrap_or(false);
         assert_eq!(
             v.get("workbuddyReady").and_then(|x| x.as_bool()),
-            Some(wb_ready)
+            Some(wb_chat)
         );
-        if wb_ready {
-            assert_eq!(
-                v.get("selectedDefault").and_then(|x| x.as_str()),
-                Some("workbuddy")
-            );
+        if wb_chat {
             assert!(make_driver("workbuddy").is_ok());
         } else {
             let err = make_driver("workbuddy").err().unwrap();
@@ -180,32 +198,28 @@ mod tests {
     }
 
     #[test]
-    fn preferred_workbuddy_over_soft_pad_when_ready() {
+    fn recommend_workbuddy_when_try_edit() {
         let providers = vec![
-            json!({"id":"workbuddy","ready":true,"kind":"workbuddy"}),
-            json!({"id":"deepseek","ready":true,"kind":"soft_pad"}),
+            json!({"id":"workbuddy","tryEdit":true,"kind":"workbuddy"}),
+            json!({"id":"deepseek","tryEdit":true,"kind":"soft_pad"}),
         ];
-        assert_eq!(
-            preferred_edit_ready(&providers).as_deref(),
-            Some("workbuddy")
-        );
+        let (id, reason) = recommended_try_edit(&providers);
+        assert_eq!(id.as_str(), Some("workbuddy"));
+        assert!(reason.as_str().unwrap_or("").contains("隔离"));
     }
 
     #[test]
-    fn preferred_soft_pad_when_workbuddy_not_ready() {
+    fn recommend_soft_pad_when_workbuddy_not_try_edit() {
         let providers = vec![
-            json!({"id":"workbuddy","ready":false,"kind":"workbuddy"}),
-            json!({"id":"deepseek","ready":true,"kind":"soft_pad"}),
+            json!({"id":"workbuddy","tryEdit":false,"kind":"workbuddy"}),
+            json!({"id":"deepseek","tryEdit":true,"kind":"soft_pad"}),
         ];
-        assert_eq!(
-            preferred_edit_ready(&providers).as_deref(),
-            Some("deepseek")
-        );
+        let (id, _) = recommended_try_edit(&providers);
+        assert_eq!(id.as_str(), Some("deepseek"));
     }
 
     #[test]
     fn make_driver_workbuddy_unconfigured_when_not_ready() {
-        // Without a logged-in account this machine returns unconfigured.
         if workbuddy::workbuddy_chat_ready() {
             assert!(make_driver("workbuddy").is_ok());
         } else {

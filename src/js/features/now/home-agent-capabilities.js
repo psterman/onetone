@@ -73,6 +73,52 @@
     );
   }
 
+  function looksLikeWeatherAsk(text) {
+    return /天气|气温|下雨|下雪|降温|升温|humidity|forecast|\bweather\b/i.test(
+      String(text || '')
+    );
+  }
+
+  /** Reject question fragments mistakenly treated as place names. */
+  function isPlausibleWeatherCity(city) {
+    var s = String(city || '').trim();
+    if (!s || s.length > 32) return false;
+    if (
+      /^(今天|明天|后天|怎么样|如何|怎样|多少|什么|哪里|哪儿|请问|天气|气温|下雨|下雪)$/i.test(
+        s
+      )
+    ) {
+      return false;
+    }
+    if (/天气|气温|怎么样|如何|帮我|请|仓库|文件|readme/i.test(s)) return false;
+    return /^[\u4e00-\u9fff]{2,8}$/.test(s) || /^[A-Za-z][A-Za-z\s\-']{1,30}$/.test(s);
+  }
+
+  function looksLikeCityOnly(text) {
+    return isPlausibleWeatherCity(String(text || '').trim());
+  }
+
+  function extractWeatherCity(text) {
+    var s = String(text || '').trim();
+    if (!s) return '';
+    var m = s.match(
+      /([A-Za-z][A-Za-z\s\-']{1,30}|[\u4e00-\u9fff]{2,12})\s*(?:的)?\s*(?:天气|气温|下雨)/
+    );
+    if (m && m[1]) {
+      var c = String(m[1])
+        .trim()
+        .replace(/^(今天|明天|后天|请问|帮我|查一下|看看|在)/, '')
+        .trim();
+      if (isPlausibleWeatherCity(c)) return c;
+    }
+    // Only 「天气在上海」形；勿吃「天气怎么样」里的问句尾巴。
+    m = s.match(
+      /(?:天气|气温)\s*(?:在|：|:)\s*([A-Za-z][A-Za-z\s\-']{1,30}|[\u4e00-\u9fff]{2,8})/
+    );
+    if (m && m[1] && isPlausibleWeatherCity(m[1])) return String(m[1]).trim();
+    return '';
+  }
+
   /**
    * @param {{ selectedKind?: string|null, wbSendMode?: string }} input
    * @returns {'think'|'code'}
@@ -445,7 +491,9 @@
       '鼓励结构化呈现：列表、表格、步骤、短原型草图、Mermaid（flowchart / sequence）。',
       '本机对话不能读写磁盘；需要改文件时一句提示可切「工作」模式即可。',
       '仅当用户明确要求交接/导出给其他 Agent 时，再给可粘贴的短交接说明。',
-      '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。'
+      '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。',
+      '勿臆测「本机无网/离线」：你看不到系统网络状态。',
+      '时效信息（天气等）：缺城市/地点时先反向问一句；有系统天气结果时按结果回答，勿改交 Cursor 搜仓库，勿编造气温。'
     ];
     if (path) {
       lines.push('项目：' + (name ? name + ' · ' : '') + path);
@@ -658,6 +706,10 @@
     normalizeWbSendMode: normalizeWbSendMode,
     normalizeWorkMode: normalizeWorkMode,
     looksLikeWorkspaceEditGoal: looksLikeWorkspaceEditGoal,
+    looksLikeWeatherAsk: looksLikeWeatherAsk,
+    looksLikeCityOnly: looksLikeCityOnly,
+    isPlausibleWeatherCity: isPlausibleWeatherCity,
+    extractWeatherCity: extractWeatherCity,
     isWaitingForUserStatus: isWaitingForUserStatus,
     projectRole: projectRole,
     projectTaskOrganize: projectTaskOrganize,

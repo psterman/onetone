@@ -78,6 +78,45 @@
   var atrWbLoginStatus = ''; // '' | pending | fail | expired
   /** Keep main bottom pad ≥ absolute dock height (consult/materials grow). */
   var dockReserveRo = null;
+  /** After weather ask with no city — next short city reply continues the ask. */
+  var wbWeatherAwaitingCity = false;
+  var WEATHER_CITY_KEY = 'onetone.weather.defaultCity';
+
+  function readDefaultWeatherCity() {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    try {
+      var v = String(
+        (global.localStorage && global.localStorage.getItem(WEATHER_CITY_KEY)) || ''
+      ).trim();
+      if (
+        Caps &&
+        Caps.isPlausibleWeatherCity &&
+        !Caps.isPlausibleWeatherCity(v)
+      ) {
+        try {
+          if (global.localStorage) global.localStorage.removeItem(WEATHER_CITY_KEY);
+        } catch (_) {}
+        return '';
+      }
+      return v;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function writeDefaultWeatherCity(city) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    city = String(city || '').trim();
+    if (
+      !city ||
+      (Caps && Caps.isPlausibleWeatherCity && !Caps.isPlausibleWeatherCity(city))
+    ) {
+      return;
+    }
+    try {
+      if (global.localStorage) global.localStorage.setItem(WEATHER_CITY_KEY, city);
+    } catch (_) {}
+  }
 
   function loadWbChatTurns() {
     try {
@@ -451,32 +490,37 @@
       );
     }
     var A = global.OneToneHomeAgentTask;
-    var selected =
-      (A && A.readProvider && A.readProvider()) ||
-      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
-      '';
+    var selected = (A && A.readProvider && A.readProvider()) || '';
     var opts = list
       .map(function (p) {
         p = p || {};
         var id = String(p.id || '');
         if (!id) return '';
         var kind = String(p.kind || '');
-        var ready = !!p.ready && p.editCapable !== false;
+        var chat = !!(p.chatReady || p.ready);
+        var tryEdit = !!p.tryEdit;
+        var verified = !!p.locallyVerified || !!p.editCapable;
         var lab = String(p.label || id);
-        if (!ready) {
-          if (kind === 'workbuddy') {
-            lab = String(p.label || 'WorkBuddy · 未登录');
-          } else {
-            lab = lab + ' · 未配置';
-          }
+        if (!chat) {
+          lab =
+            kind === 'workbuddy'
+              ? String(p.label || 'WorkBuddy · 未登录')
+              : lab + ' · 未配置';
+        } else if (verified) {
+          lab = lab + ' · 已验证可编辑';
+        } else if (tryEdit) {
+          lab = lab + ' · 可验证（未开放普通编辑）';
+        } else {
+          lab = lab + ' · 不可编辑';
         }
-        var sel = ready && id === String(selected) ? ' selected' : '';
+        var usable = chat || tryEdit || verified;
+        var sel = usable && id === String(selected) ? ' selected' : '';
         return (
           '<option value="' +
           esc(id) +
           '"' +
           sel +
-          (ready ? '' : ' disabled') +
+          (usable ? '' : ' disabled') +
           '>' +
           esc(lab) +
           '</option>'
@@ -484,14 +528,23 @@
       })
       .filter(Boolean)
       .join('');
+    var verifyBtn =
+      '<button type="button" class="ha2-link" data-ha2-atr-verify-engine title="' +
+      esc(t('ha2AtrVerifyTitle', '在隔离沙箱验证此引擎')) +
+      '">' +
+      esc(t('ha2AtrVerifyCta', '隔离验证')) +
+      '</button>';
     return (
+      '<span class="ha2-atr-provider-wrap">' +
       '<select class="ha2-atr-provider" data-ha2-atr-provider title="' +
       esc(t('ha2AtrEngine', 'ATR 编辑引擎')) +
       '" aria-label="' +
       esc(t('ha2AtrEngine', 'ATR 编辑引擎')) +
       '">' +
       opts +
-      '</select>'
+      '</select>' +
+      verifyBtn +
+      '</span>'
     );
   }
 
@@ -510,9 +563,11 @@
           return (
             String((p && p.id) || '') +
             ':' +
-            (p && p.ready && p.editCapable !== false ? '1' : '0') +
+            (p && p.editCapable ? 'E' : p && p.tryEdit ? 'T' : p && (p.chatReady || p.ready) ? 'C' : '0') +
             ':' +
-            String((p && p.editProbe) || '')
+            String((p && p.editProbe) || '') +
+            ':' +
+            (p && p.locallyVerified ? '1' : '0')
           );
         })
         .join(',')
@@ -538,7 +593,7 @@
     for (var i = 0; i < list.length; i++) {
       var row = list[i] || {};
       if (String(row.kind || '') === 'workbuddy' || String(row.id || '') === 'workbuddy') {
-        return !!(row.ready && row.editCapable !== false);
+        return !!(row.chatReady || row.ready);
       }
     }
     return false;
@@ -649,7 +704,7 @@
     atrWbLoginForced = false;
     var A = global.OneToneHomeAgentTask;
     if (A && A.writeProvider) A.writeProvider('workbuddy');
-    toast(t('ha2AtrWbLoginOk', '已登录 WorkBuddy，可开始编辑'));
+    toast(t('ha2AtrWbLoginOk', '已登录 WorkBuddy — 普通编辑需先隔离验证'));
     return refreshAtrProviders(true).then(function () {
       if (!mounted) return;
       var snap = store() && store().getSnapshot && store().getSnapshot();
@@ -735,7 +790,94 @@
 
   var atrWbProbeGen = 0;
 
-  /** Background diagnostic only — does not gate editCapable. */
+  /**
+   * Isolation verify in sandbox. Returns a Promise.
+   * opts.silent — quieter toast (auto path before real goal).
+   * opts.pageGoal — keep work-page title as user's goal while verify runs.
+   * Uses write_autonomous so silent verify does not stop on patch approval.
+   */
+  function startAtrSandboxVerify(opts) {
+    opts = opts || {};
+    var A = global.OneToneHomeAgentTask;
+    var S = store();
+    if (!A || !S || !S.startAndDriveAgentTask || !A.ensureVerifySandbox) {
+      toast(t('ha2AtrVerifyNoApi', '无法启动隔离验证'));
+      return Promise.reject(new Error('verify_no_api'));
+    }
+    var provider = (A.readProvider && A.readProvider()) || '';
+    if (!provider) {
+      toast(t('ha2AtrVerifyPick', '请先选择要验证的引擎'));
+      return Promise.reject(new Error('verify_no_provider'));
+    }
+    toast(
+      (opts.silent
+        ? t(
+            'ha2AtrVerifySilent',
+            '首次编辑：正在后台验证引擎，通过后自动执行你的目标…'
+          )
+        : t(
+            'ha2AtrVerifyStarting',
+            '正在隔离沙箱验证引擎（通过前不开放普通编辑）…'
+          )) +
+        ' ' +
+        provider
+    );
+    openAtrEditPage(opts.pageGoal || 'verify sandbox hello');
+    return A.ensureVerifySandbox()
+      .then(function (sb) {
+        if (!sb || !sb.workspaceRoot) {
+          throw new Error('no_sandbox');
+        }
+        if (S.setValidationNotice) {
+          S.setValidationNotice({
+            kind: 'atr_verify',
+            code: 'verify_starting',
+            message:
+              '隔离验证：' +
+              provider +
+              ' @ ' +
+              String(sb.sandboxId || sb.workspaceRoot),
+            provider: provider
+          });
+        }
+        // Backend owns expected_*/verify_intent via sandbox registry — FE only passes sandboxId.
+        return S.startAndDriveAgentTask({
+          goal: '把 scratch/hello.txt 改成 hello atr-verify\\n',
+          materialsSummary: 'atr-sandbox-verify',
+          provider: provider,
+          allowTryEdit: true,
+          permissionMode: 'write_autonomous',
+          verifySandboxRoot: String(sb.workspaceRoot),
+          sandboxId: sb.sandboxId || null
+        });
+      })
+      .then(function (dto) {
+        var taskId = dto && dto.taskId;
+        var evalP =
+          taskId && A.evaluateVerify
+            ? A.evaluateVerify(taskId).catch(function () {
+                return null;
+              })
+            : Promise.resolve(null);
+        return evalP.then(function (res) {
+          return refreshAtrProviders(true).then(function () {
+            if (!mounted) return res;
+            paint(S.getSnapshot());
+            return res;
+          });
+        });
+      })
+      .catch(function (err) {
+        toast(
+          t('ha2AtrVerifyFailed', '隔离验证未能启动') +
+            '：' +
+            String((err && err.message) || err || '')
+        );
+        return Promise.reject(err);
+      });
+  }
+
+  /** Background diagnostic — tryEdit uses probe; does not auto-grant editCapable. */
   function maybeProbeWorkbuddyEdit(info) {
     if (!info || !info.workbuddyChatReady) return;
     var A = global.OneToneHomeAgentTask;
@@ -745,6 +887,7 @@
       .then(function (next) {
         if (gen !== atrWbProbeGen) return;
         if (next) atrProvidersCache = next;
+        if (mounted) syncAtrProviderHost(store() && store().getSnapshot && store().getSnapshot());
       })
       .catch(function () {});
   }
@@ -763,27 +906,57 @@
         atrProvidersCache = info || null;
         var cur = A.readProvider && A.readProvider();
         var curOk = false;
+        var curRow = null;
         var plist = (info && info.providers) || [];
         for (var i = 0; i < plist.length; i++) {
           var row = plist[i] || {};
           var id = String(row.id || '').toLowerCase();
-          if (
-            id === String(cur || '').toLowerCase() &&
-            row.ready &&
-            row.editCapable !== false
-          ) {
-            curOk = true;
+          if (id === String(cur || '').toLowerCase()) {
+            curRow = row;
+            // Keep user's explicit choice while chat/try still viable.
+            curOk = !!(row.chatReady || row.ready || row.tryEdit || row.editCapable);
             break;
           }
         }
-        if (A.writeProvider && info && info.selectedDefault && (!cur || !curOk)) {
-          A.writeProvider(info.selectedDefault);
+        // Never silent-write recommended Soft Pad / selectedDefault.
+        if (cur && !curOk) {
+          var S = store();
+          if (S && S.setValidationNotice) {
+            S.setValidationNotice({
+              kind: 'atr_provider_stale',
+              code: 'provider_stale',
+              message:
+                '当前引擎不可用（' +
+                String(cur) +
+                '）— 请确认更换，不会自动切换',
+              actions: ['pick_provider'],
+              recommendedProvider: info && info.recommendedProvider,
+              recommendReason: info && info.recommendReason
+            });
+          }
+        } else if (!cur && info && info.recommendedProvider) {
+          // First use: show recommendation only — user must pick.
+          var S2 = store();
+          if (S2 && S2.setValidationNotice && !S2.getSnapshot().validationNotice) {
+            S2.setValidationNotice({
+              kind: 'atr_provider_recommend',
+              code: 'provider_recommend',
+              message:
+                '推荐引擎：' +
+                String(info.recommendedProvider) +
+                (info.recommendReason ? ' — ' + String(info.recommendReason) : ''),
+              actions: ['accept_recommend', 'pick_provider'],
+              recommendedProvider: info.recommendedProvider,
+              recommendReason: info.recommendReason
+            });
+          }
         }
         maybeProbeWorkbuddyEdit(info);
         if (mounted) {
           var snapNow = store() && store().getSnapshot && store().getSnapshot();
           if (atrWbChatReady()) atrWbLoginForced = false;
           syncAtrWbLoginHost(snapNow);
+          syncAtrProviderHost(snapNow);
         }
         return atrProvidersCache;
       })
@@ -1542,7 +1715,17 @@
 
   /** Page chrome for live ATR or forced-open-after-send. */
   function atrWbPageMode(snap) {
-    return !!(atrWbPageForced || atrTaskShouldSurface(snap));
+    if (atrWbPageForced) return true;
+    if (!atrTaskShouldSurface(snap)) return false;
+    // Dialogue mode: don't keep ATR chrome for finished tasks — it buries the chat reply.
+    var st = String((snap.agentTask && snap.agentTask.status) || '');
+    if (
+      String((snap && snap.workMode) || '') !== 'edit' &&
+      (st === 'done' || st === 'failed')
+    ) {
+      return false;
+    }
+    return true;
   }
 
   /** Open ATR steps/dialogue page immediately (send path). */
@@ -1594,16 +1777,83 @@
     return !!atrPendingApprovalToken(snap);
   }
 
+  function atrSendConflictOf(snap) {
+    return (snap && snap.atrSendConflict) || null;
+  }
+
+  /** Status-aware "continue old task" label for send-conflict triage. */
+  function atrConflictContinueLabel(st) {
+    st = String(st || '');
+    if (st === 'waiting') return t('ha2AtrHandlePending', '处理待确认事项');
+    if (st === 'interrupted') return t('ha2AtrResume', '恢复当前任务');
+    return t('ha2AtrViewProgress', '查看进度');
+  }
+
+  function atrConflictContinueAttr(st) {
+    st = String(st || '');
+    if (st === 'waiting') return 'data-ha2-atr-continue';
+    if (st === 'interrupted') return 'data-ha2-atr-resume';
+    return 'data-ha2-atr-open-page';
+  }
+
+  /** Explicit send conflict strip on the task card (no second modal). */
+  function atrSendConflictHtml(snap) {
+    var c = atrSendConflictOf(snap);
+    if (!c || !c.goal) return '';
+    var st = String(c.status || (snap.agentTask && snap.agentTask.status) || '');
+    return (
+      '<div class="ha2-atr-send-conflict" data-ha2-atr-send-conflict role="region" aria-label="' +
+      esc(t('ha2AtrSendConflictTitle', '当前输入与进行中的任务冲突')) +
+      '"><b>' +
+      esc(t('ha2AtrSendConflictTitle', '当前输入与进行中的任务冲突')) +
+      '</b><small>' +
+      esc(
+        t(
+          'ha2AtrSendConflictHint',
+          '不会自动放弃旧任务。请选择：继续旧任务、放弃旧任务并发送草稿，或保留草稿稍后处理。'
+        )
+      ) +
+      '</small><div class="ha2-atr-send-conflict-acts">' +
+      '<button type="button" class="ha2-btn" ' +
+      atrConflictContinueAttr(st) +
+      '>' +
+      esc(atrConflictContinueLabel(st)) +
+      '</button>' +
+      '<button type="button" class="ha2-btn primary" data-ha2-atr-abandon-send>' +
+      esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+      '</button>' +
+      '<button type="button" class="ha2-btn" data-ha2-atr-keep-draft>' +
+      esc(t('ha2AtrKeepDraft', '保留草稿稍后处理')) +
+      '</button></div></div>'
+    );
+  }
+
   function atrActsHtml(snap) {
     var task = snap && snap.agentTask;
     if (!task) return '';
     var st = String(task.status || '');
     var acts = [];
+    if (atrSendConflictOf(snap)) {
+      // Conflict strip owns the primary triage; keep patch approve when waiting.
+      if (st === 'waiting' && atrNeedsApproval(snap) && atrPendingApprovalToken(snap)) {
+        acts.push(
+          '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
+            esc(t('ha2AtrApprovePatch', '批准补丁写入')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-reject>' +
+            esc(t('ha2AtrRejectPlan', '拒绝方案')) +
+            '</button>'
+        );
+      }
+      return acts.join('');
+    }
     if (st === 'waiting') {
       if (atrNeedsApproval(snap) && atrPendingApprovalToken(snap)) {
         acts.push(
           '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
-            esc(t('ha2AtrApproveRun', '批准并执行')) +
+            esc(t('ha2AtrApprovePatch', '批准补丁写入')) +
             '</button>'
         );
         acts.push(
@@ -1677,8 +1927,114 @@
     return out;
   }
 
+  /**
+   * Separate stages so "model replied" never reads as "code edit done".
+   * @returns {{ modelReplied:boolean, patchPending:boolean, fileWritten:boolean, checkRan:boolean, checkOk:boolean|null, checkId:string, reason:string }}
+   */
+  function atrEditStages(snap) {
+    var task = snap && snap.agentTask;
+    var evs = (snap && snap.agentTaskEvents) || [];
+    var st = String((task && task.status) || '');
+    var modelReplied = false;
+    var patchPending = atrNeedsApproval(snap);
+    var fileWritten = atrWrittenFiles(snap).length > 0;
+    var checkRan = false;
+    var checkOk = null;
+    var checkId = '';
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i] || {};
+      var kind = String(e.kind || '');
+      var tool = String(e.toolName || e.tool || '');
+      if (kind === 'tool_call' || kind === 'tool_result' || kind === 'waiting_approval') {
+        modelReplied = true;
+      }
+      if (kind === 'patch_applied') fileWritten = true;
+      if (kind === 'waiting_approval') patchPending = true;
+      if (tool === 'run_check' && (kind === 'tool_result' || kind === 'tool_call')) {
+        checkRan = true;
+        var res = e.payload && (e.payload.result || e.payload);
+        if (res && typeof res.ok === 'boolean') checkOk = res.ok;
+        if (res && res.checkId) checkId = String(res.checkId);
+        if (e.payload && e.payload.arguments && e.payload.arguments.check_id) {
+          checkId = String(e.payload.arguments.check_id);
+        }
+      }
+    }
+    if (st === 'done' || st === 'failed' || st === 'verifying' || st === 'repair') {
+      modelReplied = true;
+    }
+    if (st === 'waiting' && atrNeedsApproval(snap)) patchPending = true;
+    var reason = '';
+    if (!checkRan && (st === 'done' || st === 'failed')) {
+      reason = t('ha2AtrNoCheckReason', '模型未调用已登记 check_id，或任务在检查前结束');
+    }
+    return {
+      modelReplied: modelReplied,
+      patchPending: patchPending,
+      fileWritten: fileWritten,
+      checkRan: checkRan,
+      checkOk: checkOk,
+      checkId: checkId,
+      reason: reason
+    };
+  }
+
+  function atrStagesHtml(snap) {
+    if (!snap || !snap.agentTask) return '';
+    var s = atrEditStages(snap);
+    function pill(on, label, warn) {
+      return (
+        '<span class="ha2-atr-stage' +
+        (on ? ' is-on' : '') +
+        (warn ? ' is-warn' : '') +
+        '">' +
+        esc(label) +
+        '</span>'
+      );
+    }
+    var checkLabel = !s.checkRan
+      ? t('ha2AtrCheckNotRun', '未运行检查')
+      : s.checkOk
+        ? t('ha2AtrCheckPassed', '检查已通过') + (s.checkId ? ' · ' + s.checkId : '')
+        : t('ha2AtrCheckFailed', '检查未通过') + (s.checkId ? ' · ' + s.checkId : '');
+    return (
+      '<div class="ha2-atr-stages" data-ha2-atr-stages>' +
+      pill(s.modelReplied, t('ha2AtrStageModel', '模型已回答')) +
+      pill(s.patchPending, t('ha2AtrStagePatch', '补丁待批准')) +
+      pill(s.fileWritten, t('ha2AtrStageWrote', '文件已写入')) +
+      pill(s.checkRan && s.checkOk, checkLabel, s.checkRan && s.checkOk === false) +
+      (!s.checkRan && (String(snap.agentTask.status) === 'done' || s.fileWritten)
+        ? '<small class="ha2-atr-stage-note">' +
+          esc(s.reason || t('ha2AtrNoCheckReason', '未运行检查')) +
+          '</small>'
+        : '') +
+      '</div>'
+    );
+  }
+
+  var BEGINNER_KEY = 'onetone.atr.beginnerMode';
+  function atrBeginnerOn() {
+    try {
+      var v = global.localStorage && global.localStorage.getItem(BEGINNER_KEY);
+      if (v === '0' || v === 'false') return false;
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+  function setAtrBeginner(on) {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(BEGINNER_KEY, on ? '1' : '0');
+      }
+    } catch (_) {}
+  }
+
   /** Main-column gate — Approve must be visible without hunting the left rail. */
   function atrMainGateHtml(snap) {
+    // Confirm for a new goal must win over a prior done/failed card on the work page.
+    if (workConfirmOpen && atrEditPathOn(snap)) return workConfirmGateHtml(snap);
     var task = snap && snap.agentTask;
     if (!task) return '';
     var st = String(task.status || '');
@@ -1689,10 +2045,24 @@
     var title = '';
     var detail = '';
     if (st === 'done') {
-      title = t('ha2AtrDoneTitle', '编辑任务已完成');
-      detail = fileLine
-        ? t('ha2AtrDoneWrote', '已写入') + ' ' + fileLine
-        : t('ha2AtrDoneOk', '改动已写入工作区。');
+      var stagesDone = atrEditStages(snap);
+      // Quiet strip: no write → one line; wrote → file names only. No stage-pill wall.
+      if (!stagesDone.fileWritten) {
+        return (
+          '<div class="ha2-wb-page-gate is-quiet" data-ha2-atr-gate data-atr-status="done">' +
+          '<div class="ha2-wb-page-gate-copy"><span>' +
+          esc(t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')) +
+          '</span></div></div>'
+        );
+      }
+      return (
+        '<div class="ha2-wb-page-gate is-quiet" data-ha2-atr-gate data-atr-status="done">' +
+        '<div class="ha2-wb-page-gate-copy"><b>' +
+        esc(t('ha2AtrDoneQuietWrote', '已写入')) +
+        '</b><span>' +
+        esc(fileLine || t('ha2AtrDoneOk', '工作区已有改动')) +
+        '</span></div></div>'
+      );
     } else if (st === 'failed') {
       title = t('ha2AtrFailedTitle', '编辑任务失败');
       detail =
@@ -1708,7 +2078,7 @@
       detail =
         t(
           'ha2AtrGateApprove',
-          '批准并执行：本任务剩余写入不再询问。同意所有：以后新任务也不再询问。'
+          '批准补丁写入：本任务剩余写入不再询问。同意所有：以后新任务也不再询问。'
         ) +
         (fileLine ? '\n' + fileLine : '');
     } else if (st === 'waiting') {
@@ -1728,6 +2098,7 @@
       '</b><span>' +
       esc(detail) +
       '</span></div>' +
+      atrStagesHtml(snap) +
       (acts ? '<div class="ha2-wb-page-gate-acts">' + acts + '</div>' : '') +
       '</div>'
     );
@@ -1742,7 +2113,8 @@
     if (!task || !task.status) return '';
     var st = String(task.status || '');
     var busy = st === 'running' || st === 'verifying' || st === 'repair' || st === 'review';
-    if (!(busy || st === 'waiting' || st === 'interrupted' || st === 'failed')) return '';
+    if (!(busy || st === 'waiting' || st === 'interrupted' || st === 'failed' || st === 'done'))
+      return '';
 
     var reason = String(task.waitingReason || '');
     var files = Array.isArray(task.changedFiles) ? task.changedFiles : [];
@@ -1758,7 +2130,7 @@
     var tools = task.toolCallCount != null ? task.toolCallCount : 0;
     var provider =
       (A.readProvider && A.readProvider()) ||
-      (atrProvidersCache && atrProvidersCache.selectedDefault) ||
+      (atrProvidersCache && atrProvidersCache.recommendedProvider) ||
       '';
     var title =
       st === 'waiting'
@@ -1767,7 +2139,11 @@
           ? t('ha2AtrInterruptedTitle', '编辑任务已中断')
           : st === 'failed'
             ? t('ha2AtrFailedTitle', '编辑任务失败')
-            : t('ha2AtrDrivingTitle', '编辑任务执行中');
+            : st === 'done'
+              ? files.length
+                ? t('ha2AtrDoneQuietWrote', '已写入')
+                : t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')
+              : t('ha2AtrDrivingTitle', '编辑任务执行中');
     var progressBits = [];
     if (provider) progressBits.push(String(provider));
     progressBits.push(
@@ -1790,6 +2166,8 @@
       fileLine = files.join(', ');
     } else if (task.lastError) {
       fileLine = String(task.lastError).slice(0, 160);
+    } else if (st === 'done') {
+      fileLine = t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件');
     }
 
     var lastEv = evs.length ? evs[evs.length - 1] : null;
@@ -1802,17 +2180,32 @@
       lastLine = atrFailureNextHint(snap);
     }
 
+    var conflict = atrSendConflictOf(snap);
     var acts = [];
     acts.push(
       '<button type="button" class="ha2-btn primary" data-ha2-atr-open-page>' +
         esc(t('ha2AtrOpenPage', '查看步骤对话')) +
         '</button>'
     );
-    if (st === 'waiting') {
+    if (conflict) {
+      // Triage lives in atrSendConflictHtml; keep patch approve when waiting.
+      if (st === 'waiting' && reason === 'approval' && task.pendingApprovalToken) {
+        acts.push(
+          '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
+            esc(t('ha2AtrApprovePatch', '批准补丁写入')) +
+            '</button>'
+        );
+        acts.push(
+          '<button type="button" class="ha2-btn" data-ha2-atr-reject>' +
+            esc(t('ha2AtrRejectPlan', '拒绝方案')) +
+            '</button>'
+        );
+      }
+    } else if (st === 'waiting') {
       if (reason === 'approval' && task.pendingApprovalToken) {
         acts.push(
           '<button type="button" class="ha2-btn primary" data-ha2-atr-approve>' +
-            esc(t('ha2AtrApproveRun', '批准并执行')) +
+            esc(t('ha2AtrApprovePatch', '批准补丁写入')) +
             '</button>'
         );
         acts.push(
@@ -1837,11 +2230,6 @@
           esc(t('ha2AtrAbandon', '放弃')) +
           '</button>'
       );
-      acts.push(
-        '<button type="button" class="ha2-btn" data-ha2-atr-abandon-send>' +
-          esc(t('ha2AtrAbandonSend', '放弃并发送')) +
-          '</button>'
-      );
     } else if (st === 'interrupted') {
       acts.push(
         '<button type="button" class="ha2-btn" data-ha2-atr-resume>' +
@@ -1851,11 +2239,6 @@
       acts.push(
         '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
           esc(t('ha2AtrAbandon', '放弃')) +
-          '</button>'
-      );
-      acts.push(
-        '<button type="button" class="ha2-btn" data-ha2-atr-abandon-send>' +
-          esc(t('ha2AtrAbandonSend', '放弃并发送')) +
           '</button>'
       );
     } else {
@@ -1877,18 +2260,48 @@
       '</span><span class="ha2-atr-progress">' +
       esc(progressBits.join(' · ')) +
       '</span>' +
-      (fileLine
+      (fileLine && st !== 'done'
         ? '<span class="ha2-atr-files">' + esc(fileLine) + '</span>'
-        : '') +
+        : files.length
+          ? '<span class="ha2-atr-files">' + esc(files.join(', ')) + '</span>'
+          : '') +
       '</div>' +
-      (lastLine
-        ? '<p class="ha2-atr-last ha2-atr-timeline" data-ha2-atr-timeline>' +
-          esc(lastLine) +
-          '</p>'
-        : '') +
+      (st === 'done' ? '' : atrStagesHtml(snap)) +
+      (st === 'done'
+        ? ''
+        : !atrBeginnerOn() && lastLine
+          ? '<p class="ha2-atr-last ha2-atr-timeline" data-ha2-atr-timeline>' +
+            esc(lastLine) +
+            '</p>'
+          : atrBeginnerOn() && lastLine
+            ? '<details class="ha2-atr-details"><summary>' +
+              esc(t('ha2AtrShowSteps', '查看步骤')) +
+              '</summary><p class="ha2-atr-last">' +
+              esc(lastLine) +
+              '</p></details>'
+            : '') +
+      atrSendConflictHtml(snap) +
       '<div class="ha2-approve-acts">' +
-      acts.join('') +
-      '</div></div>'
+      (atrBeginnerOn()
+        ? (acts[0] || '') +
+          (acts.length > 1
+            ? '<button type="button" class="ha2-link" data-ha2-atr-advanced>' +
+              esc(t('ha2AtrShowAdvanced', '更多操作')) +
+              '</button>'
+            : '')
+        : acts.join('')) +
+      '</div>' +
+      (st === 'done'
+        ? ''
+        : '<div class="ha2-atr-mode-row">' +
+          '<button type="button" class="ha2-link" data-ha2-atr-toggle-beginner>' +
+          esc(
+            atrBeginnerOn()
+              ? t('ha2AtrSwitchAdvanced', '高级模式')
+              : t('ha2AtrSwitchBeginner', '新手模式')
+          ) +
+          '</button></div>') +
+      '</div>'
     );
   }
 
@@ -2138,11 +2551,62 @@
     );
   }
 
+  /**
+   * Current ATR provider has backend editCapable acceptance.
+   * Cold cache / unknown id → true (defer to preflight); known false → block ordinary start.
+   */
+  function atrSelectedProviderEditCapable() {
+    var A = global.OneToneHomeAgentTask;
+    var want = String((A && A.readProvider && A.readProvider()) || '')
+      .trim()
+      .toLowerCase();
+    var list =
+      (atrProvidersCache &&
+        Array.isArray(atrProvidersCache.providers) &&
+        atrProvidersCache.providers) ||
+      [];
+    if (!list.length) return true;
+    var i;
+    var matched = null;
+    for (i = 0; i < list.length; i++) {
+      var row = list[i];
+      if (!row) continue;
+      var id = String(row.id || '').toLowerCase();
+      if (want) {
+        if (id === want) {
+          matched = row;
+          break;
+        }
+        continue;
+      }
+      if (row.editCapable === true) return true;
+    }
+    if (!want) return false;
+    if (!matched) return true;
+    return matched.editCapable === true;
+  }
+
   function workPrimaryCtaLabel(snap) {
-    if (atrNeedsApproval(snap)) return t('ha2AtrApproveRun', '批准并执行');
-    if (workConfirmOpen) return t('ha2WorkConfirmStart', '批准并开始');
+    if (atrNeedsApproval(snap)) return t('ha2AtrApprovePatch', '批准补丁写入');
+    if (atrSendConflictOf(snap)) {
+      var cst = String(
+        (snap.atrSendConflict && snap.atrSendConflict.status) ||
+          (snap.agentTask && snap.agentTask.status) ||
+          ''
+      );
+      return atrConflictContinueLabel(cst);
+    }
     if (atrTaskBusy(snap)) return t('ha2AtrViewProgress', '查看进度');
-    return t('ha2WorkPlanCta', '生成执行计划');
+    return t('ha2WorkStartCta', '开始执行');
+  }
+
+  function openWorkConfirm(goal, matSum) {
+    workConfirmOpen = true;
+    workConfirmGoal = String(goal || '').trim();
+    workConfirmMatSum = String(matSum || '');
+    if (workConfirmGoal) atrWbPagePendingGoal = workConfirmGoal;
+    atrWbPageForced = true;
+    atrWbPageUserClosed = false;
   }
 
   /** Keep draft/send chrome aligned with 对话|工作 after mode flips. */
@@ -2201,19 +2665,65 @@
     workConfirmMatSum = '';
   }
 
+  /**
+   * Direct start — no confirm gate. If provider not editCapable, silent verify then goal.
+   */
   function startConfirmedWorkTask(goal, matSum) {
     var S = store();
     var text = String(goal || '').trim();
+    var mats = String(matSum || '');
     if (!S || !S.startAndDriveAgentTask || !text) return Promise.resolve();
     closeWorkConfirm();
     openAtrEditPage(text);
-    return S.startAndDriveAgentTask({
-      goal: text,
-      materialsSummary: String(matSum || '')
-    }).then(function () {
-      if (!mounted) return;
-      paint(S.getSnapshot());
-    });
+    if (atrSelectedProviderEditCapable()) {
+      return S.startAndDriveAgentTask({
+        goal: text,
+        materialsSummary: mats
+      }).then(function () {
+        if (!mounted) return;
+        paint(S.getSnapshot());
+      });
+    }
+    return startAtrSandboxVerify({ silent: true, pageGoal: text })
+      .then(function (res) {
+        if (!mounted) return null;
+        if (res && res.ok === false) {
+          toast(
+            t(
+              'ha2AtrVerifyNotAccepted',
+              '引擎验证未通过 — 可换引擎后重试，或稍后再发'
+            )
+          );
+          paint(S.getSnapshot());
+          return null;
+        }
+        return refreshAtrProviders(true).then(function () {
+          if (!atrSelectedProviderEditCapable()) {
+            toast(
+              t(
+                'ha2AtrVerifyNotAccepted',
+                '引擎验证未通过 — 可换引擎后重试，或稍后再发'
+              )
+            );
+            paint(S.getSnapshot());
+            return null;
+          }
+          openAtrEditPage(text);
+          return S.startAndDriveAgentTask({
+            goal: text,
+            materialsSummary: mats
+          });
+        });
+      })
+      .then(function () {
+        if (!mounted) return;
+        paint(S.getSnapshot());
+      })
+      .catch(function (err) {
+        if (!mounted) return;
+        paint(S.getSnapshot());
+        return Promise.reject(err);
+      });
   }
 
   function taskCoreHtml(snap) {
@@ -2230,9 +2740,7 @@
       materialsSummaryLine(snap) ||
       t('ha2MatNone', '无额外材料');
     var next = '';
-    if (workConfirmOpen) {
-      next = t('ha2WorkConfirmNext', '确认项目、材料与引擎后开始');
-    } else if (atrNeedsApproval(snap)) {
+    if (atrNeedsApproval(snap)) {
       next = t('ha2AtrNextApprove', '批准后才会写入文件');
     } else if (atrTaskBusy(snap)) {
       next = t('ha2AtrNextRunning', '查看进度，或放弃当前任务');
@@ -2246,7 +2754,7 @@
     } else if (st === 'failed' || st === 'interrupted') {
       next = atrFailureNextHint(snap);
     } else {
-      next = t('ha2WorkPlanNext', '写清目标后生成执行计划');
+      next = t('ha2WorkStartNext', '写清目标后直接开始；未验证引擎会先静默验证');
     }
     function row(lab, val) {
       return (
@@ -2278,6 +2786,18 @@
       workConfirmMatSum ||
       materialsSummaryLine(snap) ||
       t('ha2MatNone', '无额外材料');
+    var canEdit = atrSelectedProviderEditCapable();
+    var acts = canEdit
+      ? '<button type="button" class="ha2-btn primary" data-ha2-work-confirm-start>' +
+        esc(t('ha2WorkConfirmStart', '批准并开始')) +
+        '</button><button type="button" class="ha2-btn" data-ha2-work-confirm-cancel>' +
+        esc(t('ha2WorkConfirmCancel', '取消')) +
+        '</button>'
+      : '<button type="button" class="ha2-btn primary" data-ha2-atr-verify-engine>' +
+        esc(t('ha2AtrVerifyCta', '隔离验证')) +
+        '</button><button type="button" class="ha2-btn" data-ha2-work-confirm-cancel>' +
+        esc(t('ha2WorkConfirmCancel', '取消')) +
+        '</button>';
     return (
       '<div class="ha2-work-confirm" data-ha2-work-confirm role="region" aria-label="' +
       esc(t('ha2WorkConfirmTitle', '确认后开始执行')) +
@@ -2305,17 +2825,19 @@
       esc(t('ha2WriteGate', '写入')) +
       '</span> ' +
       esc(
-        t(
-          'ha2WriteWithApproval',
-          'write_with_approval · 写入前再批准'
-        )
+        canEdit
+          ? t(
+              'ha2WriteWithApproval',
+              'write_with_approval · 写入前再批准'
+            )
+          : t(
+              'ha2NeedVerifyBeforeEdit',
+              '未开放普通编辑 · 先隔离验证再改项目'
+            )
       ) +
       '</div></div><div class="ha2-work-confirm-acts">' +
-      '<button type="button" class="ha2-btn primary" data-ha2-work-confirm-start>' +
-      esc(t('ha2WorkConfirmStart', '批准并开始')) +
-      '</button><button type="button" class="ha2-btn" data-ha2-work-confirm-cancel>' +
-      esc(t('ha2WorkConfirmCancel', '取消')) +
-      '</button></div></div>'
+      acts +
+      '</div></div>'
     );
   }
 
@@ -2335,7 +2857,7 @@
       );
     }
     if (err) return err.slice(0, 200);
-    return t('ha2AtrFailedNext', '可放弃后改写目标重试，或换引擎后再生成执行计划。');
+    return t('ha2AtrFailedNext', '可放弃后改写目标重试，或换引擎后再开始执行。');
   }
 
   function degradedNextHint(snap) {
@@ -2350,21 +2872,29 @@
           Array.isArray(atrProvidersCache.providers) &&
           atrProvidersCache.providers) ||
         [];
-      var ready = false;
+      var chatAny = false;
+      var editAny = false;
       var i;
       for (i = 0; i < list.length; i++) {
-        if (list[i] && list[i].ready && list[i].editCapable !== false) {
-          ready = true;
-          break;
-        }
+        var row = list[i];
+        if (!row) continue;
+        if (row.chatReady || row.ready) chatAny = true;
+        if (row.editCapable === true || row.locallyVerified) editAny = true;
       }
       if (!list.length) {
         bits.push(t('ha2DegradedNeedEngine', '缺引擎：打开工作模式后选择 ATR 引擎'));
-      } else if (!ready) {
+      } else if (!chatAny) {
         bits.push(
           t(
             'ha2DegradedNeedAccount',
             '缺账号：登录 WorkBuddy 或配置 Soft Pad 密钥'
+          )
+        );
+      } else if (!editAny) {
+        bits.push(
+          t(
+            'ha2DegradedNeedVerify',
+            '引擎未验证：点「隔离验证」通过后才开放普通编辑'
           )
         );
       }
@@ -2780,8 +3310,8 @@
     var atrCode = n.code ? String(n.code) : '';
     // ATR panel already owns waiting/interrupted/busy CTAs + timeline — avoid twin cards.
     if (
-      atrEditPathOn(snap) &&
       snap.agentTask &&
+      atrTaskShouldSurface(snap) &&
       (atrCode === 'waiting' ||
         atrCode === 'interrupted' ||
         atrCode === 'busy' ||
@@ -2816,6 +3346,16 @@
       hint = t('ha2AtrNeedProjectHint', '在工作区确认当前项目后重试');
     } else if (atrCode === 'abandon_and_send') {
       hint = t('ha2AtrAbandonSendHint', '旧任务会先结束，再按当前输入启动新编辑');
+    } else if (atrCode === 'provider_recommend') {
+      hint = t(
+        'ha2AtrRecommendHint',
+        '不会后台改写已选引擎；点「使用推荐」或自行选择'
+      );
+    } else if (atrCode === 'provider_stale') {
+      hint = t(
+        'ha2AtrProviderStaleHint',
+        '保留你的选择直至你确认更换；可登录 WorkBuddy 或改选 Soft Pad'
+      );
     } else if (atrCode === 'starting' || atrCode === 'driving') {
       hint = t('ha2AtrDrivingHint', '后台在跑工具循环 — 可放弃；成功后会出现补丁确认');
     } else if (atrCode === 'waiting') {
@@ -2827,6 +3367,14 @@
       hint = t(
         'ha2AtrInterruptedHint',
         '恢复当前任务，或放弃；有新输入时可放弃并发送'
+      );
+    } else if (
+      atrCode === 'edit_not_admitted' ||
+      atrCode === 'provider_not_edit_capable'
+    ) {
+      hint = t(
+        'ha2AtrEditNotAdmittedHint',
+        '普通编辑需先在隔离沙箱验证当前引擎配置'
       );
     } else if (atrCode === 'budget_exhausted' || atrCode === 'drive_failed') {
       hint = t('ha2AtrBudgetHint', '这不是投递失败 — 写清目标后重发，或放弃后重试');
@@ -2859,6 +3407,32 @@
       cta =
         '<button type="button" class="ha2-btn" data-ha2-enable-metered>' +
         esc(t('ha2AllowMetered', '允许计量额度')) +
+        '</button>';
+    } else if (
+      atrCode === 'provider_recommend' ||
+      atrCode === 'edit_not_admitted' ||
+      atrCode === 'provider_not_edit_capable'
+    ) {
+      cta =
+        (atrCode === 'provider_recommend'
+          ? '<button type="button" class="ha2-btn primary" data-ha2-atr-accept-recommend>' +
+            esc(t('ha2AtrUseRecommend', '使用推荐')) +
+            '</button>'
+          : '') +
+        '<button type="button" class="ha2-btn' +
+        (atrCode === 'edit_not_admitted' ||
+        atrCode === 'provider_not_edit_capable'
+          ? ' primary'
+          : '') +
+        '" data-ha2-atr-verify-engine>' +
+        esc(t('ha2AtrVerifyCta', '隔离验证')) +
+        '</button>';
+    } else if (atrCode === 'provider_stale') {
+      cta =
+        '<button type="button" class="ha2-btn primary" data-ha2-atr-wb-login-open>' +
+        esc(t('ha2AtrWbLoginCta', '登录 WorkBuddy')) +
+        '</button><button type="button" class="ha2-btn" data-ha2-atr-switch-deepseek>' +
+        esc(t('ha2AtrSwitchDeepseek', '改用 DeepSeek')) +
         '</button>';
     } else if (atrCode === 'waiting') {
       cta =
@@ -3141,8 +3715,19 @@
     }
   }
 
+  /** ATR card / conflict owns the page — don't stack Soft Pad done + delivery + twin atr notices. */
+  function atrOwnsHomeChrome(snap) {
+    if (atrEditPathOn(snap)) return true;
+    if (snap && snap.atrSendConflict) return true;
+    if (snap && snap.agentTask && atrTaskShouldSurface(snap)) return true;
+    var n = snap && snap.validationNotice;
+    if (n && String(n.kind || '').indexOf('atr_') === 0) return true;
+    return false;
+  }
+
   function homeContentHtml(snap) {
     var atrLive = atrEditPathOn(snap) && atrTaskShouldSurface(snap);
+    var atrOwns = atrOwnsHomeChrome(snap);
     var banner = primaryBannerHtml(snap);
     // Mutual exclusion: ATR / confirm / needsYou > permission > delivery > completion.
     var permOnly = '';
@@ -3150,10 +3735,8 @@
       permOnly =
         banner.kind === 'permission' ? banner.html : permissionHtml(snap);
     }
-    var delivery =
-      atrLive || atrEditPathOn(snap) ? '' : deliveryReceiptHtml(snap);
-    var completion =
-      atrLive || atrEditPathOn(snap) ? '' : completionObservationHtml(snap);
+    var delivery = atrOwns ? '' : deliveryReceiptHtml(snap);
+    var completion = atrOwns ? '' : completionObservationHtml(snap);
     return (
       permOnly +
       situationHtml(snap) +
@@ -3164,7 +3747,7 @@
       '</div><div data-ha2-delivery-receipt role="status" aria-live="polite" aria-atomic="true">' +
       delivery +
       '</div><div data-ha2-action-receipt role="status" aria-live="polite" aria-atomic="true">' +
-      (atrLive || atrEditPathOn(snap) ? '' : actionReceiptHtml(snap)) +
+      (atrOwns ? '' : actionReceiptHtml(snap)) +
       '</div>' +
       '<div class="ha2-section-head"><h3>' +
       esc(t('ha2Workspace', 'Agent 任务与会话')) +
@@ -4873,11 +5456,13 @@
         activeTask = J.getTask(J.getActiveTaskId());
       }
     } catch (_) {}
+    var atrGoalTitle =
+      (workConfirmOpen && workConfirmGoal) ||
+      (atrTask && atrTask.goal) ||
+      atrWbPagePendingGoal ||
+      '';
     var taskTitle = atrMode
-      ? String((atrTask && atrTask.goal) || atrWbPagePendingGoal || '').slice(
-          0,
-          80
-        ) || t('ha2AtrWorkTask', '当前工作任务')
+      ? String(atrGoalTitle).slice(0, 80) || t('ha2AtrWorkTask', '当前工作任务')
       : (activeTask && activeTask.title) || t('ha2WbTaskDefault', '本机对话');
     var turns = wbPageTurnsForPaint();
     var body = atrMode
@@ -5010,7 +5595,7 @@
       '<div class="ha2-wb-page-transcript" data-ha2-wb-page-transcript>' +
       body +
       '</div>' +
-      (atrMode ? atrMainGateHtml(snap) : '') +
+      (atrMode ? atrPageNoticeHtml(snap) + atrMainGateHtml(snap) : '') +
       '<div class="ha2-wb-page-compose">' +
       '<textarea data-ha2-wb-page-draft rows="2" placeholder="' +
       esc(
@@ -5030,9 +5615,22 @@
       '<button type="button" class="ha2-btn primary" data-ha2-wb-page-send' +
       (wbChatBusy ? ' disabled' : '') +
       '>' +
-      esc(t('ha2Send', '发送')) +
+      esc(
+        atrMode && String((snap && snap.workMode) || '') === 'edit'
+          ? workPrimaryCtaLabel(snap)
+          : t('ha2Send', '发送')
+      ) +
       '</button></div></div></section></div>'
     );
+  }
+
+  /** ATR notices on the work page (home validation strip is hidden behind this view). */
+  function atrPageNoticeHtml(snap) {
+    var n = snap && snap.validationNotice;
+    if (!n || String(n.kind || '').indexOf('atr_') !== 0) return '';
+    var inner = validationNoticeHtml(snap);
+    if (!inner) return '';
+    return '<div data-ha2-atr-page-notice>' + inner + '</div>';
   }
 
   function maybeOpenAtrWbPage(snap) {
@@ -5099,14 +5697,22 @@
     if (prevTranscript) prevTranscript.innerHTML = body;
     var main = host.querySelector('.ha2-wb-page-main');
     if (main) {
-      var gate = main.querySelector('[data-ha2-atr-gate]');
+      var noticeEl = main.querySelector('[data-ha2-atr-page-notice]');
+      var noticeHtml = atrMode ? atrPageNoticeHtml(snap) : '';
+      var gate = main.querySelector('[data-ha2-atr-gate], [data-ha2-work-confirm]');
       var gateHtml = atrMode ? atrMainGateHtml(snap) : '';
+      var compose = main.querySelector('.ha2-wb-page-compose');
+      if (noticeHtml) {
+        if (noticeEl) noticeEl.outerHTML = noticeHtml;
+        else if (compose) compose.insertAdjacentHTML('beforebegin', noticeHtml);
+      } else if (noticeEl) {
+        noticeEl.remove();
+      }
+      // Re-query: notice insert may sit before gate.
+      gate = main.querySelector('[data-ha2-atr-gate], [data-ha2-work-confirm]');
       if (gateHtml) {
         if (gate) gate.outerHTML = gateHtml;
-        else {
-          var compose = main.querySelector('.ha2-wb-page-compose');
-          if (compose) compose.insertAdjacentHTML('beforebegin', gateHtml);
-        }
+        else if (compose) compose.insertAdjacentHTML('beforebegin', gateHtml);
       } else if (gate) {
         gate.remove();
       }
@@ -5121,7 +5727,11 @@
           '<button type="button" class="ha2-btn primary" data-ha2-wb-page-send' +
           (wbChatBusy ? ' disabled' : '') +
           '>' +
-          esc(t('ha2Send', '发送')) +
+          esc(
+            atrMode && String((snap && snap.workMode) || '') === 'edit'
+              ? workPrimaryCtaLabel(snap)
+              : t('ha2Send', '发送')
+          ) +
           '</button>';
       }
       var draftEl = main.querySelector('[data-ha2-wb-page-draft]');
@@ -5161,6 +5771,16 @@
       : '';
     var metaBs = host.querySelectorAll('.ha2-wb-page-rail-meta b');
     // Meta order: task, project, [status, engine] | [model, sendMode]
+    if (atrMode && metaBs.length >= 1) {
+      var liveGoal =
+        (workConfirmOpen && workConfirmGoal) ||
+        (atrTask && atrTask.goal) ||
+        atrWbPagePendingGoal ||
+        '';
+      metaBs[0].textContent =
+        String(liveGoal).slice(0, 80) || t('ha2AtrWorkTask', '当前工作任务');
+      metaBs[0].setAttribute('title', String(liveGoal || ''));
+    }
     if (atrMode && metaBs.length >= 3 && statusLine) {
       metaBs[2].textContent = statusLine;
     }
@@ -5252,6 +5872,175 @@
     return (S.getSnapshot && S.getSnapshot()) || snap;
   }
 
+  function looksLikeEditGoalText(text) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    return !!(
+      Caps &&
+      typeof Caps.looksLikeWorkspaceEditGoal === 'function' &&
+      Caps.looksLikeWorkspaceEditGoal(text)
+    );
+  }
+
+  /** Short replies that continue a waiting ATR — not a brand-new goal. */
+  function atrLooksLikeContinueInput(text) {
+    var s = String(text || '').trim();
+    if (!s) return true;
+    return /^(没有补充|无补充|没有|无|继续|继续吧|跳过|好的|可以|行|ok|okay|yes|y|n\/a|none|skip)$/i.test(
+      s
+    );
+  }
+
+  function atrTextIsNewGoal(text, task) {
+    var t = String(text || '').trim();
+    if (!t || atrLooksLikeContinueInput(t)) return false;
+    var g = String((task && task.goal) || '').trim();
+    if (!g) return true;
+    if (t === g) return false;
+    if (g.indexOf(t) >= 0 || t.indexOf(g) >= 0) return false;
+    return true;
+  }
+
+  /**
+   * Work mode stays on; non-edit Q&A answers via local chat (channel only — not a mode flip).
+   */
+  function routeToChatInsteadOfEdit(S, text) {
+    if (!S) return;
+    // Never flip 工作→对话：用户已选工作，只是这句不像改文件目标。
+    if (S.setSelected) {
+      try {
+        S.setSelected('workbuddy', { silent: true });
+      } catch (_) {}
+    }
+    var snap = (S.getSnapshot && S.getSnapshot()) || {};
+    var c = currentCat(snap);
+    if (!c || !c.id || c.id !== 'workbuddy') {
+      c = { id: 'workbuddy', name: 'WorkBuddy' };
+    }
+    // Leave ATR chrome so the reply is visible as chat, not a done card.
+    atrWbPageForced = false;
+    atrWbPagePendingGoal = '';
+    atrWbPageUserClosed = true;
+    openWbChatPage();
+    toast(
+      t(
+        'ha2WorkKeptChatAnswer',
+        '仍在「工作」：这句先按问答回复。要改文件请直接说清目标（例如更新 README）'
+      )
+    );
+    sendWbLocal(text, c);
+  }
+
+  /**
+   * Work-mode send. Non-edit text → local chat answer, keep workMode.
+   * New edit goal vs blocking ATR → abandon+start. Empty draft + patch waiting → approve only.
+   */
+  function dispatchEditModeSend(S, snap, text, matSum, opts) {
+    opts = opts || {};
+    text = String(text || '').trim();
+    matSum = String(matSum || '');
+    snap = snap || (S && S.getSnapshot && S.getSnapshot()) || {};
+    var task = snap.agentTask;
+    var st = task ? String(task.status || '') : '';
+    var reason = task ? String(task.waitingReason || task.waiting_reason || '') : '';
+
+    if (!S || !S.startAndDriveAgentTask || !atrRuntimeOn()) {
+      toast(
+        t(
+          'ha2AtrNeedFlag',
+          '修改代码需开启 Agent Task Runtime（勿设 onetone.agentTaskRuntime=0）'
+        )
+      );
+      return;
+    }
+
+    // Empty send while patch waiting → approve (legacy primary CTA).
+    if (!text && atrNeedsApproval(snap) && S.approveAgentPatch) {
+      S.approveAgentPatch()
+        .then(function () {
+          if (!mounted) return;
+          toast(t('ha2AtrApproved', '已同意这次任务'));
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'approve_failed'));
+        });
+      return;
+    }
+
+    if (!text) {
+      if (S.setValidationNotice) {
+        S.setValidationNotice({
+          kind: 'atr_need_goal',
+          message: t('ha2AtrNeedGoal', '请先写清要改什么')
+        });
+      }
+      return;
+    }
+
+    // 「今天天气」类：绝不进编辑 / 绝不当旧任务补充。
+    if (!looksLikeEditGoalText(text)) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      routeToChatInsteadOfEdit(S, text);
+      return;
+    }
+
+    // Continue old task only for short confirmations while waiting on user_input.
+    if (
+      task &&
+      st === 'waiting' &&
+      reason === 'user_input' &&
+      !atrTextIsNewGoal(text, task) &&
+      S.submitAgentInput
+    ) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      S.submitAgentInput(text)
+        .then(function () {
+          if (!mounted) return;
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'input_failed'));
+        });
+      return;
+    }
+
+    // New edit goal while old task still blocking → drop old, start new (one click).
+    if (
+      task &&
+      (atrNeedsApproval(snap) ||
+        st === 'waiting' ||
+        st === 'interrupted' ||
+        atrTaskBusy(snap)) &&
+      atrTextIsNewGoal(text, task) &&
+      S.abandonAndStartAgentTask
+    ) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      openAtrEditPage(text);
+      S.abandonAndStartAgentTask({
+        goal: text,
+        materialsSummary: matSum
+      })
+        .then(function () {
+          if (!mounted) return;
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          toast(String((err && err.message) || err || 'atr_failed'));
+        });
+      return;
+    }
+
+    if (atrTaskBusy(snap)) {
+      openAtrEditPage((task && task.goal) || text);
+      return;
+    }
+
+    if (typeof opts.clearInput === 'function') opts.clearInput();
+    startConfirmedWorkTask(text, matSum).catch(function (err) {
+      toast(String((err && err.message) || err || 'atr_failed'));
+    });
+  }
+
   function sendWbPageDraft() {
     if (wbChatBusy) return;
     var ta = root && root.querySelector('[data-ha2-wb-page-draft]');
@@ -5263,65 +6052,13 @@
     var atrTask = snap && snap.agentTask;
     var atrSt = atrTask ? String(atrTask.status || '') : '';
     var atrReason = atrTask ? String(atrTask.waitingReason || '') : '';
-    if (
-      atrTask &&
-      atrSt === 'waiting' &&
-      atrReason === 'user_input' &&
-      S &&
-      S.submitAgentInput
-    ) {
-      if (ta) ta.value = '';
-      S.submitAgentInput(text)
-        .then(function () {
-          if (!mounted) return;
-          paint(S.getSnapshot());
-        })
-        .catch(function (err) {
-          toast(String((err && err.message) || err || 'input_failed'));
-        });
-      return;
-    }
-    // 工作模式（含写文件意图自动切换）：确认门后再 drive。
+
     if (String((snap && snap.workMode) || '') === 'edit') {
-      if (!S || !S.startAndDriveAgentTask || !atrRuntimeOn()) {
-        toast(
-          t(
-            'ha2AtrNeedFlag',
-            '修改代码需开启 Agent Task Runtime（勿设 onetone.agentTaskRuntime=0）'
-          )
-        );
-        return;
-      }
-      if (atrNeedsApproval(snap) && S.approveAgentPatch) {
-        S.approveAgentPatch()
-          .then(function () {
-            if (!mounted) return;
-            toast(t('ha2AtrApproved', '已同意这次任务'));
-            paint(S.getSnapshot());
-          })
-          .catch(function (err) {
-            toast(String((err && err.message) || err || 'approve_failed'));
-          });
-        return;
-      }
-      if (atrTaskBusy(snap)) {
-        openAtrEditPage((atrTask && atrTask.goal) || text);
-        return;
-      }
-      if (ta) ta.value = '';
-      if (workConfirmOpen) {
-        startConfirmedWorkTask(workConfirmGoal || text, workConfirmMatSum).catch(
-          function (err) {
-            toast(String((err && err.message) || err || 'atr_failed'));
-          }
-        );
-        return;
-      }
-      workConfirmOpen = true;
-      workConfirmGoal = text;
-      workConfirmMatSum = materialsSummaryLine(snap);
-      if (wbChatPageOpen) paintWbChatPage();
-      paint(S.getSnapshot());
+      dispatchEditModeSend(S, snap, text, materialsSummaryLine(snap), {
+        clearInput: function () {
+          if (ta) ta.value = '';
+        }
+      });
       return;
     }
     // ATR still running while UI is on 对话 — don't divert into local chat.
@@ -5333,6 +6070,12 @@
         atrSt === 'review' ||
         (atrSt === 'waiting' && atrReason === 'approval'))
     ) {
+      // Non-edit chat can still proceed; edit-like waits.
+      if (!looksLikeEditGoalText(text)) {
+        if (ta) ta.value = '';
+        sendWbLocal(text, currentCat(snap || {}));
+        return;
+      }
       toast(
         t(
           'ha2AtrWaitSteps',
@@ -5595,9 +6338,197 @@
     return String(raw || '').trim();
   }
 
+  /**
+   * System weather capability (wttr.in) — clarify city if missing; remember default.
+   * Does not require WorkBuddy account.
+   */
+  function tryHandleWeatherLocal(rawText, c) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    var S = store();
+    if (!Caps || !S) return false;
+    var text = String(rawText || '').trim();
+    if (!text) return false;
+    var isAsk = Caps.looksLikeWeatherAsk(text);
+    var cityOnly = wbWeatherAwaitingCity && Caps.looksLikeCityOnly(text);
+    if (!isAsk && !cityOnly) return false;
+
+    var city =
+      Caps.extractWeatherCity(text) ||
+      (cityOnly ? text : '') ||
+      readDefaultWeatherCity() ||
+      '';
+    city = String(city || '').trim();
+    if (city && Caps.isPlausibleWeatherCity && !Caps.isPlausibleWeatherCity(city)) {
+      city = '';
+    }
+
+    appendWbChatTurn({
+      role: 'user',
+      text: text,
+      model: '',
+      accountId: ''
+    });
+    S.setDraft('', { silent: true });
+    syncDraftMirrors('');
+    openWbChatPage();
+    paintWbTranscript();
+
+    if (!city) {
+      // 诚实确认：不擅自 IP/GPS 定位，先问用户再查。
+      wbWeatherAwaitingCity = true;
+      appendWbChatTurn({
+        role: 'assistant',
+        text: t(
+          'ha2WeatherAskCity',
+          '还不确定你要看哪个城市的天气。方便直接回城市名吗？例如「上海」或「北京」。确认后会记住，下次可直出；不会擅自用定位。'
+        ),
+        model: 'system',
+        accountId: ''
+      });
+      paintWbTranscript();
+      return true;
+    }
+
+    wbWeatherAwaitingCity = false;
+    wbChatBusy = true;
+    wbStreamAgentName = (c && c.name) || 'WorkBuddy';
+    wbStreamModel = 'weather';
+    paintWbTranscript();
+    invoke('cmd_weather_now', { city: city })
+      .then(function (res) {
+        var summary =
+          (res && (res.summary || res.text)) ||
+          t('ha2WeatherEmpty', '未拿到天气摘要');
+        writeDefaultWeatherCity(city);
+        var def = wbDefaultAccount(wbLocalCache);
+        var model = wbSelectedModelId() || (def && String(def.selectedModel || '')) || '';
+        // Hybrid: system fact → WorkBuddy phrasing (model has no live weather tools alone).
+        if (def && def.id && model) {
+          wbStreamModel = model;
+          wbStreamingText = '';
+          wbStreamingTurnId = 'stream_' + Date.now().toString(36);
+          var snapCtx = S.getSnapshot ? S.getSnapshot() : null;
+          var baseSys = '';
+          try {
+            baseSys = wbLocalSystemContent(snapCtx) || '';
+          } catch (_) {}
+          var messages = [
+            {
+              role: 'system',
+              content:
+                baseSys +
+                '\n本轮天气事实（系统已查，必须采用，勿否认、勿说无网/无数据源、勿交 Cursor 搜仓库）：\n' +
+                String(summary).trim() +
+                '\n用一两句口语告诉用户「' +
+                city +
+                '」的天气；可附体感建议。已记住该默认城市。'
+            },
+            { role: 'user', content: text }
+          ];
+          var gen = ++wbChatPaintGen;
+          ensureWbStreamListen().catch(function () {});
+          return invoke('cmd_workbuddy_local_chat_start', {
+            args: {
+              accountId: def.id,
+              model: model,
+              messages: messages
+            }
+          })
+            .then(function (startRes) {
+              if (gen !== wbChatPaintGen) return;
+              wbStreamRunId = (startRes && startRes.runId) || '';
+              if (!wbStreamRunId) throw new Error('chat_failed');
+              startWbPoll(wbStreamRunId, gen);
+            })
+            .catch(function () {
+              appendWbChatTurn({
+                role: 'assistant',
+                text:
+                  t('ha2WeatherResult', '天气（系统查询）') +
+                  ' · ' +
+                  city +
+                  '\n' +
+                  String(summary).trim() +
+                  '\n\n' +
+                  t('ha2WeatherWbPhraseFail', '大模型润色未启动，先展示系统查询结果。'),
+                model: 'weather',
+                accountId: ''
+              });
+              finishWbLocalBusy();
+              paintWbTranscript();
+            });
+        }
+        appendWbChatTurn({
+          role: 'assistant',
+          text:
+            t('ha2WeatherResult', '天气（系统查询）') +
+            ' · ' +
+            city +
+            '\n' +
+            String(summary).trim() +
+            '\n\n' +
+            t(
+              'ha2WeatherNeedWb',
+              '已记为默认城市。登录 WorkBuddy 后可用大模型口语解释同一结果。'
+            ),
+          model: 'weather',
+          accountId: ''
+        });
+        if (S.setDeliveryReceipt) {
+          S.setDeliveryReceipt({
+            kind: 'local_chat',
+            phase: 'done',
+            outcome: 'local_replied',
+            title: t('ha2WeatherDone', '已查询天气'),
+            message: String(summary).slice(0, 80),
+            verified: true,
+            inputConfirmed: false
+          });
+        }
+        finishWbLocalBusy();
+        paintWbTranscript();
+        if (mounted) paint(S.getSnapshot());
+      })
+      .catch(function (err) {
+        var raw = String((err && err.message) || err || '');
+        var notFound =
+          /need_city|city_not_found|bad_city|location not found|unknown location/i.test(
+            raw
+          );
+        var msg = notFound
+          ? t(
+              'ha2WeatherBadCity',
+              '这个城市名暂时查不到。方便换一个常见写法再确认一下吗？例如「上海」「北京」或「Shanghai」。'
+            )
+          : t(
+              'ha2WeatherFetchFail',
+              '天气服务暂时没返回结果。可以稍后再试，或换个城市名让我确认后再查。'
+            );
+        wbWeatherAwaitingCity = true;
+        appendWbChatTurn({
+          role: 'assistant',
+          text: msg,
+          model: 'weather',
+          accountId: ''
+        });
+        finishWbLocalBusy();
+        paintWbTranscript();
+        if (mounted) paint(S.getSnapshot());
+      });
+    return true;
+  }
+
   function sendWbLocal(draftRemember, c) {
     var S = store();
     if (wbChatBusy) return;
+
+    // Checklist markdown → short goal turn (avoid section-fill replies).
+    draftRemember = compactWbLocalUserText(draftRemember);
+    if (!draftRemember) return;
+
+    // Weather: system IPC + reverse-ask city — before WorkBuddy account gate.
+    if (tryHandleWeatherLocal(draftRemember, c)) return;
+
     var def = wbDefaultAccount(wbLocalCache);
     if (!def) {
       S.setValidationNotice({
@@ -5614,10 +6545,6 @@
       });
       return;
     }
-
-    // Checklist markdown → short goal turn (avoid section-fill replies).
-    draftRemember = compactWbLocalUserText(draftRemember);
-    if (!draftRemember) return;
 
     wbChatBusy = true;
     wbTranscriptCollapsed = false;
@@ -5887,69 +6814,16 @@
     snap = promoteWorkModeForEditGoal(S, snap, draftRemember);
     editMode = String((snap && snap.workMode) || '') === 'edit';
 
-    // Edit mode → ATR only (never WorkBuddy local chat / desktop paste).
+    // Edit mode → ATR for file goals; chat for non-edit text (e.g. 今天天气).
     // Must run before the desktop-Agent gate — ATR uses Soft Pad/WorkBuddy providers.
     if (editMode) {
-      if (!S.startAndDriveAgentTask || !atrRuntimeOn()) {
-        S.setValidationNotice({
-          kind: 'atr_not_ready',
-          message: t(
-            'ha2AtrNeedFlag',
-            '修改代码需开启 Agent Task Runtime（勿设 onetone.agentTaskRuntime=0）'
-          )
-        });
-        return;
-      }
-      // Waiting write approval → main CTA is 批准并执行.
-      if (atrNeedsApproval(snap) && S.approveAgentPatch) {
-        S.approveAgentPatch()
-          .then(function () {
-            if (!mounted) return;
-            toast(t('ha2AtrApproved', '已同意这次任务'));
-            paint(S.getSnapshot());
-          })
-          .catch(function (err) {
-            toast(String((err && err.message) || err || 'approve_failed'));
-          });
-        return;
-      }
-      // Running → 查看进度 (open steps page; do not start another drive).
-      if (atrTaskBusy(snap)) {
-        openAtrEditPage(
-          (snap.agentTask && snap.agentTask.goal) || draftRemember || workConfirmGoal
-        );
-        return;
-      }
-      var matSum = materialsSummaryLine(snap);
-      // Confirm gate open → 批准并开始.
-      if (workConfirmOpen) {
-        var confirmGoal = workConfirmGoal || draftRemember;
-        if (!confirmGoal) {
-          S.setValidationNotice({
-            kind: 'atr_need_goal',
-            message: t('ha2AtrNeedGoal', '请先写清要改什么')
-          });
-          return;
+      dispatchEditModeSend(S, snap, draftRemember, materialsSummaryLine(snap), {
+        clearInput: function () {
+          S.setDraft('', { silent: true });
+          syncDraftMirrors('');
+          if (dockTa) dockTa.value = '';
         }
-        startConfirmedWorkTask(confirmGoal, workConfirmMatSum || matSum).catch(
-          function (err) {
-            toast(String((err && err.message) || err || 'atr_failed'));
-          }
-        );
-        return;
-      }
-      if (!draftRemember) {
-        S.setValidationNotice({
-          kind: 'atr_need_goal',
-          message: t('ha2AtrNeedGoal', '请先写清要改什么')
-        });
-        return;
-      }
-      // Idle → 生成执行计划 opens confirm gate; does not drive yet.
-      workConfirmOpen = true;
-      workConfirmGoal = draftRemember;
-      workConfirmMatSum = matSum;
-      paint(S.getSnapshot());
+      });
       return;
     }
 
@@ -6199,6 +7073,9 @@
       var Atr = global.OneToneHomeAgentTask;
       var pid = String(el.value || '').trim();
       if (Atr && Atr.writeProvider && pid) Atr.writeProvider(pid);
+      var Sprov = store();
+      if (Sprov && Sprov.setValidationNotice) Sprov.setValidationNotice(null);
+      if (mounted) paint(Sprov && Sprov.getSnapshot ? Sprov.getSnapshot() : null);
       return;
     }
     if (el.matches('[data-ha2-consult-skill]')) {
@@ -6585,24 +7462,81 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-resume],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
     var D = dock();
+    if (tEl.hasAttribute('data-ha2-atr-accept-recommend')) {
+      var Arec = global.OneToneHomeAgentTask;
+      var nRec = S && S.getSnapshot && S.getSnapshot().validationNotice;
+      var recId =
+        (nRec && nRec.recommendedProvider) ||
+        (atrProvidersCache && atrProvidersCache.recommendedProvider) ||
+        '';
+      if (Arec && Arec.writeProvider && recId) {
+        Arec.writeProvider(recId);
+        if (S.setValidationNotice) S.setValidationNotice(null);
+        toast(t('ha2AtrRecommendAccepted', '已选用推荐引擎') + '：' + recId);
+        paint(S.getSnapshot());
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-verify-engine')) {
+      closeWorkConfirm();
+      startAtrSandboxVerify();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-switch-deepseek')) {
+      var Ads = global.OneToneHomeAgentTask;
+      if (Ads && Ads.writeProvider) {
+        Ads.writeProvider('deepseek');
+        if (S && S.setValidationNotice) S.setValidationNotice(null);
+        toast(t('ha2AtrSwitchedDeepseek', '已改用 DeepSeek（Soft Pad）— 请确认密钥后发送'));
+        paint(S.getSnapshot());
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-toggle-beginner')) {
+      setAtrBeginner(!atrBeginnerOn());
+      toast(
+        atrBeginnerOn()
+          ? t('ha2AtrBeginnerOn', '已切换到新手模式')
+          : t('ha2AtrAdvancedOn', '已切换到高级模式')
+      );
+      paint(S && S.getSnapshot ? S.getSnapshot() : null);
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-atr-advanced')) {
+      setAtrBeginner(false);
+      paint(S && S.getSnapshot ? S.getSnapshot() : null);
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-atr-open-page')) {
+      if (S && S.clearAtrSendConflict) S.clearAtrSendConflict({ silent: true });
       atrWbPageUserClosed = false;
       atrWbPageForced = true;
       openWbChatPage();
       return;
     }
     if (tEl.hasAttribute('data-ha2-atr-continue')) {
+      if (S && S.clearAtrSendConflict) S.clearAtrSendConflict({ silent: true });
       if (S && S.setValidationNotice) S.setValidationNotice(null);
       paint(S && S.getSnapshot ? S.getSnapshot() : null);
       toast(t('ha2AtrSeeApproval', '请在上方审批卡处理'));
       return;
     }
+    if (tEl.hasAttribute('data-ha2-atr-keep-draft')) {
+      if (S && S.keepDraftDeferAtrSend) {
+        S.keepDraftDeferAtrSend().then(function () {
+          toast(t('ha2AtrKeepDraftOk', '草稿已保留，旧任务未改动'));
+          paint(S.getSnapshot());
+        });
+      }
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-atr-resume')) {
+      if (S && S.clearAtrSendConflict) S.clearAtrSendConflict({ silent: true });
       if (S && S.resumeAndDriveAgentTask) {
         S.resumeAndDriveAgentTask()
           .then(function () {
@@ -6618,36 +7552,55 @@
     if (tEl.hasAttribute('data-ha2-atr-abandon-send')) {
       if (S && S.abandonAndStartAgentTask) {
         var snapSend = S.getSnapshot ? S.getSnapshot() : {};
-        var draftSend = (snapSend && snapSend.draft) || '';
+        var conflictSend = snapSend && snapSend.atrSendConflict;
+        var draftSend =
+          (conflictSend && conflictSend.goal) || (snapSend && snapSend.draft) || '';
         var dockTaSend = root && root.querySelector('.ha2-compose [data-ha2-draft]');
-        if (dockTaSend) draftSend = dockTaSend.value;
+        if (dockTaSend && String(dockTaSend.value || '').trim()) {
+          draftSend = dockTaSend.value;
+        }
         draftSend = String(draftSend || '').trim();
         if (!draftSend) {
           toast(t('ha2AtrNeedGoal', '请先写清要改什么'));
           return;
         }
         S.setDraft(draftSend, { silent: true });
-        var matSumSend = '';
-        try {
-          var matsSend = (snapSend && snapSend.materials) || [];
-          if (matsSend.length) {
-            matSumSend = matsSend
-              .slice(0, 8)
-              .map(function (m) {
-                return String((m && (m.title || m.path || m.name)) || '').slice(0, 80);
-              })
-              .filter(Boolean)
-              .join('; ');
-          }
-        } catch (_) {}
+        var matSumSend =
+          (conflictSend && conflictSend.materialsSummary) || '';
+        if (!matSumSend) {
+          try {
+            var matsSend = (snapSend && snapSend.materials) || [];
+            if (matsSend.length) {
+              matSumSend = matsSend
+                .slice(0, 8)
+                .map(function (m) {
+                  return String((m && (m.title || m.path || m.name)) || '').slice(0, 80);
+                })
+                .filter(Boolean)
+                .join('; ');
+            }
+          } catch (_) {}
+        }
         openAtrEditPage(draftSend);
         S.abandonAndStartAgentTask({
           goal: draftSend,
           materialsSummary: matSumSend
         })
-          .then(function () {
+          .then(function (dto) {
             if (!mounted) return;
-            paint(S.getSnapshot());
+            var snapAfter = S.getSnapshot();
+            var n = snapAfter && snapAfter.validationNotice;
+            if (n && n.code === 'abandon_start_failed') {
+              toast(
+                t(
+                  'ha2AtrAbandonStartFailed',
+                  '旧任务已放弃，新任务未创建 — 请检查项目或引擎后重发'
+                )
+              );
+            } else if (!dto && n && n.abandoned === false) {
+              toast(n.message || t('ha2AtrPreflightFail', '未放弃旧任务：启动条件未满足'));
+            }
+            paint(snapAfter);
           })
           .catch(function (err) {
             toast(String((err && err.message) || err || 'abandon_send_failed'));
@@ -6773,6 +7726,7 @@
     }
     if (tEl.hasAttribute('data-ha2-work-confirm-cancel')) {
       closeWorkConfirm();
+      if (wbChatPageOpen) paintWbChatPage();
       if (S) paint(S.getSnapshot());
       return;
     }

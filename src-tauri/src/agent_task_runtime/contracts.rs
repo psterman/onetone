@@ -82,7 +82,7 @@ impl PermissionMode {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTaskRequest {
     pub goal: String,
@@ -91,9 +91,18 @@ pub struct StartTaskRequest {
     pub permission_mode: Option<String>,
     #[serde(default)]
     pub materials_summary: Option<String>,
-    /// When true, drive with scripted fake steps (tests / Slice A).
+    /// When true, FE intends fake IPC — backend still sets driver_kind from actual API.
     #[serde(default)]
     pub use_fake_driver: bool,
+    /// Labeled sandbox verify entry (not normal project edit).
+    #[serde(default)]
+    pub verify_intent: bool,
+    #[serde(default)]
+    pub sandbox_id: Option<String>,
+    #[serde(default)]
+    pub expected_rel_path: Option<String>,
+    #[serde(default)]
+    pub expected_content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +122,22 @@ pub struct TaskDto {
     pub last_error: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
+    #[serde(default)]
+    pub provider_id: Option<String>,
+    #[serde(default)]
+    pub model_id: Option<String>,
+    #[serde(default)]
+    pub config_fp: Option<String>,
+    #[serde(default)]
+    pub driver_kind: Option<String>,
+    #[serde(default)]
+    pub verify_intent: bool,
+    #[serde(default)]
+    pub sandbox_id: Option<String>,
+    #[serde(default)]
+    pub expected_rel_path: Option<String>,
+    #[serde(default)]
+    pub expected_content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

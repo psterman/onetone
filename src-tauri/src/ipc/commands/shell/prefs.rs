@@ -223,3 +223,95 @@ pub fn cmd_probe_camera_capabilities() -> serde_json::Value {
 pub fn cmd_windows_hello_confirm(reason: Option<String>) -> serde_json::Value {
     crate::camera_capability_probe::windows_hello_confirm(reason.as_deref().unwrap_or(""))
 }
+
+/// Map common CN names to wttr.in-friendly place ids.
+fn normalize_weather_city(city: &str) -> String {
+    match city.trim() {
+        "北京" | "北京市" | "北平" => "Beijing".into(),
+        "上海" | "上海市" => "Shanghai".into(),
+        "广州" | "广州市" => "Guangzhou".into(),
+        "深圳" | "深圳市" => "Shenzhen".into(),
+        "杭州" | "杭州市" => "Hangzhou".into(),
+        "成都" | "成都市" => "Chengdu".into(),
+        "重庆" | "重庆市" => "Chongqing".into(),
+        "武汉" | "武汉市" => "Wuhan".into(),
+        "西安" | "西安市" => "Xian".into(),
+        "南京" | "南京市" => "Nanjing".into(),
+        "天津" | "天津市" => "Tianjin".into(),
+        "苏州" | "苏州市" => "Suzhou".into(),
+        "香港" => "Hong Kong".into(),
+        "澳门" | "澳門" => "Macau".into(),
+        "台北" | "臺北" => "Taipei".into(),
+        other => other.to_string(),
+    }
+}
+
+/// Lightweight current weather via wttr.in (no API key). City required.
+#[tauri::command]
+pub fn cmd_weather_now(city: String) -> Result<serde_json::Value, String> {
+    let raw_city = city.trim();
+    if raw_city.is_empty() || raw_city.chars().count() > 48 {
+        return Err("need_city".into());
+    }
+    if raw_city.contains(['/', '\\', '?', '#', '&', '%', '\n', '\r']) {
+        return Err("bad_city".into());
+    }
+    let query_city = normalize_weather_city(raw_city);
+    let mut url = reqwest::Url::parse("https://wttr.in/").map_err(|e| e.to_string())?;
+    {
+        let mut segs = url
+            .path_segments_mut()
+            .map_err(|_| "bad_url".to_string())?;
+        segs.clear();
+        segs.push(&query_city);
+    }
+    url.set_query(Some("format=3&lang=zh"));
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(12))
+        .user_agent("curl/8.0.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(url)
+        .send()
+        .map_err(|e| format!("weather_net: {e}"))?;
+    let status = resp.status();
+    let body = resp.text().map_err(|e| e.to_string())?;
+    let low = body.to_lowercase();
+    if !status.is_success()
+        || low.contains("location not found")
+        || low.contains("unknown location")
+    {
+        return Err("city_not_found".into());
+    }
+    let summary = body.trim().to_string();
+    if summary.is_empty() {
+        return Err("city_not_found".into());
+    }
+    Ok(serde_json::json!({
+        "ok": true,
+        "city": raw_city,
+        "queryCity": query_city,
+        "summary": summary,
+        "source": "wttr.in",
+    }))
+}
+
+#[cfg(test)]
+mod weather_now_tests {
+    use super::{cmd_weather_now, normalize_weather_city};
+
+    #[test]
+    fn rejects_empty_and_pathy_city() {
+        assert!(cmd_weather_now(String::new()).is_err());
+        assert!(cmd_weather_now("a/b".into()).is_err());
+        assert!(cmd_weather_now("x?y".into()).is_err());
+    }
+
+    #[test]
+    fn maps_common_cn_cities() {
+        assert_eq!(normalize_weather_city("北京"), "Beijing");
+        assert_eq!(normalize_weather_city("上海"), "Shanghai");
+        assert_eq!(normalize_weather_city("Tokyo"), "Tokyo");
+    }
+}

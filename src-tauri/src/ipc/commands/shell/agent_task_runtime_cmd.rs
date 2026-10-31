@@ -132,6 +132,16 @@ pub fn cmd_agent_task_ready() -> Result<serde_json::Value, String> {
     Ok(agent_task_runtime::provider_ready_snapshot())
 }
 
+#[tauri::command]
+pub fn cmd_agent_task_ensure_verify_sandbox() -> Result<serde_json::Value, String> {
+    agent_task_runtime::ensure_verify_sandbox()
+}
+
+#[tauri::command]
+pub fn cmd_agent_task_evaluate_verify(args: TaskIdRequest) -> Result<serde_json::Value, String> {
+    agent_task_runtime::evaluate_verify(&args.task_id)
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProbeWorkbuddyArgs {

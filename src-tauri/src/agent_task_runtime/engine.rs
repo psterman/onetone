@@ -46,6 +46,10 @@ pub struct StartOpts {
     pub workspace_root: PathBuf,
     pub permission_mode: PermissionMode,
     pub materials_summary: String,
+    pub verify_intent: bool,
+    pub sandbox_id: Option<String>,
+    pub expected_rel_path: Option<String>,
+    pub expected_content: Option<String>,
 }
 
 pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, String> {
@@ -88,6 +92,14 @@ pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, Str
         applied_tokens_json: "[]".into(),
         created_at: now,
         updated_at: now,
+        provider_id: None,
+        model_id: None,
+        config_fp: None,
+        driver_kind: "unknown".into(),
+        verify_intent: opts.verify_intent,
+        sandbox_id: opts.sandbox_id,
+        expected_rel_path: opts.expected_rel_path,
+        expected_content: opts.expected_content,
     };
     let tx = conn
         .unchecked_transaction()

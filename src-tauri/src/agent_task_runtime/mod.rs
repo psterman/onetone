@@ -13,6 +13,7 @@ mod resume;
 mod scope;
 mod store;
 mod tools;
+mod verify_accept;
 mod workbuddy;
 
 pub use contracts::{
@@ -27,9 +28,13 @@ pub use engine::{
 };
 pub use providers::{parse_provider_id, probe_workbuddy_edit, provider_ready_snapshot};
 pub use resume::{abandon_task, on_process_start, resume_task};
+pub use verify_accept::{ensure_verify_sandbox, evaluate_verify};
 
 use engine::{approve_patch as eng_approve, reject_patch as eng_reject, start_task, StartOpts};
 use store::{get_task, list_events, with_conn_at, with_write};
+use verify_accept::{
+    assert_drive_admitted, bind_provider_locked, claim_sandbox_for_task, resolve_start_from_sandbox,
+};
 
 /// Boot hook — mark in-flight tasks interrupted.
 pub fn boot() {
@@ -42,8 +47,33 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
         .as_deref()
         .and_then(PermissionMode::parse)
         .unwrap_or(PermissionMode::WriteWithApproval);
-    let root = std::path::PathBuf::from(req.workspace_root.trim());
+    // FE may send expected_*/verify_intent; backend ignores them.
+    let _ = (req.verify_intent, req.expected_rel_path, req.expected_content);
     with_write(|conn| {
+        let (root, verify_intent, sandbox_id, expected_rel_path, expected_content) =
+            if let Some(sid) = req
+                .sandbox_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                let sb = resolve_start_from_sandbox(conn, sid)?;
+                (
+                    std::path::PathBuf::from(&sb.workspace_root),
+                    true,
+                    Some(sb.sandbox_id.clone()),
+                    Some(sb.expected_rel_path.clone()),
+                    Some(sb.expected_content.clone()),
+                )
+            } else {
+                (
+                    std::path::PathBuf::from(req.workspace_root.trim()),
+                    false,
+                    None,
+                    None,
+                    None,
+                )
+            };
         let task = start_task(
             conn,
             StartOpts {
@@ -51,8 +81,15 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
                 workspace_root: root,
                 permission_mode: mode,
                 materials_summary: req.materials_summary.unwrap_or_default(),
+                verify_intent,
+                sandbox_id: sandbox_id.clone(),
+                expected_rel_path,
+                expected_content,
             },
         )?;
+        if let Some(ref sid) = sandbox_id {
+            claim_sandbox_for_task(conn, sid, &task.task_id)?;
+        }
         let _ = req.use_fake_driver;
         Ok(task.to_dto())
     })
@@ -129,6 +166,16 @@ pub fn api_abandon(task_id: &str) -> Result<TaskDto, String> {
 
 /// Drive until idle; releases ATR DB write lock between model turns.
 pub fn api_drive_fake(task_id: &str, driver: &mut FakeDriver) -> Result<TaskDto, String> {
+    // Fake path is admission-exempt; never write acceptance.
+    with_write(|conn| {
+        let mut task = get_task(conn, task_id)?.ok_or_else(|| "task_not_found".to_string())?;
+        if task.driver_kind == "real" {
+            return Err("driver_kind_mismatch: task is real, drive is fake".into());
+        }
+        task.driver_kind = "fake".into();
+        store::update_task_bind(conn, &task)?;
+        Ok(())
+    })?;
     drive_releasing(task_id, driver, None)
 }
 
@@ -143,8 +190,18 @@ pub fn api_drive(
     provider: &str,
     max_steps: Option<u32>,
 ) -> Result<TaskDto, String> {
+    // Bind + admit under the same write lock; no driver until admitted.
+    with_write(|conn| {
+        let task = bind_provider_locked(conn, task_id, provider, "real")?;
+        assert_drive_admitted(conn, &task, provider)?;
+        Ok(())
+    })?;
     let mut driver = providers::make_driver(provider)?;
-    drive_releasing(task_id, driver.as_mut(), max_steps)
+    let dto = drive_releasing(task_id, driver.as_mut(), max_steps)?;
+    if dto.status == "done" {
+        let _ = evaluate_verify(task_id);
+    }
+    Ok(dto)
 }
 
 fn drive_releasing(
@@ -277,6 +334,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: Some("hello.txt".into()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         assert_eq!(dto.status, "running");
@@ -345,6 +403,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let ckpt_id = dto.checkpoint_id.clone().unwrap();
@@ -381,6 +440,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let ckpt = dto.checkpoint_id.clone().unwrap();
@@ -419,6 +479,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
 
@@ -436,6 +497,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut bad = FakeDriver {
@@ -456,6 +518,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let waiting = api_drive_fake(&dto3.task_id, &mut drv).unwrap();
@@ -485,6 +548,7 @@ mod tests {
             permission_mode: Some("read_only".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         with_write(|conn| {
@@ -522,6 +586,7 @@ mod tests {
             permission_mode: Some("read_only".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         cancel::cancel(&dto.task_id);
@@ -564,6 +629,7 @@ mod tests {
             permission_mode: Some("read_only".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let failed = with_write(|conn| {
@@ -595,6 +661,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: Some(rel.clone()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = apply_without_read_fake_steps(&rel, "hello world\n");
@@ -660,6 +727,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: Some(rel.clone()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = happy_path_fake_steps(&rel, "hello world\n");
@@ -724,6 +792,7 @@ mod tests {
             permission_mode: Some("write_autonomous".into()),
             materials_summary: Some(rel.clone()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = happy_path_fake_steps(&rel, "hello world\n");
@@ -764,6 +833,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: Some(rel.clone()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = happy_path_fake_steps(&rel, "hello world\n");
@@ -808,6 +878,7 @@ mod tests {
             permission_mode: Some("write_autonomous".into()),
             materials_summary: Some(rel.clone()),
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = export_desktop_fake_steps(&rel);
@@ -837,6 +908,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let mut driver = create_file_fake_steps("README.md", "# Hello\n");
@@ -884,6 +956,7 @@ mod tests {
             permission_mode: Some("write_with_approval".into()),
             materials_summary: None,
             use_fake_driver: true,
+            ..Default::default()
         })
         .unwrap();
         let ckpt_id = dto.checkpoint_id.clone().unwrap();

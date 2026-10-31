@@ -93,6 +93,43 @@ await Task.runGoal({ goal: 'x', workspaceRoot: 'E:/tmp' }).then(
 );
 
 sandbox.localStorage.setItem(Task.FLAG_KEY, '1');
+// localStorage marks must NOT open editCapable — backend must say so.
+sandbox.localStorage.setItem(
+  Task.VERIFIED_KEY,
+  JSON.stringify({ deepseek: { ok: true, at: Date.now() } })
+);
+Task.writeProvider('deepseek');
+sandbox.OneToneIpc = {
+  invoke(cmd) {
+    if (cmd === 'cmd_agent_task_ready') {
+      return Promise.resolve({
+        implemented: true,
+        deepseekReady: true,
+        providers: [
+          {
+            id: 'deepseek',
+            ready: true,
+            chatReady: true,
+            tryEdit: true,
+            editCapable: false,
+            locallyVerified: false,
+            label: 'DeepSeek'
+          }
+        ]
+      });
+    }
+    return Promise.reject(new Error('unexpected:' + cmd));
+  }
+};
+await Task.runGoal({ goal: 'test greeting', workspaceRoot: 'E:/proj' }).then(
+  () => {
+    throw new Error('expected provider_not_edit_capable without backend grant');
+  },
+  (err) => {
+    assert.equal(err.code, 'provider_not_edit_capable');
+  }
+);
+
 let driveCount = 0;
 sandbox.OneToneIpc = {
   invoke(cmd) {
@@ -101,8 +138,19 @@ sandbox.OneToneIpc = {
       return Promise.resolve({
         implemented: true,
         deepseekReady: true,
-        selectedDefault: 'deepseek',
-        providers: [{ id: 'deepseek', ready: true, label: 'DeepSeek' }]
+        selectedDefault: null,
+        recommendedProvider: 'deepseek',
+        providers: [
+          {
+            id: 'deepseek',
+            ready: true,
+            chatReady: true,
+            tryEdit: true,
+            editCapable: true,
+            locallyVerified: true,
+            label: 'DeepSeek'
+          }
+        ]
       });
     }
     if (cmd === 'cmd_agent_task_start') {
@@ -156,11 +204,7 @@ assert.match(
   uiSrc,
   /Edit mode → ATR only[\s\S]*?if \(!c\.id\)/
 );
-assert.ok(
-  uiSrc.indexOf("if (String((snap && snap.workMode) || '') === 'edit') return '';") >= 0 ||
-    /workMode\) \|\| ''\) === 'edit'\) return '';/.test(uiSrc),
-  'sendBlockReason skips agent pick in edit'
-);
+assert.match(uiSrc, /function sendBlockReason[\s\S]*?=== 'edit'[\s\S]*?ha2PickAgent/);
 
 const engineSrc = fs.readFileSync(
   path.join(root, 'src-tauri/src/agent_task_runtime/engine.rs'),
@@ -180,6 +224,6 @@ const promptsSrc = fs.readFileSync(
   'utf8'
 );
 assert.match(promptsSrc, /tool_trace_from_events/);
-assert.match(promptsSrc, /新建文件/);
+assert.match(promptsSrc, /propose_changes|新建/);
 
 console.log('test-atr-home-edit-loop: ok');

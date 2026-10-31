@@ -9,6 +9,11 @@
   var ACTIVE_KEY = 'onetone.agentTask.activeId';
   var PROVIDER_KEY = 'onetone.atr.provider';
   var PERM_KEY = 'onetone.atr.permissionMode';
+  /** { [providerId]: { at, sandbox?, ok: true } } — local evidence only, not "stable". */
+  var VERIFIED_KEY = 'onetone.atr.editVerified';
+  /** Legacy substring — prefer ensureVerifySandbox absolute roots. */
+  var SANDBOX_HINT = 'atr-verify';
+  var verifySandboxRoots = Object.create(null);
 
   /** Default ON — opt out with localStorage '0'. */
   function featureEnabled() {
@@ -88,10 +93,31 @@
       workspaceRoot: String(opts.workspaceRoot || ''),
       permissionMode: opts.permissionMode || readPermissionMode(),
       materialsSummary: opts.materialsSummary || '',
-      useFakeDriver: !!opts.useFakeDriver
+      useFakeDriver: !!opts.useFakeDriver,
+      // Backend derives verify_intent + expected_* from sandbox registry when sandboxId set.
+      sandboxId: opts.sandboxId || null
     }).then(function (dto) {
       if (dto && dto.taskId) writeActiveId(dto.taskId);
       return dto;
+    });
+  }
+
+  function ensureVerifySandbox() {
+    return invoke('cmd_agent_task_ensure_verify_sandbox', {}).then(function (info) {
+      if (info && info.workspaceRoot) {
+        var key = String(info.workspaceRoot)
+          .replace(/\\/g, '/')
+          .toLowerCase();
+        verifySandboxRoots[key] = true;
+        if (info.sandboxId) verifySandboxRoots[String(info.sandboxId)] = true;
+      }
+      return info;
+    });
+  }
+
+  function evaluateVerify(taskId) {
+    return invoke('cmd_agent_task_evaluate_verify', {
+      taskId: String(taskId || '')
     });
   }
 
@@ -141,10 +167,6 @@
     });
   }
 
-  function ready() {
-    return invoke('cmd_agent_task_ready', {});
-  }
-
   var IDLE = { waiting: 1, done: 1, failed: 1, cancelled: 1, interrupted: 1 };
 
   /** One IPC = one tool turn, loop until idle — keeps the home UI from freezing. */
@@ -190,55 +212,171 @@
     return err;
   }
 
-  function isEditCapableRow(row) {
-    if (!row || !row.ready) return false;
-    // Respect backend editCapable (WorkBuddy OAuth freemodel or Soft Pad key).
-    if (row.editCapable === false) return false;
+  function readVerifiedMap() {
+    try {
+      var raw = global.localStorage && global.localStorage.getItem(VERIFIED_KEY);
+      if (!raw) return {};
+      var o = JSON.parse(raw);
+      return o && typeof o === 'object' ? o : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeVerifiedMap(map) {
+    try {
+      if (!global.localStorage) return;
+      global.localStorage.setItem(VERIFIED_KEY, JSON.stringify(map || {}));
+    } catch (_) {}
+  }
+
+  function isLocallyVerified(providerId) {
+    var id = String(providerId || '')
+      .trim()
+      .toLowerCase();
+    if (!id) return false;
+    var row = readVerifiedMap()[id];
+    return !!(row && row.ok);
+  }
+
+  /**
+   * Record one successful sandbox edit loop. Evidence only — never claim "stable".
+   */
+  function markEditVerified(providerId, meta) {
+    meta = meta || {};
+    var id = String(providerId || '')
+      .trim()
+      .toLowerCase();
+    if (!id) return false;
+    var map = readVerifiedMap();
+    map[id] = {
+      ok: true,
+      at: Date.now(),
+      sandbox: meta.sandbox || meta.workspaceRoot || null,
+      taskId: meta.taskId || null
+    };
+    writeVerifiedMap(map);
     return true;
   }
 
-  function resolveProvider(info, preferred) {
+  function clearEditVerified(providerId) {
+    var id = String(providerId || '')
+      .trim()
+      .toLowerCase();
+    var map = readVerifiedMap();
+    if (!id) {
+      writeVerifiedMap({});
+      return;
+    }
+    delete map[id];
+    writeVerifiedMap(map);
+  }
+
+  function pathLooksLikeVerifySandbox(p) {
+    var s = String(p || '')
+      .replace(/\\/g, '/')
+      .toLowerCase();
+    if (!s) return false;
+    if (verifySandboxRoots[s]) return true;
+    // Session-known atr-verify/<id> under data root (backend-created).
+    return /\/atr-verify\/vs_\d+/i.test(s) || s.indexOf('/atr-verify/') >= 0;
+  }
+
+  /**
+   * Trust backend editCapable / locallyVerified only.
+   * localStorage marks must never open normal project edit.
+   */
+  function enrichReadySnapshot(info) {
+    if (!info || typeof info !== 'object') return info;
+    var list = Array.isArray(info.providers) ? info.providers : [];
+    var out = Object.assign({}, info);
+    out.providers = list.map(function (row) {
+      row = row || {};
+      var chatReady = row.chatReady != null ? !!row.chatReady : !!row.ready;
+      var tryEdit = row.tryEdit != null ? !!row.tryEdit : chatReady;
+      var editCapable = row.editCapable === true;
+      var verified = row.locallyVerified === true;
+      return Object.assign({}, row, {
+        chatReady: chatReady,
+        tryEdit: tryEdit,
+        locallyVerified: verified,
+        editCapable: editCapable,
+        ready: chatReady
+      });
+    });
+    return out;
+  }
+
+  function ready() {
+    return invoke('cmd_agent_task_ready', {}).then(enrichReadySnapshot);
+  }
+
+  function isEditCapableRow(row) {
+    if (!row) return false;
+    if (row.editCapable === true) return true;
+    return false;
+  }
+
+  function isTryEditRow(row) {
+    if (!row) return false;
+    if (row.tryEdit === true) return true;
+    if (row.chatReady || row.ready) return true;
+    return false;
+  }
+
+  function resolveProvider(info, preferred, opts) {
+    opts = opts || {};
+    var allowTry = !!opts.allowTryEdit;
     var want = String(preferred || readProvider() || '')
       .trim()
       .toLowerCase();
     var list = (info && Array.isArray(info.providers) && info.providers) || [];
-    function findReady(id) {
+    function findUsable(id) {
       for (var i = 0; i < list.length; i++) {
         var row = list[i] || {};
-        if (String(row.id || '').toLowerCase() === id && isEditCapableRow(row)) {
-          return String(row.id);
-        }
+        if (String(row.id || '').toLowerCase() !== id) continue;
+        if (isEditCapableRow(row)) return String(row.id);
+        if (allowTry && isTryEditRow(row)) return String(row.id);
       }
       return null;
     }
     if (want) {
-      var hit = findReady(want);
+      var hit = findUsable(want);
       if (hit) return hit;
-      // Preferred set but not ready — still return it so backend emits *_unconfigured.
+      // Preferred set but not usable — still return it so caller can emit *_unconfigured.
       return want;
     }
-    if (info && info.selectedDefault) return String(info.selectedDefault);
     for (var j = 0; j < list.length; j++) {
       if (isEditCapableRow(list[j])) return String(list[j].id);
     }
+    if (allowTry) {
+      for (var k = 0; k < list.length; k++) {
+        if (isTryEditRow(list[k])) return String(list[k].id);
+      }
+    }
+    if (info && info.recommendedProvider) return String(info.recommendedProvider);
     return null;
   }
 
-  function anyProviderReady(info) {
+  function anyProviderReady(info, opts) {
+    opts = opts || {};
     var list = (info && Array.isArray(info.providers) && info.providers) || [];
     for (var i = 0; i < list.length; i++) {
       if (isEditCapableRow(list[i])) return true;
+      if (opts.allowTryEdit && isTryEditRow(list[i])) return true;
     }
-    return !!(info && (info.workbuddyReady || info.deepseekReady));
+    return false;
   }
 
   function probeWorkbuddy(force) {
-    return invoke('cmd_agent_task_probe_workbuddy', { force: !!force });
+    return invoke('cmd_agent_task_probe_workbuddy', { force: !!force }).then(
+      enrichReadySnapshot
+    );
   }
 
   /**
    * start → drive(provider). Distinct codes — never crush "no model" into not_ready.
-   * @param {{ goal: string, workspaceRoot: string, materialsSummary?: string, permissionMode?: string, useFakeDriver?: boolean, driveFakeSteps?: string[], provider?: string }} opts
+   * @param {{ goal: string, workspaceRoot: string, materialsSummary?: string, permissionMode?: string, useFakeDriver?: boolean, driveFakeSteps?: string[], provider?: string, allowTryEdit?: boolean }} opts
    */
   function runGoal(opts) {
     opts = opts || {};
@@ -246,6 +384,8 @@
       return Promise.reject(codedError('not_ready', 'agent_task_runtime_off'));
     }
     var resolvedProvider = null;
+    var allowTry =
+      !!opts.allowTryEdit || pathLooksLikeVerifySandbox(opts.workspaceRoot);
     return ready()
       .catch(function (e) {
         return Promise.reject(
@@ -258,13 +398,9 @@
         }
         var useFake = !!opts.useFakeDriver || (Array.isArray(opts.driveFakeSteps) && opts.driveFakeSteps.length);
         if (!useFake) {
-          resolvedProvider = resolveProvider(info, opts.provider);
-          if (!resolvedProvider || !anyProviderReady(info)) {
-            return Promise.reject(
-              codedError('provider_unconfigured', 'provider_unconfigured')
-            );
-          }
-          // If user picked a specific unready provider, fail with that id.
+          resolvedProvider = resolveProvider(info, opts.provider, {
+            allowTryEdit: allowTry
+          });
           var list = info.providers || [];
           var row = null;
           for (var i = 0; i < list.length; i++) {
@@ -273,7 +409,7 @@
               break;
             }
           }
-          if (row && !row.ready) {
+          if (row && !row.chatReady && !row.ready) {
             return Promise.reject(
               codedError(
                 resolvedProvider + '_unconfigured',
@@ -281,7 +417,30 @@
               )
             );
           }
-          writeProvider(resolvedProvider);
+          if (row && (row.chatReady || row.ready) && !isEditCapableRow(row) && !allowTry) {
+            return Promise.reject(
+              codedError(
+                'provider_not_edit_capable',
+                'provider_not_edit_capable'
+              )
+            );
+          }
+          if (!resolvedProvider || !anyProviderReady(info, { allowTryEdit: allowTry })) {
+            return Promise.reject(
+              codedError('provider_unconfigured', 'provider_unconfigured')
+            );
+          }
+          if (row && allowTry && !isTryEditRow(row) && !isEditCapableRow(row)) {
+            return Promise.reject(
+              codedError(
+                resolvedProvider + '_unconfigured',
+                resolvedProvider + '_unconfigured'
+              )
+            );
+          }
+          // Only persist explicit user/provider choice — not recommendedDefault.
+          if (opts.provider || readProvider()) writeProvider(resolvedProvider);
+          else if (!readProvider()) writeProvider(resolvedProvider);
         }
         return start(opts).catch(function (e) {
           return Promise.reject(
@@ -305,9 +464,12 @@
             : drive(dto.taskId, resolvedProvider || readProvider());
         return driveP
           .catch(function (e) {
-            return Promise.reject(
-              codedError('drive_failed', String((e && e.message) || e || 'drive_failed'))
-            );
+            var raw = String((e && e.message) || e || 'drive_failed');
+            var code =
+              /edit_not_admitted/i.test(raw) || (e && e.code === 'edit_not_admitted')
+                ? 'edit_not_admitted'
+                : 'drive_failed';
+            return Promise.reject(codedError(code, raw));
           })
           .then(function (driven) {
             var out = driven || dto;
@@ -349,6 +511,8 @@
     ACTIVE_KEY: ACTIVE_KEY,
     PROVIDER_KEY: PROVIDER_KEY,
     PERM_KEY: PERM_KEY,
+    VERIFIED_KEY: VERIFIED_KEY,
+    SANDBOX_HINT: SANDBOX_HINT,
     featureEnabled: featureEnabled,
     capabilityInput: capabilityInput,
     editModeSelectable: editModeSelectable,
@@ -358,6 +522,13 @@
     writeProvider: writeProvider,
     readPermissionMode: readPermissionMode,
     writePermissionMode: writePermissionMode,
+    isLocallyVerified: isLocallyVerified,
+    markEditVerified: markEditVerified,
+    clearEditVerified: clearEditVerified,
+    pathLooksLikeVerifySandbox: pathLooksLikeVerifySandbox,
+    ensureVerifySandbox: ensureVerifySandbox,
+    evaluateVerify: evaluateVerify,
+    enrichReadySnapshot: enrichReadySnapshot,
     start: start,
     status: status,
     events: events,

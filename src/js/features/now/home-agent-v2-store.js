@@ -88,7 +88,12 @@
     agentTask: null,
     agentTaskEvents: [],
     /** Recent ATR tasks on the edit-dialogue page (active + prior). */
-    agentTaskStack: []
+    agentTaskStack: [],
+    /**
+     * Send while a blocking ATR task is live — never auto-abandon.
+     * { goal, materialsSummary, status, taskId } | null
+     */
+    atrSendConflict: null
   };
 
   var ATR_STACK_MAX = 12;
@@ -1432,7 +1437,10 @@
           task: row.task ? Object.assign({}, row.task) : null,
           events: (row.events || []).slice()
         };
-      })
+      }),
+      atrSendConflict: state.atrSendConflict
+        ? Object.assign({}, state.atrSendConflict)
+        : null
     };
   }
 
@@ -1769,11 +1777,45 @@
         ) {
           /* keep id for timeline until user clears */
         }
+        if (dto.status === 'done') {
+          maybeMarkEditVerifiedFromEvents(dto, evs);
+        }
       }
       state.agentTaskEvents = Array.isArray(evs) ? evs : [];
       if (state.agentTask) rememberAgentTask(state.agentTask, state.agentTaskEvents);
       return dto;
     });
+  }
+
+  /**
+   * Backend evaluate_verify owns admission. Never write FE localStorage marks from UI selection.
+   * Hook kept so refreshAgentTask can call evaluate after done (wired in fe-consume).
+   */
+  function maybeMarkEditVerifiedFromEvents(dto, evs) {
+    var A = atrApi();
+    if (!A || !dto || String(dto.status || '') !== 'done') return;
+    if (!A.evaluateVerify || !dto.verifyIntent) return;
+    var list = Array.isArray(evs) ? evs : state.agentTaskEvents || [];
+    var wrote = false;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].kind === 'patch_applied') {
+        wrote = true;
+        break;
+      }
+    }
+    if (!wrote) return;
+    A.evaluateVerify(dto.taskId)
+      .then(function (res) {
+        if (res && res.ok) {
+          atrNotice(
+            'atr_verify_accepted',
+            '隔离验证已通过后端验收（不宣称稳定）',
+            { code: 'verify_accepted', provider: res.providerId }
+          );
+        }
+        emit();
+      })
+      .catch(function () {});
   }
 
   function ensureAtrPoll() {
@@ -2047,31 +2089,211 @@
     });
   }
 
+  function clearAtrSendConflict(opts) {
+    opts = opts || {};
+    state.atrSendConflict = null;
+    if (!opts.silent) emit();
+  }
+
+  /** Keep draft, dismiss send conflict — old task untouched. */
+  function keepDraftDeferAtrSend() {
+    clearAtrSendConflict({ silent: true });
+    atrNotice('atr_keep_draft', '已保留草稿，当前编辑任务未改动', {
+      code: 'keep_draft'
+    });
+    emit();
+    return Promise.resolve(null);
+  }
+
   /**
-   * Abandon blocking ATR task, then immediately start a new one with the current draft.
+   * Check goal / project / engine before abandoning anything.
+   * @returns {Promise<{ok:boolean, code?:string, message?:string, path?:string, provider?:string}>}
+   */
+  function preflightAtrStart(opts) {
+    opts = opts || {};
+    var goal = String(opts.goal || '').trim();
+    if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
+      return Promise.resolve({
+        ok: false,
+        code: 'need_goal',
+        message: '请写清要改什么（例如：给 README 加使用说明）'
+      });
+    }
+    var A = atrApi();
+    if (!A || !atrFeatureOn()) {
+      return Promise.resolve({
+        ok: false,
+        code: 'not_ready',
+        message: 'Agent Task Runtime 未开启'
+      });
+    }
+    return ensureAtrWorkspaceRoot().then(function (path) {
+      if (!path) {
+        return {
+          ok: false,
+          code: 'need_project',
+          message: '请先在工作区确认项目后再发送'
+        };
+      }
+      var useFake =
+        !!opts.useFakeDriver ||
+        (Array.isArray(opts.driveFakeSteps) && opts.driveFakeSteps.length);
+      if (useFake) {
+        return { ok: true, path: path, provider: null };
+      }
+      if (!A.ready) {
+        return { ok: true, path: path, provider: opts.provider || null };
+      }
+      return A.ready()
+        .then(function (info) {
+          var preferred =
+            opts.provider || (A.readProvider && A.readProvider()) || '';
+          var list =
+            (info && Array.isArray(info.providers) && info.providers) || [];
+          var want = String(preferred || '').trim().toLowerCase();
+          var row = null;
+          var i;
+          if (want) {
+            for (i = 0; i < list.length; i++) {
+              if (String((list[i] && list[i].id) || '').toLowerCase() === want) {
+                row = list[i];
+                break;
+              }
+            }
+            if (row && row.ready === false) {
+              return {
+                ok: false,
+                code: want + '_unconfigured',
+                message:
+                  want.indexOf('workbuddy') >= 0
+                    ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+                    : '所选引擎未就绪 — 请登录 WorkBuddy 或配置 Soft Pad 密钥'
+              };
+            }
+            if (row && row.editCapable === false) {
+              return {
+                ok: false,
+                code: 'provider_not_edit_capable',
+                message: '所选引擎尚未开放普通编辑 — 请先完成隔离验证或另选引擎'
+              };
+            }
+            if (!row && list.length) {
+              return {
+                ok: false,
+                code: (want || 'provider') + '_unconfigured',
+                message: '所选引擎不可用 — 请另选或配置后再发送'
+              };
+            }
+            return { ok: true, path: path, provider: preferred || want };
+          }
+          var anyReady = false;
+          for (i = 0; i < list.length; i++) {
+            if (list[i] && list[i].ready && list[i].editCapable !== false) {
+              anyReady = true;
+              break;
+            }
+          }
+          if (
+            !anyReady &&
+            !(info && (info.workbuddyReady || info.deepseekReady))
+          ) {
+            return {
+              ok: false,
+              code: 'provider_unconfigured',
+              message: '请登录 WorkBuddy，或配置 Soft Pad 密钥后选择已就绪引擎'
+            };
+          }
+          return {
+            ok: true,
+            path: path,
+            provider: (info && info.selectedDefault) || null
+          };
+        })
+        .catch(function (err) {
+          return {
+            ok: false,
+            code: 'not_ready',
+            message: String((err && err.message) || err || 'ready_failed')
+          };
+        });
+    });
+  }
+
+  /**
+   * Abandon blocking ATR task, then start a new one with the current draft.
+   * Preflight first — never abandon if project/engine cannot start.
    * @param {{ goal: string, materialsSummary?: string, provider?: string, useFakeDriver?: boolean, driveFakeSteps?: string[] }} opts
    */
   function abandonAndStartAgentTask(opts) {
     opts = opts || {};
-    var goal = String(opts.goal || '').trim();
-    if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
-      atrNotice('atr_need_goal', '请写清要改什么（例如：给 README 加使用说明）');
-      return Promise.resolve(null);
-    }
-    return abandonAgentTask()
-      .catch(function (err) {
-        // No active task is fine — still allow sending the draft.
-        if (String((err && err.message) || err) === 'no_task') return null;
-        return Promise.reject(err);
-      })
-      .then(function () {
-        return startAndDriveAgentTask(opts);
-      });
+    var goal = String(opts.goal || (state.atrSendConflict && state.atrSendConflict.goal) || '').trim();
+    var mats =
+      opts.materialsSummary != null
+        ? opts.materialsSummary
+        : (state.atrSendConflict && state.atrSendConflict.materialsSummary) || '';
+    var startOpts = Object.assign({}, opts, {
+      goal: goal,
+      materialsSummary: mats,
+      skipBlockingCheck: true
+    });
+    return preflightAtrStart(startOpts).then(function (pf) {
+      if (!pf.ok) {
+        atrNotice('atr_' + (pf.code || 'preflight'), pf.message || '无法启动新任务', {
+          code: pf.code || 'preflight',
+          abandoned: false
+        });
+        emit();
+        return null;
+      }
+      if (pf.provider && !startOpts.provider) startOpts.provider = pf.provider;
+      var abandoned = false;
+      return abandonAgentTask()
+        .catch(function (err) {
+          if (String((err && err.message) || err) === 'no_task') return null;
+          return Promise.reject(err);
+        })
+        .then(function () {
+          abandoned = true;
+          state.atrSendConflict = null;
+          return startAndDriveAgentTask(startOpts);
+        })
+        .then(function (dto) {
+          if (abandoned && !dto) {
+            atrNotice(
+              'atr_abandon_start_failed',
+              '旧任务已放弃，新任务未创建 — 草稿仍在，请检查项目/引擎后重发',
+              {
+                code: 'abandon_start_failed',
+                abandoned: true,
+                actions: ['retry_send']
+              }
+            );
+            emit();
+          }
+          return dto;
+        })
+        .catch(function (err) {
+          var raw = String((err && err.message) || err || '');
+          atrNotice(
+            'atr_abandon_start_failed',
+            abandoned
+              ? '旧任务已放弃，新任务未创建：' + raw.slice(0, 120)
+              : '放弃或启动失败：' + raw.slice(0, 120),
+            {
+              code: 'abandon_start_failed',
+              abandoned: abandoned
+            }
+          );
+          emit();
+          return null;
+        });
+    });
   }
 
   /**
    * Home edit send → ATR. Surfaces all failures via validationNotice.
-   * @param {{ goal: string, materialsSummary?: string, useFakeDriver?: boolean, driveFakeSteps?: string[] }} opts
+   * Blocking task + new goal → atrSendConflict (explicit triage), never silent abandon.
+   * @param {{ goal: string, materialsSummary?: string, useFakeDriver?: boolean, driveFakeSteps?: string[], skipBlockingCheck?: boolean }} opts
    */
   function startAndDriveAgentTask(opts) {
     opts = opts || {};
@@ -2086,37 +2308,66 @@
     var existing = state.agentTask;
     var est = existing && existing.status;
     var goal = String(opts.goal || '').trim();
-    if (existing && isAgentTaskBlockingNew(est)) {
-      // Explicit new goal while prior task still live → replace (busy / waiting / interrupted).
-      if (goal && goal.length >= 2 && !/^[\d\s.]+$/.test(goal)) {
-        atrNotice('atr_abandon_and_send', '正在放弃旧任务并发送当前输入…', {
-          code: 'abandon_and_send',
-          taskId: existing.taskId,
-          status: est
-        });
-        return abandonAndStartAgentTask(opts);
+    if (existing && isAgentTaskBlockingNew(est) && !opts.skipBlockingCheck) {
+      var goalOk = goal && goal.length >= 2 && !/^[\d\s.]+$/.test(goal);
+      if (goalOk) {
+        state.atrSendConflict = {
+          goal: goal,
+          materialsSummary: String(opts.materialsSummary || ''),
+          status: String(est || ''),
+          taskId: existing.taskId || null
+        };
+        if (!String(state.draft || '').trim()) state.draft = goal;
+      } else {
+        state.atrSendConflict = null;
       }
+      var conflictActions = goalOk
+        ? ['continue', 'abandon_and_send', 'keep_draft']
+        : ['continue', 'abandon'];
       if (isAgentTaskBusy(est)) {
-        atrNotice('atr_busy', '编辑任务进行中，请等待完成或放弃后再发', {
-          code: 'busy',
-          taskId: existing.taskId,
-          status: est
-        });
+        atrNotice(
+          'atr_busy',
+          goalOk
+            ? '已有编辑任务进行中 — 查看进度、放弃并发送草稿，或保留草稿稍后处理'
+            : '编辑任务进行中，请等待完成或放弃后再发',
+          {
+            code: 'busy',
+            taskId: existing.taskId,
+            status: est,
+            actions: conflictActions,
+            sendConflict: !!goalOk
+          }
+        );
       } else if (est === 'waiting') {
-        atrNotice('atr_waiting', '编辑任务等待确认 — 可继续、放弃，或放弃并发送当前输入', {
-          code: 'waiting',
-          taskId: existing.taskId,
-          status: est,
-          actions: ['continue', 'abandon', 'abandon_and_send']
-        });
+        atrNotice(
+          'atr_waiting',
+          goalOk
+            ? '编辑任务等待确认 — 处理待确认、放弃并发送草稿，或保留草稿稍后处理'
+            : '编辑任务等待确认 — 可处理待确认或放弃',
+          {
+            code: 'waiting',
+            taskId: existing.taskId,
+            status: est,
+            actions: conflictActions,
+            sendConflict: !!goalOk
+          }
+        );
       } else if (est === 'interrupted') {
-        atrNotice('atr_interrupted', '有可恢复的中断任务 — 恢复、放弃，或放弃并发送当前输入', {
-          code: 'interrupted',
-          taskId: existing.taskId,
-          status: est,
-          actions: ['resume', 'abandon', 'abandon_and_send']
-        });
+        atrNotice(
+          'atr_interrupted',
+          goalOk
+            ? '有可恢复的中断任务 — 恢复、放弃并发送草稿，或保留草稿稍后处理'
+            : '有可恢复的中断任务 — 恢复或放弃',
+          {
+            code: 'interrupted',
+            taskId: existing.taskId,
+            status: est,
+            actions: conflictActions,
+            sendConflict: !!goalOk
+          }
+        );
       }
+      emit();
       return Promise.resolve(null);
     }
 
@@ -2125,7 +2376,13 @@
       return Promise.resolve(null);
     }
 
-    atrSendInFlight = ensureAtrWorkspaceRoot()
+    state.atrSendConflict = null;
+
+    atrSendInFlight = (
+      opts.verifySandboxRoot
+        ? Promise.resolve(String(opts.verifySandboxRoot))
+        : ensureAtrWorkspaceRoot()
+    )
       .then(function (path) {
         if (!path) {
           atrNotice('atr_need_project', '请先在工作区确认项目后再发送', {
@@ -2135,9 +2392,15 @@
         }
         var provider =
           opts.provider || (A.readProvider && A.readProvider()) || undefined;
+        var allowTry =
+          !!opts.allowTryEdit ||
+          !!(A.pathLooksLikeVerifySandbox && A.pathLooksLikeVerifySandbox(path));
         atrNotice(
           'atr_starting',
-          '正在启动' + (provider ? '（' + provider + '）' : '') + '…',
+          '正在启动' +
+            (provider ? '（' + provider + '）' : '') +
+            (allowTry && !opts.useFakeDriver ? ' · 试用/验证' : '') +
+            '…',
           { code: 'starting' }
         );
         return A.runGoal({
@@ -2151,6 +2414,8 @@
           useFakeDriver: !!opts.useFakeDriver,
           driveFakeSteps: opts.driveFakeSteps,
           provider: provider,
+          allowTryEdit: allowTry,
+          sandboxId: opts.sandboxId || null,
           onStarted: function (dto) {
             if (!dto || !dto.taskId) return;
             state.activeAgentTaskId = dto.taskId;
@@ -2193,11 +2458,12 @@
             });
           } else if (st === 'done') {
             state.validationNotice = null;
+            // Quiet: don't blast a hero "编辑任务已完成" receipt — ATR gate / timeline carries detail.
             setDeliveryReceipt({
               phase: 'done',
               outcome: 'local_replied',
               kind: 'agent_task',
-              title: '编辑任务已完成',
+              title: '编辑回合结束',
               message: 'done',
               verified: false,
               taskId: dto.taskId
@@ -2237,25 +2503,39 @@
         ) {
           code = 'workbuddy_unconfigured';
         }
+        if (
+          /edit_not_admitted/i.test(rawMsg) ||
+          code === 'edit_not_admitted'
+        ) {
+          code = 'edit_not_admitted';
+        }
+        if (
+          /provider_not_edit_capable/i.test(rawMsg) ||
+          code === 'provider_not_edit_capable'
+        ) {
+          code = 'provider_not_edit_capable';
+        }
         var msg =
-          code === 'workbuddy_unconfigured'
-            ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
-            : code === 'provider_unconfigured' ||
-                /_unconfigured$/.test(String(code))
-              ? code.indexOf('workbuddy') >= 0
-                ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
-                : '请登录 WorkBuddy，或配置 Soft Pad 密钥后选择已就绪引擎'
-              : code === 'not_ready'
-                ? 'Agent Task Runtime 未就绪'
-                : code === 'start_failed'
-                  ? '启动任务失败：' + rawMsg
-                  : code === 'budget_exhausted'
-                    ? /stuck_loop/i.test(rawMsg)
-                      ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
-                      : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
-                    : code === 'format_error'
-                      ? '模型没有按工具格式行动 — 换 WorkBuddy 模型或 Soft Pad 引擎后重试'
-                      : '编辑任务失败：' + rawMsg.slice(0, 120);
+          code === 'edit_not_admitted' || code === 'provider_not_edit_capable'
+            ? '需先隔离验证引擎，通过后再开放普通编辑'
+            : code === 'workbuddy_unconfigured'
+              ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+              : code === 'provider_unconfigured' ||
+                  /_unconfigured$/.test(String(code))
+                ? code.indexOf('workbuddy') >= 0
+                  ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+                  : '请登录 WorkBuddy，或配置 Soft Pad 密钥后选择已就绪引擎'
+                : code === 'not_ready'
+                  ? 'Agent Task Runtime 未就绪'
+                  : code === 'start_failed'
+                    ? '启动任务失败：' + rawMsg
+                    : code === 'budget_exhausted'
+                      ? /stuck_loop/i.test(rawMsg)
+                        ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
+                        : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
+                      : code === 'format_error'
+                        ? '模型没有按工具格式行动 — 换 WorkBuddy 模型或 Soft Pad 引擎后重试'
+                        : '编辑任务失败：' + rawMsg.slice(0, 120);
         // start may have written activeId before drive failed — keep for timeline.
         if (A.readActiveId) {
           var sid = A.readActiveId();
@@ -2749,6 +3029,9 @@
     abandonAgentTask: abandonAgentTask,
     abandonAndStartAgentTask: abandonAndStartAgentTask,
     startAndDriveAgentTask: startAndDriveAgentTask,
+    preflightAtrStart: preflightAtrStart,
+    clearAtrSendConflict: clearAtrSendConflict,
+    keepDraftDeferAtrSend: keepDraftDeferAtrSend,
     driveActiveIfRunning: driveActiveIfRunning,
     confirmedProjectPath: confirmedProjectPath,
     isAgentTaskBlockingNew: isAgentTaskBlockingNew,

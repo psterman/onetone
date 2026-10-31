@@ -333,10 +333,23 @@ assert.match(css, /\.ha2-session-chrome|\.ha2-mode-btn|\.ha2-handoff/);
 assert.match(css, /\.ha2-mode-boundary|\.ha2-task-core|\.ha2-work-confirm/);
 assert.match(css, /\.ha2-send\.is-labeled|\.ha2-work-secondary/);
 assert.match(shell, /syncModeChrome|taskCoreHtml|workConfirmGateHtml/);
+assert.match(shell, /atrSelectedProviderEditCapable|atrPageNoticeHtml|ha2WorkStartCta/);
+assert.match(shell, /ha2AtrVerifySilent|首次编辑：正在后台验证引擎/);
+assert.match(shell, /permissionMode:\s*'write_autonomous'/);
 assert.match(shell, /atrUserStepLine|degradedNextHint|atrFailureNextHint/);
 assert.match(shell, /ha2ModeBoundaryWork|ha2ModeBoundaryChat/);
-assert.match(shell, /生成执行计划|批准并开始|批准并执行/);
+assert.match(shell, /开始执行|批准并执行|批准补丁写入/);
 assert.match(shell, /data-ha2-work-secondary|data-ha2-work-confirm/);
+assert.match(storeSrc, /provider_not_edit_capable/);
+assert.match(
+  storeSrc,
+  /edit_not_admitted' \|\| code === 'provider_not_edit_capable/
+);
+{
+  const ipcToml = fs.readFileSync('src-tauri/permissions/app-ipc.toml', 'utf8');
+  assert.match(ipcToml, /allow-cmd-agent-task-ensure-verify-sandbox/);
+  assert.match(ipcToml, /allow-cmd-agent-task-evaluate-verify/);
+}
 assert.match(shell, /write_with_approval/);
 assert.match(shell, /data-ha2-go-agent/);
 assert.match(shell, /ha2-row-main/);
@@ -420,6 +433,23 @@ assert.equal(
   true
 );
 assert.equal(Caps.looksLikeWorkspaceEditGoal('这个方案怎么看？'), false);
+assert.equal(Caps.looksLikeWorkspaceEditGoal('今天天气'), false);
+assert.equal(Caps.looksLikeWorkspaceEditGoal('没有补充'), false);
+assert.equal(Caps.looksLikeWeatherAsk('今天天气'), true);
+assert.equal(Caps.looksLikeWeatherAsk('这个方案怎么看'), false);
+assert.equal(Caps.extractWeatherCity('今天北京天气'), '北京');
+assert.equal(Caps.extractWeatherCity('今天天气'), '');
+assert.equal(Caps.extractWeatherCity('今天天气怎么样？'), '');
+assert.equal(Caps.isPlausibleWeatherCity('怎么样'), false);
+assert.equal(Caps.looksLikeCityOnly('上海'), true);
+assert.match(shell, /tryHandleWeatherLocal|cmd_weather_now|ha2WeatherAskCity/);
+assert.match(shell, /dispatchEditModeSend|routeToChatInsteadOfEdit|atrLooksLikeContinueInput/);
+assert.match(shell, /ha2AtrDoneQuietNoWrite|编辑回合结束 · 未写入文件/);
+assert.match(shell, /atrOwnsHomeChrome/);
+{
+  const ipcToml = fs.readFileSync('src-tauri/permissions/app-ipc.toml', 'utf8');
+  assert.match(ipcToml, /allow-cmd-weather-now/);
+}
 
 // --- Capability contract ---
 {
