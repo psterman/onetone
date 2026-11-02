@@ -3,7 +3,7 @@
 use crate::agent_attention::{self, AttentionState};
 use crate::agent_memory::checkpoint::{
     latest_atr_checkpoint_for_project, latest_checkpoint_for_project,
-    latest_checkpoint_for_session,
+    latest_checkpoint_for_session, PROVIDER_ONETONE_ATR,
 };
 use crate::agent_memory::model::{
     CheckpointDto, HomeSessionDto, ProbeStatus, ProjectMatch, PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
@@ -199,6 +199,8 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
         checkpoint.as_ref(),
     );
 
+    // ATR-owned work must not inherit Cursor Soft Pad provider — resume H1 was lying.
+    let atr_owns = source.reason.contains("atr_checkpoint");
     HomeFocusSnapshot {
         foreground: fg,
         project: HomeFocusProject {
@@ -206,7 +208,11 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
             ..project
         },
         provider: HomeFocusProvider {
-            id: PROVIDER_CURSOR.into(),
+            id: if atr_owns {
+                PROVIDER_ONETONE_ATR.into()
+            } else {
+                PROVIDER_CURSOR.into()
+            },
             status: provider_status,
         },
         work,

@@ -287,6 +287,9 @@ impl TaskRow {
             sandbox_id: self.sandbox_id.clone(),
             expected_rel_path: self.expected_rel_path.clone(),
             expected_content: self.expected_content.clone(),
+            provider_duration_ms: None,
+            fallback_from: None,
+            live_thinking: None,
         }
     }
 }

@@ -238,15 +238,19 @@ assert.match(
 assert.match(ui, /data-ha2-atr-log/);
 assert.match(ui, /data-ha2-atr-log-toggle/);
 assert.match(ui, /data-ha2-atr-log-copy/);
-assert.match(ui, /defaults expanded|default expanded|Active task defaults expanded/);
+assert.match(ui, /Default collapsed|defaults? collapsed|atrLogExpandedById\[id\] != null/);
+assert.match(ui, /atrLogStepRowsFrom|atrLogStepsHtml|atrFormatDuration|atrCompactEvents/);
+assert.match(ui, /ha2-atr-tl|ha2-atr-toolchip|ha2-atr-ftable|ha2-atr-think/);
 assert.match(
   read('src/css/home-agent-v2.css'),
-  /ha2-atr-log\.is-expanded[\s\S]*?max-height:\s*none/
+  /ha2-atr-tl-item|ha2-atr-toolchip|ha2-atr-ftable|ha2-atr-think/
 );
 assert.match(ui, /format_error:\s*t\('ha2AtrEvFormatFail'/);
-assert.match(ui, /if \(p\.reason\)/);
+assert.match(ui, /atrEventBrief|atrCompactEvents|atrFileTableHtml/);
 assert.match(ui, /Failures must appear in the transcript/);
-assert.match(ui, /keep the latest few/);
+// ATR page must not resurrect prior 对话闲聊 over work steps.
+assert.match(ui, /never resurrect prior|Only turns after this ATR open/);
+assert.doesNotMatch(ui, /keep the latest few/);
 assert.match(ui, /atrLogExpandedById/);
 assert.match(ui, /copyAtrLog/);
 assert.match(ui, /OneToneAppToast/);
@@ -315,15 +319,17 @@ assert.match(ui, /workModeSegmentHtml/);
 assert.match(ui, /ha2ModeChat/);
 assert.match(ui, /ha2ModeWork/);
 assert.match(ui, /do not force edit/);
-assert.match(ui, /dispatchEditModeSend|routeToChatInsteadOfEdit/);
+assert.match(ui, /dispatchEditModeSend/);
 {
-  const routeChat = ui.match(
-    /function routeToChatInsteadOfEdit\([\s\S]*?\n  \/\*\*[\s\S]*?Work-mode send/
+  const editSend = ui.match(
+    /function dispatchEditModeSend\([\s\S]*?\n  function sendWbPageDraft/
   );
-  assert.ok(routeChat, 'routeToChatInsteadOfEdit block');
-  // Keep 工作 mode — answer via chat channel only, do not flip UI to 对话.
-  assert.doesNotMatch(routeChat[0], /setWorkMode\(\s*['"]think['"]\s*\)/);
-  assert.match(routeChat[0], /ha2WorkKeptChatAnswer|仍在「工作」/);
+  assert.ok(editSend, 'dispatchEditModeSend block');
+  // Already on 工作: never regex-kick the whole send into chat.
+  assert.doesNotMatch(editSend[0], /routeToChatInsteadOfEdit/);
+  assert.doesNotMatch(editSend[0], /!looksLikeEditGoalText\(text\)/);
+  // Weather is the only dedicated non-ATR bypass.
+  assert.match(editSend[0], /looksLikeWeatherAsk/);
 }
 {
   const pageSend = ui.match(
@@ -333,7 +339,19 @@ assert.match(ui, /dispatchEditModeSend|routeToChatInsteadOfEdit/);
   assert.match(pageSend[0], /promoteWorkModeForEditGoal/);
   assert.match(pageSend[0], /workMode[\s\S]*=== 'edit'/);
   assert.match(pageSend[0], /dispatchEditModeSend/);
+  // Empty「查看进度」on work page must not early-return before dispatch.
+  assert.match(pageSend[0], /if \(!text && String\(\(snap && snap\.workMode\) \|\| ''\) === 'edit'\)/);
   assert.match(ui, /abandonAndStartAgentTask|startConfirmedWorkTask/);
+}
+assert.match(ui, /workHistoryRowsHtml/);
+assert.match(ui, /data-ha2-atr-open-history/);
+assert.match(ui, /ha2AtrHistoryNote/);
+{
+  const editSend = ui.match(
+    /function dispatchEditModeSend\([\s\S]*?\n  function sendWbPageDraft/
+  );
+  assert.ok(editSend, 'dispatchEditModeSend for empty progress');
+  assert.match(editSend[0], /!text && snap\.agentTask && atrTaskShouldSurface/);
 }
 assert.match(
   read('src/js/features/now/home-agent-capabilities.js'),
@@ -355,6 +373,37 @@ assert.match(store, /persistAutonomous/);
 assert.match(store, /writePermissionMode/);
 assert.match(store, /agentTaskStack/);
 assert.match(store, /rememberAgentTask/);
+assert.match(store, /ATR_STACK_KEY|onetone\.ha2\.agentTaskStack/);
+assert.match(store, /persistAgentTaskStack/);
+assert.match(store, /loadAgentTaskStack/);
+assert.match(store, /ensureWorkController/);
+assert.match(store, /controller_required/);
+assert.match(store, /provider_stream/);
+// Poll must not setStatus busy statuses (kills atr_turn → stuck 第0步).
+{
+  const refresh = store.match(/function refreshAgentTask\([\s\S]*?\n  function maybeMarkEditVerifiedFromEvents/);
+  assert.ok(refresh, 'refreshAgentTask block');
+  assert.doesNotMatch(
+    refresh[0],
+    /dto\.status === 'running'[\s\S]{0,180}setStatus/
+  );
+  assert.match(refresh[0], /finish\('waiting_approval'/);
+}
+{
+  const drive = store.match(
+    /function driveActiveIfRunning\([\s\S]*?\n  function pendingApprovalTokenOf/
+  );
+  assert.ok(drive, 'driveActiveIfRunning block');
+  assert.match(drive[0], /ensureWorkController/);
+}
+assert.match(
+  read('src-tauri/src/workbuddy_local_llm.rs'),
+  /provider_stream_decode|read_agent_response_body/
+);
+assert.match(
+  read('src-tauri/src/agent_task_runtime/resume.rs'),
+  /TaskStatus::Failed/
+);
 
 const task = read('src/js/features/now/home-agent-task.js');
 assert.match(task, /v === '0'/);

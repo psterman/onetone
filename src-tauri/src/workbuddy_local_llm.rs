@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -32,8 +32,8 @@ const OAUTH_REFRESH_SKEW_MS: u64 = 5 * 60 * 1000;
 const MODELS_CACHE_MS: u64 = 10 * 60 * 1000;
 const HTTP_TIMEOUT_SECS: u64 = 20;
 const CHAT_TIMEOUT_SECS: u64 = 180;
-/// ATR tool turns — keep short so home UI isn't stuck on「正在调用」for minutes.
-const AGENT_CHAT_TIMEOUT_SECS: u64 = 45;
+/// ATR tool turns — long enough for freemodel SSE with tools; short of chat's 180s.
+const AGENT_CHAT_TIMEOUT_SECS: u64 = 90;
 const UA: &str = "CLI/unknown CodeBuddy/2.136.0 OneTone";
 
 fn default_auth_kind() -> String {
@@ -793,6 +793,51 @@ struct ActiveStream {
 
 static ACTIVE_STREAM: Mutex<Option<ActiveStream>> = Mutex::new(None);
 
+/// Ephemeral ATR turn progress (reasoning / tool-call hint) for FE poll via task status.
+struct AtrLiveSlot {
+    task_id: String,
+    text: String,
+}
+
+static ATR_LIVE: Mutex<Option<AtrLiveSlot>> = Mutex::new(None);
+
+pub fn atr_live_begin(task_id: &str) {
+    if let Ok(mut g) = ATR_LIVE.lock() {
+        *g = Some(AtrLiveSlot {
+            task_id: task_id.to_string(),
+            text: "正在连接模型…".into(),
+        });
+    }
+}
+
+pub fn atr_live_clear() {
+    if let Ok(mut g) = ATR_LIVE.lock() {
+        *g = None;
+    }
+}
+
+pub fn atr_live_for(task_id: &str) -> Option<String> {
+    let g = ATR_LIVE.lock().ok()?;
+    let slot = g.as_ref()?;
+    if slot.task_id == task_id {
+        Some(slot.text.clone())
+    } else {
+        None
+    }
+}
+
+fn atr_live_push(text: &str) {
+    let t: String = text.chars().take(2000).collect();
+    if t.trim().is_empty() {
+        return;
+    }
+    if let Ok(mut g) = ATR_LIVE.lock() {
+        if let Some(slot) = g.as_mut() {
+            slot.text = t;
+        }
+    }
+}
+
 fn cancel_active_stream() {
     if let Ok(mut g) = ACTIVE_STREAM.lock() {
         if let Some(active) = g.take() {
@@ -933,7 +978,13 @@ pub fn chat_once(
     messages: &[Value],
     max_tokens: Option<u32>,
 ) -> Result<Value, String> {
-    let prepared = prepare_chat(account_id, model, messages, max_tokens)?;
+    let mut prepared = prepare_chat(account_id, model, messages, max_tokens)?;
+    // Research/home chat needs assistant *content* (JSON/markdown). Leaving
+    // reasoning_effort on hy3 often fills reasoning_content only → empty content
+    // → we fall back to prose → invalid_json on the formal research path.
+    if let Some(obj) = prepared.body.as_object_mut() {
+        obj.remove("reasoning_effort");
+    }
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(CHAT_TIMEOUT_SECS))
         .build()
@@ -1165,6 +1216,7 @@ pub fn agent_tool_turn(
 
 /// Content-protocol turn (no tools) — for models that ignore native function calling.
 /// Expects a single ATR tool JSON object in assistant content.
+/// On prose-only replies returns `prose_no_tool:<text>` so ATR can salvage `finish`.
 pub fn agent_json_turn(messages: &[Value], max_tokens: Option<u32>) -> Result<String, String> {
     let mut prepared = prepare_chat(None, None, messages, max_tokens)?;
     if let Some(obj) = prepared.body.as_object_mut() {
@@ -1174,7 +1226,143 @@ pub fn agent_json_turn(messages: &[Value], max_tokens: Option<u32>) -> Result<St
         obj.insert("temperature".into(), json!(0.0));
     }
     let text = post_agent_chat(&prepared)?;
-    aggregate_agent_tool_response(&text)
+    match aggregate_agent_tool_response(&text) {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            let visible = extract_visible_agent_text(&text);
+            if !visible.trim().is_empty() {
+                Err(format!(
+                    "prose_no_tool:{}",
+                    visible.chars().take(2000).collect::<String>()
+                ))
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+fn extract_visible_agent_text(text: &str) -> String {
+    let mut content = String::new();
+    let mut reasoning = String::new();
+    let mut usage = Value::Null;
+    let trimmed = text.trim_start();
+    if !(trimmed.starts_with("data:") || text.contains("\ndata:")) {
+        if let Ok(v) = serde_json::from_str::<Value>(text) {
+            let root = v.get("data").cloned().unwrap_or(v);
+            ingest_choice_payload(&mut content, &mut reasoning, &root);
+            return visible_assistant_text(&content, &reasoning);
+        }
+    }
+    for line in text.lines() {
+        if ingest_chat_sse_line(&mut content, &mut reasoning, &mut usage, line) {
+            break;
+        }
+    }
+    visible_assistant_text(&content, &reasoning)
+}
+
+fn read_agent_response_body(resp: reqwest::blocking::Response) -> Result<String, String> {
+    // Chunked read: keep partial SSE when the connection dies mid-stream.
+    // `.bytes()` throws away everything on "error decoding response body".
+    let mut resp = resp;
+    let mut buf = Vec::with_capacity(64 * 1024);
+    let mut chunk = [0u8; 16 * 1024];
+    loop {
+        match resp.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => buf.extend_from_slice(&chunk[..n]),
+            Err(e) => {
+                let msg = e.to_string();
+                let lower = msg.to_ascii_lowercase();
+                let recoverable = lower.contains("decoding response body")
+                    || lower.contains("timed out")
+                    || lower.contains("timeout")
+                    || lower.contains("connection")
+                    || lower.contains("reset")
+                    || lower.contains("broken pipe");
+                if !buf.is_empty() && recoverable {
+                    break;
+                }
+                if lower.contains("decoding response body") {
+                    return Err("provider_stream_decode".into());
+                }
+                return Err(msg);
+            }
+        }
+    }
+    if buf.is_empty() {
+        return Err("provider_stream_decode".into());
+    }
+    Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
+/// Line-by-line SSE read: push ATR live progress, stop on `[DONE]`, keep partial on disconnect.
+fn stream_agent_sse_body(resp: reqwest::blocking::Response) -> Result<String, String> {
+    atr_live_push("模型思考中…");
+    let mut content = String::new();
+    let mut reasoning = String::new();
+    let mut usage = Value::Null;
+    let mut tool_calls: Vec<Value> = Vec::new();
+    let mut raw_acc = String::with_capacity(64 * 1024);
+    let reader = BufReader::with_capacity(8 * 1024, resp);
+    for line_res in reader.lines() {
+        let line = match line_res {
+            Ok(l) => l,
+            Err(e) => {
+                let msg = e.to_string();
+                let lower = msg.to_ascii_lowercase();
+                let recoverable = lower.contains("decoding response body")
+                    || lower.contains("timed out")
+                    || lower.contains("timeout")
+                    || lower.contains("connection")
+                    || lower.contains("reset")
+                    || lower.contains("broken pipe");
+                if !raw_acc.is_empty() && recoverable {
+                    break;
+                }
+                if lower.contains("decoding response body") {
+                    return Err("provider_stream_decode".into());
+                }
+                return Err(msg);
+            }
+        };
+        raw_acc.push_str(&line);
+        raw_acc.push('\n');
+        if let Some(rest) = line.strip_prefix("data:") {
+            let data = rest.trim();
+            if data == "[DONE]" {
+                break;
+            }
+            if !data.is_empty() {
+                if let Ok(v) = serde_json::from_str::<Value>(data) {
+                    ingest_tool_calls_from_value(&mut tool_calls, &v);
+                }
+            }
+        }
+        let done_stream = ingest_chat_sse_line(&mut content, &mut reasoning, &mut usage, &line);
+        let tool_hint = tool_calls
+            .iter()
+            .find_map(|c| {
+                c.pointer("/function/name")
+                    .and_then(|n| n.as_str())
+                    .filter(|s| !s.is_empty())
+            })
+            .unwrap_or("");
+        let visible = visible_assistant_text(&content, &reasoning);
+        if !visible.is_empty() {
+            atr_live_push(&visible);
+        } else if !tool_hint.is_empty() {
+            atr_live_push(&format!("正在调用 {tool_hint}…"));
+        }
+        if done_stream {
+            break;
+        }
+    }
+    if raw_acc.is_empty() {
+        return Err("provider_stream_decode".into());
+    }
+    Ok(raw_acc)
 }
 
 fn post_agent_chat(prepared: &PreparedChat) -> Result<String, String> {
@@ -1183,32 +1371,66 @@ fn post_agent_chat(prepared: &PreparedChat) -> Result<String, String> {
         .timeout(Duration::from_secs(AGENT_CHAT_TIMEOUT_SECS))
         .build()
         .map_err(|e| e.to_string())?;
-    let req = client
-        .post(&prepared.chat_url)
-        .header("Content-Type", "application/json")
-        .header("Accept", "text/event-stream")
-        .header("X-Product", "SaaS")
-        .header("User-Agent", UA)
-        .json(&prepared.body);
-    let resp = apply_auth_headers(req, &prepared.auth)
-        .send()
-        .map_err(|e| e.to_string())?;
-    let status = resp.status();
-    let text = resp.text().map_err(|e| e.to_string())?;
-    if status.as_u16() == 401 || status.as_u16() == 403 {
-        if prepared.meta.auth_kind == AUTH_KIND_OAUTH {
-            mark_account_auth_fail(&prepared.meta.id, "authExpired");
-            return Err("authExpired".into());
+    let mut last_err = String::new();
+    // One retry on stream/decode flakiness — WorkBuddy SSE often truncates once.
+    for attempt in 0..2u8 {
+        atr_live_push(if attempt == 0 {
+            "正在连接模型…"
+        } else {
+            "模型连接重试…"
+        });
+        let req = client
+            .post(&prepared.chat_url)
+            .header("Content-Type", "application/json")
+            .header("Accept", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .header("Accept-Encoding", "identity")
+            .header("X-Product", "SaaS")
+            .header("User-Agent", UA)
+            .json(&prepared.body);
+        let resp = match apply_auth_headers(req, &prepared.auth).send() {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = e.to_string();
+                if attempt == 0 {
+                    continue;
+                }
+                return Err(last_err);
+            }
+        };
+        let status = resp.status();
+        if status.as_u16() == 401 || status.as_u16() == 403 {
+            let _ = read_agent_response_body(resp);
+            if prepared.meta.auth_kind == AUTH_KIND_OAUTH {
+                mark_account_auth_fail(&prepared.meta.id, "authExpired");
+                return Err("authExpired".into());
+            }
+            return Err("no_key".into());
         }
-        return Err("no_key".into());
+        if status.as_u16() == 429 {
+            let _ = read_agent_response_body(resp);
+            return Err("rate_limited".into());
+        }
+        if !status.is_success() {
+            let _ = read_agent_response_body(resp);
+            return Err(format!("http_status_{}", status.as_u16()));
+        }
+        match stream_agent_sse_body(resp) {
+            Ok(t) => return Ok(t),
+            Err(e) => {
+                last_err = e;
+                if attempt == 0
+                    && (last_err.contains("provider_stream_decode")
+                        || last_err.to_ascii_lowercase().contains("decoding")
+                        || last_err.to_ascii_lowercase().contains("timed out"))
+                {
+                    continue;
+                }
+                return Err(last_err);
+            }
+        }
     }
-    if status.as_u16() == 429 {
-        return Err("rate_limited".into());
-    }
-    if !status.is_success() {
-        return Err(format!("http_status_{}", status.as_u16()));
-    }
-    Ok(text)
+    Err(last_err)
 }
 
 fn merge_tool_call_delta(acc: &mut Vec<Value>, delta_calls: &[Value]) {

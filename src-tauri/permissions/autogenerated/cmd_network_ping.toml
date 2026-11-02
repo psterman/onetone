@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-network-ping"
+description = "Allows invoking cmd_network_ping."
+commands.allow = ["cmd_network_ping"]

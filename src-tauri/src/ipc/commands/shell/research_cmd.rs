@@ -1,5 +1,13 @@
 use serde::Deserialize;
 use serde_json::Value;
+use std::time::Instant;
+
+fn log_boundary(step: &str, started: Instant, detail: &str) {
+    crate::app_log::sync_emergency_line(
+        "research",
+        &format!("{step} durationMs={} {detail}", started.elapsed().as_millis()),
+    );
+}
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -10,8 +18,28 @@ pub struct ResearchSearchArgs {
 }
 
 #[tauri::command]
-pub fn cmd_research_web_search(args: ResearchSearchArgs) -> Value {
-    crate::research::web_search(&args.query, args.limit, args.provider.as_deref())
+pub async fn cmd_research_web_search(args: ResearchSearchArgs) -> Value {
+    let started = Instant::now();
+    let query = args.query.clone();
+    let limit = args.limit;
+    let provider = args.provider.clone();
+    match tauri::async_runtime::spawn_blocking(move || {
+        crate::research::web_search(&query, limit, provider.as_deref())
+    }).await {
+        Ok(value) => {
+            log_boundary("ipc_search_end", started, "ok");
+            value
+        }
+        Err(err) => {
+            log_boundary("ipc_search_end", started, "worker_failed");
+            serde_json::json!({
+            "ok": false,
+            "code": "search_worker_failed",
+            "message": err.to_string(),
+            "results": []
+            })
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -23,8 +51,27 @@ pub struct ResearchFetchArgs {
 }
 
 #[tauri::command]
-pub fn cmd_research_fetch_url(args: ResearchFetchArgs) -> Value {
-    crate::research::fetch_url(&args.url, args.provider.as_deref(), args.max_chars)
+pub async fn cmd_research_fetch_url(args: ResearchFetchArgs) -> Value {
+    let started = Instant::now();
+    let url = args.url.clone();
+    let provider = args.provider.clone();
+    let max_chars = args.max_chars;
+    match tauri::async_runtime::spawn_blocking(move || {
+        crate::research::fetch_url(&url, provider.as_deref(), max_chars)
+    }).await {
+        Ok(value) => {
+            log_boundary("ipc_fetch_end", started, "ok");
+            value
+        }
+        Err(err) => {
+            log_boundary("ipc_fetch_end", started, "worker_failed");
+            serde_json::json!({
+            "ok": false,
+            "code": "fetch_worker_failed",
+            "message": err.to_string()
+            })
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Default)]

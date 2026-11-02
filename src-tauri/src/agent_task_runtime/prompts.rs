@@ -6,7 +6,9 @@ use super::contracts::{TaskDto, TaskEventDto};
 use super::store::TaskRow;
 
 const TRACE_EVENTS: usize = 8;
-const TRACE_CHARS_EACH: usize = 4_000;
+/// Keep each tool payload small — freemodel SSE stalls when the next turn context balloons.
+const TRACE_CHARS_EACH: usize = 1_600;
+const BASELINE_DIRTY_SAMPLE: usize = 24;
 
 pub fn system_prompt() -> &'static str {
     "你是 OneTone 工作模式的执行 Agent：在用户授权的工作区内用工具完成目标。\n\
@@ -18,6 +20,7 @@ pub fn system_prompt() -> &'static str {
      propose_changes 不写盘。apply_patch 在 write_with_approval 下需用户批准（含基线已脏，勿因 dirty 空转）。\n\
      放到桌面/Desktop：先在工作区写好，再 export_to_desktop{path}（相对路径）；禁止 apply_patch 桌面/绝对路径。\n\
      run_check 只传 check_id。自动修复最多 3 轮。勿重复同一工具与相同参数。\n\
+     查询/说明类目标：证据足够就立刻 finish{summary}，不要为了凑步骤继续空转。\n\
      目标含糊时 request_user_input 一次。完成时 finish{summary}（summary 可短列表说明改了什么）。"
 }
 
@@ -93,7 +96,7 @@ pub fn tool_trace_from_events(events: &[TaskEventDto]) -> String {
     let mut out = body;
     if out.contains("inspect_workspace") {
         out = format!(
-            "{out}\n规则：已 inspect 过则禁止再 inspect_workspace；下一步必须 read_file / propose_changes / apply_patch / export_to_desktop / finish。"
+            "{out}\n规则：已 inspect 过则禁止再 inspect_workspace；选下一步工具继续，证据够则 finish。"
         );
     }
     if out.contains("not_found") {
@@ -101,7 +104,31 @@ pub fn tool_trace_from_events(events: &[TaskEventDto]) -> String {
             "{out}\n规则：not_found = 文件不存在。禁止再 search/read 同一缺失路径；立刻 propose_changes{{path,new_content}} 创建，再 apply_patch；目标含桌面则再 export_to_desktop{{path}}。"
         );
     }
+    if out.contains("inspect_diff")
+        && (out.contains("\"changedFiles\":[]") || out.contains("no_paths_to_diff"))
+    {
+        out = format!(
+            "{out}\n规则：inspect_diff 无可用文件时立刻 finish{{summary}} 回答目标。"
+        );
+    }
     out
+}
+
+/// Compact dirty list for the model — full paths stay in scope for write gates.
+pub fn baseline_dirty_for_model(baseline_dirty_json: &str) -> String {
+    let Ok(list) = serde_json::from_str::<Vec<String>>(baseline_dirty_json) else {
+        return baseline_dirty_json.chars().take(400).collect();
+    };
+    let total = list.len();
+    if total <= BASELINE_DIRTY_SAMPLE {
+        return serde_json::to_string(&list).unwrap_or_else(|_| "[]".into());
+    }
+    let sample: Vec<&String> = list.iter().take(BASELINE_DIRTY_SAMPLE).collect();
+    format!(
+        "{{\"count\":{total},\"sample\":{},\"omitted\":{}}}",
+        serde_json::to_string(&sample).unwrap_or_else(|_| "[]".into()),
+        total - BASELINE_DIRTY_SAMPLE
+    )
 }
 
 pub fn task_context_prompt(task: &TaskRow, recent_tool_note: &str, tool_trace: &str) -> String {
@@ -112,7 +139,7 @@ pub fn task_context_prompt(task: &TaskRow, recent_tool_note: &str, tool_trace: &
         task.permission_mode,
         task.status,
         task.changed_files_json,
-        task.baseline_dirty_json,
+        baseline_dirty_for_model(&task.baseline_dirty_json),
         task.repair_count,
         recent_note_for_model(recent_tool_note),
         if tool_trace.is_empty() {
@@ -182,5 +209,36 @@ mod tests {
             "inspect ok"
         );
         assert_eq!(recent_note_for_model("plain"), "plain");
+    }
+
+    #[test]
+    fn baseline_dirty_for_model_samples_long_lists() {
+        let many: Vec<String> = (0..40).map(|i| format!("f{i}.rs")).collect();
+        let raw = serde_json::to_string(&many).unwrap();
+        let out = baseline_dirty_for_model(&raw);
+        assert!(out.contains("\"count\":40"), "out={out}");
+        assert!(out.contains("omitted"), "out={out}");
+        assert!(!out.contains("f39.rs"), "sample must omit tail: {out}");
+    }
+
+    #[test]
+    fn inspect_nudge_does_not_hardcode_edit_chain() {
+        let events = vec![TaskEventDto {
+            event_id: "e1".into(),
+            task_id: "t1".into(),
+            seq: 1,
+            kind: "tool_result".into(),
+            turn: 1,
+            tool_name: Some("inspect_workspace".into()),
+            payload: json!({"result":{"entries":[]}}),
+            created_at: 1,
+        }];
+        let trace = tool_trace_from_events(&events);
+        assert!(trace.contains("禁止再 inspect_workspace"));
+        assert!(trace.contains("finish"));
+        assert!(
+            !trace.contains("下一步必须 read_file / propose_changes"),
+            "must not hardcode edit chain: {trace}"
+        );
     }
 }

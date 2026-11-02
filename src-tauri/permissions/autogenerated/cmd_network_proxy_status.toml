@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-network-proxy-status"
+description = "Allows invoking cmd_network_proxy_status."
+commands.allow = ["cmd_network_proxy_status"]

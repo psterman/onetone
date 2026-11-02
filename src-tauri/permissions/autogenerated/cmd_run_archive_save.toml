@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-run-archive-save"
+description = "Allows invoking cmd_run_archive_save."
+commands.allow = ["cmd_run_archive_save"]

@@ -1,5 +1,5 @@
 //! WorkBuddy local-account ModelDriver for ATR.
-//! Model-first: no content hijack scripts. Cold-start inspect is process chrome only.
+//! Model-first: no content hijack scripts, no forced tool chrome.
 
 use serde_json::{json, Value};
 
@@ -49,16 +49,44 @@ pub fn scripted_readme_step(_task: &TaskRow, _trace: &str) -> Option<String> {
     None
 }
 
+fn finish_from_prose(summary: &str) -> String {
+    let s: String = summary.chars().take(1200).collect();
+    json!({"tool":"finish","arguments":{"summary": s}}).to_string()
+}
+
+fn salvage_prose_finish(trace: &str, err: &str) -> Option<String> {
+    let summary = err.strip_prefix("prose_no_tool:")?;
+    // Only after at least one real tool result — protocol recovery, not a scripted chain.
+    if !trace.contains("tool=") {
+        return None;
+    }
+    let t = summary.trim();
+    if t.is_empty() {
+        return None;
+    }
+    Some(finish_from_prose(t))
+}
+
 impl ModelDriver for WorkbuddyDriver {
     fn next_tool_json(&mut self, task: &TaskRow, messages: &[Value]) -> Result<String, String> {
+        workbuddy_local_llm::atr_live_begin(&task.task_id);
+        let out = self.next_tool_json_inner(task, messages);
+        workbuddy_local_llm::atr_live_clear();
+        out
+    }
+}
+
+impl WorkbuddyDriver {
+    fn next_tool_json_inner(
+        &mut self,
+        task: &TaskRow,
+        messages: &[Value],
+    ) -> Result<String, String> {
         let trace = user_tool_trace_section(messages);
         let _ = scripted_readme_step(task, &trace);
 
-        // Process chrome only: first paint inspect so the steps window is never blank.
-        if task.current_turn == 0 && !trace_ran(&trace, "inspect_workspace") {
-            return Ok(r#"{"tool":"inspect_workspace","arguments":{}}"#.into());
-        }
-
+        // Model picks the first tool. After inspect once, drop it from the catalog
+        // so freemodel can't loop on chrome — not a business tool chain.
         let had_inspect = trace_ran(&trace, "inspect_workspace");
         let tools = if had_inspect {
             tools_excluding_inspect()
@@ -93,7 +121,15 @@ impl ModelDriver for WorkbuddyDriver {
                 }
                 Ok(ok)
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                if let Some(fin) = salvage_prose_finish(&trace, &e) {
+                    return Ok(fin);
+                }
+                if e.starts_with("prose_no_tool:") {
+                    return Err("no_tool_calls".into());
+                }
+                Err(e)
+            }
         }
     }
 }
@@ -179,6 +215,18 @@ mod tests {
         ];
         let trace = user_tool_trace_section(&messages);
         assert!(!prompts::trace_ran(&trace, "inspect_workspace"));
+    }
+
+    #[test]
+    fn prose_after_tools_salvages_finish() {
+        let fin = salvage_prose_finish(
+            "[tool_result turn=1 tool=inspect_diff] {}",
+            "prose_no_tool:今天改了 package.json 等文件",
+        )
+        .expect("salvage");
+        assert!(fin.contains("\"tool\":\"finish\""), "{fin}");
+        assert!(fin.contains("package.json"), "{fin}");
+        assert!(salvage_prose_finish("(none yet)", "prose_no_tool:hi").is_none());
     }
 
     #[test]

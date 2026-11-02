@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-model-provider-upsert"
+description = "Enables the cmd_model_provider_upsert command without any pre-configured scope."
+commands.allow = ["cmd_model_provider_upsert"]

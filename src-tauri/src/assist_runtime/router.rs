@@ -312,3 +312,74 @@ pub async fn run_live(req: AssistRunRequest) -> AssistRunResponse {
         Err(r) => AssistRunResponse::fail(&req.request_id, r, 0),
     }
 }
+
+/// Generic model transport for research and work controllers. It does not
+/// impose the task_organize output schema.
+pub async fn run_model_chat(
+    request_id: String,
+    messages: Vec<Value>,
+    policy: CallPolicy,
+    max_tokens: u32,
+    deadline_ms: u64,
+) -> Result<Value, String> {
+    let token = cancel::register(&request_id).map_err(|r| r.as_str().to_string())?;
+    let deadline = Instant::now() + Duration::from_millis(deadline_ms.clamp(1_000, 90_000));
+    let transport = super::client::ReqwestTransport;
+    let candidates = select_candidates(None, policy);
+    if candidates.is_empty() {
+        cancel::finish(&request_id);
+        return Err(if policy == CallPolicy::FreeOnly {
+            "no_free_model".into()
+        } else {
+            "no_model_provider".into()
+        });
+    }
+    let mut last = "bad_response".to_string();
+    for entry in candidates.into_iter().take(MAX_ATTEMPTS as usize) {
+        let Some(key) = soft_pad_quota::read_stored_key(entry.provider) else {
+            continue;
+        };
+        let request = chat_request_for(&entry, &key, messages.clone());
+        match transport.post_chat(request, token.clone(), deadline).await {
+            Ok(resp) => match classify_http(resp.status, &resp.body) {
+                Ok(text) => {
+                    clear_429(entry.provider);
+                    cancel::finish(&request_id);
+                    return Ok(json!({
+                        "ok": true,
+                        "providerId": entry.provider.as_str(),
+                        "model": entry.model_id,
+                        "text": text,
+                        "capabilities": {
+                            "structuredOutput": entry.supports_json,
+                            "streaming": false,
+                            "tools": false
+                        }
+                    }));
+                }
+                Err(reason) => {
+                    last = reason.as_str().to_string();
+                    if reason == AssistReason::RateLimited {
+                        mark_429(entry.provider);
+                        continue;
+                    }
+                    if !reason.retryable() {
+                        break;
+                    }
+                }
+            },
+            Err(err) => {
+                last = err.reason().as_str().to_string();
+                if err.reason() == AssistReason::RateLimited {
+                    mark_429(entry.provider);
+                    continue;
+                }
+                if matches!(err.reason(), AssistReason::Timeout | AssistReason::Cancelled) {
+                    break;
+                }
+            }
+        }
+    }
+    cancel::finish(&request_id);
+    Err(last)
+}

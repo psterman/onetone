@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-model-provider-set-key"
+description = "Enables the cmd_model_provider_set_key command without any pre-configured scope."
+commands.allow = ["cmd_model_provider_set_key"]

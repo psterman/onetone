@@ -250,6 +250,106 @@ impl ModelDriver for OpenAiCompatDriver {
     }
 }
 
+/// OpenAI-compatible driver for MiniMax coding plan / custom providers (not Soft Pad enum).
+pub struct GenericOpenAiDriver {
+    pub provider_id: String,
+    pub chat_url: String,
+    pub model: String,
+    pub api_key: String,
+    pub max_tokens: u32,
+    content_fallback_used: bool,
+}
+
+impl GenericOpenAiDriver {
+    pub fn new(provider_id: &str, chat_url: &str, model: &str, api_key: &str) -> Self {
+        Self {
+            provider_id: provider_id.to_string(),
+            chat_url: chat_url.to_string(),
+            model: model.to_string(),
+            api_key: api_key.to_string(),
+            max_tokens: 1024,
+            content_fallback_used: false,
+        }
+    }
+
+    pub fn for_minimax() -> Result<Self, String> {
+        let key = crate::provider_usage::read_stored_minimax_coding_key()
+            .ok_or_else(|| "minimax_unconfigured".to_string())?;
+        Ok(Self::new(
+            "minimax",
+            "https://api.minimaxi.com/v1/chat/completions",
+            "MiniMax-M2.5",
+            &key,
+        ))
+    }
+
+    pub fn for_custom(provider_id: &str) -> Result<Self, String> {
+        let cfg = crate::model_provider::read_enabled(provider_id)
+            .ok_or_else(|| format!("{provider_id}_unconfigured"))?;
+        let key = crate::model_provider::read_key(provider_id)
+            .ok_or_else(|| "auth_failed".to_string())?;
+        let base = cfg.base_url.trim_end_matches('/');
+        let chat_url = if base.ends_with("/chat/completions") {
+            base.to_string()
+        } else {
+            format!("{base}/chat/completions")
+        };
+        Ok(Self::new(provider_id, &chat_url, &cfg.model, &key))
+    }
+}
+
+impl ModelDriver for GenericOpenAiDriver {
+    fn next_tool_json(&mut self, task: &TaskRow, messages: &[Value]) -> Result<String, String> {
+        let trace = super::prompts::user_tool_trace_section(messages);
+        let _ = super::workbuddy::scripted_readme_step(task, &trace);
+        if !super::prompts::trace_ran(&trace, "inspect_workspace") {
+            return Ok(r#"{"tool":"inspect_workspace","arguments":{}}"#.into());
+        }
+        let mut msgs = messages.to_vec();
+        if self.content_fallback_used {
+            msgs.push(json!({
+                "role": "user",
+                "content": "必须通过 tools/tool_calls 调用一个工具；不要只写自然语言。"
+            }));
+        }
+        let body = json!({
+            "model": self.model,
+            "messages": msgs,
+            "tools": openai_tools(),
+            "tool_choice": "auto",
+            "max_tokens": self.max_tokens,
+            "temperature": 0.2,
+        });
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(8))
+            .timeout(std::time::Duration::from_secs(45))
+            .build()
+            .map_err(|e| e.to_string())?;
+        let resp = client
+            .post(&self.chat_url)
+            .bearer_auth(&self.api_key)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .map_err(|e| {
+                if e.is_timeout() {
+                    "timeout".to_string()
+                } else {
+                    format!("network_error: {e}")
+                }
+            })?;
+        let status = resp.status().as_u16();
+        if status == 401 || status == 403 {
+            return Err("auth_failed".into());
+        }
+        if status == 429 {
+            return Err("rate_limited".into());
+        }
+        let text = resp.text().map_err(|e| format!("body: {e}"))?;
+        finish_from_http(&text, status, &mut self.content_fallback_used)
+    }
+}
+
 /// Ready when DeepSeek Soft Pad key present (for capability matrix / IPC).
 pub fn deepseek_ready() -> bool {
     soft_pad_quota::read_stored_key(SoftPadQuotaProvider::DeepSeek).is_some()

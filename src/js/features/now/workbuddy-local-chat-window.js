@@ -352,20 +352,45 @@
     var messages = messagesForApi();
     var sys = systemFromMeta();
     if (sys) messages.unshift({ role: 'system', content: sys });
-    invoke('cmd_workbuddy_local_chat_start', {
-      args: {
-        accountId: accountId || undefined,
-        model: model || undefined,
-        messages: messages
+    var gateway = global.OneToneModelGateway;
+    if (!gateway || typeof gateway.streamChat !== 'function') {
+      busy = false;
+      streamingId = null;
+      setStatus('失败：model_gateway_unavailable', true);
+      syncSendEnabled();
+      return;
+    }
+    gateway.configure({
+      invoke: function (cmd, args) {
+        return invoke(cmd, { args: args || {} });
+      },
+      resolveWorkbuddy: function () {
+        return Promise.resolve({ accountId: accountId, model: model });
+      }
+    });
+    gateway.streamChat({
+      purpose: 'synthesis',
+      providerId: 'workbuddy',
+      model: model,
+      messages: messages,
+      onDelta: function (res) {
+        activeRunId = (res && res.runId) || activeRunId;
+        onDelta(res || {});
+      },
+      onComplete: function (res) {
+        onDone({
+          runId: (res && res.runId) || activeRunId,
+          content: res && res.text,
+          model: res && res.model ? res.model : model,
+          accountId: accountId,
+          error: res && res.error ? res.error : null,
+          ok: !(res && res.error)
+        });
+      },
+      onError: function (err) {
+        setStatus('失败：' + mapErr((err && (err.code || err.message)) || err), true);
       }
     })
-      .then(function (res) {
-        activeRunId = (res && res.runId) || '';
-        if (res && res.model) model = String(res.model);
-        if (res && res.accountId) accountId = String(res.accountId);
-        paintMeta();
-        if (!activeRunId) throw new Error('chat_failed');
-      })
       .catch(function (e) {
         busy = false;
         streamingId = null;
@@ -375,6 +400,11 @@
   }
 
   function stopChat() {
+    var gateway = global.OneToneModelGateway;
+    if (gateway && typeof gateway.cancel === 'function') {
+      gateway.cancel();
+      return;
+    }
     invoke('cmd_workbuddy_local_chat_cancel', {
       args: { runId: activeRunId || undefined }
     }).catch(function () {});

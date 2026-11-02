@@ -40,6 +40,7 @@
 
   var pollTimer = 0;
   var inFlight = false;
+  var pendingRefreshOpts = null;
   var frameBound = false;
   var lastPayload = null;
   var selectedKind = 'cursor';
@@ -418,8 +419,13 @@
       selectedKind = String(opts.kind);
       selectedApp = appFromKind(selectedKind);
     }
-    if (inFlight) return Promise.resolve(lastPayload);
+    // Queue instead of drop — verify/refresh must not lose the follow-up snap.
+    if (inFlight) {
+      pendingRefreshOpts = Object.assign({}, pendingRefreshOpts || {}, opts);
+      return Promise.resolve(lastPayload);
+    }
     inFlight = true;
+    var keepWbAction = opts.wbAction || (lastPayload && lastPayload.wbAction) || null;
     var m = resolveMapping();
     var pad = (m && m.codexMicroPad) || {};
     var Conn = root.OneToneSoftPadConnect;
@@ -462,6 +468,8 @@
           keySet: parts[2],
           workbuddyLocal: parts[3]
         });
+        if (opts.wbAction) payload.wbAction = opts.wbAction;
+        else if (keepWbAction && !opts.clearWbAction) payload.wbAction = keepWbAction;
         postPayload(payload);
         try {
           var Preview = root.OneToneAgentPagePreviewBridge;
@@ -474,8 +482,27 @@
       })
       .then(function (payload) {
         inFlight = false;
+        var pending = pendingRefreshOpts;
+        pendingRefreshOpts = null;
+        if (pending) {
+          return refresh(pending).then(function (next) {
+            return next || payload;
+          });
+        }
         return payload;
       });
+  }
+
+  function finishWbAction(cmd, id, ok, error) {
+    return refresh({
+      wbAction: {
+        cmd: String(cmd || ''),
+        id: String(id || ''),
+        ok: !!ok,
+        error: error ? String(error).slice(0, 160) : '',
+        at: Date.now()
+      }
+    });
   }
 
   function setPadEnabled(enabled) {
@@ -734,24 +761,34 @@
   }
 
   function wbLocalVerify(id) {
-    return invoke('cmd_workbuddy_local_account_verify', { id: String(id || '') })
+    id = String(id || '');
+    return invoke('cmd_workbuddy_local_account_verify', { id: id })
       .then(function () {
-        return refresh();
+        return finishWbAction('verify', id, true);
       })
-      .catch(function () {
-        return refresh();
+      .catch(function (err) {
+        return finishWbAction(
+          'verify',
+          id,
+          false,
+          (err && (err.message || err)) || 'verify_failed'
+        );
       });
   }
 
   function wbLocalRefreshModels(id) {
-    return invoke('cmd_workbuddy_local_account_refresh_models', {
-      id: String(id || '')
-    })
+    id = String(id || '');
+    return invoke('cmd_workbuddy_local_account_refresh_models', { id: id })
       .then(function () {
-        return refresh();
+        return finishWbAction('refresh', id, true);
       })
-      .catch(function () {
-        return refresh();
+      .catch(function (err) {
+        return finishWbAction(
+          'refresh',
+          id,
+          false,
+          (err && (err.message || err)) || 'refresh_failed'
+        );
       });
   }
 

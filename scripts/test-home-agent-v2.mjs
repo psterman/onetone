@@ -89,15 +89,24 @@ assert.match(shell, /kicker:\s*['"]['"]/);
 assert.doesNotMatch(shell, /ha2PillTarget|发送到['"]\s*\)\s*\+\s*['"]\s*<\/span><span class="ha2-pill-val/);
 assert.match(storeSrc, /cmd_tm_status/);
 assert.match(storeSrc, /timeMachine/);
-assert.match(shell, /workspaceCapsuleRowHtml|data-ha2-workspace-row/);
+assert.match(shell, /workspaceTitleChipHtml|data-ha2-ws-chip/);
 assert.match(shell, /openTimeCapsule[\s\S]*view:\s*'capsule'|agentSub:\s*'capsule'/);
 assert.doesNotMatch(shell, /openTimeCapsule[\s\S]*openSubpage\('timeline'/);
-assert.match(css, /\.ha2-workspace-row\b/);
+assert.match(css, /\.ha2-ws-chip\b/);
 assert.match(css, /\.ha2-workspace-icon\b/);
 assert.match(css, /\.ha2-quiet-hint/);
 assert.match(css, /\.ha2-empty--hints/);
 // Workspace capsule is part of the existing list and exposes one useful action.
-assert.match(shell, /data-ha2-workspace-row/);
+assert.match(shell, /data-ha2-ws-chip/);
+assert.match(shell, /n < 1/);
+assert.doesNotMatch(
+  shell,
+  /ha2-section-head[\s\S]{0,280}ha2ViewAll|ha2-section-head[\s\S]{0,280}data-ha2-open-model-providers/
+);
+assert.match(
+  shell,
+  /data-ha2-model-route-host[\s\S]{0,500}data-ha2-open-model-providers/
+);
 assert.match(shell, /ha2WorkspaceChanges|项改动/);
 assert.match(shell, /ha2TmClean|工作区干净/);
 assert.match(shell, /ha2OpenProjectTimeline|打开项目时间线/);
@@ -151,10 +160,11 @@ assert.match(shell, /cmd_workbuddy_local_account_set_model/);
 assert.match(shell, /cmd_workbuddy_local_accounts_list/);
 assert.match(css, /\.ha2-wb-model\b/);
 // P1: home local chat (default) + desktop handoff toggle; transcript separate from handoff journal.
-assert.match(shell, /cmd_workbuddy_local_chat_start/);
+assert.match(shell, /Gateway\.streamChat/);
 assert.match(shell, /cmd_workbuddy_local_chat_poll/);
 assert.match(shell, /startWbPoll/);
-assert.doesNotMatch(shell, /maxTokens:\s*\d+/);
+// Provider connectivity checks may use a small maxTokens budget; the chat stream
+// itself is routed through Gateway rather than carrying a WorkBuddy-only option.
 assert.equal((shell.match(/function sendWbLocal/g) || []).length, 1);
 assert.equal((shell.match(/function ensureWbStreamListen/g) || []).length, 1);
 assert.match(shell, /wb_local_chat_done/);
@@ -162,12 +172,16 @@ assert.match(shell, /wb_local_chat_delta/);
 assert.match(shell, /function sendWbLocal/);
 assert.match(shell, /openWbChatPage|data-ha2-wb-page/);
 assert.match(shell, /onWbStreamDelta/);
+assert.doesNotMatch(shell, /cmd_workbuddy_local_chat_start/);
 assert.match(shell, /paintWbStreamingLive|wb_local_chat_delta/);
 assert.doesNotMatch(shell, /ha2WbPageChatting|正在流式回复/);
 assert.doesNotMatch(shell, /ha2-wb-page-status/);
 assert.match(css, /\.ha2-wb-page\b/);
 assert.match(read('src-tauri/src/workbuddy_local_llm.rs'), /chat_stream_poll/);
 assert.match(read('src-tauri/src/workbuddy_local_llm.rs'), /remove\("reasoning_effort"\)/);
+const wbWindow = read('src/js/features/now/workbuddy-local-chat-window.js');
+assert.match(wbWindow, /OneToneModelGateway/);
+assert.doesNotMatch(wbWindow, /cmd_workbuddy_local_chat_start/);
 assert.match(
   read('src/js/features/now/workbuddy-local-chat-window.js'),
   /turns\s*=\s*loadTurns\(\)/
@@ -322,22 +336,48 @@ assert.match(shell, /ha2OpenProjectTimeline|打开项目时间线/);
 assert.match(shell, /resolveHomeTimelineWorkspace|targetContext\.projectPath/);
 assert.match(shell, /整理并交接任务|data-ha2-handoff/);
 assert.match(shell, /data-ha2-organize|整理任务/);
-assert.match(shell, /data-ha2-allow-metered|允许计量/);
+// Dock no longer keeps permanent 工程材料 / 密钥 / 计量额度 — need-driven notice CTAs only.
+assert.doesNotMatch(shell, /ha2-metered-toggle|ha2AddProjectMaterialsManual/);
+assert.doesNotMatch(
+  shell,
+  /data-ha2-work-secondary[\s\S]{0,120}data-ha2-assist-keys|data-ha2-work-secondary data-ha2-pcx/
+);
+assert.doesNotMatch(shell, /<input[^>]*data-ha2-allow-metered/);
 assert.match(shell, /data-ha2-assist-keys|data-ha2-enable-metered/);
+assert.match(shell, /允许计量/);
 assert.match(shell, /formatFailureNotice|runOrganizeTask|OneToneHomeAssistClient/);
 assert.match(shell, /snapshotId/);
 assert.doesNotMatch(shell, /t\('ha2OrganizeFailed',\s*'整理失败'\)/);
 assert.match(shell, /已填入草稿/);
 assert.doesNotMatch(shell, /已开始编码/);
 assert.match(css, /\.ha2-session-chrome|\.ha2-mode-btn|\.ha2-handoff/);
-assert.match(css, /\.ha2-mode-boundary|\.ha2-task-core|\.ha2-work-confirm/);
+assert.match(css, /\.ha2-task-core|\.ha2-work-confirm|\.ha2-home-notice/);
 assert.match(css, /\.ha2-send\.is-labeled|\.ha2-work-secondary/);
 assert.match(shell, /syncModeChrome|taskCoreHtml|workConfirmGateHtml/);
 assert.match(shell, /atrSelectedProviderEditCapable|atrPageNoticeHtml|ha2WorkStartCta/);
 assert.match(shell, /ha2AtrVerifySilent|首次编辑：正在后台验证引擎/);
 assert.match(shell, /permissionMode:\s*'write_autonomous'/);
 assert.match(shell, /atrUserStepLine|degradedNextHint|atrFailureNextHint/);
-assert.match(shell, /ha2ModeBoundaryWork|ha2ModeBoundaryChat/);
+// Home card dedup: confirm hides taskCore; model mutex; single notice; trim mode copy.
+assert.match(shell, /if \(workConfirmOpen\) return ''/);
+assert.match(shell, /atrLive[\s\S]{0,80}pillsHtml|taskCoreHtml\(snap\) \+ pillsHtml/);
+assert.match(shell, /function modelRouteSelectHtml|data-ha2-model-route-host/);
+// Mixed model picker: WB models + API providers + add.
+assert.match(shell, /wb:|api:|__add__/);
+assert.match(shell, /ha2ModelTagWb|ha2ModelTagApi|ha2ModelAddProvider/);
+// No top-left「首页」on home; plan/doc titles go on agent cards.
+assert.match(shell, /top\.hidden = true/);
+assert.match(shell, /fgDocHintForKind|ha2-ctx-app/);
+assert.match(shell, /currentHabitMatchedApps|ha2-ctx-matched/);
+assert.doesNotMatch(shell, /data-ha2-send-scope-hint/);
+assert.doesNotMatch(shell, /ha2-ctx-fg|ha2HabitChip/);
+assert.match(css, /\.ha2-ctx-app|\.ha2-matched-list|\.ha2-top\[hidden\]/);
+assert.match(shell, /ha2-mode-row--tabs/);
+assert.match(shell, /workspaceResumeRowHtml|data-ha2-resume-row/);
+assert.match(shell, /atrProvHost\.hidden = !atrEdit/);
+assert.match(css, /\.ha2-mode-row--tabs|\.ha2-resume-row/);
+assert.doesNotMatch(shell, /ha2-mode-boundary|data-ha2-mode-boundary/);
+assert.doesNotMatch(shell, /ha2RoleWork|ha2RoleChat/);
 assert.match(shell, /开始执行|批准并执行|批准补丁写入/);
 assert.match(shell, /data-ha2-work-secondary|data-ha2-work-confirm/);
 assert.match(storeSrc, /provider_not_edit_capable/);
@@ -353,7 +393,7 @@ assert.match(
 assert.match(shell, /write_with_approval/);
 assert.match(shell, /data-ha2-go-agent/);
 assert.match(shell, /ha2-row-main/);
-assert.match(shell, /workspaceCapsuleRowHtml|data-ha2-workspace-row/);
+assert.match(shell, /workspaceTitleChipHtml|data-ha2-ws-chip/);
 assert.match(shell, /completionObservationHtml|检测到 Agent 报告完成状态/);
 assert.match(shell, /setDeliveryReceipt|setActionReceipt|setValidationNotice/);
 assert.match(shell, /projectHint:\s*ctx\.projectPath|projectHint:\s*hint/);
@@ -362,9 +402,13 @@ assert.doesNotMatch(shell, /ha2PillSent/);
 assert.doesNotMatch(shell, /t\('ha2PillSent'|「已投递」|'已投递'/);
 assert.doesNotMatch(shell, /t\('[^']*',\s*'已发送'\)|'已发送到'|phase:\s*'sent'/);
 assert.match(shell, /aria-live="polite"/);
-assert.match(shell, /data-ha2-delivery-receipt[\s\S]*aria-live/);
-assert.match(shell, /data-ha2-action-receipt[\s\S]*aria-live/);
-assert.match(shell, /ha2-row-tag|ha2SendHere|data-evidence/);
+assert.match(shell, /data-ha2-home-notice[\s\S]*aria-live/);
+assert.match(shell, /function homeNoticeHtml/);
+assert.match(shell, /ha2-row-tag|data-evidence/);
+assert.doesNotMatch(
+  shell,
+  /cta === 'send'[\s\S]{0,220}ha2SendHere/
+);
 assert.doesNotMatch(shell, /rowHtml[\s\S]{0,800}windowsLabel/);
 assert.match(storeSrc, /resolveTargetContext|buildSessionCards/);
 assert.match(storeSrc, /primaryCta:\s*'navigate'|return 'navigate'/);
@@ -381,6 +425,8 @@ assert.match(now, /OneToneProjectPath/);
 assert.match(css, /\.ha2-situation|\.ha2-task-title|\.ha2-pulse-chip/);
 assert.match(css, /\.ha2-section-head|\.ha2-row-tag|\.ha2-when/);
 assert.match(css, /\.ha2-row-main:focus-visible/);
+assert.match(css, /\.ha2-atr-history-row \.ha2-row-main/);
+assert.match(shell, /ha2-atr-history-row|workHistoryRowsHtml/);
 assert.match(css, /--ha2-ok:\s*#1a9b5f/);
 const agentCenter = read('src/js/features/agent/agent-center.js');
 assert.match(agentCenter, /OneToneAgentClientEffects|applyClientEffect:\s*applyClientEffect/);
@@ -436,6 +482,17 @@ assert.equal(Caps.looksLikeWorkspaceEditGoal('这个方案怎么看？'), false)
 assert.equal(Caps.looksLikeWorkspaceEditGoal('今天天气'), false);
 assert.equal(Caps.looksLikeWorkspaceEditGoal('没有补充'), false);
 assert.equal(Caps.looksLikeWeatherAsk('今天天气'), true);
+var promptChat = Caps.buildLocalChatSystemPrompt({ workMode: 'think', projectPath: 'E:/x' });
+assert.match(promptChat, /对话模式/);
+var promptWork = Caps.buildLocalChatSystemPrompt({ workMode: 'edit', projectPath: 'E:/x' });
+assert.match(promptWork, /已在「工作」/);
+assert.match(promptWork, /禁止再说/);
+// Work-mode send must not regex-kick to chat.
+assert.doesNotMatch(
+  shell,
+  /if\s*\(\s*!looksLikeEditGoalText\(text\)\s*\)\s*\{[\s\S]*?routeToChatInsteadOfEdit/
+);
+assert.match(shell, /looksLikeWeatherAsk/);
 assert.equal(Caps.looksLikeWeatherAsk('这个方案怎么看'), false);
 assert.equal(Caps.extractWeatherCity('今天北京天气'), '北京');
 assert.equal(Caps.extractWeatherCity('今天天气'), '');
@@ -443,7 +500,7 @@ assert.equal(Caps.extractWeatherCity('今天天气怎么样？'), '');
 assert.equal(Caps.isPlausibleWeatherCity('怎么样'), false);
 assert.equal(Caps.looksLikeCityOnly('上海'), true);
 assert.match(shell, /tryHandleWeatherLocal|cmd_weather_now|ha2WeatherAskCity/);
-assert.match(shell, /dispatchEditModeSend|routeToChatInsteadOfEdit|atrLooksLikeContinueInput/);
+assert.match(shell, /dispatchEditModeSend|atrLooksLikeContinueInput/);
 assert.match(shell, /ha2AtrDoneQuietNoWrite|编辑回合结束 · 未写入文件/);
 assert.match(shell, /atrOwnsHomeChrome/);
 {
@@ -1240,7 +1297,7 @@ assert.equal(st.loadLastGood(), null);
   assert.equal(snap.session.capabilities.text_chat.available, false);
   assert.equal(sandbox.localStorage.getItem('onetone.ha2.wbSendMode'), 'desktop');
 
-  // Legacy readonly → 对话 (primary UI is chat|work|research).
+  // Legacy readonly / hidden research → 对话 (primary UI is chat|work).
   Store.setWorkMode('readonly');
   snap = Store.getSnapshot();
   assert.equal(snap.session.mode, 'think');
@@ -1256,10 +1313,11 @@ assert.equal(st.loadLastGood(), null);
   assert.equal(snap.session.mode, 'think');
   assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'think');
 
+  // Research chrome is product-hidden — collapse to think.
   Store.setWorkMode('research');
   snap = Store.getSnapshot();
-  assert.equal(snap.session.mode, 'research');
-  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'research');
+  assert.equal(snap.session.mode, 'think');
+  assert.equal(sandbox.localStorage.getItem('onetone.ha2.workMode'), 'think');
   Store.setWorkMode('think');
   snap = Store.getSnapshot();
   assert.equal(snap.session.mode, 'think');

@@ -1,5 +1,8 @@
 mod action_history_cmd;
 mod assist_runtime_cmd;
+mod model_provider_cmd;
+mod network_cmd;
+mod run_archive_cmd;
 mod agent_task_runtime_cmd;
 mod agent_center_cmd;
 mod agent_home_cmd;
@@ -33,6 +36,9 @@ mod workspace_layout_cmd;
 
 pub use action_history_cmd::*;
 pub use assist_runtime_cmd::*;
+pub use model_provider_cmd::*;
+pub use network_cmd::*;
+pub use run_archive_cmd::*;
 pub use agent_task_runtime_cmd::*;
 pub use agent_center_cmd::*;
 pub use agent_home_cmd::*;

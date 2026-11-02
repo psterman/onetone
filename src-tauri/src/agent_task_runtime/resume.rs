@@ -19,11 +19,15 @@ pub fn on_process_start(conn: &mut Connection) -> Result<usize, String> {
 pub fn resume_task(conn: &mut Connection, task_id: &str) -> Result<TaskRow, String> {
     let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
     let st = TaskStatus::parse(&task.status);
+    // Failed is resumable for provider stream/decode flakiness — FE「恢复」must not dead-end.
     if !matches!(
         st,
-        Some(TaskStatus::Interrupted) | Some(TaskStatus::Waiting)
+        Some(TaskStatus::Interrupted) | Some(TaskStatus::Waiting) | Some(TaskStatus::Failed)
     ) {
         return Err("not_resumable".into());
+    }
+    if matches!(st, Some(TaskStatus::Failed)) {
+        task.last_error = None;
     }
 
     let live = scope::open_workspace(Path::new(&task.workspace_root))?;

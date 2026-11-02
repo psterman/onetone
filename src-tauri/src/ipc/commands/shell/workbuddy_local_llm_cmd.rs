@@ -1,6 +1,7 @@
 use crate::workbuddy_local_llm;
 use serde::Deserialize;
 use serde_json::Value;
+use std::time::Instant;
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -93,13 +94,27 @@ pub struct WorkbuddyChatArgs {
 }
 
 #[tauri::command]
-pub fn cmd_workbuddy_local_chat(args: WorkbuddyChatArgs) -> Result<Value, String> {
-    workbuddy_local_llm::chat_once(
-        args.account_id.as_deref(),
-        args.model.as_deref(),
-        &args.messages,
-        args.max_tokens,
-    )
+pub async fn cmd_workbuddy_local_chat(args: WorkbuddyChatArgs) -> Result<Value, String> {
+    let started = Instant::now();
+    let account_id = args.account_id.clone();
+    let model = args.model.clone();
+    let messages = args.messages.clone();
+    let max_tokens = args.max_tokens;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        workbuddy_local_llm::chat_once(
+            account_id.as_deref(),
+            model.as_deref(),
+            &messages,
+            max_tokens,
+        )
+    })
+    .await
+    .map_err(|err| format!("workbuddy_worker_failed: {err}"))?;
+    crate::app_log::sync_emergency_line(
+        "research",
+        &format!("ipc_model_end durationMs={} ok={}", started.elapsed().as_millis(), result.is_ok()),
+    );
+    result
 }
 
 #[derive(Debug, Deserialize)]

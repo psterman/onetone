@@ -2,7 +2,7 @@
 
 use serde_json::{json, Value};
 
-use super::deepseek::{self, OpenAiCompatDriver};
+use super::deepseek::{self, GenericOpenAiDriver, OpenAiCompatDriver};
 use super::workbuddy::{self, WorkbuddyDriver};
 use crate::soft_pad_quota::SoftPadQuotaProvider;
 
@@ -22,7 +22,17 @@ pub fn parse_provider_id(s: &str) -> Option<String> {
     if t == "workbuddy" || t == "wb" || t == "codebuddy" {
         return Some("workbuddy".into());
     }
-    SoftPadQuotaProvider::from_str(&t).map(|p| p.as_str().to_string())
+    if t == "minimax" || t == "minimax_coding" {
+        return Some("minimax".into());
+    }
+    if let Some(p) = SoftPadQuotaProvider::from_str(&t) {
+        return Some(p.as_str().to_string());
+    }
+    // Custom OpenAI-compatible provider ids from model_provider configs.
+    if crate::model_provider::read_enabled(&t).is_some() {
+        return Some(t);
+    }
+    None
 }
 
 fn workbuddy_label(chat_ready: bool) -> String {
@@ -81,6 +91,34 @@ pub fn provider_ready_snapshot() -> Value {
         "modelId": wb_model,
         "kind": "workbuddy",
     }));
+
+    let mm_ready = crate::provider_usage::read_stored_minimax_coding_key().is_some();
+    providers.push(json!({
+        "id": "minimax",
+        "label": if mm_ready { "MiniMax Coding" } else { "MiniMax · 未配置 Key" },
+        "ready": mm_ready,
+        "chatReady": mm_ready,
+        "tryEdit": mm_ready,
+        "editCapable": false,
+        "locallyVerified": false,
+        "modelId": "MiniMax-M2.5",
+        "kind": "minimax",
+    }));
+
+    if let Ok(ids) = crate::model_provider::enabled_ids() {
+        for id in ids {
+            providers.push(json!({
+                "id": id,
+                "label": format!("自定义 · {id}"),
+                "ready": true,
+                "chatReady": true,
+                "tryEdit": true,
+                "editCapable": false,
+                "locallyVerified": false,
+                "kind": "custom_openai",
+            }));
+        }
+    }
 
     // Backend acceptance (config fingerprint match) is the only editCapable grant.
     super::verify_accept::apply_acceptances_to_providers(&mut providers);
@@ -143,11 +181,16 @@ pub fn make_driver(provider_id: &str) -> Result<Box<dyn super::engine::ModelDriv
         }
         return Ok(Box::new(WorkbuddyDriver::default()));
     }
-    let p = SoftPadQuotaProvider::from_str(&id).ok_or("unknown_provider")?;
-    if !deepseek::soft_pad_provider_ready(p) {
-        return Err(format!("{}_unconfigured", p.as_str()));
+    if id == "minimax" {
+        return Ok(Box::new(GenericOpenAiDriver::for_minimax()?));
     }
-    Ok(Box::new(OpenAiCompatDriver::for_provider(p)))
+    if let Some(p) = SoftPadQuotaProvider::from_str(&id) {
+        if !deepseek::soft_pad_provider_ready(p) {
+            return Err(format!("{}_unconfigured", p.as_str()));
+        }
+        return Ok(Box::new(OpenAiCompatDriver::for_provider(p)));
+    }
+    Ok(Box::new(GenericOpenAiDriver::for_custom(&id)?))
 }
 
 #[cfg(test)]
@@ -159,18 +202,31 @@ mod tests {
         assert_eq!(parse_provider_id("DeepSeek").as_deref(), Some("deepseek"));
         assert_eq!(parse_provider_id("wb").as_deref(), Some("workbuddy"));
         assert_eq!(parse_provider_id("kimi").as_deref(), Some("kimi"));
+        assert_eq!(parse_provider_id("minimax").as_deref(), Some("minimax"));
         assert!(parse_provider_id("cursor").is_none());
     }
 
     #[test]
     fn ready_snapshot_shape() {
+        // Empty acceptance DB — editCapable must stay false without a matching row.
+        let db = std::env::temp_dir().join(format!(
+            "atr_ready_snap_{}.sqlite3",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&db);
+        super::super::store::set_test_db_path(Some(db.clone()));
+
         let v = provider_ready_snapshot();
         assert_eq!(v.get("implemented").and_then(|x| x.as_bool()), Some(true));
         let arr = v.get("providers").and_then(|x| x.as_array()).unwrap();
-        assert!(arr.len() >= 5);
+        // 4 Soft Pad + workbuddy + minimax (+ optional custom ids)
+        assert!(arr.len() >= 6);
         assert!(arr
             .iter()
             .any(|p| p.get("id").and_then(|x| x.as_str()) == Some("deepseek")));
+        assert!(arr
+            .iter()
+            .any(|p| p.get("id").and_then(|x| x.as_str()) == Some("minimax")));
         let wb = arr
             .iter()
             .find(|p| p.get("id").and_then(|x| x.as_str()) == Some("workbuddy"))
@@ -178,8 +234,12 @@ mod tests {
         assert!(wb.get("chatReady").and_then(|x| x.as_bool()).is_some());
         assert!(wb.get("tryEdit").and_then(|x| x.as_bool()).is_some());
         assert!(wb.get("editProbe").is_some());
-        // Backend never claims normal editCapable without FE locallyVerified overlay.
+        // Acceptance overlay only; empty test DB → not editCapable.
         assert_eq!(wb.get("editCapable").and_then(|x| x.as_bool()), Some(false));
+        assert_eq!(
+            wb.get("locallyVerified").and_then(|x| x.as_bool()),
+            Some(false)
+        );
         assert!(v.get("selectedDefault").unwrap().is_null());
         let wb_chat = wb.get("chatReady").and_then(|x| x.as_bool()).unwrap_or(false);
         assert_eq!(
@@ -195,6 +255,9 @@ mod tests {
                 "unexpected: {err}"
             );
         }
+
+        super::super::store::set_test_db_path(None);
+        let _ = std::fs::remove_file(&db);
     }
 
     #[test]

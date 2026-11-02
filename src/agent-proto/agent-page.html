@@ -552,6 +552,8 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .hook-dock .btn{padding:6px 10px;font-size:11.5px}
 .hook-meta{margin:8px 0 0;font-size:11px;color:var(--faint);line-height:1.45}
 .hook-meta code{font-family:var(--mono);font-size:10.5px;color:var(--mute)}
+.hook-meta.is-ok{color:#166534}
+.hook-meta.is-err{color:#b91c1c}
 .hook-hint{margin:6px 0 0;font-size:11.5px;color:var(--faint);line-height:1.45}
 .wb-local{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .wb-local__head{font-size:12px;font-weight:800;margin:0 0 4px;color:var(--ink)}
@@ -1736,6 +1738,42 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }, 1800);
   }
 
+  /** Home chat/research readiness — independent from Soft Pad Hook「接入」. */
+  function workbuddyChatReady(wb){
+    wb=wb||{};
+    if(!wb.configured) return { ok:false, short:'模型未登录', text:'本机模型未登录' };
+    var accounts=Array.isArray(wb.accounts)?wb.accounts:[];
+    var defId=String(wb.defaultAccountId||'');
+    var def=null;
+    for(var i=0;i<accounts.length;i++){
+      if(accounts[i]&&String(accounts[i].id||'')===defId){ def=accounts[i]; break; }
+    }
+    if(!def){
+      for(var j=0;j<accounts.length;j++){
+        if(accounts[j]&&accounts[j].enabled){ def=accounts[j]; break; }
+      }
+    }
+    if(!def||!def.enabled) return { ok:false, short:'模型未启用', text:'本机模型未启用' };
+    var model=String(def.selectedModel||wb.defaultModel||'').trim();
+    if(!model) return { ok:false, short:'未选模型', text:'本机模型未选' };
+    var st=String(def.verifyStatus||'pending');
+    if(st==='fail') return { ok:false, short:'测通失败', text:'本机模型测通失败' };
+    if(st==='ok') return { ok:true, short:'模型已通', text:'本机模型已通' };
+    return { ok:true, short:'模型已登录', text:'本机模型已登录（可点测通确认）' };
+  }
+
+  function workbuddyActionStatusHtml(){
+    var act=(state.settingsSnap&&state.settingsSnap.wbAction)||null;
+    if(!act||!act.cmd) return '';
+    var ok=!!act.ok;
+    var msg=ok
+      ? (act.cmd==='refresh'
+          ? '模型列表已刷新 · Hy3 等可选，首页对话/调研用本机模型'
+          : '测通成功 · 本机模型可用于首页对话/调研（不依赖 Soft Pad「接入」）')
+      : ((act.cmd==='refresh'?'刷新模型失败：':'测通失败：')+escText(act.error||'未知错误'));
+    return '<p class="hook-meta '+(ok?'is-ok':'is-err')+'" data-wb-action-status="1">'+msg+'</p>';
+  }
+
   /** Default-account model <select> HTML (shared by dock home + local panel). */
   function workbuddyDefaultModelSelectHtml(wb){
     wb=wb||{};
@@ -1829,10 +1867,14 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         '</div>'
       );
     }).join('');
+    var chat=workbuddyChatReady(wb);
     return (
       '<div class="wb-local" data-wb-local="1">'+
         '<div class="wb-local__head">本机模型 · 账号</div>'+
         '<p class="hook-meta">'+quotaLine+'</p>'+
+        '<p class="hook-meta'+(chat.ok?' is-ok':'')+'">'+escText(chat.text)+
+          ' · 首页对话/调研走这里；上方 Soft Pad「未接入」只表示状态灯 Hook，点「接入」才装灯。</p>'+
+        workbuddyActionStatusHtml()+
         waitHtml+
         (rows||'<p class="hook-meta">还没有账号。点「登录」用浏览器授权，或添加 API Key。</p>')+
         '<div class="btn-row" style="margin-top:8px">'+
@@ -1892,6 +1934,16 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       var wbRowModel=row.agent==='workbuddy'
         ? workbuddyDefaultModelSelectHtml(snap.workbuddyLocal||{})
         : '';
+      var hookPl=row.phaseLabel||'未接入';
+      var badgeLbl=hookPl;
+      var badgeCls=row.badgeClass||'warn';
+      var smallTxt=hookPl+(row.enabled?' · 灯开':'');
+      if(row.agent==='workbuddy'){
+        var chat=workbuddyChatReady(snap.workbuddyLocal||{});
+        badgeLbl=chat.short;
+        badgeCls=chat.ok?'ok':'warn';
+        smallTxt=chat.text+' · Soft Pad '+hookPl+(row.enabled?' · 灯开':'');
+      }
       if(isOpen){
         var prim=row.primaryAction||null;
         var act=prim==='install'?'install':'copy';
@@ -1922,9 +1974,9 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         '<div class="hook-watch-item'+(isOpen?' is-on':'')+'">'+
           '<div class="hook-watch-row" data-agent-hook="'+row.agent+'">'+
             '<span class="ico">'+agentIconHtml(row.agent,row.label)+'</span>'+
-            '<div class="nm">'+row.label+'<small>'+(row.phaseLabel||'未接入')+(row.enabled?' · 灯开':'')+'</small></div>'+
+            '<div class="nm">'+row.label+'<small>'+smallTxt+'</small></div>'+
             wbRowModel+
-            '<span class="badge '+(row.badgeClass||'warn')+'">'+(row.phaseLabel||'未接入')+'</span>'+
+            '<span class="badge '+badgeCls+'">'+badgeLbl+'</span>'+
           '</div>'+
           dock+
         '</div>'
@@ -2899,8 +2951,12 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             var on=!(el.classList&&el.classList.contains('on'));
             postSettingsCmd('wbLocalSetEnabled',{ id:id, enabled:on });
           }else if(act==='verify'){
+            el.disabled=true;
+            el.textContent='测通中…';
             postSettingsCmd('wbLocalVerify',{ id:id });
           }else if(act==='refresh'){
+            el.disabled=true;
+            el.textContent='刷新中…';
             postSettingsCmd('wbLocalRefreshModels',{ id:id });
           }else if(act==='model'){
             postSettingsCmd('wbLocalSetModel',{ id:id, model:el.value||'' });

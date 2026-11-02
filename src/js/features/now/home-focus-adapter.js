@@ -93,6 +93,7 @@
 
   function providerLabelHome(p) {
     var s = String(p || '').toLowerCase();
+    if (s.indexOf('onetone_atr') >= 0 || s === 'atr') return '本机工作';
     if (s.indexOf('claude') >= 0) return 'Claude';
     if (s.indexOf('codex') >= 0) return 'Codex';
     if (s.indexOf('workbuddy') >= 0) return 'WorkBuddy';
@@ -106,11 +107,24 @@
     return raw || 'Agent';
   }
 
+  /** Prefer ATR / session provider over FG Soft Pad app name when source says so. */
+  function resumeProviderOf(provider, appName, source) {
+    var reason = String((source && source.reason) || '');
+    if (/atr_checkpoint/i.test(reason)) return 'onetone_atr';
+    var id = (provider && (provider.id || provider)) || '';
+    if (/onetone_atr|^atr$/i.test(String(id))) return 'onetone_atr';
+    return id || appName || 'Agent';
+  }
+
   /** Single H1 template for return: provider + step, with CJK/Latin spacing. */
   function returnHeadline(provider, task) {
     var prov = providerLabelHome(provider);
     var step = usableResumeStep(task, prov);
     if (!step) return '你上次停在 ' + prov + '。';
+    // ATR is not an external Agent window — don't say「停在 X 的」like Cursor/Claude.
+    if (prov === '本机工作') {
+      return '你上次停在「' + step + '」。';
+    }
     return '你上次停在 ' + prov + ' 的「' + step + '」。';
   }
 
@@ -241,11 +255,11 @@
       secondary = { id: 'view_reason', label: '查看判断依据' };
     } else if (ws === 'waiting') {
       mode = 'attention';
-      var agentLabel =
-        provider.id === 'claude' || /claude/i.test(String(provider.id || ''))
-          ? 'Claude'
-          : providerLabelHome(provider.id || appName);
-      headline = agentLabel + ' 等待你确认';
+      var agentLabel = providerLabelHome(resumeProviderOf(provider, appName, source));
+      headline =
+        agentLabel === '本机工作'
+          ? '工作任务等待你确认'
+          : agentLabel + ' 等待你确认';
       assistance = '当前没有足够信息在首页展示具体问题。请到 Agent 查看并决定。';
       attention = {
         title: '等待你确认',
@@ -263,12 +277,7 @@
       resumeAgeFresh(work.updatedAt)
     ) {
       mode = 'return';
-      var resumeProv =
-        provider.id === 'claude' || /claude/i.test(String(provider.id || ''))
-          ? 'Claude'
-          : provider.id === 'codex' || /codex/i.test(String(provider.id || ''))
-            ? 'Codex'
-            : providerLabelHome(provider.id || appName);
+      var resumeProv = providerLabelHome(resumeProviderOf(provider, appName, source));
       var resumeStep =
         usableResumeStep(workTitle, resumeProv) ||
         usableResumeStep(workDesc, resumeProv);
@@ -286,8 +295,11 @@
       progress = null;
     } else if (ws === 'running') {
       mode = 'running';
-      var runningAgent = providerLabelHome(provider.id || appName);
-      headline = runningAgent + ' 正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务');
+      var runningAgent = providerLabelHome(resumeProviderOf(provider, appName, source));
+      headline =
+        runningAgent === '本机工作'
+          ? '正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务')
+          : runningAgent + ' 正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务');
       assistance = Number(work.updatedAt) > 0 ? '最近活动：' + when : '';
       presence = {
         line: runningAgent + ' · ' + projectName + (Number(work.updatedAt) > 0 ? ' · ' + when : ''),
@@ -861,16 +873,29 @@
           break;
         }
       }
+      var activeSid = active ? String(active.sessionId || active.session_id || '') : '';
+      var atrHint =
+        /atr_checkpoint/i.test(String((home.source && home.source.reason) || '')) ||
+        /onetone_atr|^atr$/i.test(String(ckpt.provider || '')) ||
+        (ckSession && /onetone_atr|^atr$/i.test(String(ckSession.provider || '')));
       var rawProv =
         (ckSession && ckSession.provider) ||
-        (active && active.provider) ||
         ckpt.provider ||
-        (home.provider && (home.provider.id || home.provider)) ||
         '';
+      // Same session still active may carry the real provider; never steal FG Soft Pad (Cursor).
+      if (!rawProv && active && activeSid && ckSid && String(activeSid) === ckSid) {
+        rawProv = active.provider || '';
+      }
+      if (!rawProv && atrHint) rawProv = 'onetone_atr';
+      if (!rawProv) {
+        rawProv = (home.provider && (home.provider.id || home.provider)) || '';
+      }
       var ckProv = providerLabelHome(rawProv || 'Agent');
       // Never fall back to project displayName — that hijacks the agent badge.
       if (ckProv === '未知项目' || /未知/.test(ckProv)) {
-        ckProv = providerLabelHome((active && active.provider) || 'Agent');
+        ckProv = atrHint
+          ? providerLabelHome('onetone_atr')
+          : providerLabelHome((active && active.provider) || 'Agent');
       }
       // Prefer real task title; never promote UI CTA / next_action boilerplate into H1.
       var ckTask =
@@ -883,7 +908,6 @@
         '';
       var projUnconfirmed =
         !vm.confirmed && (vm.match === 'probable' || vm.match === 'unknown' || !vm.match);
-      var activeSid = active ? String(active.sessionId || active.session_id || '') : '';
       // Same session still running: Living covers it; skip Continue duplicate.
       // Stale checkpoint: skip Continue entirely (no precise age → no resume Hero).
       if (ckFresh && !(activeRunning && ckSid && ckSid === activeSid)) {

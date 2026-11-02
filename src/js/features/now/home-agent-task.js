@@ -169,30 +169,93 @@
 
   var IDLE = { waiting: 1, done: 1, failed: 1, cancelled: 1, interrupted: 1 };
 
-  /** One IPC = one tool turn, loop until idle — keeps the home UI from freezing. */
-  function drive(taskId, provider) {
+  /**
+   * Product drive: Controller owns the until-idle loop via driveAtrUntilIdle.
+   * Each IPC is still maxSteps:1 inside Rust. allowRawDrive is tests-only.
+   */
+  function drive(taskId, provider, opts) {
+    opts = opts || {};
     var p = provider != null ? String(provider || '').trim() : readProvider() || '';
     var id = String(taskId || '');
-    var guard = 0;
-    function step() {
-      if (guard++ > 40) {
-        return Promise.reject(codedError('drive_failed', 'max_drive_steps'));
-      }
-      return invoke('cmd_agent_task_drive', {
-        taskId: id,
-        provider: p || undefined,
-        maxSteps: 1
-      }).then(function (dto) {
-        var st = dto && dto.status;
-        if (st && IDLE[st]) return dto;
-        return new Promise(function (resolve, reject) {
-          global.setTimeout(function () {
-            step().then(resolve, reject);
-          }, 0);
+    var controller = opts.controller || null;
+
+    if (controller && typeof controller.driveAtrUntilIdle === 'function') {
+      if (typeof controller.setInvoke === 'function') {
+        controller.setInvoke(function (cmd, args) {
+          return invoke(cmd, args || {});
         });
+      }
+      if (typeof controller.bindAtrTask === 'function' && id) {
+        try {
+          controller.bindAtrTask({ taskId: id, status: 'running', providerId: p || null });
+        } catch (_) {}
+      }
+      if (typeof controller.isPlanConfirmed === 'function' && !controller.isPlanConfirmed()) {
+        if (typeof controller.confirmPlan === 'function' && opts.planConfirmed) {
+          controller.confirmPlan({ goal: opts.goal || '' });
+        } else {
+          return Promise.reject(codedError('plan_not_confirmed', 'plan_not_confirmed'));
+        }
+      }
+      return controller
+        .driveAtrUntilIdle({ taskId: id, provider: p || undefined })
+        .then(function (res) {
+          if (!res || res.ok === false) {
+            throw codedError(
+              (res && res.code) || 'drive_failed',
+              (res && res.code) || 'drive_failed'
+            );
+          }
+          return res.result || res.snapshot || {};
+        });
+    }
+
+    if (opts.allowRawDrive) {
+      // Tests / explicit opt-in only — product path must pass WorkController.
+      var guard = 0;
+      function step() {
+        if (guard++ > 40) {
+          return Promise.reject(codedError('drive_failed', 'max_drive_steps'));
+        }
+        return invoke('cmd_agent_task_drive', {
+          taskId: id,
+          provider: p || undefined,
+          maxSteps: 1
+        }).then(function (dto) {
+          var st = dto && dto.status;
+          if (st && IDLE[st]) return dto;
+          return new Promise(function (resolve, reject) {
+            global.setTimeout(function () {
+              step().then(resolve, reject);
+            }, 0);
+          });
+        });
+      }
+      return step();
+    }
+
+    return Promise.reject(codedError('controller_required', 'work_controller_required'));
+  }
+
+  function verifyThroughController(controller, taskId) {
+    if (!controller || typeof controller.executeAction !== 'function') {
+      return evaluateVerify(taskId);
+    }
+    if (typeof controller.setInvoke === 'function') {
+      controller.setInvoke(function (cmd, args) {
+        return invoke(cmd, args || {});
       });
     }
-    return step();
+    return controller.executeAction({
+      toolId: 'atr_verify',
+      input: { taskId: String(taskId || '') },
+      taskId: 'atr-verify'
+    }).then(function (res) {
+      if (!res || !res.ok) {
+        throw codedError((res && res.code) || 'verify_failed', (res && res.code) || 'verify_failed');
+      }
+      return res.result;
+    });
   }
 
   function driveDeepseek(taskId) {
@@ -452,6 +515,11 @@
         if (!dto || !dto.taskId) {
           return Promise.reject(codedError('start_failed', 'no_task_id'));
         }
+        if (opts.controller && typeof opts.controller.bindAtrTask === 'function') {
+          try {
+            opts.controller.bindAtrTask(dto);
+          } catch (_) {}
+        }
         // Let UI bind taskId + poll before the long drive blocks.
         if (typeof opts.onStarted === 'function') {
           try {
@@ -461,14 +529,18 @@
         var driveP =
           Array.isArray(opts.driveFakeSteps) && opts.driveFakeSteps.length
             ? driveFake(dto.taskId, opts.driveFakeSteps)
-            : drive(dto.taskId, resolvedProvider || readProvider());
+            : drive(dto.taskId, resolvedProvider || readProvider(), {
+                controller: opts.controller || null,
+                planConfirmed: opts.planConfirmed !== false,
+                goal: opts.goal
+              });
         return driveP
           .catch(function (e) {
             var raw = String((e && e.message) || e || 'drive_failed');
             var code =
               /edit_not_admitted/i.test(raw) || (e && e.code === 'edit_not_admitted')
                 ? 'edit_not_admitted'
-                : 'drive_failed';
+                : (e && e.code) || 'drive_failed';
             return Promise.reject(codedError(code, raw));
           })
           .then(function (driven) {
@@ -528,6 +600,7 @@
     pathLooksLikeVerifySandbox: pathLooksLikeVerifySandbox,
     ensureVerifySandbox: ensureVerifySandbox,
     evaluateVerify: evaluateVerify,
+    verifyThroughController: verifyThroughController,
     enrichReadySnapshot: enrichReadySnapshot,
     start: start,
     status: status,

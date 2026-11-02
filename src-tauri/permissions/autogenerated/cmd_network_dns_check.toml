@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-network-dns-check"
+description = "Allows invoking cmd_network_dns_check."
+commands.allow = ["cmd_network_dns_check"]

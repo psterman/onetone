@@ -18,8 +18,21 @@ use super::scope::{
 const MAX_SEARCH_HITS: usize = 40;
 const MAX_SEARCH_BYTES: usize = 120_000;
 const MAX_READ_CHARS: usize = 40_000;
+const INSPECT_DIRTY_SAMPLE: usize = 32;
 /// Sentinel file hash for create-new-file apply (no prior read).
 pub const NEW_FILE_HASH: &str = "new";
+
+fn baseline_dirty_sample(paths: &[String], cap: usize) -> Value {
+    let total = paths.len();
+    if total <= cap {
+        return json!(paths);
+    }
+    json!({
+        "count": total,
+        "sample": paths.iter().take(cap).cloned().collect::<Vec<_>>(),
+        "omitted": total - cap,
+    })
+}
 
 pub fn inspect_workspace(scope: &WorkspaceScope) -> Value {
     let mut entries = Vec::new();
@@ -33,7 +46,7 @@ pub fn inspect_workspace(scope: &WorkspaceScope) -> Value {
     json!({
         "root": scope.root.display().to_string(),
         "entries": entries,
-        "baselineDirty": scope.baseline_dirty,
+        "baselineDirty": baseline_dirty_sample(&scope.baseline_dirty, INSPECT_DIRTY_SAMPLE),
     })
 }
 
@@ -359,8 +372,24 @@ pub fn export_to_desktop(scope: &WorkspaceScope, rel: &str) -> Result<Value, Str
 }
 
 pub fn inspect_diff(scope: &WorkspaceScope, changed: &[String]) -> Value {
+    // Task changed_files is empty until apply_patch — fall back to baseline dirty
+    // so Q&A goals ("今天改了什么") still get paths. Cap sample to keep context small.
+    const CAP: usize = 40;
+    let (paths, source): (Vec<String>, &str) = if !changed.is_empty() {
+        (
+            changed.iter().take(CAP).cloned().collect(),
+            "task_changed",
+        )
+    } else if !scope.baseline_dirty.is_empty() {
+        (
+            scope.baseline_dirty.iter().take(CAP).cloned().collect(),
+            "baseline_dirty",
+        )
+    } else {
+        (Vec::new(), "none")
+    };
     let mut files = Vec::new();
-    for rel in changed {
+    for rel in &paths {
         let Ok(abs) = resolve_in_root(&scope.root, rel) else {
             continue;
         };
@@ -371,7 +400,18 @@ pub fn inspect_diff(scope: &WorkspaceScope, changed: &[String]) -> Value {
             "preview": content.chars().take(400).collect::<String>(),
         }));
     }
-    json!({ "changedFiles": files })
+    json!({
+        "changedFiles": files,
+        "source": source,
+        "totalCandidates": paths.len(),
+        "hint": if files.is_empty() {
+            Value::String(
+                "no_paths_to_diff — 直接 finish{summary} 回答目标，勿空转".into(),
+            )
+        } else {
+            Value::Null
+        },
+    })
 }
 
 pub fn run_check_by_id(scope: &WorkspaceScope, check_id: &str) -> Result<Value, String> {
@@ -383,4 +423,37 @@ pub fn run_check_by_id(scope: &WorkspaceScope, check_id: &str) -> Result<Value, 
         "output": output,
         // Internal fields intentionally omitted from model-facing summary in loop.
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inspect_dirty_samples_long_lists() {
+        let paths: Vec<String> = (0..50).map(|i| format!("p{i}.rs")).collect();
+        let v = baseline_dirty_sample(&paths, 32);
+        assert_eq!(v["count"], 50);
+        assert_eq!(v["omitted"], 18);
+        assert_eq!(v["sample"].as_array().map(|a| a.len()), Some(32));
+    }
+
+    #[test]
+    fn inspect_diff_falls_back_to_baseline_dirty() {
+        let dir = std::env::temp_dir().join(format!(
+            "atr-inspect-diff-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("a.rs"), "fn a(){}").unwrap();
+        let scope = WorkspaceScope {
+            root: dir.clone(),
+            baseline_dirty: vec!["a.rs".into()],
+        };
+        let v = inspect_diff(&scope, &[]);
+        assert_eq!(v["source"], "baseline_dirty");
+        assert_eq!(v["changedFiles"].as_array().map(|a| a.len()), Some(1));
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

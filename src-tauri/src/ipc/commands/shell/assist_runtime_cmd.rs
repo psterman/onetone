@@ -5,6 +5,38 @@ use crate::assist_runtime::{
 use serde::Deserialize;
 use serde_json::Value;
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistModelChatArgs {
+    pub messages: Vec<Value>,
+    pub max_tokens: Option<u32>,
+    pub deadline_ms: Option<u64>,
+    pub allow_metered: Option<bool>,
+}
+
+#[tauri::command]
+pub async fn cmd_assist_model_chat(args: AssistModelChatArgs) -> Result<Value, String> {
+    let policy = if args.allow_metered.unwrap_or(false) {
+        CallPolicy::AllowMetered
+    } else {
+        CallPolicy::FreeOnly
+    };
+    assist_runtime::run_model_chat(
+        format!(
+            "model-chat-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or_default()
+        ),
+        args.messages,
+        policy,
+        args.max_tokens.unwrap_or(4096),
+        args.deadline_ms.unwrap_or(30_000),
+    )
+    .await
+}
+
 #[tauri::command]
 pub async fn cmd_assist_run(args: AssistRunRequest) -> Result<AssistRunResponse, String> {
     Ok(assist_runtime::run_live(args).await)

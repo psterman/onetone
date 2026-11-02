@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-model-provider-chat"
+description = "Enables the cmd_model_provider_chat command without any pre-configured scope."
+commands.allow = ["cmd_model_provider_chat"]

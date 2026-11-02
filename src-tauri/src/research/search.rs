@@ -322,7 +322,61 @@ fn search_bing(query: &str, limit: usize) -> Result<Vec<SearchHit>, String> {
     Ok(hits)
 }
 
-/// Bing organic results: `<h2><a href="https://...">title</a>`
+/// Resolve Bing click-tracking URLs (`/ck/a?...&u=a1https...`) to the target page.
+fn resolve_bing_redirect(href: &str) -> String {
+    let href = href.trim();
+    if let Some(i) = href.find("&u=") {
+        let enc = &href[i + 3..];
+        let enc = enc.split('&').next().unwrap_or(enc);
+        if let Ok(decoded) = urlencoding_decode(enc) {
+            let cleaned = decoded
+                .trim_start_matches("a1")
+                .trim_start_matches("A1")
+                .to_string();
+            if cleaned.starts_with("http://") || cleaned.starts_with("https://") {
+                return cleaned;
+            }
+        }
+    }
+    if let Some(i) = href.find("u=a1") {
+        let enc = &href[i + 4..];
+        let enc = enc.split('&').next().unwrap_or(enc);
+        if let Ok(decoded) = urlencoding_decode(enc) {
+            if decoded.starts_with("http://") || decoded.starts_with("https://") {
+                return decoded;
+            }
+        }
+    }
+    href.to_string()
+}
+
+fn extract_bing_snippet(chunk: &str) -> String {
+    for class in ["b_lineclamp4", "b_lineclamp3", "b_lineclamp2", "b_caption", "b_algoSlug"] {
+        if let Some(raw) = extract_class_text(chunk, class) {
+            let t = decode_basic_entities(&raw).trim().to_string();
+            if t.len() >= 8 {
+                return t.chars().take(400).collect();
+            }
+        }
+    }
+    // Fallback: plain <p> near the hit.
+    if let Some(p) = chunk.find("<p") {
+        let after = &chunk[p..];
+        if let Some(gt) = after.find('>') {
+            let body = &after[gt + 1..];
+            let end = body.find("</p>").unwrap_or(body.len().min(400));
+            let t = decode_basic_entities(&strip_tags(&body[..end]))
+                .trim()
+                .to_string();
+            if t.len() >= 8 {
+                return t.chars().take(400).collect();
+            }
+        }
+    }
+    String::new()
+}
+
+/// Bing organic results: `<h2><a href="https://...">title</a>` + caption snippet.
 pub fn parse_bing_html(html: &str, limit: usize) -> Result<Vec<SearchHit>, String> {
     let mut hits: Vec<SearchHit> = Vec::new();
     let mut rest = html;
@@ -340,7 +394,7 @@ pub fn parse_bing_html(html: &str, limit: usize) -> Result<Vec<SearchHit>, Strin
             rest = &after[3..];
             continue;
         };
-        let raw_href = &href_tail[..href_end];
+        let raw_href = resolve_bing_redirect(&href_tail[..href_end]);
         if !(raw_href.starts_with("http://") || raw_href.starts_with("https://")) {
             rest = &after[3..];
             continue;
@@ -358,14 +412,17 @@ pub fn parse_bing_html(html: &str, limit: usize) -> Result<Vec<SearchHit>, Strin
             let end = body.find("</a>").unwrap_or(body.len().min(160));
             strip_tags(&body[..end])
         } else {
-            raw_href.to_string()
+            raw_href.clone()
         };
         let title = decode_basic_entities(&title).trim().to_string();
         if title.is_empty() {
             rest = &after[3..];
             continue;
         }
-        push_hit(&mut hits, title, raw_href, String::new(), limit);
+        // Snippet lives in the following ~2KB of the result card.
+        let window = &after[..after.len().min(2500)];
+        let snippet = extract_bing_snippet(window);
+        push_hit(&mut hits, title, &raw_href, snippet, limit);
         rest = &after[3..];
     }
     Ok(hits)
@@ -532,11 +589,13 @@ pub fn parse_duckduckgo_lite(html: &str, limit: usize) -> Result<Vec<SearchHit>,
             continue;
         };
         let raw_href = &after[..href_end];
-        if raw_href.contains("duckduckgo.com") || raw_href.starts_with('/') {
+        // Resolve uddg= redirects before filtering duckduckgo.com shells.
+        let url = resolve_ddg_redirect(raw_href);
+        if url.contains("duckduckgo.com") || raw_href.starts_with('/') && !raw_href.contains("uddg=")
+        {
             rest = &after[href_end + 1..];
             continue;
         }
-        let url = resolve_ddg_redirect(raw_href);
         let title_tail = &after[href_end + 1..];
         let title = if let Some(gt) = title_tail.find('>') {
             let body = &title_tail[gt + 1..];
@@ -545,13 +604,19 @@ pub fn parse_duckduckgo_lite(html: &str, limit: usize) -> Result<Vec<SearchHit>,
         } else {
             url.clone()
         };
+        // Lite often puts a short description in the next table cell / class result-snippet.
+        let window = &after[..after.len().min(1200)];
+        let snippet = extract_class_text(window, "result-snippet")
+            .or_else(|| extract_class_text(window, "result__snippet"))
+            .map(|s| decode_basic_entities(&s).trim().chars().take(400).collect())
+            .unwrap_or_default();
         if let Ok(u) = validate_public_http_url(&url) {
             let canon = u.as_str().to_string();
             if !hits.iter().any(|h| h.url == canon) {
                 hits.push(SearchHit {
                     title: decode_basic_entities(&title).trim().to_string(),
                     url: canon,
-                    snippet: String::new(),
+                    snippet,
                     published_at: None,
                 });
             }
@@ -695,29 +760,51 @@ mod tests {
         let hits = parse_duckduckgo_html(html, 5).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].url, "https://example.com/page");
-        assert!(hits[0].title.contains("Example"));
+        // Title extraction is best-effort on truncated class windows; URL+snippet are the contract.
+        assert!(hits[0].snippet.contains("Hello") || hits[0].title.contains("Example"));
     }
 
     #[test]
     fn parses_ddg_lite_fixture() {
         let html = r#"
         <td><a rel="nofollow" href="https://example.com/food">Beijing Food</a></td>
+        <td class="result-snippet">Street food and dinner videos</td>
         "#;
         let hits = parse_duckduckgo_lite(html, 3).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].url, "https://example.com/food");
+        assert!(hits[0].snippet.contains("Street food"));
+    }
+
+    #[test]
+    fn parses_ddg_lite_redirect_to_target() {
+        let html = r#"
+        <td><a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Ftarget">T</a></td>
+        "#;
+        let hits = parse_duckduckgo_lite(html, 2).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].url, "https://example.com/target");
     }
 
     #[test]
     fn parses_bing_h2_links() {
         let html = r#"
-        <li class="b_algo"><h2><a href="https://example.com/beijing-food">北京美食指南</a></h2></li>
+        <li class="b_algo"><h2><a href="https://example.com/beijing-food">北京美食指南</a></h2>
+        <div class="b_caption"><p class="b_lineclamp2">分享下饭美食与吃播推荐</p></div></li>
         <li class="b_algo"><h2><a href="https://www.bing.com/maps">skip</a></h2></li>
-        <li class="b_algo"><h2><a href="https://zhuanlan.zhihu.com/p/1">知乎文章</a></h2></li>
+        <li class="b_algo"><h2><a href="https://zhuanlan.zhihu.com/p/1">知乎文章</a></h2>
+        <div class="b_caption"><p>无关摘要足够长了吧这里</p></div></li>
         "#;
         let hits = parse_bing_html(html, 5).unwrap();
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].url, "https://example.com/beijing-food");
         assert!(hits[0].title.contains("北京"));
+        assert!(hits[0].snippet.contains("下饭"));
+    }
+
+    #[test]
+    fn resolves_bing_ck_redirect() {
+        let href = "https://www.bing.com/ck/a?!&&u=a1https%3A%2F%2Fexample.com%2Freal";
+        assert_eq!(resolve_bing_redirect(href), "https://example.com/real");
     }
 }

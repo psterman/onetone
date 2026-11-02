@@ -12,7 +12,7 @@
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
     var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
     var settingsNavTray=$('settingsNavTrayLabel'); if(settingsNavTray) settingsNavTray.textContent=d.homeWbNavTray||'托盘菜单';
-    var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'识别资源';
+    var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'模型提供方';
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic&&!(global.OneToneIslands&&typeof global.OneToneIslands.isMounted==='function'&&global.OneToneIslands.isMounted('settingsPanelBasic'))) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
@@ -27,8 +27,8 @@
     var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
     var spVoiceTitle=$('settingsPanelVoiceWakeTitle'); if(spVoiceTitle) spVoiceTitle.textContent=d.settingsPanelVoiceWakeTitle;
-    var spModels=$('settingsPanelModelsDesc'); if(spModels) spModels.textContent=d.settingsPanelModelsDesc||'管理本地语音识别、系统识别与后续云端能力。';
-    var spModelsTitle=$('settingsPanelModelsTitle'); if(spModelsTitle) spModelsTitle.textContent=d.settingsNavModels||'识别资源';
+    var spModels=$('settingsPanelModelsDesc'); if(spModels) spModels.textContent=d.settingsPanelModelsDesc||'管理模型提供方与调用路由。';
+    var spModelsTitle=$('settingsPanelModelsTitle'); if(spModelsTitle) spModelsTitle.textContent=d.settingsNavModels||'模型提供方';
     if(global.OneToneSceneModeHub){
       // Drawer closed: habit list paint is wasted work on the home load path.
       var ui=global.OneToneState&&global.OneToneState.ui;

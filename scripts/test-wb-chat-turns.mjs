@@ -25,9 +25,13 @@ assert.match(winCss, /align-self:\s*flex-end/);
 assert.match(winCss, /align-self:\s*flex-start/);
 
 assert.match(ha2, /function wbTurnRoleHtml/);
+assert.match(ha2, /function wbAssistantLabel/);
+assert.match(ha2, /ha2WbRoleSoftPadFallback|Soft Pad→WorkBuddy/);
 assert.match(ha2, /ha2WbRoleUser',\s*'我'/);
 assert.match(ha2, /WB_CHAT_ICON|icons\/app-target\/workbuddy\.png/);
 assert.match(ha2, /ha2-wb-avatar-me/);
+assert.match(ha2, /providerId: turn\.providerId/);
+assert.doesNotMatch(ha2, /providers\.push\(\{\s*id:\s*'minimax_cn'/);
 
 assert.match(ha2Css, /\.ha2-wb-page-turn--user/);
 assert.match(ha2Css, /\.ha2-wb-page-turn--assistant/);

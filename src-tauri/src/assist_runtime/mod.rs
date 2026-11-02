@@ -13,7 +13,7 @@ pub use contracts::{
     AssistRunResponse, CallPolicy,
 };
 pub use models::{model_catalog, ModelEntry};
-pub use router::{ready_status, run_live};
+pub use router::{ready_status, run_live, run_model_chat};
 
 #[cfg(test)]
 mod tests {

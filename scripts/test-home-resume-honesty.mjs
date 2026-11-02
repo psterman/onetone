@@ -123,4 +123,78 @@ var staleVm = A.enrichFromHomeSnapshot(
 assert.notStrictEqual(staleVm.mode, 'return', 'stale checkpoint must not force return');
 assert.ok(!staleVm.desk || !staleVm.desk.continueCard, 'stale checkpoint skips continue card');
 
+// ATR checkpoint must not be labeled as Cursor (FG Soft Pad).
+var atrDto = A.toViewModel({
+  foreground: { appName: 'Cursor', appId: 'cursor' },
+  project: {
+    id: 'p1',
+    name: 'voice-pilot',
+    root: 'E:\\\\voice-pilot',
+    match: 'exact',
+    confirmed: true
+  },
+  work: {
+    status: 'resumable',
+    title: '最近修改了什么代码？',
+    description: '可以继续或放弃。',
+    updatedAt: now - 120_000
+  },
+  provider: { id: 'onetone_atr', status: 'ready' },
+  nextAction: { title: '继续上次工作', kind: 'resume', executable: true },
+  source: { freshness: 'live', reason: 'probe=ready;atr_checkpoint;interrupted' }
+});
+assert.strictEqual(atrDto.mode, 'return', 'ATR resumable → return');
+assert.ok(
+  String(atrDto.headline).includes('最近修改了什么代码？'),
+  'ATR headline keeps goal'
+);
+assert.ok(
+  !/Cursor/.test(String(atrDto.headline)),
+  'ATR headline must not say Cursor, got: ' + atrDto.headline
+);
+assert.ok(
+  rust.includes('PROVIDER_ONETONE_ATR') && rust.includes('atr_owns'),
+  'Rust sets ATR provider when atr owns work'
+);
+
+var atrMislabel = A.enrichFromHomeSnapshot(
+  A.toViewModel({
+    foreground: { appName: 'Cursor', appId: 'cursor' },
+    project: {
+      id: 'p1',
+      name: 'voice-pilot',
+      root: 'E:\\\\voice-pilot',
+      match: 'exact',
+      confirmed: true
+    },
+    work: { status: 'idle', title: '', description: '', updatedAt: now },
+    provider: { id: 'cursor', status: 'ready' },
+    source: { freshness: 'cached', reason: 'probe=ready;atr_checkpoint;interrupted' }
+  }),
+  {
+    checkpoint: {
+      sessionId: 'atr-sess',
+      provider: 'onetone_atr',
+      currentTask: '今天改动了什么文件？',
+      updatedAt: now - 60_000
+    },
+    recentSessions: [
+      { sessionId: 'atr-sess', provider: 'onetone_atr', updatedAt: now - 60_000 }
+    ],
+    provider: { id: 'cursor' },
+    source: { reason: 'probe=ready;atr_checkpoint;interrupted' }
+  }
+);
+assert.strictEqual(atrMislabel.mode, 'return', 'ATR enrich → return');
+assert.ok(
+  !/Cursor/.test(String(atrMislabel.headline)),
+  'enriched ATR must not say Cursor, got: ' + atrMislabel.headline
+);
+assert.ok(
+  atrMislabel.desk &&
+    atrMislabel.desk.continueCard &&
+    atrMislabel.desk.continueCard.badge !== 'Cursor',
+  'continue badge must not be Cursor'
+);
+
 console.log('home-resume-honesty tests passed');

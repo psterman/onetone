@@ -14,7 +14,7 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keysSeq:'settingsPanelKeysSeq',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keysSeq:'settingsPanelKeysSeq',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',models:'settingsPanelModels',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 

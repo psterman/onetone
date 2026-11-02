@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "live": false,
+  "results": [
+    {
+      "id": "minimax_success",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.505Z"
+    },
+    {
+      "id": "minimax_fallback_workbuddy",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "workbuddy_stream_complete",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "workbuddy_cancel",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "atr_planning",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "atr_tool_decision",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "atr_repair",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    },
+    {
+      "id": "atr_synthesis",
+      "status": "not_run",
+      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
+      "at": "2026-11-02T11:09:16.506Z"
+    }
+  ]
+}

@@ -12,6 +12,7 @@
   var POLL_MS = 15000;
   var WB_MODE_KEY = 'onetone.ha2.wbSendMode';
   var WORK_MODE_KEY = 'onetone.ha2.workMode';
+  var ATR_STACK_KEY = 'onetone.ha2.agentTaskStack';
 
   var CATALOG = [
     { id: 'codex', name: 'Codex', appId: 'codex-chat', icon: 'icons/app-target/codex.png' },
@@ -94,12 +95,19 @@
      * { goal, materialsSummary, status, taskId } | null
      */
     atrSendConflict: null
+    ,
+    modelRouting: null
+    ,
+    workController: null,
+    /** Interrupted work RunArchive summaries from boot (never auto-running). */
+    interruptedWorkRuns: []
   };
 
   var ATR_STACK_MAX = 12;
 
   var atrPollTimer = 0;
-  var ATR_POLL_MS = 1200;
+  // Faster while ATR liveThinking streams; still cheap (status+events only).
+  var ATR_POLL_MS = 450;
   /** Prevent double start from rapid Send. */
   var atrSendInFlight = null;
   /** taskId → in-flight drive Promise (approve/poll/continue must share). */
@@ -138,9 +146,9 @@
       var Caps = capsApi();
       var next =
         Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(raw) : String(raw || '');
-      // Primary UI is chat|work|research — migrate legacy readonly → think.
-      if (next === 'readonly') next = 'think';
-      if (next === 'think' || next === 'edit' || next === 'research') return next;
+      // Primary UI is chat|work — migrate legacy readonly / hidden research → think.
+      if (next === 'readonly' || next === 'research') next = 'think';
+      if (next === 'think' || next === 'edit') return next;
     } catch (_) {}
     return 'edit';
   }
@@ -148,8 +156,7 @@
   function persistWorkMode(mode) {
     try {
       if (global.localStorage) {
-        var v =
-          mode === 'edit' ? 'edit' : mode === 'research' ? 'research' : 'think';
+        var v = mode === 'edit' ? 'edit' : 'think';
         global.localStorage.setItem(WORK_MODE_KEY, v);
       }
     } catch (_) {}
@@ -157,6 +164,10 @@
 
   state.wbSendMode = loadWbSendMode();
   state.workMode = loadWorkMode();
+  // Stack helpers are function-declarations (hoisted); restore work history before first paint.
+  try {
+    loadAgentTaskStack();
+  } catch (_) {}
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -759,13 +770,12 @@
     var lineShell = !usable && !!short;
     var tier = evidenceTierOf(raw, status);
     var tag = statusTag(status, actions);
-    var score = /needs|waiting|approval|needsinput/.test(status)
+    // Running Agents float above idle / resume; needs stays near the top too.
+    var score = /working|running|active/.test(status)
       ? 0
-      : /working|running|active/.test(status)
+      : /needs|waiting|approval|needsinput|fail|error/.test(status)
         ? 1
-        : /fail|error/.test(status)
-          ? 0
-          : 2;
+        : 2;
     var inv = inventoryDiscovery(invRowForKind(kind));
     var boundary =
       tier === 'B' && !actionEnabled(actions, 'agent.interrupt')
@@ -976,7 +986,7 @@
         status: 'needs_input',
         tier: 'A',
         primaryCta: 'navigate',
-        score: 0,
+        score: 1,
         deskSource: 'needsYou',
         updated: Date.now()
       });
@@ -1006,7 +1016,7 @@
         status: 'working',
         tier: 'A',
         primaryCta: 'send',
-        score: 1,
+        score: 0,
         deskSource: 'living',
         project: livingNarr.project || '',
         sessionId: livingNarr.sessionId,
@@ -1079,7 +1089,7 @@
           cur.status = 'needs_input';
           cur.tag = '等确认';
           cur.tagTone = 'wait';
-          cur.score = 0;
+          cur.score = 1;
           cur.primaryCta = primaryCtaOf(cur.status, cur.actions);
         }
         if (!pickUsableText(cur.line) && pickUsableText(s.line)) {
@@ -1102,12 +1112,13 @@
         continue;
       }
       if (isWorkingStatus(s.status)) {
-        if (isNeedsStatus(cur.status)) continue; // needs wins
-        if (!isWorkingStatus(cur.status)) {
+        if (isNeedsStatus(cur.status)) {
+          // Keep needs badge but still prefer live running sort via invRunning.
+        } else if (!isWorkingStatus(cur.status)) {
           cur.status = 'working';
           cur.tag = '执行中';
           cur.tagTone = 'run';
-          cur.score = 1;
+          cur.score = 0;
         }
         var curShell = isStatusShellLine(cur.line) || isActivityShellLine(cur.line);
         var sShell = isStatusShellLine(s.line) || isActivityShellLine(s.line);
@@ -1177,13 +1188,22 @@
   }
 
   function workRows(limit) {
-    var n = typeof limit === 'number' ? limit : 3;
+    var n = typeof limit === 'number' ? limit : 5;
     var center = [];
     for (var i = 0; i < state.agents.length; i++) {
       if (isEligible(state.agents[i])) center.push(state.agents[i]);
     }
     var merged = mergeWorkRowMaps(center, deskSupplementRows());
     merged.sort(function (a, b) {
+      var ar =
+        a.invRunning || /working|running|active/.test(String(a.status || ''))
+          ? 0
+          : 1;
+      var br =
+        b.invRunning || /working|running|active/.test(String(b.status || ''))
+          ? 0
+          : 1;
+      if (ar !== br) return ar - br;
       if (a.score !== b.score) return a.score - b.score;
       return (b.updated || 0) - (a.updated || 0);
     });
@@ -1365,12 +1385,7 @@
         state.selectedKind === 'workbuddy' && state.wbSendMode === 'local'
           ? 'think'
           : 'code',
-      mode:
-        state.workMode === 'readonly' ||
-        state.workMode === 'edit' ||
-        state.workMode === 'research'
-          ? state.workMode
-          : 'think',
+      mode: state.workMode === 'edit' ? 'edit' : 'think',
       modeEffective: false,
       modeReason: '能力投影模块未加载',
       projectPath: ctx.projectPath || null,
@@ -1451,8 +1466,129 @@
       }),
       atrSendConflict: state.atrSendConflict
         ? Object.assign({}, state.atrSendConflict)
-        : null
+        : null,
+      modelRouting: state.modelRouting ? JSON.parse(JSON.stringify(state.modelRouting)) : null
+      ,
+      workController: state.workController && state.workController.snapshot
+        ? state.workController.snapshot()
+        : null,
+      interruptedWorkRuns: (state.interruptedWorkRuns || []).slice()
     };
+  }
+
+  function hydrateWorkArchive() {
+    var Arch = global.OneToneRunArchive;
+    if (!Arch || typeof Arch.listInterruptedWork !== 'function') {
+      return Promise.resolve([]);
+    }
+    return Arch.listInterruptedWork()
+      .then(function (rows) {
+        state.interruptedWorkRuns = Array.isArray(rows) ? rows : [];
+        if (state.interruptedWorkRuns.length) {
+          atrNotice(
+            'atr_archive_interrupted',
+            '有 ' + state.interruptedWorkRuns.length + ' 个可恢复的工作运行档案 — 请选择恢复或放弃',
+            {
+              code: 'interrupted',
+              actions: ['continue', 'abandon'],
+              archiveRuns: state.interruptedWorkRuns
+            }
+          );
+        }
+        emit();
+        return state.interruptedWorkRuns;
+      })
+      .catch(function () {
+        state.interruptedWorkRuns = [];
+        return [];
+      });
+  }
+
+  function atrTaskIdFromController(controller) {
+    if (!controller) return null;
+    if (typeof controller.boundAtrTaskId === 'function') {
+      var bound = controller.boundAtrTaskId();
+      if (bound) return String(bound);
+    }
+    var snap = controller.snapshot ? controller.snapshot() : null;
+    var tasks = (snap && snap.tasks) || [];
+    for (var i = 0; i < tasks.length; i++) {
+      var t = tasks[i];
+      if (!t) continue;
+      if (t.kind === 'atr' && t.taskId && t.taskId !== 'atr') return String(t.taskId);
+      if (t.outputs && (t.outputs.atrTaskId || t.outputs.taskId)) {
+        return String(t.outputs.atrTaskId || t.outputs.taskId);
+      }
+    }
+    return null;
+  }
+
+  function restoreWorkControllerFromArchive(runId, opts) {
+    opts = opts || {};
+    var Arch = global.OneToneRunArchive;
+    var WC = global.OneToneWorkController;
+    var A = atrApi();
+    if (!Arch || !WC) return Promise.resolve(null);
+    return Arch.restore(runId).then(function (snap) {
+      if (!snap || snap.status === 'running') {
+        // Never hydrate disk-running as live running — coerceInterrupted should have fixed this.
+        return null;
+      }
+      state.workController = WC.create({
+        restore: snap,
+        skipArchiveLoad: true,
+        planConfirmed: true,
+        permissions: ['*']
+      });
+      var atrId = atrTaskIdFromController(state.workController);
+      if (atrId) {
+        state.activeAgentTaskId = atrId;
+        state.agentTaskGrant = true;
+        if (A && A.writeActiveId) A.writeActiveId(atrId);
+      } else if (opts.requireAtrBind !== false) {
+        emit();
+        return Promise.reject(
+          Object.assign(new Error('atr_unbound'), { code: 'atr_unbound' })
+        );
+      }
+      emit();
+      if (!atrId || !A) return state.workController.snapshot();
+      var st = String((snap && snap.status) || '');
+      var resumeP =
+        (st === 'interrupted' || st === 'waiting_approval' || st === 'waiting_user' || st === 'waiting') &&
+        A.resume
+          ? A.resume(atrId)
+          : A.status
+            ? A.status(atrId)
+            : Promise.resolve(null);
+      return resumeP
+        .then(function (dto) {
+          if (dto) state.agentTask = dto;
+          if (opts.drive !== false && state.workController) {
+            try {
+              if (typeof state.workController.resume === 'function') {
+                state.workController.resume();
+              }
+            } catch (_) {}
+            return driveActiveIfRunning({ force: !!opts.forceDrive }).then(function () {
+              return state.workController.snapshot();
+            });
+          }
+          return refreshAgentTask().then(function () {
+            return state.workController.snapshot();
+          });
+        })
+        .catch(function (err) {
+          // Rebind succeeded even if ATR resume fails — surface to UI.
+          atrNotice(
+            'atr_resume_failed',
+            '档案已恢复，但 ATR 任务恢复失败：' + String((err && err.message) || err || ''),
+            { code: 'resume_failed', taskId: atrId, actions: ['abandon', 'continue'] }
+          );
+          emit();
+          return state.workController.snapshot();
+        });
+    });
   }
 
   function subscribe(listener) {
@@ -1703,6 +1839,62 @@
     return !!(A && A.featureEnabled && A.featureEnabled());
   }
 
+  function slimAgentTaskStackRow(row) {
+    if (!row || !row.task || !row.task.taskId) return null;
+    var t = row.task;
+    var evs = Array.isArray(row.events) ? row.events : [];
+    if (evs.length > 48) evs = evs.slice(evs.length - 48);
+    return {
+      task: {
+        taskId: t.taskId,
+        goal: t.goal || '',
+        status: t.status || '',
+        currentTurn: t.currentTurn != null ? t.currentTurn : t.current_turn,
+        toolCallCount: t.toolCallCount != null ? t.toolCallCount : t.tool_call_count,
+        lastError: t.lastError || t.last_error || null,
+        providerId: t.providerId || t.provider || null,
+        waitingReason: t.waitingReason || t.waiting_reason || null,
+        changedFiles: Array.isArray(t.changedFiles)
+          ? t.changedFiles.slice(0, 12)
+          : Array.isArray(t.changed_files)
+            ? t.changed_files.slice(0, 12)
+            : [],
+        updatedAt: t.updatedAt || t.updated_at || null
+      },
+      events: evs
+    };
+  }
+
+  function persistAgentTaskStack() {
+    try {
+      if (!global.localStorage) return;
+      var slim = (state.agentTaskStack || [])
+        .map(slimAgentTaskStackRow)
+        .filter(Boolean);
+      global.localStorage.setItem(ATR_STACK_KEY, JSON.stringify(slim));
+    } catch (_) {}
+  }
+
+  function loadAgentTaskStack() {
+    try {
+      if (!global.localStorage) return;
+      var raw = global.localStorage.getItem(ATR_STACK_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      var list = [];
+      var i;
+      for (i = 0; i < parsed.length; i++) {
+        var row = slimAgentTaskStackRow(parsed[i]);
+        if (row) list.push(row);
+      }
+      if (list.length > ATR_STACK_MAX) {
+        list = list.slice(list.length - ATR_STACK_MAX);
+      }
+      state.agentTaskStack = list;
+    } catch (_) {}
+  }
+
   function rememberAgentTask(dto, events) {
     if (!dto || !dto.taskId) return;
     var id = String(dto.taskId);
@@ -1725,6 +1917,7 @@
       list = list.slice(list.length - ATR_STACK_MAX);
     }
     state.agentTaskStack = list;
+    persistAgentTaskStack();
   }
 
   function setActiveAgentTask(taskId, opts) {
@@ -1766,6 +1959,24 @@
       if (dto) {
         state.agentTask = dto;
         state.agentTaskGrant = true;
+        if (state.workController) {
+          try {
+            // Poll must NOT setStatus/transition while busy — verifying/repair are not
+            // controller "running", and that aborted the next atr_turn (stuck at 第0步).
+            // Drive owns busy status via ingestAtrTurn; poll only mirrors pause/terminal.
+            if (dto.status === 'waiting') {
+              state.workController.finish('waiting_approval', dto.waitingReason || 'waiting');
+            } else if (dto.status === 'done') {
+              state.workController.finish('completed', 'agent_task_done');
+            } else if (dto.status === 'failed') {
+              state.workController.finish('failed', dto.lastError || 'agent_task_failed');
+            } else if (dto.status === 'cancelled') {
+              state.workController.finish('cancelled', 'agent_task_cancelled');
+            } else if (dto.status === 'interrupted') {
+              state.workController.finish('interrupted', 'atr_interrupted');
+            }
+          } catch (_) {}
+        }
         if (
           atrSendInFlight &&
           (dto.status === 'running' ||
@@ -1936,10 +2147,79 @@
     );
   }
 
+  /**
+   * Remount / resume / approve often leave ATR taskId but wipe in-memory Controller.
+   * Recreate a bound work Controller so drive never dies as controller_required.
+   */
+  function ensureWorkController(opts) {
+    opts = opts || {};
+    var goal =
+      String(opts.goal || (state.agentTask && state.agentTask.goal) || '').trim();
+    var id =
+      String(
+        opts.taskId ||
+          state.activeAgentTaskId ||
+          (state.agentTask && state.agentTask.taskId) ||
+          ''
+      ).trim() || null;
+    if (
+      state.workController &&
+      typeof state.workController.driveAtrUntilIdle === 'function'
+    ) {
+      if (
+        opts.planConfirmed !== false &&
+        typeof state.workController.isPlanConfirmed === 'function' &&
+        !state.workController.isPlanConfirmed() &&
+        typeof state.workController.confirmPlan === 'function'
+      ) {
+        try {
+          state.workController.confirmPlan({ goal: goal });
+        } catch (_) {}
+      }
+      if (id && typeof state.workController.bindAtrTask === 'function') {
+        try {
+          state.workController.bindAtrTask({
+            taskId: id,
+            status: (state.agentTask && state.agentTask.status) || 'running',
+            goal: goal
+          });
+        } catch (_) {}
+      }
+      return state.workController;
+    }
+    var WC = global.OneToneWorkController;
+    if (!WC || typeof WC.create !== 'function') return null;
+    state.workController = WC.create({
+      mode: 'work',
+      originalRequest: goal,
+      goal: goal,
+      budget: { model: 20 },
+      skipArchiveLoad: true,
+      planConfirmed: true,
+      permissions: ['*']
+    });
+    try {
+      if (typeof state.workController.confirmPlan === 'function') {
+        state.workController.confirmPlan({ goal: goal });
+      }
+    } catch (_) {}
+    if (id && typeof state.workController.bindAtrTask === 'function') {
+      try {
+        state.workController.bindAtrTask({
+          taskId: id,
+          status: (state.agentTask && state.agentTask.status) || 'running',
+          goal: goal
+        });
+      } catch (_) {}
+    }
+    return state.workController;
+  }
+
   function driveActiveIfRunning(opts) {
     opts = opts || {};
     var A = atrApi();
-    var id = state.activeAgentTaskId;
+    var id = state.activeAgentTaskId || atrTaskIdFromController(state.workController);
+    if (id && !state.activeAgentTaskId) state.activeAgentTaskId = id;
     if (!A || !id) return Promise.resolve(state.agentTask);
     return refreshAgentTask().then(function (dto) {
       var t = dto || state.agentTask;
@@ -1959,6 +2239,11 @@
       if (atrDriveInFlightByTask[id]) {
         return atrDriveInFlightByTask[id];
       }
+      var ctrl = ensureWorkController({
+        taskId: id,
+        goal: (t && t.goal) || '',
+        planConfirmed: true
+      });
       var driveFn =
         opts.useFake && A.driveFake
           ? function () {
@@ -1969,7 +2254,18 @@
                 opts.provider ||
                 (A.readProvider && A.readProvider()) ||
                 undefined;
-              return A.drive ? A.drive(id, provider) : A.driveDeepseek(id);
+              if (!ctrl || typeof ctrl.driveAtrUntilIdle !== 'function') {
+                return Promise.reject(
+                  Object.assign(new Error('controller_required'), {
+                    code: 'controller_required'
+                  })
+                );
+              }
+              return A.drive(id, provider, {
+                controller: ctrl,
+                planConfirmed: true,
+                goal: (t && t.goal) || ''
+              });
             };
       var p = driveFn()
         .then(function (driven) {
@@ -1983,15 +2279,28 @@
           var raw = String((err && err.message) || err || 'drive_failed');
           var code = (err && err.code) || 'drive_failed';
           if (/max_turns|stuck_loop|budget_exhausted/i.test(raw)) code = 'budget_exhausted';
+          if (
+            /decoding response body|error decoding|provider_stream/i.test(raw)
+          ) {
+            code = 'provider_stream';
+          }
+          if (/controller_required/i.test(raw)) code = 'controller_required';
           var msg =
             code === 'budget_exhausted'
               ? /stuck_loop/i.test(raw)
                 ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
                 : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
-              : '编辑任务失败：' + raw;
+              : code === 'provider_stream'
+                ? '模型响应中断（连接/解码失败）— 可点恢复继续，或放弃后重试'
+                : code === 'controller_required'
+                  ? '工作控制器未就绪 — 请点恢复继续当前任务，或放弃后重发'
+                  : '编辑任务失败：' + raw;
           atrNotice('atr_' + code, msg, {
             code: code,
-            actions: ['abandon']
+            actions:
+              code === 'provider_stream' || code === 'controller_required'
+                ? ['resume', 'abandon']
+                : ['abandon']
           });
           return refreshAgentTask().then(function () {
             emit();
@@ -2042,6 +2351,9 @@
       persistAutonomous: !!opts.persistAutonomous
     }).then(function (dto) {
       state.agentTask = dto;
+      if (state.workController && state.workController.continueFromPause) {
+        try { state.workController.continueFromPause('approved'); } catch (_) {}
+      }
       return driveActiveIfRunning();
     });
   }
@@ -2055,6 +2367,9 @@
     }
     return A.rejectPatch(t.taskId, token).then(function (dto) {
       state.agentTask = dto;
+      if (state.workController && state.workController.continueFromPause) {
+        try { state.workController.continueFromPause('rejected'); } catch (_) {}
+      }
       return driveActiveIfRunning();
     });
   }
@@ -2073,9 +2388,57 @@
     var A = atrApi();
     var id = state.activeAgentTaskId;
     if (!A || !id) return Promise.reject(new Error('no_task'));
+    ensureWorkController({
+      taskId: id,
+      goal: (state.agentTask && state.agentTask.goal) || '',
+      planConfirmed: true
+    });
+    if (state.workController) {
+      try {
+        if (typeof state.workController.resume === 'function') state.workController.resume();
+        else if (typeof state.workController.continueFromPause === 'function') {
+          state.workController.continueFromPause('resume');
+        }
+      } catch (_) {}
+    }
     return A.resume(id).then(function (dto) {
       state.agentTask = dto;
-      return driveActiveIfRunning();
+      return driveActiveIfRunning({ force: true });
+    });
+  }
+
+  /**
+   * Retry only the last failed Controller Action (same toolId/input, attempt+1).
+   * Write tools still require a fresh ATR approval token via Rust.
+   */
+  function retryFailedWorkAction() {
+    var c = state.workController;
+    if (!c || typeof c.retryAction !== 'function') {
+      return Promise.reject(new Error('no_controller'));
+    }
+    var snap = c.snapshot ? c.snapshot() : null;
+    var actions = (snap && snap.actions) || [];
+    var failed = null;
+    for (var i = actions.length - 1; i >= 0; i--) {
+      if (actions[i] && actions[i].status === 'failed') {
+        failed = actions[i];
+        break;
+      }
+    }
+    if (!failed) return Promise.reject(new Error('no_failed_action'));
+    if (typeof c.continueFromPause === 'function') {
+      try { c.continueFromPause('retry'); } catch (_) {}
+    } else if (typeof c.resume === 'function') {
+      try { c.resume(); } catch (_) {}
+    }
+    return Promise.resolve(c.retryAction(failed.actionId)).then(function (res) {
+      if (res && res.ok === false && res.code === 'controller_stopped') {
+        return Promise.reject(Object.assign(new Error(res.code), { code: res.code }));
+      }
+      // After atr_turn retry, keep driving until idle if ATR still running.
+      return driveActiveIfRunning({ force: true }).then(function () {
+        return res;
+      });
     });
   }
 
@@ -2245,7 +2608,9 @@
     var startOpts = Object.assign({}, opts, {
       goal: goal,
       materialsSummary: mats,
-      skipBlockingCheck: true
+      skipBlockingCheck: true,
+      // Conflict triage already encodes user intent to start this goal.
+      planConfirmed: opts.planConfirmed !== false
     });
     return preflightAtrStart(startOpts).then(function (pf) {
       if (!pf.ok) {
@@ -2308,6 +2673,47 @@
    */
   function startAndDriveAgentTask(opts) {
     opts = opts || {};
+    var skipPlan =
+      !!opts.skipPlanConfirm ||
+      !!opts.verifySandboxRoot ||
+      !!opts.useFakeDriver ||
+      opts.planConfirmed === true;
+    if (!skipPlan) {
+      atrNotice('atr_plan_required', '请先确认工作计划后再开始', {
+        code: 'plan_not_confirmed'
+      });
+      emit();
+      return Promise.resolve(null);
+    }
+    state.workController =
+      global.OneToneWorkController && global.OneToneWorkController.create
+        ? global.OneToneWorkController.create({
+            mode: 'work',
+            originalRequest: opts.goal || '',
+            goal: opts.goal || '',
+            providerRoute: global.OneToneModelGateway &&
+              global.OneToneModelGateway.snapshot
+              ? global.OneToneModelGateway.snapshot().routes
+              : null,
+            budget: { model: 20 },
+            skipArchiveLoad: true,
+            planConfirmed: true,
+            skipPlanConfirm: !!opts.skipPlanConfirm || !!opts.verifySandboxRoot,
+            permissions: ['*']
+          })
+        : null;
+    if (state.workController && typeof state.workController.confirmPlan === 'function') {
+      try {
+        state.workController.confirmPlan({
+          goal: opts.goal || '',
+          materialsSummary: opts.materialsSummary || '',
+          skipPlanConfirm: !!opts.skipPlanConfirm || !!opts.verifySandboxRoot
+        });
+      } catch (_) {}
+    }
+    if (global.OneToneModelGateway && global.OneToneModelGateway.snapshot) {
+      state.modelRouting = global.OneToneModelGateway.snapshot();
+    }
     if (atrSendInFlight) return atrSendInFlight;
 
     var A = atrApi();
@@ -2427,6 +2833,8 @@
           provider: provider,
           allowTryEdit: allowTry,
           sandboxId: opts.sandboxId || null,
+          controller: state.workController || null,
+          planConfirmed: true,
           onStarted: function (dto) {
             if (!dto || !dto.taskId) return;
             state.activeAgentTaskId = dto.taskId;
@@ -2434,6 +2842,9 @@
             state.agentTask = dto;
             state.agentTaskEvents = [];
             rememberAgentTask(dto, []);
+            if (state.workController && state.workController.bindAtrTask) {
+              try { state.workController.bindAtrTask(dto); } catch (_) {}
+            }
             if (A.writeActiveId) A.writeActiveId(dto.taskId);
             ensureAtrPoll();
             atrNotice(
@@ -2506,6 +2917,12 @@
           /parse_|not_json|format_error|no_tool_calls|unsupported_shape/i.test(rawMsg) ||
           code === 'format_error';
         if (formatFail) code = 'format_error';
+        if (/decoding response body|error decoding/i.test(rawMsg)) {
+          code = 'provider_stream';
+        }
+        if (/controller_required/i.test(rawMsg) || code === 'controller_required') {
+          code = 'controller_required';
+        }
         if (
           /workbuddy_unconfigured/i.test(rawMsg) ||
           code === 'workbuddy_unconfigured' ||
@@ -2546,7 +2963,11 @@
                         : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
                       : code === 'format_error'
                         ? '模型没有按工具格式行动 — 换 WorkBuddy 模型或 Soft Pad 引擎后重试'
-                        : '编辑任务失败：' + rawMsg.slice(0, 120);
+                        : code === 'provider_stream'
+                          ? '模型响应中断（连接/解码失败）— 可点恢复继续，或放弃后重试'
+                          : code === 'controller_required'
+                            ? '工作控制器未就绪 — 请点恢复继续当前任务，或放弃后重发'
+                            : '编辑任务失败：' + rawMsg.slice(0, 120);
         // start may have written activeId before drive failed — keep for timeline.
         if (A.readActiveId) {
           var sid = A.readActiveId();
@@ -2554,16 +2975,23 @@
             state.activeAgentTaskId = sid;
             state.agentTaskGrant = true;
             ensureAtrPoll();
+            ensureWorkController({
+              taskId: sid,
+              goal: (state.agentTask && state.agentTask.goal) || goal || '',
+              planConfirmed: true
+            });
           }
         }
         atrNotice('atr_' + code, msg, {
           code: code,
           actions:
-            code === 'budget_exhausted' ||
-            code === 'drive_failed' ||
-            code === 'format_error'
-              ? ['abandon']
-              : undefined
+            code === 'provider_stream' || code === 'controller_required'
+              ? ['resume', 'abandon']
+              : code === 'budget_exhausted' ||
+                  code === 'drive_failed' ||
+                  code === 'format_error'
+                ? ['abandon']
+                : undefined
         });
         return refreshAgentTask().then(function () {
           emit();
@@ -2621,11 +3049,20 @@
       }
       if (state.activeAgentTaskId) {
         ensureAtrPoll();
-        atrHydrate = refreshAgentTask();
+        atrHydrate = refreshAgentTask().then(function (dto) {
+          ensureWorkController({
+            taskId: state.activeAgentTaskId,
+            goal: (dto && dto.goal) || (state.agentTask && state.agentTask.goal) || '',
+            planConfirmed: true
+          });
+          return dto;
+        });
       }
     }
+    // Boot: surface interrupted work RunArchive — never auto-resume as running.
+    var archiveHydrate = hydrateWorkArchive();
 
-    var run = Promise.all([centerP, attnP, focusP, atrHydrate]).then(function (v) {
+    var run = Promise.all([centerP, attnP, focusP, atrHydrate, archiveHydrate]).then(function (v) {
       applyCenterResult(v[0]);
       if (v[1]) state.attention = v[1];
       applyFocusBundle(v[2]);
@@ -2823,19 +3260,13 @@
     var Caps = capsApi();
     var next =
       Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(mode) : String(mode || 'think');
-    if (next === 'readonly') next = 'think';
-    if (next !== 'think' && next !== 'edit' && next !== 'research') next = 'think';
+    // Research is product-hidden — collapse to chat.
+    if (next === 'readonly' || next === 'research') next = 'think';
+    if (next !== 'think' && next !== 'edit') next = 'think';
     // Always persist (incl. alias normalize) so localStorage mirrors effective mode.
     persistWorkMode(next);
     if (state.workMode === next && !opts.force) return;
     state.workMode = next;
-    try {
-      var R = global.OneToneHomeResearch;
-      if (next === 'research' && R && R.openConfig) {
-        var draft = String(state.draft || '').trim();
-        R.openConfig({ topic: draft || (R.getSnapshot && R.getSnapshot().config.topic) || '' });
-      }
-    } catch (_) {}
     if (!opts.silent) emit();
   }
 
@@ -3044,9 +3475,12 @@
     submitAgentInput: submitAgentInput,
     resumeAgentTask: resumeAgentTask,
     resumeAndDriveAgentTask: resumeAndDriveAgentTask,
+    retryFailedWorkAction: retryFailedWorkAction,
     abandonAgentTask: abandonAgentTask,
     abandonAndStartAgentTask: abandonAndStartAgentTask,
     startAndDriveAgentTask: startAndDriveAgentTask,
+    hydrateWorkArchive: hydrateWorkArchive,
+    restoreWorkControllerFromArchive: restoreWorkControllerFromArchive,
     preflightAtrStart: preflightAtrStart,
     clearAtrSendConflict: clearAtrSendConflict,
     keepDraftDeferAtrSend: keepDraftDeferAtrSend,

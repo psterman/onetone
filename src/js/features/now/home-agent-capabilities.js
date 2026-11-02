@@ -478,7 +478,8 @@
    *   projectName?: string|null,
    *   workTitle?: string|null,
    *   materialNames?: string[]|null,
-   *   materialTitles?: string[]|null
+   *   materialTitles?: string[]|null,
+   *   workMode?: string|null
    * }} input
    */
   function buildLocalChatSystemPrompt(input) {
@@ -486,6 +487,8 @@
     var path = String(input.projectPath || '').trim();
     var name = String(input.projectName || '').trim();
     var work = String(input.workTitle || '').trim();
+    var mode = String(input.workMode || '').trim();
+    var inWork = mode === 'edit';
     var rawMats = Array.isArray(input.materialNames)
       ? input.materialNames
       : Array.isArray(input.materialTitles)
@@ -501,15 +504,23 @@
       var parts = path.replace(/[\\/]+$/, '').split(/[\\/]/);
       name = parts[parts.length - 1] || '';
     }
-    var lines = [
-      'OneTone 对话模式：按用户目标作答；少改写、少说教，信息尽量原样传递。',
-      '鼓励结构化呈现：列表、表格、步骤、短原型草图、Mermaid（flowchart / sequence）。',
-      '本机对话不能读写磁盘；需要改文件时一句提示可切「工作」模式即可。',
-      '仅当用户明确要求交接/导出给其他 Agent 时，再给可粘贴的短交接说明。',
-      '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。',
-      '勿臆测「本机无网/离线」：你看不到系统网络状态。',
-      '时效信息（天气等）：缺城市/地点时先反向问一句；有系统天气结果时按结果回答，勿改交 Cursor 搜仓库，勿编造气温。'
-    ];
+    var lines = inWork
+      ? [
+          'OneTone 工作模式·问答旁路：用户已在「工作」标签。禁止再说「切工作模式 / 切换到工作」。',
+          '本回合仍是本地聊天旁路，不能直接读盘或跑 git；勿编造 diff/提交。',
+          '若用户要查仓库改动或改文件：请他用一句可执行目标重发（例如「列出今天下午 voice-pilot 改动」），系统会走右侧 ATR 步骤。',
+          '按用户目标作答；少改写、少说教；可用列表/表格。',
+          '勿臆测本机网络/硬件状态。'
+        ]
+      : [
+          'OneTone 对话模式：按用户目标作答；少改写、少说教，信息尽量原样传递。',
+          '鼓励结构化呈现：列表、表格、步骤、短原型草图、Mermaid（flowchart / sequence）。',
+          '本机对话不能读写磁盘；需要改文件或查仓库改动时，请用户点顶部「工作」后再发目标——不要假装已在工作模式。',
+          '仅当用户明确要求交接/导出给其他 Agent 时，再给可粘贴的短交接说明。',
+          '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。',
+          '勿臆测「本机无网/离线」：你看不到系统网络状态。',
+          '时效信息（天气等）：缺城市/地点时先反向问一句；有系统天气结果时按结果回答，勿改交 Cursor 搜仓库，勿编造气温。'
+        ];
     if (path) {
       lines.push('项目：' + (name ? name + ' · ' : '') + path);
     } else {

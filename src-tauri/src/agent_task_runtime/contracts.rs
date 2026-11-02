@@ -138,6 +138,15 @@ pub struct TaskDto {
     pub expected_rel_path: Option<String>,
     #[serde(default)]
     pub expected_content: Option<String>,
+    /// Last model round duration (ms) — FE ProviderCall projection; no secrets.
+    #[serde(default)]
+    pub provider_duration_ms: Option<u64>,
+    /// If ATR fell back to another provider for this drive step.
+    #[serde(default)]
+    pub fallback_from: Option<String>,
+    /// Ephemeral WorkBuddy SSE progress while a drive turn is in flight (not persisted).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_thinking: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

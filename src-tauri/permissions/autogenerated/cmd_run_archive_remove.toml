@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-run-archive-remove"
+description = "Allows invoking cmd_run_archive_remove."
+commands.allow = ["cmd_run_archive_remove"]

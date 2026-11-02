@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-cmd-network-diagnostics"
+description = "Allows invoking cmd_network_diagnostics."
+commands.allow = ["cmd_network_diagnostics"]

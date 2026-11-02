@@ -595,6 +595,12 @@
                   <span id="settingsNavSoftPadLabel">软键盘</span>
                 </button>
                 </div>
+                <div class="settings-nav-group" id="settingsNavModelsGroup">
+                <button type="button" class="settings-nav-item" data-panel="models" id="settingsNavModels">
+                  <span class="settings-nav-icon" aria-hidden="true">◇</span>
+                  <span id="settingsNavModelsLabel">模型提供方</span>
+                </button>
+                </div>
                 <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
                   <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
@@ -666,6 +672,19 @@
               <p class="basic-save-hint" id="basicSaveHint" role="status">更改立即生效 · 仅保存在本机</p>
             </div>
           </header>
+          <section class="basic-block" aria-labelledby="basicModelProviderLabel">
+            <div class="basic-list-card">
+              <div class="pref-row">
+                <div class="pref-row-meta">
+                  <p class="pref-row-label" id="basicModelProviderLabel">模型提供方</p>
+                  <p class="pref-row-desc">配置 MiniMax、Soft Pad、WorkBuddy 或自定义模型 API</p>
+                </div>
+                <div class="pref-row-control">
+                  <button type="button" class="primary-btn" data-open-model-providers>打开配置</button>
+                </div>
+              </div>
+            </div>
+          </section>
           <section class="basic-block basic-global-listen-block" aria-labelledby="basicGlobalListenLabel">
             <div class="basic-list-card">
               <div class="pref-row">
@@ -1583,6 +1602,36 @@
               </section>
             </aside>
           </div>
+        </section>
+        <section class="settings-panel drawer-section" id="settingsPanelModels" hidden>
+          <header class="pref-page-head">
+            <h3 class="pref-page-title">模型提供方</h3>
+            <p class="pref-page-subtitle settings-panel-desc">统一管理 Soft Pad、WorkBuddy 与自定义模型接口。密钥只保存在本机安全配置目录。</p>
+          </header>
+          <div id="modelProviderList" class="ot-island" aria-live="polite"></div>
+          <div class="ot-island" id="modelProviderRoutes">
+            <h4>用途路由</h4>
+            <div class="settings-form-grid">
+              <label>意图解析<select data-model-route="intent"></select></label>
+              <label>调研规划<select data-model-route="planning"></select></label>
+              <label>调研审查<select data-model-route="review"></select></label>
+              <label>调研成稿<select data-model-route="synthesis"></select></label>
+            </div>
+          </div>
+          <form id="modelProviderForm" class="ot-island" autocomplete="off">
+            <h4>添加 OpenAI 兼容接口</h4>
+            <div class="settings-form-grid">
+              <label>名称<input name="name" required maxlength="80" placeholder="我的模型"></label>
+              <label>Provider ID<input name="id" required pattern="[A-Za-z0-9_-]+" maxlength="80" placeholder="custom_my_model"></label>
+              <label>API 地址<input name="baseUrl" required type="url" placeholder="https://api.example.com/v1"></label>
+              <label>模型名称<input name="model" required list="model-provider-models" placeholder="MiniMax-M2.7"></label>
+              <datalist id="model-provider-models"><option value="MiniMax-M2.7"></option><option value="MiniMax-M2.7-highspeed"></option><option value="MiniMax-M3"></option><option value="MiniMax-Text-01"></option></datalist>
+              <label>API Key<input name="apiKey" type="password" autocomplete="new-password" placeholder="只写入本机安全存储"></label>
+            </div>
+            <button type="submit" class="primary-btn">保存</button>
+            <button type="button" id="modelProviderTest" class="secondary-btn">测试连接</button>
+            <span id="modelProviderStatus" role="status"></span>
+          </form>
         </section>
         <section class="settings-panel drawer-section tray-page" id="settingsPanelTray" hidden>
           <div class="tray-app-page">
@@ -5764,6 +5813,7 @@
   <script src="js/features/settings/workspace-layout-ui.js"></script>
   <script src="js/features/agent/agent-capsule-mount.js"></script>
   <script src="js/features/settings/settings-drawer.js?v=20260809-stall9"></script>
+  <script src="js/features/settings/model-provider-settings.js"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
@@ -5929,6 +5979,11 @@
   <script src="js/features/now/memory-view.js"></script>
   <script src="js/features/now/now-home-ui.js"></script>
   <script src="js/features/now/home-agent-capabilities.js"></script>
+  <script src="js/features/now/model-gateway.js"></script>
+  <script src="js/features/now/tool-registry.js"></script>
+  <script src="js/features/now/run-contracts.js"></script>
+  <script src="js/features/now/run-archive.js"></script>
+  <script src="js/features/now/work-controller.js"></script>
   <script src="js/features/now/home-research.js"></script>
   <script src="js/features/now/home-agent-task.js"></script>
   <script src="js/features/now/home-agent-v2-store.js"></script>

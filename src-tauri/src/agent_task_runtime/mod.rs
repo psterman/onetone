@@ -97,9 +97,13 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
 
 pub fn api_status(task_id: &str) -> Result<TaskDto, String> {
     with_write(|conn| {
-        get_task(conn, task_id)?
+        let mut dto = get_task(conn, task_id)?
             .map(|t| t.to_dto())
-            .ok_or_else(|| "not_found".into())
+            .ok_or_else(|| "not_found".to_string())?;
+        if let Some(text) = crate::workbuddy_local_llm::atr_live_for(task_id) {
+            dto.live_thinking = Some(text);
+        }
+        Ok(dto)
     })
 }
 
@@ -233,14 +237,21 @@ fn drive_releasing(
         };
 
         // Model call OUTSIDE write lock.
+        let started = std::time::Instant::now();
         let raw = match driver.next_tool_json(&prep.task, &prep.messages) {
             Ok(s) => s,
             Err(e) => {
                 return with_write(|conn| {
-                    engine::fail_task_public(conn, task_id, &e).map(|t| t.to_dto())
+                    engine::fail_task_public(conn, task_id, &e).map(|t| {
+                        let mut dto = t.to_dto();
+                        dto.provider_duration_ms =
+                            Some(started.elapsed().as_millis() as u64);
+                        dto
+                    })
                 });
             }
         };
+        let provider_duration_ms = started.elapsed().as_millis() as u64;
 
         if cancel_tok.is_cancelled() {
             return with_write(|conn| {
@@ -254,10 +265,14 @@ fn drive_releasing(
 
         steps = steps.saturating_add(1);
         if is_idle(&updated.status) {
-            return Ok(updated.to_dto());
+            let mut dto = updated.to_dto();
+            dto.provider_duration_ms = Some(provider_duration_ms);
+            return Ok(dto);
         }
         if max_steps.map(|m| steps >= m).unwrap_or(false) {
-            return Ok(updated.to_dto());
+            let mut dto = updated.to_dto();
+            dto.provider_duration_ms = Some(provider_duration_ms);
+            return Ok(dto);
         }
     }
 }

@@ -85,6 +85,9 @@ mod shell_agent_hook_setup;
 mod shell_agent_usage;
 mod soft_pad_purpose;
 mod assist_runtime;
+mod model_provider;
+mod network;
+mod run_archive;
 mod agent_task_runtime;
 mod project_context;
 mod soft_pad_quota;
@@ -1362,6 +1365,20 @@ pub fn run() {
             ipc::cmd_assist_cancel,
             ipc::cmd_assist_ready,
             ipc::cmd_assist_status,
+            ipc::cmd_assist_model_chat,
+            ipc::cmd_model_provider_snapshot,
+            ipc::cmd_model_provider_upsert,
+            ipc::cmd_model_provider_remove,
+            ipc::cmd_model_provider_set_key,
+            ipc::cmd_model_provider_chat,
+            ipc::cmd_network_diagnostics,
+            ipc::cmd_network_ping,
+            ipc::cmd_network_dns_check,
+            ipc::cmd_network_proxy_status,
+            ipc::cmd_run_archive_save,
+            ipc::cmd_run_archive_load,
+            ipc::cmd_run_archive_list,
+            ipc::cmd_run_archive_remove,
             ipc::cmd_agent_task_start,
             ipc::cmd_agent_task_status,
             ipc::cmd_agent_task_events,
