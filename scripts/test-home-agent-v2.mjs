@@ -103,9 +103,12 @@ assert.doesNotMatch(
   shell,
   /ha2-section-head[\s\S]{0,280}ha2ViewAll|ha2-section-head[\s\S]{0,280}data-ha2-open-model-providers/
 );
+assert.match(shell, /data-ha2-model-route-host/);
+assert.match(shell, /data-ha2-wb-account-host/);
+assert.match(shell, /data-ha2-open-model-providers/);
 assert.match(
   shell,
-  /data-ha2-model-route-host[\s\S]{0,500}data-ha2-open-model-providers/
+  /data-ha2-model-route-host[\s\S]{0,1200}data-ha2-open-model-providers/
 );
 assert.match(shell, /ha2WorkspaceChanges|项改动/);
 assert.match(shell, /ha2TmClean|工作区干净/);
@@ -196,6 +199,17 @@ assert.doesNotMatch(
   /workbuddy_local_chat:\/\//
 );
 assert.match(shell, /wbUsesLocalChat/);
+assert.match(shell, /function gatewayChatEligible/);
+assert.match(shell, /gatewayChatEligible\(snap\)/);
+// Chat + Cursor/etc still uses gateway unless WorkBuddy「桌面」.
+assert.match(
+  shell,
+  /kind === 'workbuddy' && wbSendModeOf\(snap\) === 'desktop'/
+);
+assert.doesNotMatch(
+  shell,
+  /function gatewayChatEligible[\s\S]{0,220}return !kind \|\| kind === 'workbuddy'/
+);
 assert.match(shell, /data-ha2-wb-mode/);
 assert.match(shell, /data-ha2-wb-transcript/);
 assert.match(shell, /WB_CHAT_KEY|onetone\.ha2\.wbChat/);
@@ -365,6 +379,39 @@ assert.match(shell, /function modelRouteSelectHtml|data-ha2-model-route-host/);
 // Mixed model picker: WB models + API providers + add.
 assert.match(shell, /wb:|api:|__add__/);
 assert.match(shell, /ha2ModelTagWb|ha2ModelTagApi|ha2ModelAddProvider/);
+assert.match(shell, /ha2ModelTagSoftPad|data-provider-tab|data-model-provider-login/);
+assert.match(shell, /ha2ModelProviderFuseHint|startWbFreemodelLoginFromDock/);
+// Soft Pad paid keys remain under API tab (not freemodel primary).
+assert.match(shell, /SOFTPAD_FREEMODEL_CATALOG|refreshSoftPadFreemodelKeys/);
+assert.match(shell, /sp:|data-softpad-save|cmd_soft_pad_provider_key_set/);
+assert.match(shell, /onetone\.softpadPreferredProvider|preferredProvider/);
+assert.match(css, /\.ha2-softpad-key-card/);
+// P0–P2 freemodel check-in hub.
+const freemodelSrc = read('src/js/features/now/freemodel-channels.js');
+assert.match(html, /freemodel-channels\.js/);
+assert.match(html, /model-gateway\.js[\s\S]*freemodel-channels\.js[\s\S]*home-agent-v2\.js/);
+assert.match(freemodelSrc, /OneToneFreemodelChannels/);
+assert.match(freemodelSrc, /authKind:\s*'oauth'/);
+assert.match(freemodelSrc, /checkInAllDue|dueCount|markChecked/);
+assert.match(freemodelSrc, /id:\s*'workbuddy'/);
+assert.match(freemodelSrc, /id:\s*'opencode_zen'/);
+assert.match(freemodelSrc, /id:\s*'gemini_ca'/);
+assert.match(freemodelSrc, /softpad_paid_keys[\s\S]*eliminated/);
+assert.match(shell, /freemodelCheckinCardsHtml|data-fm-checkin-all|runFreemodelCheckin/);
+assert.match(shell, /免费额度 \/ 签到/);
+assert.match(shell, /markChecked\('workbuddy'/);
+assert.match(css, /\.ha2-fm-card|\.ha2-fm-due-badge/);
+// Home freemodel login: chat-mode strip + dock 登录/换号 (not ATR-only).
+assert.match(shell, /function atrWbLoginShouldShow/);
+assert.match(shell, /wbRouteIsActive\(\) && !wbLocalReady\(\)/);
+assert.doesNotMatch(
+  shell,
+  /function atrWbLoginShouldShow[\s\S]{0,120}if \(!atrEditPathOn\(snap\)\) return false/
+);
+assert.match(shell, /data-ha2-wb-login-cta|wbAccountChipHtml|startWbFreemodelLoginFromDock/);
+assert.match(shell, /ha2WbFreemodelLoginOk|setRoute\(p, 'workbuddy'\)/);
+assert.match(shell, /data-ha2-wb-account-host/);
+assert.match(css, /\.ha2-wb-account-cta|\.ha2-wb-account-host/);
 // No top-left「首页」on home; plan/doc titles go on agent cards.
 assert.match(shell, /top\.hidden = true/);
 assert.match(shell, /fgDocHintForKind|ha2-ctx-app/);

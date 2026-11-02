@@ -23,6 +23,7 @@
     "test:home-default-surface": "node scripts/test-home-default-surface.mjs",
     "test:project-path": "node scripts/test-project-path.mjs",
     "test:home-agent-v2": "node scripts/test-home-agent-v2.mjs",
+    "test:freemodel-channels": "node scripts/test-freemodel-channels.mjs",
     "test:home-research": "node scripts/test-home-research.mjs",
     "test:run-contracts": "node scripts/test-run-contracts.mjs",
     "test:controller-ownership": "node scripts/test-controller-ownership.mjs",

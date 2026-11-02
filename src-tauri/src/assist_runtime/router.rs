@@ -321,11 +321,25 @@ pub async fn run_model_chat(
     policy: CallPolicy,
     max_tokens: u32,
     deadline_ms: u64,
+    preferred_provider: Option<String>,
 ) -> Result<Value, String> {
     let token = cancel::register(&request_id).map_err(|r| r.as_str().to_string())?;
     let deadline = Instant::now() + Duration::from_millis(deadline_ms.clamp(1_000, 90_000));
     let transport = super::client::ReqwestTransport;
-    let candidates = select_candidates(None, policy);
+    let mut candidates = select_candidates(None, policy);
+    if let Some(pref) = preferred_provider
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        if let Some(idx) = candidates
+            .iter()
+            .position(|e| e.provider.as_str().eq_ignore_ascii_case(pref))
+        {
+            let hit = candidates.remove(idx);
+            candidates.insert(0, hit);
+        }
+    }
     if candidates.is_empty() {
         cancel::finish(&request_id);
         return Err(if policy == CallPolicy::FreeOnly {

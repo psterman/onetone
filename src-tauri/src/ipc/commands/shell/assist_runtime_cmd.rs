@@ -12,6 +12,8 @@ pub struct AssistModelChatArgs {
     pub max_tokens: Option<u32>,
     pub deadline_ms: Option<u64>,
     pub allow_metered: Option<bool>,
+    /// Soft Pad freemodel pick (deepseek / kimi / siliconflow / openrouter).
+    pub preferred_provider: Option<String>,
 }
 
 #[tauri::command]
@@ -33,6 +35,7 @@ pub async fn cmd_assist_model_chat(args: AssistModelChatArgs) -> Result<Value, S
         policy,
         args.max_tokens.unwrap_or(4096),
         args.deadline_ms.unwrap_or(30_000),
+        args.preferred_provider,
     )
     .await
 }

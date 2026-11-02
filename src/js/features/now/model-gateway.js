@@ -222,12 +222,27 @@
     });
   }
 
+  function softpadPreferredProvider() {
+    try {
+      return String(
+        (global.localStorage &&
+          global.localStorage.getItem('onetone.softpadPreferredProvider')) ||
+          ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
   function softpadChat(req) {
+    var preferred =
+      (req && req.preferredProvider) || softpadPreferredProvider() || undefined;
     return invoke('cmd_assist_model_chat', {
       messages: req.messages || [],
       maxTokens: req.maxTokens || 4096,
       deadlineMs: req.deadlineMs || 30000,
-      allowMetered: !!req.allowMetered
+      allowMetered: !!req.allowMetered,
+      preferredProvider: preferred || null
     });
   }
 

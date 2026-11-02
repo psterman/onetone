@@ -76,6 +76,39 @@
   var atrWbLoginPendingId = '';
   var atrWbLoginPollTimer = 0;
   var atrWbLoginStatus = ''; // '' | pending | fail | expired
+  /**
+   * Soft Pad freemodel lanes (dsh-our-free-model style: fill key / login → pick model).
+   * Matches assist model_catalog SoftPadQuotaProvider ids.
+   */
+  var SOFTPAD_FREEMODEL_CATALOG = [
+    {
+      id: 'deepseek',
+      label: 'DeepSeek',
+      model: 'deepseek-chat',
+      consoleUrl: 'https://platform.deepseek.com/'
+    },
+    {
+      id: 'kimi',
+      label: 'Kimi',
+      model: 'moonshot-v1-8k',
+      consoleUrl: 'https://platform.moonshot.cn/'
+    },
+    {
+      id: 'siliconflow',
+      label: 'SiliconFlow',
+      model: 'Qwen/Qwen2.5-7B-Instruct',
+      consoleUrl: 'https://cloud.siliconflow.cn/account/ak'
+    },
+    {
+      id: 'openrouter',
+      label: 'OpenRouter',
+      model: 'openrouter/auto',
+      consoleUrl: 'https://openrouter.ai/settings/keys'
+    }
+  ];
+  /** { deepseek: { configured, masked }, … } */
+  var softPadFreemodelKeys = {};
+  var SOFTPAD_PREF_KEY = 'onetone.softpadPreferredProvider';
   /** Keep main bottom pad ≥ absolute dock height (consult/materials grow). */
   var dockReserveRo = null;
   /** After weather ask with no city — next short city reply continues the ask. */
@@ -604,15 +637,36 @@
     return false;
   }
 
+  function wbLocalReady() {
+    return !!wbDefaultAccount(wbLocalCache);
+  }
+
+  function wbRouteIsActive() {
+    var gateway = global.OneToneModelGateway;
+    if (!gateway || !gateway.resolveProvider) return true;
+    try {
+      return gateway.resolveProvider('synthesis').id === 'workbuddy';
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /**
+   * Login strip: work-mode when ATR WB not ready; chat-mode when WB route
+   * has no account; always when user forced open (换号 / 登录 CTA).
+   */
   function atrWbLoginShouldShow(snap) {
-    if (!atrEditPathOn(snap)) return false;
     if (atrWbLoginForced) return true;
-    return !atrWbChatReady();
+    if (atrEditPathOn(snap)) return !atrWbChatReady();
+    // Chat / freemodel: offer OAuth without leaving home or flipping to 工作.
+    if (wbRouteIsActive() && !wbLocalReady()) return true;
+    return false;
   }
 
   function atrWbLoginHtml(snap) {
     if (!atrWbLoginShouldShow(snap)) return '';
     var busy = atrWbLoginBusy || atrWbLoginStatus === 'pending';
+    var edit = atrEditPathOn(snap);
     var statusLine = '';
     if (atrWbLoginStatus === 'pending') {
       statusLine = t('ha2AtrWbLoginPending', '请在浏览器完成登录…');
@@ -623,14 +677,18 @@
     } else {
       statusLine = t(
         'ha2AtrWbLoginHint',
-        '登录 WorkBuddy 后用账号模型编辑，无需粘贴 API Key'
+        '登录 WorkBuddy 使用账号额度模型，无需粘贴 API Key'
       );
     }
+    var title = edit
+      ? t('ha2AtrWbLoginTitle', '登录 WorkBuddy 开始编辑')
+      : t('ha2WbFreemodelLoginTitle', '登录 WorkBuddy 使用账号额度');
+    var canDismiss = edit ? atrWbChatReady() : wbLocalReady();
     return (
       '<div class="ha2-atr-wb-login" data-ha2-atr-wb-login>' +
       '<div class="ha2-atr-wb-login-hd">' +
       '<b>' +
-      esc(t('ha2AtrWbLoginTitle', '登录 WorkBuddy 开始编辑')) +
+      esc(title) +
       '</b><span>' +
       esc(statusLine) +
       '</span></div>' +
@@ -649,7 +707,7 @@
           esc(t('ha2AtrWbLoginCancel', '取消')) +
           '</button>'
         : '') +
-      (atrWbChatReady()
+      (canDismiss
         ? '<button type="button" class="ha2-link" data-ha2-atr-wb-login-dismiss>' +
           esc(t('ha2AtrWbLoginDismiss', '收起')) +
           '</button>'
@@ -666,12 +724,74 @@
       'on\0' +
       (atrWbChatReady() ? '1' : '0') +
       '\0' +
+      (wbLocalReady() ? '1' : '0') +
+      '\0' +
       (atrWbLoginBusy ? '1' : '0') +
       '\0' +
       atrWbLoginStatus +
       '\0' +
-      (atrWbLoginForced ? '1' : '0')
+      (atrWbLoginForced ? '1' : '0') +
+      '\0' +
+      (atrEditPathOn(snap) ? 'e' : 'c')
     );
+  }
+
+  /** Dock chip: 登录 / 账号·换号 — next to mixed model select. */
+  function wbAccountChipHtml(snap) {
+    if (atrEditPathOn(snap)) return '';
+    var def = wbDefaultAccount(wbLocalCache);
+    if (!def) {
+      return (
+        '<button type="button" class="ha2-link ha2-wb-account-cta" data-ha2-wb-login-cta title="' +
+        esc(t('ha2WbFreemodelLoginHint', '浏览器登录后使用账号额度模型')) +
+        '">' +
+        esc(t('ha2WbLoginShort', '登录')) +
+        '</button>'
+      );
+    }
+    var label = truncateLabel(def.nickname || def.label || 'WorkBuddy', 14);
+    var tip = [
+      def.label || 'WorkBuddy',
+      def.authKind === 'oauth' ? 'OAuth' : 'Key',
+      def.keyFingerprint || ''
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    return (
+      '<button type="button" class="ha2-link ha2-wb-account-cta" data-ha2-wb-login-cta title="' +
+      esc(tip || t('ha2WbSwitchAccount', '换号')) +
+      '"><span class="ha2-wb-account-name">' +
+      esc(label) +
+      '</span> · ' +
+      esc(t('ha2WbSwitchAccount', '换号')) +
+      '</button>'
+    );
+  }
+
+  function wbAccountChipSig(snap) {
+    if (atrEditPathOn(snap)) return 'off';
+    var def = wbDefaultAccount(wbLocalCache);
+    if (!def) return 'login';
+    return (
+      'on\0' +
+      String(def.id || '') +
+      '\0' +
+      String(def.label || '') +
+      '\0' +
+      String(def.nickname || '') +
+      '\0' +
+      (atrWbLoginBusy ? '1' : '0')
+    );
+  }
+
+  function syncWbAccountHost(snap) {
+    if (!root) return;
+    var host = root.querySelector('[data-ha2-wb-account-host]');
+    if (!host) return;
+    var sig = wbAccountChipSig(snap);
+    if (host.getAttribute('data-sig') === sig) return;
+    host.setAttribute('data-sig', sig);
+    host.innerHTML = wbAccountChipHtml(snap);
   }
 
   function syncAtrWbLoginHost(snap) {
@@ -695,10 +815,16 @@
 
   function openAtrWbLoginInline() {
     var snap = store() && store().getSnapshot && store().getSnapshot();
-    if (!atrEditPathOn(snap || {})) return false;
     atrWbLoginForced = true;
     syncAtrWbLoginHost(snap || {});
     return true;
+  }
+
+  /** Dock「登录 / 换号」: show strip and start browser OAuth immediately. */
+  function startWbFreemodelLoginFromDock() {
+    atrWbLoginForced = true;
+    syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
+    startAtrWbLoginInline();
   }
 
   function finishAtrWbLoginOk() {
@@ -709,7 +835,15 @@
     atrWbLoginForced = false;
     var A = global.OneToneHomeAgentTask;
     if (A && A.writeProvider) A.writeProvider('workbuddy');
-    toast(t('ha2AtrWbLoginOk', '已登录 WorkBuddy — 普通编辑需先隔离验证'));
+    var gateway = global.OneToneModelGateway;
+    if (gateway && gateway.setRoute) {
+      ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+        gateway.setRoute(p, 'workbuddy');
+      });
+    }
+    var FMOk = freemodelChannelsApi();
+    if (FMOk && FMOk.markChecked) FMOk.markChecked('workbuddy', { status: 'ok', note: 'oauth_ok' });
+    toast(t('ha2WbFreemodelLoginOk', '已登录 WorkBuddy — 可在模型列表切换账号额度模型'));
     return refreshAtrProviders(true)
       .then(function () {
         return refreshWbLocal(true);
@@ -719,6 +853,7 @@
         var snap = store() && store().getSnapshot && store().getSnapshot();
         syncAtrProviderHost(snap);
         syncAtrWbLoginHost(snap);
+        syncWbAccountHost(snap);
         var host = root && root.querySelector('[data-ha2-model-route-host]');
         if (host) host.removeAttribute('data-sig');
         syncModeChrome(snap);
@@ -1021,6 +1156,18 @@
   /** local = in-app WorkBuddy LLM; desktop = paste into WorkBuddy.exe. */
   function wbUsesLocalChat(kind, snap) {
     return String(kind || '') === 'workbuddy' && wbSendModeOf(snap) !== 'desktop';
+  }
+
+  /**
+   * Chat-mode ModelGateway path (WB freemodel / Soft Pad / API).
+   * Model route is the transport; Agent chip is context (project/app).
+   * Only WorkBuddy「桌面」opts out to paste into WorkBuddy.exe.
+   */
+  function gatewayChatEligible(snap) {
+    if (atrEditPathOn(snap)) return false;
+    var kind = String((snap && snap.selectedKind) || '');
+    if (kind === 'workbuddy' && wbSendModeOf(snap) === 'desktop') return false;
+    return true;
   }
 
   function openWbAgentConfig() {
@@ -3667,9 +3814,50 @@
     );
   }
 
+  function softPadPreferredProvider() {
+    try {
+      return String(
+        (global.localStorage && global.localStorage.getItem(SOFTPAD_PREF_KEY)) || ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function writeSoftPadPreferredProvider(id) {
+    id = String(id || '').trim();
+    try {
+      if (!global.localStorage) return;
+      if (id) global.localStorage.setItem(SOFTPAD_PREF_KEY, id);
+      else global.localStorage.removeItem(SOFTPAD_PREF_KEY);
+    } catch (_) {}
+  }
+
+  function refreshSoftPadFreemodelKeys() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return Promise.resolve(softPadFreemodelKeys);
+    return Promise.all(
+      SOFTPAD_FREEMODEL_CATALOG.map(function (row) {
+        return ipc
+          .invoke('cmd_soft_pad_provider_key_get', { provider: row.id })
+          .then(function (res) {
+            softPadFreemodelKeys[row.id] = {
+              configured: !!(res && res.configured),
+              masked: (res && res.masked) || ''
+            };
+          })
+          .catch(function () {
+            softPadFreemodelKeys[row.id] = { configured: false, masked: '' };
+          });
+      })
+    ).then(function () {
+      return softPadFreemodelKeys;
+    });
+  }
+
   /**
-   * Mixed model picker: WorkBuddy account models + API providers, tagged.
-   * Values: wb:<modelId> | api:<providerId> | __add__
+   * Mixed model picker: WB login models + Soft Pad freemodel lanes + API.
+   * Values: wb:<modelId> | sp:<softPadId> | api:<providerId> | __add__
    * Work mode uses ATR engine host instead.
    */
   function modelRouteSelectHtml(snap) {
@@ -3684,12 +3872,15 @@
     var def = wbDefaultAccount(wbLocalCache);
     var wbModels = def && Array.isArray(def.models) ? def.models : [];
     var selectedModel = def ? String(def.selectedModel || '') : '';
+    var softPref = softPadPreferredProvider();
     var currentValue =
-      currentProvider === 'workbuddy' && selectedModel
-        ? 'wb:' + selectedModel
-        : currentProvider === 'workbuddy'
-          ? 'api:workbuddy'
-          : 'api:' + currentProvider;
+      currentProvider === 'softpad_our_freemodel' && softPref
+        ? 'sp:' + softPref
+        : currentProvider === 'workbuddy' && selectedModel
+          ? 'wb:' + selectedModel
+          : currentProvider === 'workbuddy'
+            ? 'api:workbuddy'
+            : 'api:' + currentProvider;
 
     function opt(value, label, selected) {
       return (
@@ -3727,20 +3918,39 @@
       );
     }
 
-    // API / managed providers (MiniMax key, Soft Pad freemodel, custom…).
+    // Soft Pad freemodel lanes — fill key on home → usable (dsh-style).
+    html +=
+      '<optgroup label="' +
+      esc(t('ha2ModelTagSoftPadPaid', 'Soft Pad 付费 Key')) +
+      '">';
+    for (var si = 0; si < SOFTPAD_FREEMODEL_CATALOG.length; si++) {
+      var sp = SOFTPAD_FREEMODEL_CATALOG[si];
+      var st = softPadFreemodelKeys[sp.id] || {};
+      var ready = !!st.configured;
+      html += opt(
+        'sp:' + sp.id,
+        sp.label +
+          (ready
+            ? ' · Soft Pad'
+            : ' · ' + t('ha2ModelSoftPadNeedKey', '填 Key 可用')),
+        currentValue === 'sp:' + sp.id
+      );
+    }
+    html += '</optgroup>';
+
     var apiOpts = '';
     for (var pi = 0; pi < providers.length; pi++) {
       var p = providers[pi];
       if (!p || !p.id || p.id === 'workbuddy') continue;
+      if (p.id === 'softpad_our_freemodel' || p.source === 'softpad') continue;
       // Skip the empty custom placeholder until user actually configured one
       // with the same id — configured customs get distinct ids (minimax_cn…).
       if (p.id === 'custom_openai_compatible' && !p.configured) continue;
-      var tag =
-        p.source === 'softpad' || p.id === 'softpad_our_freemodel'
-          ? 'Soft Pad'
-          : 'API';
-      var label = (p.label || p.name || p.id) + ' · ' + tag;
-      apiOpts += opt('api:' + p.id, label, currentValue === 'api:' + p.id);
+      apiOpts += opt(
+        'api:' + p.id,
+        (p.label || p.name || p.id) + ' · API',
+        currentValue === 'api:' + p.id
+      );
     }
     if (apiOpts) {
       html +=
@@ -3750,7 +3960,11 @@
         apiOpts +
         '</optgroup>';
     }
-    html += opt('__add__', t('ha2ModelAddProvider', '+ 添加 API 提供方…'), false);
+    html += opt(
+      '__add__',
+      t('ha2ModelAddProvider', '+ 免费额度签到 / 添加 API…'),
+      false
+    );
 
     return (
       '<label class="ha2-model-route-label" data-ha2-model-route-label>' +
@@ -3758,7 +3972,12 @@
       '<select data-ha2-model-route="' +
       esc(purpose) +
       '" title="' +
-      esc(t('ha2ModelMixHint', 'WorkBuddy 登录模型与 API Key 模型混排')) +
+      esc(
+        t(
+          'ha2ModelMixHint',
+          'WorkBuddy / 免费额度签到 / API Key 混排'
+        )
+      ) +
       '">' +
       html +
       '</select></label>'
@@ -3938,9 +4157,12 @@
     for (i = 0; i < secondary.length; i++) {
       secondary[i].hidden = !!atrEdit;
     }
+    var providerCta = root.querySelector('[data-ha2-open-model-providers]');
+    if (providerCta) providerCta.hidden = !!atrEdit;
     // Model mutex: chat → dock gateway route; work → ATR engine only.
     var wbModeHost = root.querySelector('[data-ha2-wb-mode-host]');
     var modelRouteHost = root.querySelector('[data-ha2-model-route-host]');
+    var wbAccountHost = root.querySelector('[data-ha2-wb-account-host]');
     var atrProvHost = root.querySelector('[data-ha2-atr-provider-host]');
     if (wbModeHost) wbModeHost.hidden = !!atrEdit;
     if (modelRouteHost) {
@@ -3956,7 +4178,16 @@
         modelRouteHost.removeAttribute('data-sig');
       }
     }
+    if (wbAccountHost) {
+      wbAccountHost.hidden = !!atrEdit;
+      if (!atrEdit) syncWbAccountHost(snap);
+      else {
+        wbAccountHost.innerHTML = '';
+        wbAccountHost.removeAttribute('data-sig');
+      }
+    }
     if (atrProvHost) atrProvHost.hidden = !atrEdit;
+    syncAtrWbLoginHost(snap);
   }
 
   function closeWorkConfirm() {
@@ -5263,18 +5494,229 @@
     );
   }
 
-  function openModelProviderModal() {
+  function freemodelChannelsApi() {
+    return global.OneToneFreemodelChannels || null;
+  }
+
+  function freemodelCheckinCtaLabel(ch) {
+    if (!ch) return '';
+    if (ch.authKind === 'oauth') {
+      return t('ha2FmCtaOauth', '一键登录');
+    }
+    if (ch.authKind === 'anonymous') {
+      return t('ha2FmCtaAnon', '启用免费池');
+    }
+    return t('ha2FmCtaCheckin', '签到');
+  }
+
+  function freemodelCheckinCardsHtml(priority) {
+    var FM = freemodelChannelsApi();
+    if (!FM || !FM.channels) return '';
+    var rows = FM.channels({ priority: priority, activeOnly: true });
+    if (!rows.length) return '';
+    return rows
+      .map(function (ch) {
+        var done = FM.checkedToday(ch.id);
+        var summary = FM.summaryLine(ch);
+        var cta = freemodelCheckinCtaLabel(ch);
+        return (
+          '<div class="ha2-fm-card' +
+          (done ? ' is-done' : '') +
+          '" data-fm-card="' +
+          esc(ch.id) +
+          '">' +
+          '<div class="ha2-fm-card-hd">' +
+          '<div><b>' +
+          esc(ch.label) +
+          '</b><span class="ha2-fm-pri">' +
+          esc(ch.priority) +
+          '</span></div>' +
+          '<span class="ha2-fm-state">' +
+          esc(summary) +
+          '</span></div>' +
+          '<p class="ha2-fm-quota">' +
+          esc(ch.freeQuota || '') +
+          '</p>' +
+          '<div class="ha2-model-provider-actions">' +
+          (ch.checkinUrl
+            ? '<a class="ha2-link" href="' +
+              esc(ch.checkinUrl) +
+              '" target="_blank" rel="noopener noreferrer">' +
+              esc(t('ha2FmOpenSite', '官网')) +
+              '</a>'
+            : '<span></span>') +
+          '<button type="button" class="ha2-btn' +
+          (done ? '' : ' primary') +
+          '" data-fm-checkin="' +
+          esc(ch.id) +
+          '">' +
+          esc(done ? t('ha2FmRecheck', '再签一次') : cta) +
+          '</button></div></div>'
+        );
+      })
+      .join('');
+  }
+
+  function freemodelEliminatedHtml() {
+    var FM = freemodelChannelsApi();
+    if (!FM || !FM.channels) return '';
+    var rows = FM.channels({ priority: 'P2' }).filter(function (c) {
+      return c.status === 'eliminated' || c.status === 'deferred';
+    });
+    if (!rows.length) return '';
+    return (
+      '<details class="ha2-fm-elim"><summary>' +
+      esc(t('ha2FmElimTitle', '已淘汰 / 暂缓（P2）')) +
+      '</summary><ul>' +
+      rows
+        .map(function (c) {
+          return (
+            '<li><b>' +
+            esc(c.label) +
+            '</b> — ' +
+            esc(c.reason || c.status) +
+            '</li>'
+          );
+        })
+        .join('') +
+      '</ul></details>'
+    );
+  }
+
+  function openModelProviderModal(opts) {
+    opts = opts || {};
+    var softPadFocus = String(opts.softPadFocus || '').trim();
     var old = document.querySelector('[data-ha2-model-provider-modal]');
-    if (old) { old.hidden = false; return; }
+    if (old) {
+      old.hidden = false;
+      if (softPadFocus) {
+        var focusEl = old.querySelector('[data-softpad-key="' + softPadFocus + '"]');
+        if (focusEl) {
+          try {
+            focusEl.focus();
+          } catch (_) {}
+        }
+      }
+      return;
+    }
     var modal = document.createElement('div');
     modal.className = 'ha2-model-provider-modal';
     modal.setAttribute('data-ha2-model-provider-modal', '');
+    var def = wbDefaultAccount(wbLocalCache);
+    var wbModels = def && Array.isArray(def.models) ? def.models : [];
+    var wbModelList = wbModels.length
+      ? '<ul class="ha2-model-provider-models">' +
+        wbModels
+          .slice(0, 12)
+          .map(function (m) {
+            return '<li>' + esc((m && (m.name || m.id)) || '') + '</li>';
+          })
+          .join('') +
+        '</ul>'
+      : '<p class="ha2-model-provider-hint">' +
+        esc(t('ha2ModelWbLoginModelsHint', '登录后会导入账号额度下的多个可用模型')) +
+        '</p>';
+    var softCards = SOFTPAD_FREEMODEL_CATALOG.map(function (row) {
+      var st = softPadFreemodelKeys[row.id] || {};
+      var status = st.configured
+        ? esc(t('ha2ModelSoftPadReady', '已配置')) +
+          (st.masked ? ' · ' + esc(st.masked) : '')
+        : esc(t('ha2ModelSoftPadNeedKey', '填 Key 可用'));
+      return (
+        '<div class="ha2-softpad-key-card" data-softpad-card="' +
+        esc(row.id) +
+        '">' +
+        '<div class="ha2-softpad-key-hd"><b>' +
+        esc(row.label) +
+        '</b><span>' +
+        status +
+        '</span></div>' +
+        '<p class="ha2-model-provider-hint">' +
+        esc(row.model) +
+        '</p>' +
+        '<label>' +
+        esc(t('ha2ModelSoftPadKeyLabel', 'API Key')) +
+        '<input type="password" autocomplete="new-password" data-softpad-key="' +
+        esc(row.id) +
+        '" placeholder="' +
+        esc(st.configured ? '•••• 已保存，重填可覆盖' : '粘贴后即可在首页选用') +
+        '"></label>' +
+        '<div class="ha2-model-provider-actions">' +
+        '<a class="ha2-link" href="' +
+        esc(row.consoleUrl) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        esc(t('ha2ModelSoftPadGetKey', '去控制台拿 Key')) +
+        '</a>' +
+        '<button type="button" class="ha2-btn primary" data-softpad-save="' +
+        esc(row.id) +
+        '">' +
+        esc(t('ha2ModelSoftPadSave', '保存并选用')) +
+        '</button></div></div>'
+      );
+    }).join('');
+    var FM = freemodelChannelsApi();
+    var dueN = FM && FM.dueCount ? FM.dueCount() : 0;
+    var p0Cards = freemodelCheckinCardsHtml('P0');
+    var p1Cards = freemodelCheckinCardsHtml('P1');
+    var elimHtml = freemodelEliminatedHtml();
     modal.innerHTML =
       '<div class="ha2-model-provider-backdrop" data-model-provider-close></div>' +
-      '<section class="ha2-model-provider-dialog" role="dialog" aria-modal="true" aria-labelledby="ha2ModelProviderTitle">' +
+      '<section class="ha2-model-provider-dialog ha2-fm-dialog" role="dialog" aria-modal="true" aria-labelledby="ha2ModelProviderTitle">' +
       '<button type="button" class="ha2-model-provider-close" data-model-provider-close>×</button>' +
-      '<h2 id="ha2ModelProviderTitle">模型提供方</h2>' +
-      '<p>调试用：填写 MiniMax、Soft Pad、WorkBuddy 或自定义 OpenAI 兼容接口。</p>' +
+      '<h2 id="ha2ModelProviderTitle">' +
+      esc(t('ha2ModelProviders', '模型提供方')) +
+      '</h2>' +
+      '<p>' +
+      esc(
+        t(
+          'ha2ModelProviderFuseHint',
+          'P0–P2 免费额度：一键登录 / 签到领取今日额度；付费 Key 请走自定义 API。'
+        )
+      ) +
+      '</p>' +
+      '<div class="ha2-model-provider-tabs" role="tablist">' +
+      '<button type="button" class="ha2-model-provider-tab is-on" data-provider-tab="login" role="tab" aria-selected="true">' +
+      esc(t('ha2ModelTabLogin', '免费额度 / 签到')) +
+      (dueN
+        ? '<span class="ha2-fm-due-badge">' + dueN + '</span>'
+        : '') +
+      '</button>' +
+      '<button type="button" class="ha2-model-provider-tab" data-provider-tab="api" role="tab" aria-selected="false">' +
+      esc(t('ha2ModelTabApi', '自定义 API')) +
+      '</button></div>' +
+      '<div class="ha2-model-provider-pane" data-provider-pane="login">' +
+      '<div class="ha2-fm-toolbar">' +
+      '<p class="ha2-model-provider-hint">' +
+      esc(
+        t(
+          'ha2ModelLoginPaneHint',
+          'P0：WorkBuddy 真 OAuth + OpenCode/Kilo 匿名免费池。P1：官方页一键签到。今日未签会显示角标。'
+        )
+      ) +
+      '</p>' +
+      '<button type="button" class="ha2-btn primary" data-fm-checkin-all>' +
+      esc(t('ha2FmCheckinAll', '一键签到全部')) +
+      '</button></div>' +
+      '<div class="ha2-model-provider-section"><b>' +
+      esc(t('ha2FmP0', 'P0 · 立即可用')) +
+      '</b>' +
+      p0Cards +
+      (wbModelList
+        ? '<div class="ha2-fm-wb-models"><span class="ha2-model-provider-hint">' +
+          esc(t('ha2ModelTagWb', 'WorkBuddy 已导入模型')) +
+          '</span>' +
+          wbModelList +
+          '</div>'
+        : '') +
+      '</div>' +
+      '<div class="ha2-model-provider-section"><b>' +
+      esc(t('ha2FmP1', 'P1 · 每日签到')) +
+      '</b>' +
+      p1Cards +
+      '</div>' +
+      elimHtml +
+      '</div>' +
+      '<div class="ha2-model-provider-pane" data-provider-pane="api" hidden>' +
       '<label>名称<input name="name" value="MiniMax CN"></label>' +
       '<label>Provider ID<input name="id" value="minimax_cn"></label>' +
       '<label>API 地址<input name="baseUrl" value="https://api.minimaxi.com/v1"></label>' +
@@ -5283,68 +5725,319 @@
       '<label>API Key<input name="apiKey" type="password" autocomplete="new-password"></label>' +
       '<label>默认用途<select name="purpose"><option value="synthesis">调研成稿</option><option value="intent">意图解析</option><option value="planning">调研规划</option><option value="review">调研审查</option></select></label>' +
       '<div class="ha2-model-provider-actions"><button type="button" class="ha2-btn" data-model-provider-test>测试连接</button><button type="button" class="ha2-btn primary" data-model-provider-save>保存</button></div>' +
+      '<details class="ha2-fm-paid-keys"><summary>' +
+      esc(t('ha2FmPaidKeys', '兼容：Soft Pad 付费 Key（非 freemodel）')) +
+      '</summary>' +
+      softCards +
+      '</details></div>' +
       '<div class="ha2-model-provider-status" role="status"></div></section>';
     document.body.appendChild(modal);
-    var close = function () { modal.hidden = true; };
-    modal.querySelectorAll('[data-model-provider-close]').forEach(function (el) { el.onclick = close; });
+    var close = function () {
+      modal.hidden = true;
+    };
+    modal.querySelectorAll('[data-model-provider-close]').forEach(function (el) {
+      el.onclick = close;
+    });
+    var setTab = function (tab) {
+      modal.querySelectorAll('[data-provider-tab]').forEach(function (btn) {
+        var on = btn.getAttribute('data-provider-tab') === tab;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      modal.querySelectorAll('[data-provider-pane]').forEach(function (pane) {
+        pane.hidden = pane.getAttribute('data-provider-pane') !== tab;
+      });
+    };
+    modal.querySelectorAll('[data-provider-tab]').forEach(function (btn) {
+      btn.onclick = function () {
+        setTab(btn.getAttribute('data-provider-tab'));
+      };
+    });
     var values = function () {
       var out = {};
-      modal.querySelectorAll('input,select').forEach(function (el) { out[el.name] = String(el.value || '').trim(); });
+      modal.querySelectorAll('input,select').forEach(function (el) {
+        if (!el.name) return;
+        out[el.name] = String(el.value || '').trim();
+      });
       return out;
     };
-    var message = function (s) { var el = modal.querySelector('.ha2-model-provider-status'); if (el) el.textContent = s; };
-    var invoke = function (cmd, args) { return global.OneToneIpc.invoke(cmd, { args: args || {} }); };
+    var message = function (s) {
+      var el = modal.querySelector('.ha2-model-provider-status');
+      if (el) el.textContent = s;
+    };
+    var invokeMp = function (cmd, args) {
+      return global.OneToneIpc.invoke(cmd, { args: args || {} });
+    };
+    var refreshRouteHost = function () {
+      if (!mounted || !root) return;
+      var host = root.querySelector('[data-ha2-model-route-host]');
+      if (host) host.removeAttribute('data-sig');
+      syncModeChrome(store() && store().getSnapshot());
+    };
+    function refreshFreemodelModalCards() {
+      // Rebuild is heavy; update card chrome in place.
+      var api = freemodelChannelsApi();
+      if (!api) return;
+      modal.querySelectorAll('[data-fm-card]').forEach(function (card) {
+        var id = card.getAttribute('data-fm-card');
+        var ch = api.byId(id);
+        if (!ch) return;
+        var done = api.checkedToday(id);
+        card.classList.toggle('is-done', done);
+        var stEl = card.querySelector('.ha2-fm-state');
+        if (stEl) stEl.textContent = api.summaryLine(ch);
+        var btn = card.querySelector('[data-fm-checkin]');
+        if (btn) {
+          btn.classList.toggle('primary', !done);
+          btn.textContent = done
+            ? t('ha2FmRecheck', '再签一次')
+            : freemodelCheckinCtaLabel(ch);
+        }
+      });
+      var badge = modal.querySelector('.ha2-fm-due-badge');
+      var due = api.dueCount();
+      if (badge) {
+        if (due) badge.textContent = String(due);
+        else badge.remove();
+      } else if (due) {
+        var tab = modal.querySelector('[data-provider-tab="login"]');
+        if (tab) {
+          var span = document.createElement('span');
+          span.className = 'ha2-fm-due-badge';
+          span.textContent = String(due);
+          tab.appendChild(span);
+        }
+      }
+    }
+
+    function runFreemodelCheckin(id) {
+      var api = freemodelChannelsApi();
+      if (!api) {
+        message(t('ha2FmMissing', '签到模块未加载'));
+        return;
+      }
+      message(t('ha2FmWorking', '处理中…'));
+      api.checkIn(id).then(function (res) {
+        if (res && res.action === 'oauth') {
+          message(t('ha2AtrWbLoginPending', '请在浏览器完成登录…'));
+          close();
+          startWbFreemodelLoginFromDock();
+          return;
+        }
+        if (res && res.ok) {
+          message(
+            (res.channel && res.channel.label ? res.channel.label + ' · ' : '') +
+              t('ha2FmOk', '已签到 / 已启用')
+          );
+          refreshFreemodelModalCards();
+          refreshRouteHost();
+          return;
+        }
+        message(
+          t('ha2FmFail', '签到失败') +
+            '：' +
+            String((res && res.message) || '')
+        );
+      });
+    }
+
+    var checkAllBtn = modal.querySelector('[data-fm-checkin-all]');
+    if (checkAllBtn) {
+      checkAllBtn.onclick = function () {
+        var api = freemodelChannelsApi();
+        if (!api) {
+          message(t('ha2FmMissing', '签到模块未加载'));
+          return;
+        }
+        message(t('ha2FmBatchWorking', '正在批量签到…'));
+        api.checkInAllDue({ staggerMs: 400 }).then(function (batch) {
+          var opened = (batch.results || []).filter(function (r) {
+            return r && r.ok;
+          }).length;
+          refreshFreemodelModalCards();
+          if (batch.oauthIds && batch.oauthIds.indexOf('workbuddy') >= 0) {
+            message(
+              t('ha2FmBatchPartial', '已打开签到页') +
+                ' · ' +
+                opened +
+                ' · ' +
+                t('ha2AtrWbLoginPending', '请在浏览器完成登录…')
+            );
+            close();
+            startWbFreemodelLoginFromDock();
+            return;
+          }
+          message(
+            t('ha2FmBatchDone', '批量签到完成') + ' · ' + opened + '/' + (batch.dueCount || 0)
+          );
+        });
+      };
+    }
+    modal.querySelectorAll('[data-fm-checkin]').forEach(function (btn) {
+      btn.onclick = function () {
+        runFreemodelCheckin(btn.getAttribute('data-fm-checkin'));
+      };
+    });
+    modal.querySelectorAll('[data-softpad-save]').forEach(function (btn) {
+      btn.onclick = function () {
+        var pid = String(btn.getAttribute('data-softpad-save') || '').trim();
+        var input = modal.querySelector('[data-softpad-key="' + pid + '"]');
+        var key = input ? String(input.value || '').trim() : '';
+        if (!key) {
+          message(t('ha2ModelSoftPadKeyEmpty', '请先粘贴 Soft Pad API Key'));
+          return;
+        }
+        message(t('ha2ModelSoftPadSaving', '正在保存 Soft Pad Key…'));
+        // Soft Pad key IPC takes flat provider/key — not { args: … }.
+        global.OneToneIpc.invoke('cmd_soft_pad_provider_key_set', {
+          provider: pid,
+          key: key
+        })
+          .then(function () {
+            writeSoftPadPreferredProvider(pid);
+            var gateway = global.OneToneModelGateway;
+            if (gateway && gateway.setRoute) {
+              ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+                gateway.setRoute(p, 'softpad_our_freemodel');
+              });
+            }
+            return refreshSoftPadFreemodelKeys();
+          })
+          .then(function () {
+            message(
+              t('ha2ModelSoftPadSaved', '已保存并切换到 Soft Pad freemodel') +
+                ' · ' +
+                pid
+            );
+            refreshRouteHost();
+            close();
+          })
+          .catch(function (e) {
+            message(
+              t('ha2ModelSoftPadSaveFail', '保存失败') +
+                '：' +
+                String((e && e.message) || e || '')
+            );
+          });
+      };
+    });
     modal.querySelector('[data-model-provider-save]').onclick = function () {
       var v = values();
       message('正在保存…');
-      invoke('cmd_model_provider_upsert', { id: v.id, name: v.name, protocol: 'openai_compatible', baseUrl: v.baseUrl, model: v.model, enabled: true, supportsJson: true, supportsStreaming: false, supportsTools: false })
-        .then(function () { return v.apiKey ? invoke('cmd_model_provider_set_key', { providerId: v.id, apiKey: v.apiKey }) : null; })
+      invokeMp('cmd_model_provider_upsert', {
+        id: v.id,
+        name: v.name,
+        protocol: 'openai_compatible',
+        baseUrl: v.baseUrl,
+        model: v.model,
+        enabled: true,
+        supportsJson: true,
+        supportsStreaming: false,
+        supportsTools: false
+      })
+        .then(function () {
+          return v.apiKey
+            ? invokeMp('cmd_model_provider_set_key', {
+                providerId: v.id,
+                apiKey: v.apiKey
+              })
+            : null;
+        })
         .then(function () {
           if (global.OneToneModelGateway) {
-            global.OneToneModelGateway.registerProvider({ id: v.id, name: v.name, label: v.name, kind: 'custom', source: 'user', configured: true });
+            global.OneToneModelGateway.registerProvider({
+              id: v.id,
+              name: v.name,
+              label: v.name,
+              kind: 'custom',
+              source: 'user',
+              configured: true
+            });
             global.OneToneModelGateway.setRoute(v.purpose, v.id);
           }
+          writeSoftPadPreferredProvider('');
           message('已保存并切换为当前用途模型。');
-          if (mounted && root) {
-            var host = root.querySelector('[data-ha2-model-route-host]');
-            if (host) host.removeAttribute('data-sig');
-            syncModeChrome(store() && store().getSnapshot());
-          }
+          refreshRouteHost();
         })
-        .catch(function (e) { message('保存失败：' + String(e.message || e)); });
+        .catch(function (e) {
+          message('保存失败：' + String(e.message || e));
+        });
     };
     modal.querySelector('[data-model-provider-test]').onclick = function () {
       var v = values();
       message('正在测试连接…');
-      var config = { id: v.id, name: v.name, protocol: 'openai_compatible', baseUrl: v.baseUrl, model: v.model, enabled: true, supportsJson: true, supportsStreaming: false, supportsTools: false };
-      invoke('cmd_model_provider_upsert', config)
-        .then(function () { return v.apiKey ? invoke('cmd_model_provider_set_key', { providerId: v.id, apiKey: v.apiKey }) : null; })
+      var config = {
+        id: v.id,
+        name: v.name,
+        protocol: 'openai_compatible',
+        baseUrl: v.baseUrl,
+        model: v.model,
+        enabled: true,
+        supportsJson: true,
+        supportsStreaming: false,
+        supportsTools: false
+      };
+      invokeMp('cmd_model_provider_upsert', config)
         .then(function () {
-          return invoke('cmd_model_provider_chat', { providerId: v.id, messages: [{ role: 'user', content: '请只回复：连接成功' }], maxTokens: 32, temperature: 0 });
+          return v.apiKey
+            ? invokeMp('cmd_model_provider_set_key', {
+                providerId: v.id,
+                apiKey: v.apiKey
+              })
+            : null;
+        })
+        .then(function () {
+          return invokeMp('cmd_model_provider_chat', {
+            providerId: v.id,
+            messages: [{ role: 'user', content: '请只回复：连接成功' }],
+            maxTokens: 32,
+            temperature: 0
+          });
         })
         .then(function () {
           if (global.OneToneModelGateway) {
-            global.OneToneModelGateway.registerProvider({ id: v.id, name: v.name, label: v.name, kind: 'custom', source: 'user', configured: true });
+            global.OneToneModelGateway.registerProvider({
+              id: v.id,
+              name: v.name,
+              label: v.name,
+              kind: 'custom',
+              source: 'user',
+              configured: true
+            });
             global.OneToneModelGateway.setRoute(v.purpose, v.id);
           }
+          writeSoftPadPreferredProvider('');
           message('连接成功，已保存并切换为当前用途模型。');
-          if (mounted && root) {
-            var hostT = root.querySelector('[data-ha2-model-route-host]');
-            if (hostT) hostT.removeAttribute('data-sig');
-            syncModeChrome(store() && store().getSnapshot());
-          }
+          refreshRouteHost();
         })
-        .catch(function (e) { message('连接失败：' + String(e.message || e)); });
+        .catch(function (e) {
+          message('连接失败：' + String(e.message || e));
+        });
     };
-    invoke('cmd_model_provider_snapshot', {}).then(function (items) {
-      var current = (Array.isArray(items) ? items : []).filter(function (p) { return p.id === 'minimax_cn'; })[0];
-      if (!current) return;
-      ['name', 'id', 'baseUrl', 'model'].forEach(function (name) {
-        var el = modal.querySelector('[name="' + name + '"]');
-        var key = name === 'baseUrl' ? 'baseUrl' : name;
-        if (el && current[key]) el.value = current[key];
-      });
-    }).catch(function () {});
+    invokeMp('cmd_model_provider_snapshot', {})
+      .then(function (items) {
+        var current = (Array.isArray(items) ? items : []).filter(function (p) {
+          return p.id === 'minimax_cn';
+        })[0];
+        if (!current) return;
+        ['name', 'id', 'baseUrl', 'model'].forEach(function (name) {
+          var el = modal.querySelector('[name="' + name + '"]');
+          var key = name === 'baseUrl' ? 'baseUrl' : name;
+          if (el && current[key]) el.value = current[key];
+        });
+      })
+      .catch(function () {});
+    if (softPadFocus) {
+      setTab('api');
+      var paid = modal.querySelector('.ha2-fm-paid-keys');
+      if (paid) paid.open = true;
+      var focusInput = modal.querySelector('[data-softpad-key="' + softPadFocus + '"]');
+      if (focusInput) {
+        try {
+          focusInput.focus();
+        } catch (_) {}
+      }
+    }
   }
 
   function sessionCardHtml(s) {
@@ -5835,10 +6528,11 @@
   /** Edit mode: project context only — not a desktop Agent send target. */
   function atrEditTargetChipHtml(snap) {
     var projectLabel = targetProjectLabel(snap);
+    // Same chip skeleton as chat target (icon + copy) so dock-bar fuse aligns.
     return (
       '<span class="ha2-chip target is-atr-edit" data-ha2-atr-edit-chip title="' +
       esc(t('ha2AtrEditChipTitle', 'ATR 编辑任务（非投递到桌面 Agent）')) +
-      '"><span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+      '"><span class="ha2-chip-icon ha2-icon--fallback" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg></span><span class="ha2-chip-copy"><span data-ha2-dest-name>' +
       esc(t('ha2AtrEditChip', 'ATR 编辑')) +
       '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
       esc(projectLabel) +
@@ -5846,7 +6540,7 @@
     );
   }
 
-  /** Why ↑ is blocked — edit/ATR never requires a desktop Agent selection. */
+  /** Why ↑ is blocked — edit/ATR + gateway chat never require a desktop Agent. */
   function sendBlockReason(snap, draftOverride) {
     var draft =
       draftOverride != null
@@ -5866,6 +6560,8 @@
       return '';
     }
     if (!hasContent) return t('ha2SendNeedDraft', '先写一句再发送');
+    // Freemodel / API chat: draft alone is enough.
+    if (gatewayChatEligible(snap)) return '';
     var ctx = snap && snap.targetContext;
     if (!(ctx && ctx.kind)) return t('ha2PickAgent', '选择 Agent');
     return '';
@@ -6118,6 +6814,11 @@
       '>' +
       modelRouteSelectHtml(snap) +
       '</span>' +
+      '<span class="ha2-wb-account-host" data-ha2-wb-account-host' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
+      wbAccountChipHtml(snap) +
+      '</span>' +
       '<span class="ha2-wb-model-host" data-ha2-wb-model-host hidden>' +
       '</span>' +
       '<span class="ha2-atr-provider-host" data-ha2-atr-provider-host' +
@@ -6125,10 +6826,23 @@
       '>' +
       atrProviderSelectHtml(snap) +
       '</span>' +
-      '<button type="button" class="ha2-link ha2-model-provider-cta" data-ha2-open-model-providers title="' +
+      '<button type="button" class="ha2-link ha2-model-provider-cta" data-ha2-open-model-providers' +
+      (atrEdit ? ' hidden' : '') +
+      ' title="' +
       esc(t('ha2ModelProviders', '模型提供方')) +
       '">' +
       esc(t('ha2ModelProvidersShort', '提供方')) +
+      (function () {
+        var fm = freemodelChannelsApi();
+        var n = fm && fm.dueCount ? fm.dueCount() : 0;
+        return n
+          ? '<span class="ha2-fm-due-badge" aria-label="' +
+              esc(t('ha2FmDue', '待签到')) +
+              '">' +
+              n +
+              '</span>'
+          : '';
+      })() +
       '</button>' +
       aimChipHtml(hasAim) +
       '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
@@ -6157,14 +6871,16 @@
         sendOk
           ? atrEdit
             ? workPrimaryCtaLabel(snap) + '（Ctrl+Enter）'
-            : wbUsesLocalChat(c.id, snap)
+            : gatewayChatEligible(snap)
               ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
               : t('ha2SendHint', '发送（Ctrl+Enter）')
           : atrEdit
             ? t('ha2SendNeedDraft', '先写一句再发送')
-            : !c.id
-              ? t('ha2PickAgent', '选择 Agent')
-              : t('ha2SendNeedDraft', '先写一句再发送')
+            : gatewayChatEligible(snap)
+              ? t('ha2SendNeedDraft', '先写一句再发送')
+              : !c.id
+                ? t('ha2PickAgent', '选择 Agent')
+                : t('ha2SendNeedDraft', '先写一句再发送')
       ) +
       '" aria-label="' +
       esc(atrEdit ? workPrimaryCtaLabel(snap) : t('ha2Send', '发送')) +
@@ -6389,12 +7105,14 @@
     if (!dockHost) return;
     syncAtrProviderHost(snap);
     syncAtrWbLoginHost(snap);
+    syncWbAccountHost(snap);
     if (atrEditPathOn(snap)) {
       refreshAtrProviders(!atrProvidersCache).then(function () {
         if (!mounted) return;
         var next = store() && store().getSnapshot();
         syncAtrProviderHost(next);
         syncAtrWbLoginHost(next);
+        syncWbAccountHost(next);
       });
     }
     var ta = root.querySelector('.ha2-compose [data-ha2-draft]');
@@ -8902,16 +9620,8 @@
       return;
     }
 
-    if (!c.id) {
-      S.setValidationNotice({
-        kind: 'missing_agent',
-        message: t('ha2PickAgent', '选择 Agent')
-      });
-      return;
-    }
-
-    // WorkBuddy local LLM chat — only in think mode.
-    if (wbUsesLocalChat(c.id, snap)) {
+    // Gateway chat (WB freemodel / Soft Pad / API) — no desktop Agent required.
+    if (gatewayChatEligible(snap)) {
       if (!draftRemember) {
         S.setValidationNotice({
           kind: 'wb_need_text',
@@ -8919,14 +9629,31 @@
         });
         return;
       }
+      var localCat =
+        c && c.id
+          ? c
+          : {
+              id: 'workbuddy',
+              name: 'WorkBuddy',
+              appId: '',
+              icon: WB_CHAT_ICON
+            };
       if (!wbLocalCache) {
         refreshWbLocal(true).then(function () {
           if (!mounted) return;
-          sendWbLocal(draftRemember, c);
+          sendWbLocal(draftRemember, localCat);
         });
         return;
       }
-      sendWbLocal(draftRemember, c);
+      sendWbLocal(draftRemember, localCat);
+      return;
+    }
+
+    if (!c.id) {
+      S.setValidationNotice({
+        kind: 'missing_agent',
+        message: t('ha2PickAgent', '选择 Agent')
+      });
       return;
     }
 
@@ -9165,19 +9892,33 @@
             ? gatewayRoute.resolveProvider(routePurpose).id
             : 'workbuddy';
         var defAcc = wbDefaultAccount(wbLocalCache);
+        var softPrev = softPadPreferredProvider();
         el.value =
-          prev === 'workbuddy' && defAcc && defAcc.selectedModel
-            ? 'wb:' + defAcc.selectedModel
-            : 'api:' + prev;
+          prev === 'softpad_our_freemodel' && softPrev
+            ? 'sp:' + softPrev
+            : prev === 'workbuddy' && defAcc && defAcc.selectedModel
+              ? 'wb:' + defAcc.selectedModel
+              : 'api:' + prev;
         return;
       }
       var providerId = routeId;
       var wbModel = '';
+      var softPadId = '';
       if (routeId.indexOf('wb:') === 0) {
         providerId = 'workbuddy';
         wbModel = routeId.slice(3);
+        writeSoftPadPreferredProvider('');
+      } else if (routeId.indexOf('sp:') === 0) {
+        softPadId = routeId.slice(3);
+        providerId = 'softpad_our_freemodel';
+        writeSoftPadPreferredProvider(softPadId);
+        var softSt = softPadFreemodelKeys[softPadId] || {};
+        if (!softSt.configured) {
+          openModelProviderModal({ softPadFocus: softPadId });
+        }
       } else if (routeId.indexOf('api:') === 0) {
         providerId = routeId.slice(4);
+        writeSoftPadPreferredProvider('');
       }
       if (gatewayRoute && gatewayRoute.setRoute && providerId) {
         gatewayRoute.setRoute(routePurpose, providerId);
@@ -9593,7 +10334,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -10427,6 +11168,10 @@
       }
       return;
     }
+    if (tEl.hasAttribute('data-ha2-wb-login-cta')) {
+      startWbFreemodelLoginFromDock();
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-atr-wb-login-open')) {
       openAtrWbLoginInline();
       return;
@@ -10624,11 +11369,11 @@
     mounted = true;
     paint(S.getSnapshot());
     refreshAllAgentAims();
-    refreshWbLocal(true).then(function () {
+    Promise.all([refreshWbLocal(true), refreshSoftPadFreemodelKeys()]).then(function () {
       if (!mounted) return;
       var snap = S.getSnapshot();
       syncWbModelHost((snap && snap.selectedKind) || '');
-      // Login/import may have added WB models — refresh mixed picker.
+      // Login/import may have added WB / Soft Pad models — refresh mixed picker.
       var host = root.querySelector('[data-ha2-model-route-host]');
       if (host) host.removeAttribute('data-sig');
       syncModeChrome(snap);
@@ -10646,7 +11391,7 @@
     }
     refreshAllAgentAims();
     // Soft Pad / WB login may have changed models while this view was hidden.
-    refreshWbLocal(true).then(function () {
+    Promise.all([refreshWbLocal(true), refreshSoftPadFreemodelKeys()]).then(function () {
       if (!mounted) return;
       var snap = S && S.getSnapshot();
       syncWbModelHost((snap && snap.selectedKind) || '');
