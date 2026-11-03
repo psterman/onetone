@@ -27,6 +27,7 @@
 - **Rust 错误码用 snake_case 字符串**，与现有 `patch_context_mismatch` / `baseline_dirty_requires_approval` 风格一致。
 - **每个 Task 结束必须 commit**，commit message 用中文正文 + `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`。
 - **每步必须先写失败测试、跑到失败、再写实现、跑到通过**。测试命令见各 Task。
+- **所有 `cargo test` 必须带 `-- --test-threads=1`**。`mod.rs` 的 `tmp_db()` 用 `atr_mod_{pid}_{毫秒时间戳}.sqlite3` 命名测试库 —— 并行执行时同一毫秒启动的两个测试会**共用同一个 SQLite 文件**，互相污染事件流（已实测：`apply_without_read_auto_reads_then_waits` 并行跑假失败、串行跑必过）。项目自己在 `check_registry.rs:47` 就用了 `--test-threads=1`。**不带这个参数的测试结果一律不可信。**
 
 ---
 
@@ -145,7 +146,7 @@
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests::line_diff -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests::line_diff -- --test-threads=1 --nocapture`
 Expected: 编译失败，提示 `cannot find function unified_line_diff in this scope`
 
 - [ ] **Step 3: 实现 diff 算法**
@@ -375,7 +376,7 @@ fn lcs_ops(a: &[&str], b: &[&str]) -> Vec<DiffOp> {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests -- --test-threads=1 --nocapture`
 Expected: 全部 PASS（含既有 `inspect_dirty_samples_long_lists` / `inspect_diff_falls_back_to_baseline_dirty`）
 
 - [ ] **Step 5: 跑 golden test 确认 patch_hash 未被影响**
@@ -414,7 +415,7 @@ Expected: 全部 PASS（含既有 `inspect_dirty_samples_long_lists` / `inspect_
     }
 ```
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests::patch_hash_is_stable -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tools::tests::patch_hash_is_stable -- --test-threads=1 --nocapture`
 Expected: PASS
 
 > 若此测试失败，说明 `unified_replace_preview` 被改动了 —— **立即停止**，那是本计划的硬红线。
@@ -553,7 +554,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture 2>&1 | Select-String -Pattern "pending_patch_carries_diff|task_dto_projects_pending_patch|error\[|^error"`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture 2>&1 | Select-String -Pattern "pending_patch_carries_diff|task_dto_projects_pending_patch|error\[|^error"`
 Expected: 编译失败，`build_pending_patch` 参数不匹配 / `PendingPatch` 无 `rationale` 字段 / `TaskDto` 无 `pending_patch` 字段
 
 - [ ] **Step 3: 扩展 PendingPatch 与 build_pending_patch**
@@ -715,7 +716,7 @@ pub struct PendingPatchView {
 
 - [ ] **Step 7: 跑测试确认通过**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture`
 Expected: 全部 PASS
 
 - [ ] **Step 8: Commit**
@@ -803,7 +804,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::store::tests::undo_records -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::store::tests::undo_records -- --test-threads=1 --nocapture`
 Expected: 编译失败，`cannot find function record_undo in this scope`
 
 - [ ] **Step 3: 迁移 v4 建表**
@@ -1025,7 +1026,7 @@ pub fn mark_paths_undone(conn: &mut Connection, paths: &[String]) -> Result<(), 
 
 - [ ] **Step 7: 跑测试确认通过**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture`
 Expected: 全部 PASS
 
 - [ ] **Step 8: Commit**
@@ -1100,7 +1101,8 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
         // Undo → back to the pre-task content.
         let after = api_undo(&dto.task_id).unwrap();
         assert_eq!(fs::read_to_string(root.join(&rel)).unwrap(), "hello\n");
-        assert_eq!(after.status, "review");
+        // Undo does not invent a lifecycle transition — status is unchanged.
+        assert_eq!(after.status, "verifying");
         let events = api_events(&dto.task_id).unwrap();
         assert!(
             events.iter().any(|e| e.kind == "undo_applied"),
@@ -1222,7 +1224,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tests::undo -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tests::undo -- --test-threads=1 --nocapture`
 Expected: 编译失败，`cannot find function api_undo in this scope`
 
 - [ ] **Step 3: 实现 undo_task_writes**
@@ -1300,8 +1302,9 @@ pub fn undo_task_writes(conn: &mut Connection, task_id: &str) -> Result<TaskRow,
 
     store::mark_paths_undone(conn, &restored)?;
     // Clear the changed-files list: the task no longer owns those writes.
+    // Status is deliberately NOT changed — undo is a user action, not a
+    // lifecycle transition; inventing a new state would confuse the timeline.
     task.changed_files_json = "[]".into();
-    task.status = TaskStatus::Review.as_str().into();
     commit_event(
         conn,
         &task,
@@ -1347,7 +1350,7 @@ pub fn cmd_agent_task_undo(args: TaskIdRequest) -> Result<TaskDto, String> {
 
 - [ ] **Step 5: 跑测试确认通过**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture`
 Expected: 全部 PASS
 
 - [ ] **Step 6: Commit**
@@ -1452,10 +1455,34 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
     #[test]
     fn approve_without_scope_keeps_legacy_escalation() {
-        // scope=None → old behavior (task becomes autonomous). Backward compat.
-        // Same setup as approve_scope_global_escalates_task_to_autonomous,
-        // but scope: None and persist_autonomous: false.
-        // assert after.permission_mode == "write_autonomous"
+        let db = tmp_db();
+        store::set_test_db_path(Some(db.clone()));
+        let (root, rel) = prep_ws();
+        git_commit_all(&root);
+        let dto = api_start(StartTaskRequest {
+            goal: "scope legacy".into(),
+            workspace_root: root.display().to_string(),
+            permission_mode: Some("write_with_approval".into()),
+            materials_summary: None,
+            use_fake_driver: true,
+            ..Default::default()
+        })
+        .unwrap();
+        let mut driver = happy_path_fake_steps(&rel, "changed\n");
+        let waiting = api_drive_fake(&dto.task_id, &mut driver).unwrap();
+        let token = waiting.pending_approval_token.clone().unwrap();
+        // scope omitted entirely → legacy behaviour (task becomes autonomous).
+        let after = api_approve(ApprovePatchRequest {
+            task_id: dto.task_id.clone(),
+            approval_token: token,
+            persist_autonomous: false,
+            scope: None,
+        })
+        .unwrap();
+        assert_eq!(after.permission_mode, "write_autonomous");
+        store::set_test_db_path(None);
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_file(&db);
     }
 ```
 
@@ -1464,7 +1491,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tests::approve_scope -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime::tests::approve_scope -- --test-threads=1 --nocapture`
 Expected: 编译失败，`ApprovePatchRequest` 没有 `scope` 字段
 
 - [ ] **Step 3: 改 contracts.rs**
@@ -1555,7 +1582,7 @@ pub fn api_approve(req: ApprovePatchRequest) -> Result<TaskDto, String> {
 
 - [ ] **Step 6: 跑测试确认通过**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture`
 Expected: 全部 PASS
 
 > 注意：既有测试若有依赖「批准后任务变 autonomous」的断言，需按新语义调整（默认 `scope` 为空 → 仍升级，行为不变）。
@@ -2049,7 +2076,12 @@ Expected: 失败，`data-ha2-atr-undo` 未匹配
 
 ```javascript
     if (tEl.hasAttribute('data-ha2-atr-undo')) {
-      if (!global.confirm(t('ha2AtrUndoConfirm', '撤销本任务写入的所有文件？此操作不可再次撤销。'))) {
+      // Same guard shape the project already uses (composer-history-panel.js:456,
+      // home-agent-v2.js:8364): a missing confirm() must not block the action.
+      var okUndo = global.confirm
+        ? global.confirm(t('ha2AtrUndoConfirm', '撤销本任务写入的所有文件？此操作不可再次撤销。'))
+        : true;
+      if (!okUndo) {
         return;
       }
       if (S && S.undoAgentWrite) {
@@ -2061,16 +2093,30 @@ Expected: 失败，`data-ha2-atr-undo` 未匹配
             var msg = String((err && err.message) || err || '');
             if (msg.indexOf('file_changed_since_atr') === 0) {
               var paths = msg.slice('file_changed_since_atr:'.length).split(',').filter(Boolean);
-              global.alert(
-                t(
-                  'ha2AtrUndoDrift',
-                  '以下文件在写入后又被改动，未撤销：' + paths.join('、')
-                )
-              );
+              if (S && S.setValidationNotice) {
+                S.setValidationNotice({
+                  kind: 'atr_undo_drift',
+                  code: 'file_changed_since_atr',
+                  message: t(
+                    'ha2AtrUndoDrift',
+                    '以下文件在写入后又被改动，未撤销：' + paths.join('、')
+                  )
+                });
+              }
             } else if (msg === 'nothing_to_undo') {
-              global.alert(t('ha2AtrUndoNothing', '这个任务没有可撤销的写入。'));
-            } else {
-              global.alert(t('ha2AtrUndoFailed', '撤销失败：' + msg));
+              if (S && S.setValidationNotice) {
+                S.setValidationNotice({
+                  kind: 'atr_undo_empty',
+                  code: 'nothing_to_undo',
+                  message: t('ha2AtrUndoNothing', '这个任务没有可撤销的写入。')
+                });
+              }
+            } else if (S && S.setValidationNotice) {
+              S.setValidationNotice({
+                kind: 'atr_undo_failed',
+                code: 'undo_failed',
+                message: t('ha2AtrUndoFailed', '撤销失败：' + msg)
+              });
             }
           }
         );
@@ -2119,7 +2165,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 2: 跑 Rust 全量**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --nocapture`
+Run: `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_task_runtime -- --test-threads=1 --nocapture`
 Expected: 全部 PASS，无 FAIL
 
 - [ ] **Step 3: 跑 ATR 前端脚本全量**
@@ -2233,3 +2279,5 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - `atrLogCardHtml` 中「已写入文件」区域的确切位置（Task 8 Step 4）。
 - `home-agent-v2-store.js` 的 `approveAgentPatch` 现有实参（Task 8 Step 3 改传 scope）。
 - CSS 变量全集见 `home-agent-v2.css:2-13`：`--ha2-bg` / `--ha2-surface` / `--ha2-ink` / `--ha2-muted` / `--ha2-line` / `--ha2-accent` / `--ha2-ok` / `--ha2-err` / `--ha2-warn`。背景一律用 `var(--ha2-surface)` 或 `color-mix(in srgb, var(--ha2-X) N%, var(--ha2-surface))`，**不要把 `--ha2-line` 当背景色用**（它是半透明描边色）。
+- **用户可见错误提示走 `S.setValidationNotice({ kind, code, message })`**（store 侧 `home-agent-v2-store.js:3200`，渲染侧 `validationNoticeHtml`，`home-agent-v2.js:5565`）。**本项目全库不使用 `global.alert`** —— 不要引入。
+- **确认弹窗用 `global.confirm ? global.confirm(...) : true` 守卫**（既有写法：`composer-history-panel.js:456`、`home-agent-v2.js:8364`、`home-agent-v2.js:11167`）。
