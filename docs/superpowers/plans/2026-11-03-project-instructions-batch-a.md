@@ -110,13 +110,19 @@ pub struct FileListItem { pub relative_path: String, pub display_path: String, p
 
 - [ ] **Step 1: 写失败测试 —— `memory_type='instruction'` 被接受**
 
-在 `src-tauri/src/agent_memory/memory.rs` 的既有 `#[cfg(test)] mod tests` 末尾追加：
+`src-tauri/src/agent_memory/memory.rs` **目前没有** `#[cfg(test)] mod tests`（已核实），
+所以要在该文件**新建**一个测试模块并放入这个用例：
 
 ```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn accepts_instruction_memory_type() {
         assert!(valid_type("instruction"));
     }
+}
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
