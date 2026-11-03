@@ -274,7 +274,7 @@ CREATE INDEX IF NOT EXISTS idx_atr_undo_path ON agent_task_undo(task_id, path);
 | summary 旁常驻信息 | `risk` 与 `rationale` **始终可见**，折叠/展开都不隐藏 |
 | 展开后新增内容 | 逐行 diff（`+` / `-` / 上下文行 / hunk 头） |
 | 行样式 | `+` 用 `var(--ha2-ok)`，`-` 用 `var(--ha2-err)`，上下文与 hunk 头用 `var(--ha2-muted)` |
-| 大 diff | 总行数 > 500 时默认只渲染前 200 行，末尾给「展开全部」 |
+| 大 diff | 总行数 > 500 时只渲染前 500 行，末尾给「改动过大，仅显示前 500 行」的提示（不设「展开全部」按钮，避免为一个纯展示控件引入额外交互状态） |
 | 新建文件 | 只渲染 `+` 行，无 `-` 行 |
 
 **CSS**：新增 `.ha2-atr-diff` / `-sum` / `-body` / `-row` / `-row.is-add` / `-row.is-del` / `-row.is-ctx` / `-hunk`，全部沿用现有 CSS 变量（`--ha2-ink` / `--ha2-muted` / `--ha2-line` / `--ha2-accent` / `--ha2-ok` / `--ha2-err`），字体用项目已有的 `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` 栈。
