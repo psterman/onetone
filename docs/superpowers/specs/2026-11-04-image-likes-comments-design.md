@@ -120,7 +120,7 @@ manifest 里的 `id` 形如 `jianwen_001`，只是**栏目内序号**，不含�
 - **不含访客相关字段** —— 这是它能被边缘缓存的前提（见 §6.3）
 - `date` 缺失或格式非法 → 400；该期还没有任何点赞 / 评论时返回空的 `counts` / `comments`（不报错）
 
-缓存头：`Cache-Control: public, max-age=30` + `ETag`。30 秒后自然过期；本项目 API Token 没有 Cache Purge 权限（实测 401），所以不做主动失效。
+缓存头：`Cache-Control: public, max-age=30`（同时设 `CDN-Cache-Control`）。30 秒后自然过期；本项目 API Token 没有 Cache Purge 权限（实测 401），所以不做主动失效。**不做 ETag** —— 边缘已经替我们缓存了 30 秒，再加一层 304 逻辑省的流量有限，不值得多一段容易写错的代码。
 
 ### 4.2 `POST /likes/api`
 
@@ -276,7 +276,7 @@ manifest 里的 `id` 形如 `jianwen_001`，只是**栏目内序号**，不含�
 | 缺 `x-daily-visitor` | 400 |
 | 超过分钟限流 | 429 + `Retry-After` |
 | 跨站 Origin | 403 |
-| 并发 10 次点赞同一图 | 最终计数正确，无覆盖丢失 |
+| 并发 6 个访客同时点赞同一图 | 最终计数 = 6，无覆盖丢失 |
 | 评论带合法图字段 | 留言里三个字段完整 |
 | 评论带伪造 `imgThumb`（`javascript:` / 外域 / 路径穿越） | 400 |
 | 评论只给部分图字段 | 400 |
