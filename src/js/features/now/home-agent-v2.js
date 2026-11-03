@@ -10,6 +10,8 @@
   var unsubStore = null;
   var shellBuilt = false;
   var matMenuOpen = false;
+  /** Custom model-route dropdown (native <select> cannot show brand icons on Windows). */
+  var modelRouteMenuOpen = false;
   /** Text material ids currently expanded for full read/edit. */
   var matTextExpanded = {};
   /** Bump to cancel stale expand focus rAF after collapse. */
@@ -76,39 +78,145 @@
   var atrWbLoginPendingId = '';
   var atrWbLoginPollTimer = 0;
   var atrWbLoginStatus = ''; // '' | pending | fail | expired
+  /** OpenCode Zen device OAuth (modal / dock). */
+  var zenOauthBusy = false;
+  var zenOauthPendingId = '';
+  var zenOauthPollTimer = 0;
+  var zenOauthStatus = ''; // '' | pending | fail | expired
+  /** OpenCode Zen device OAuth ( freemodel — separate from WorkBuddy ). */
+  var zenOauthBusy = false;
+  var zenOauthPendingId = '';
+  var zenOauthPollTimer = 0;
   /**
    * Soft Pad freemodel lanes (dsh-our-free-model style: fill key / login → pick model).
    * Matches assist model_catalog SoftPadQuotaProvider ids.
+   */
+  /**
+   * Soft Pad lanes with live quota + Assist metered + ATR hooks.
+   * Only these 4 are wired in SoftPadQuotaProvider today (P1: OpenAI/Qwen/Zhipu…).
+   * Caps are Soft Pad product hooks — not “paid vs free” marketing.
    */
   var SOFTPAD_FREEMODEL_CATALOG = [
     {
       id: 'deepseek',
       label: 'DeepSeek',
       model: 'deepseek-chat',
-      consoleUrl: 'https://platform.deepseek.com/'
+      consoleUrl: 'https://platform.deepseek.com/',
+      caps: ['quota', 'assist', 'atr', 'home']
     },
     {
       id: 'kimi',
       label: 'Kimi',
       model: 'moonshot-v1-8k',
-      consoleUrl: 'https://platform.moonshot.cn/'
+      consoleUrl: 'https://platform.moonshot.cn/',
+      caps: ['quota', 'assist', 'atr', 'home']
     },
     {
       id: 'siliconflow',
       label: 'SiliconFlow',
       model: 'Qwen/Qwen2.5-7B-Instruct',
-      consoleUrl: 'https://cloud.siliconflow.cn/account/ak'
+      consoleUrl: 'https://cloud.siliconflow.cn/account/ak',
+      caps: ['quota', 'assist', 'atr', 'home']
     },
     {
       id: 'openrouter',
       label: 'OpenRouter',
       model: 'openrouter/auto',
-      consoleUrl: 'https://openrouter.ai/settings/keys'
+      consoleUrl: 'https://openrouter.ai/settings/keys',
+      caps: ['quota', 'assist', 'atr', 'home']
     }
   ];
+  var SOFTPAD_CAP_LABEL = {
+    quota: '余额可见',
+    assist: 'Assist 计量',
+    atr: 'ATR 可驱动',
+    home: '首页 Soft Pad 车道'
+  };
+  function softPadCapsHtml(caps) {
+    caps = Array.isArray(caps) ? caps : [];
+    if (!caps.length) return '';
+    return (
+      '<div class="ha2-fm-caps">' +
+      caps
+        .map(function (c) {
+          return (
+            '<span class="ha2-fm-cap" data-cap="' +
+            esc(c) +
+            '">' +
+            esc(SOFTPAD_CAP_LABEL[c] || c) +
+            '</span>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
   /** { deepseek: { configured, masked }, … } */
   var softPadFreemodelKeys = {};
   var SOFTPAD_PREF_KEY = 'onetone.softpadPreferredProvider';
+
+  /**
+   * Custom API presets from models.dev (OneToneCustomApiPresets) — OpenAI-compatible only.
+   * Regenerate: node scripts/_build-custom-api-presets.mjs
+   */
+  function customApiPresets() {
+    var list = global.OneToneCustomApiPresets;
+    return Array.isArray(list) && list.length ? list : [];
+  }
+  function customApiDefaultPreset() {
+    var list = customApiPresets();
+    var prefer = [
+      'minimax-cn-openai',
+      'minimax-openai',
+      'deepseek',
+      'openai',
+      'moonshotai-cn',
+      'zhipuai',
+      'openrouter'
+    ];
+    for (var i = 0; i < prefer.length; i++) {
+      for (var j = 0; j < list.length; j++) {
+        if (list[j] && list[j].id === prefer[i]) return list[j];
+      }
+    }
+    return list[0] || null;
+  }
+  function customApiPresetById(id) {
+    id = String(id || '');
+    var list = customApiPresets();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].id === id) return list[i];
+    }
+    return null;
+  }
+  function customApiProvOptHtml(p, selectedId, configuredIds) {
+    p = p || {};
+    var on = p.id === selectedId;
+    var saved = !!(configuredIds && configuredIds[p.id]);
+    var ico = p.icon
+      ? '<img class="ha2-fm-ico" src="' + esc(p.icon) + '" alt="" width="18" height="18" decoding="async">'
+      : '<span class="ha2-fm-ico ha2-fm-ico--empty" aria-hidden="true"></span>';
+    return (
+      '<button type="button" class="ha2-fm-prov-opt' +
+      (on ? ' on' : '') +
+      (saved ? ' is-saved' : '') +
+      '" role="option" data-custom-prov="' +
+      esc(p.id) +
+      '" data-custom-prov-label="' +
+      esc(p.label || p.id) +
+      '"' +
+      (saved ? ' data-custom-saved="1"' : '') +
+      '>' +
+      ico +
+      '<span class="ha2-fm-prov-name">' +
+      esc(p.label || p.id) +
+      '</span>' +
+      (saved
+        ? '<span class="ha2-fm-prov-saved">' + esc(t('ha2FmCustomSavedBadge', '已保存')) + '</span>'
+        : '') +
+      '</button>'
+    );
+  }
   /** Keep main bottom pad ≥ absolute dock height (consult/materials grow). */
   var dockReserveRo = null;
   /** After weather ask with no city — next short city reply continues the ask. */
@@ -3860,6 +3968,386 @@
    * Values: wb:<modelId> | sp:<softPadId> | api:<providerId> | __add__
    * Work mode uses ATR engine host instead.
    */
+  function freemodelReadyIds() {
+    var gateway = global.OneToneModelGateway;
+    var providers = gateway && gateway.providers ? gateway.providers() : [];
+    var ids = {};
+    var i;
+    for (i = 0; i < providers.length; i++) {
+      if (providers[i] && providers[i].id) ids[providers[i].id] = true;
+    }
+    var def = wbDefaultAccount(wbLocalCache);
+    if (def && Array.isArray(def.models) && def.models.length) ids.workbuddy = true;
+    return ids;
+  }
+
+  function freemodelCapCtx(ch) {
+    var ready = freemodelReadyIds();
+    var def = wbDefaultAccount(wbLocalCache);
+    var models = def && Array.isArray(def.models) ? def.models : [];
+    return {
+      hasProvider: !!(ch && ready[ch.id]),
+      wbLoggedIn: !!def,
+      wbModelCount: models.length
+    };
+  }
+
+  var MODEL_BRAND_ICON_BASE = 'icons/model-brand/';
+
+  /** Official / Google favicon files under icons/model-brand — never hand-drawn. */
+  function modelBrandMeta(raw) {
+    var s = String(raw || '').toLowerCase();
+    if (/deepseek|深度求索/.test(s)) return { brand: '深度求索', icon: 'deepseek.png' };
+    if (/glm|zhipu|智谱|bigmodel/.test(s)) return { brand: '智谱', icon: 'zhipu.png' };
+    if (/kimi|moonshot|月之暗面/.test(s)) return { brand: '月之暗面', icon: 'kimi.png' };
+    if (/minimax|minimaxi|abab/.test(s)) return { brand: 'MiniMax', icon: 'minimax.png' };
+    if (/hailuo|海螺/.test(s)) return { brand: '海螺', icon: 'hailuo.png' };
+    if (/hunyuan|混元|hy[\d_-]/.test(s)) return { brand: '混元', icon: 'hunyuan.png' };
+    if (/stepfun|阶跃|\bstep-?\d|\bstep[\s_-]/.test(s)) {
+      return { brand: '阶跃星辰', icon: 'stepfun.png' };
+    }
+    if (/xiaomi|mimo|小米/.test(s)) return { brand: '小米', icon: 'xiaomi.png' };
+    if (/qwen|通义|dashscope/.test(s)) return { brand: '通义千问', icon: 'qwen.png' };
+    if (/spark|xunfei|讯飞|星火/.test(s)) return { brand: '讯飞', icon: 'xunfei.png' };
+    if (/sense|商汤|sensenova|sensetime/.test(s)) {
+      return { brand: '商汤', icon: 'sensetime.png' };
+    }
+    if (/kilo/.test(s)) return { brand: 'Kilo', icon: 'kilo.png' };
+    if (/opencode|open.?code/.test(s)) return { brand: 'OpenCode', icon: 'opencode.png' };
+    if (/loomy/.test(s)) return { brand: 'Loomy', icon: 'loomy.png' };
+    if (/raccoon|小浣熊|huanxiong/.test(s)) {
+      return { brand: 'Raccoon', icon: 'raccoon.png' };
+    }
+    if (/space[-_\s]?bunny|太空兔/.test(s)) {
+      return { brand: '太空兔', icon: 'space-bunny.png' };
+    }
+    if (/siliconflow|硅基/.test(s)) return { brand: '硅基流动', icon: 'siliconflow.png' };
+    if (/openrouter/.test(s)) return { brand: 'OpenRouter', icon: 'openrouter.png' };
+    if (/openai|gpt-/.test(s)) return { brand: 'OpenAI', icon: '../provider/openai.png' };
+    if (/workbuddy|codebuddy/.test(s)) {
+      return { brand: 'WorkBuddy', icon: 'workbuddy.png' };
+    }
+    return { brand: '', icon: 'workbuddy.png' };
+  }
+
+  function modelRouteDisplay(nameOrId, hint) {
+    var raw = String(nameOrId || '').trim() || String(hint || '').trim();
+    var meta = modelBrandMeta(raw + ' ' + String(hint || ''));
+    var model = String(nameOrId || '').trim() || meta.brand || String(hint || '');
+    var label = meta.brand
+      ? model.toLowerCase().indexOf(meta.brand.toLowerCase()) === 0
+        ? model
+        : meta.brand + ' ' + model
+      : model;
+    return { label: label, icon: MODEL_BRAND_ICON_BASE + meta.icon };
+  }
+
+  /**
+   * Display chips for model rows (tag / relative rate / speed).
+   * WorkBuddy catalog has no price fields yet — name heuristics mirror the product UI.
+   * Soft Pad / free / custom lanes use lane labels, not invented multipliers.
+   */
+  function modelRouteOfferMeta(kind, name, id) {
+    var raw = (String(name || '') + ' ' + String(id || '')).toLowerCase();
+    if (kind === 'free') {
+      return { tag: '免费额度', tagKind: 'free', rate: '0.00x', speed: '快' };
+    }
+    if (kind === 'sp') {
+      return { tag: 'Soft Pad', tagKind: 'sub', rate: '计量', speed: '中' };
+    }
+    if (kind === 'api') {
+      return { tag: 'API', tagKind: 'api', rate: '—', speed: '—' };
+    }
+    if (kind === 'add') return null;
+    // wb
+    if (/free|免费|bunny|space-?bunny/.test(raw)) {
+      return { tag: '限时免费', tagKind: 'free', rate: '0.00x', speed: '快' };
+    }
+    if (/flash|lite|mini/.test(raw)) {
+      return { tag: '夜间折扣', tagKind: 'night', rate: '0.11x', speed: '快' };
+    }
+    if (/preview|hy4/.test(raw)) {
+      return { tag: '预览', tagKind: 'hot', rate: '0.29x', speed: '中' };
+    }
+    if (/\bhy3\b/.test(raw) && !/flash/.test(raw)) {
+      return { tag: '限时免费', tagKind: 'free', rate: '0.00x', speed: '中' };
+    }
+    if (/pro|k3\.1|reasoning|think/.test(raw)) {
+      return { tag: '订阅优先', tagKind: 'sub', rate: '0.69x', speed: '慢' };
+    }
+    return { tag: '订阅优先', tagKind: 'sub', rate: '0.79x', speed: '中' };
+  }
+
+  function modelRouteOptHtml(value, label, icon, selected, offer) {
+    var tagHtml = '';
+    var rateHtml = '';
+    var checkHtml = selected
+      ? '<span class="ha2-model-dd-check" aria-hidden="true">✓</span>'
+      : '';
+    if (offer && offer.tag) {
+      tagHtml =
+        '<span class="ha2-model-dd-tag ha2-model-dd-tag--' +
+        esc(offer.tagKind || 'api') +
+        '" title="' +
+        esc(offer.speed ? '消耗速度 · ' + offer.speed : offer.tag) +
+        '">' +
+        esc(offer.tag) +
+        (offer.speed ? '<i class="ha2-model-dd-speed">' + esc(offer.speed) + '</i>' : '') +
+        '</span>';
+    }
+    if (offer && offer.rate) {
+      rateHtml =
+        '<span class="ha2-model-dd-rate" title="' +
+        esc(t('ha2ModelRateHint', '相对消耗倍率（展示估算）')) +
+        '">' +
+        esc(offer.rate) +
+        '</span>';
+    }
+    var searchBlob = [label, offer && offer.tag, offer && offer.rate, offer && offer.speed]
+      .filter(Boolean)
+      .join(' ');
+    return (
+      '<button type="button" class="ha2-model-dd-opt' +
+      (selected ? ' on' : '') +
+      '" role="option" aria-selected="' +
+      (selected ? 'true' : 'false') +
+      '" data-ha2-model-route-opt="' +
+      esc(value) +
+      '" data-ha2-model-dd-q="' +
+      esc(searchBlob) +
+      '"><img class="ha2-model-dd-ico" src="' +
+      esc(icon) +
+      '" alt="" width="16" height="16" decoding="async"><span class="ha2-model-dd-main"><span class="ha2-model-dd-name">' +
+      esc(label) +
+      '</span>' +
+      tagHtml +
+      '</span>' +
+      rateHtml +
+      checkHtml +
+      '</button>'
+    );
+  }
+
+  function modelRouteGroupHtml(label) {
+    return (
+      '<div class="ha2-model-dd-group" data-ha2-model-dd-group>' + esc(label) + '</div>'
+    );
+  }
+
+  function filterModelRouteMenu(q) {
+    if (!root) return;
+    var list = root.querySelector('[data-ha2-model-route-list]');
+    if (!list) return;
+    var needle = String(q || '')
+      .trim()
+      .toLowerCase();
+    var kids = list.children;
+    var i;
+    var groupEl = null;
+    var groupHas = false;
+    function flushGroup() {
+      if (groupEl) groupEl.hidden = needle ? !groupHas : false;
+      groupEl = null;
+      groupHas = false;
+    }
+    for (i = 0; i < kids.length; i++) {
+      var el = kids[i];
+      if (el.hasAttribute('data-ha2-model-dd-group')) {
+        flushGroup();
+        groupEl = el;
+        continue;
+      }
+      if (!el.hasAttribute('data-ha2-model-route-opt')) continue;
+      var blob = String(el.getAttribute('data-ha2-model-dd-q') || '').toLowerCase();
+      var hit = !needle || blob.indexOf(needle) >= 0;
+      el.hidden = !hit;
+      if (hit) groupHas = true;
+    }
+    flushGroup();
+  }
+
+  function clearModelRouteMenuPos(menu) {
+    if (!menu || !menu.style) return;
+    menu.style.position = '';
+    menu.style.top = '';
+    menu.style.bottom = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.style.minWidth = '';
+    menu.style.maxWidth = '';
+    menu.style.maxHeight = '';
+    menu.style.zIndex = '';
+  }
+
+  /** Escape .ha2-dock overflow clipping via fixed viewport coords. */
+  function positionModelRouteMenu(trig, menu) {
+    if (!trig || !menu || !global.getComputedStyle) return;
+    var r = trig.getBoundingClientRect();
+    var vw = global.innerWidth || 0;
+    var vh = global.innerHeight || 0;
+    var maxH = Math.min(360, Math.floor(vh * 0.5));
+    var spaceAbove = Math.max(0, r.top - 8);
+    var spaceBelow = Math.max(0, vh - r.bottom - 8);
+    var openUp = spaceAbove >= 160 || spaceAbove > spaceBelow;
+    var avail = openUp ? spaceAbove : spaceBelow;
+    var width = Math.max(r.width, 300);
+    var left = Math.min(Math.max(8, r.left), Math.max(8, vw - width - 8));
+    menu.style.position = 'fixed';
+    menu.style.zIndex = '120';
+    menu.style.left = left + 'px';
+    menu.style.right = 'auto';
+    menu.style.minWidth = width + 'px';
+    menu.style.maxWidth = Math.min(420, Math.floor(vw * 0.86)) + 'px';
+    menu.style.maxHeight = Math.min(maxH, Math.max(160, avail)) + 'px';
+    if (openUp) {
+      menu.style.top = 'auto';
+      menu.style.bottom = vh - r.top + 6 + 'px';
+    } else {
+      menu.style.bottom = 'auto';
+      menu.style.top = r.bottom + 6 + 'px';
+    }
+  }
+
+  function closeModelRouteMenu() {
+    modelRouteMenuOpen = false;
+    if (!root) return;
+    var dd = root.querySelector('[data-ha2-model-route-dd]');
+    if (!dd) return;
+    dd.classList.remove('is-open');
+    var menu = dd.querySelector('[data-ha2-model-route-menu]');
+    var trig = dd.querySelector('[data-ha2-model-route-trigger]');
+    if (menu) {
+      menu.hidden = true;
+      clearModelRouteMenuPos(menu);
+    }
+    if (trig) trig.setAttribute('aria-expanded', 'false');
+  }
+
+  function openModelRouteMenu() {
+    if (!root) return;
+    var dd = root.querySelector('[data-ha2-model-route-dd]');
+    if (!dd) return;
+    modelRouteMenuOpen = true;
+    dd.classList.add('is-open');
+    var menu = dd.querySelector('[data-ha2-model-route-menu]');
+    var trig = dd.querySelector('[data-ha2-model-route-trigger]');
+    if (menu) {
+      menu.hidden = false;
+      positionModelRouteMenu(trig, menu);
+      var search = menu.querySelector('[data-ha2-model-route-search]');
+      if (search) {
+        search.value = '';
+        filterModelRouteMenu('');
+        try {
+          search.focus();
+        } catch (_) {}
+      }
+      var on = menu.querySelector('.ha2-model-dd-opt.on');
+      if (on && on.scrollIntoView) {
+        try {
+          on.scrollIntoView({ block: 'nearest' });
+        } catch (_) {
+          on.scrollIntoView(false);
+        }
+      }
+    }
+    if (trig) trig.setAttribute('aria-expanded', 'true');
+  }
+
+  function toggleModelRouteMenu() {
+    if (modelRouteMenuOpen) closeModelRouteMenu();
+    else openModelRouteMenu();
+  }
+
+  /** Apply wb:/sp:/api:/__add__ from the custom model dropdown. */
+  function applyModelRouteSelection(routeId, purpose) {
+    purpose = purpose || 'synthesis';
+    routeId = String(routeId || '');
+    var gatewayRoute = global.OneToneModelGateway;
+    if (routeId === '__add__') {
+      closeModelRouteMenu();
+      openModelProviderModal();
+      return;
+    }
+    var providerId = routeId;
+    var wbModel = '';
+    var softPadId = '';
+    if (routeId.indexOf('wb:') === 0) {
+      providerId = 'workbuddy';
+      wbModel = routeId.slice(3);
+      writeSoftPadPreferredProvider('');
+    } else if (routeId.indexOf('sp:') === 0) {
+      softPadId = routeId.slice(3);
+      providerId = 'softpad_our_freemodel';
+      writeSoftPadPreferredProvider(softPadId);
+      var softSt = softPadFreemodelKeys[softPadId] || {};
+      if (!softSt.configured) {
+        closeModelRouteMenu();
+        openModelProviderModal({ softPadFocus: softPadId });
+        return;
+      }
+    } else if (routeId.indexOf('api:') === 0) {
+      providerId = routeId.slice(4);
+      writeSoftPadPreferredProvider('');
+      var FMRoute = freemodelChannelsApi();
+      var fmCh = FMRoute && FMRoute.byId ? FMRoute.byId(providerId) : null;
+      var fmCap = freemodelTokenCapture(fmCh);
+      var fmIsLane =
+        !!fmCh &&
+        fmCh.id !== 'workbuddy' &&
+        !!fmCh.baseUrl &&
+        (fmCap === 'oauth_poll' || fmCap === 'paste_key');
+      if (fmIsLane) {
+        var routeProviders =
+          gatewayRoute && gatewayRoute.providers ? gatewayRoute.providers() : [];
+        var fmReady = routeProviders.some(function (rp) {
+          return rp && rp.id === providerId;
+        });
+        if (!fmReady) {
+          closeModelRouteMenu();
+          openModelProviderModal({ fmFocus: providerId });
+          return;
+        }
+      }
+    }
+    if (gatewayRoute && gatewayRoute.setRoute && providerId) {
+      gatewayRoute.setRoute(purpose, providerId);
+      if (purpose === 'intent') {
+        ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+          gatewayRoute.setRoute(p, providerId);
+        });
+      }
+    }
+    if (wbModel) {
+      var acc = wbDefaultAccount(wbLocalCache);
+      if (acc && acc.id) {
+        invoke('cmd_workbuddy_local_account_set_model', {
+          id: acc.id,
+          model: wbModel
+        })
+          .then(function (res) {
+            if (res && res.snapshot) wbLocalCache = projectWbLocal(res.snapshot);
+            else return refreshWbLocal(true);
+          })
+          .catch(function () {
+            return refreshWbLocal(true);
+          })
+          .then(function () {
+            closeModelRouteMenu();
+            if (mounted && store()) paint(store().getSnapshot());
+          });
+        return;
+      }
+    }
+    closeModelRouteMenu();
+    if (mounted && store()) paint(store().getSnapshot());
+  }
+
+  /**
+   * Values: wb:<modelId> | sp:<softPadId> | api:<providerId> | __add__
+   * Only READY options — unconfigured free lanes open the connect sheet via CTA.
+   * Work mode uses ATR engine host instead.
+   */
   function modelRouteSelectHtml(snap) {
     if (atrEditPathOn(snap)) return '';
     var purpose = 'synthesis';
@@ -3882,105 +4370,159 @@
             ? 'api:workbuddy'
             : 'api:' + currentProvider;
 
-    function opt(value, label, selected) {
-      return (
-        '<option value="' +
-        esc(value) +
-        '"' +
-        (selected ? ' selected' : '') +
-        '>' +
-        esc(label) +
-        '</option>'
-      );
+    var FMPick = freemodelChannelsApi();
+    var freeLaneIds = {};
+    if (FMPick && FMPick.connectChannels) {
+      FMPick.connectChannels().forEach(function (c) {
+        if (c && c.id && c.id !== 'workbuddy') freeLaneIds[c.id] = true;
+      });
     }
 
     var html = '';
-    // WorkBuddy models (login account) — tagged.
+    var currentLabel = '';
+    var currentIcon = MODEL_BRAND_ICON_BASE + 'workbuddy.png';
+
     if (wbModels.length) {
-      html +=
-        '<optgroup label="' + esc(t('ha2ModelTagWb', 'WorkBuddy')) + '">';
+      html += modelRouteGroupHtml(t('ha2ModelTagWb', 'WorkBuddy'));
       for (var i = 0; i < wbModels.length; i++) {
         var m = wbModels[i] || {};
         var mid = String(m.id || '');
         if (!mid) continue;
-        html += opt(
-          'wb:' + mid,
-          (m.name || mid) + ' · WB',
-          currentValue === 'wb:' + mid
+        var wbDisp = modelRouteDisplay(m.name || mid, mid);
+        var wbVal = 'wb:' + mid;
+        var wbOn = currentValue === wbVal;
+        if (wbOn) {
+          currentLabel = wbDisp.label;
+          currentIcon = wbDisp.icon;
+        }
+        html += modelRouteOptHtml(
+          wbVal,
+          wbDisp.label,
+          wbDisp.icon,
+          wbOn,
+          modelRouteOfferMeta('wb', m.name || mid, mid)
         );
       }
-      html += '</optgroup>';
-    } else {
-      html += opt(
-        'api:workbuddy',
-        t('ha2ModelWbLogin', 'WorkBuddy（登录后导入模型）') + ' · WB',
-        currentProvider === 'workbuddy'
-      );
     }
 
-    // Soft Pad freemodel lanes — fill key on home → usable (dsh-style).
-    html +=
-      '<optgroup label="' +
-      esc(t('ha2ModelTagSoftPadPaid', 'Soft Pad 付费 Key')) +
-      '">';
+    var freeReadyOpts = '';
+    for (var pi0 = 0; pi0 < providers.length; pi0++) {
+      var fp = providers[pi0];
+      if (!fp || !fp.id || !freeLaneIds[fp.id]) continue;
+      var fpDisp = modelRouteDisplay(fp.label || fp.name || fp.id, fp.id);
+      var fpVal = 'api:' + fp.id;
+      var fpOn = currentValue === fpVal;
+      if (fpOn) {
+        currentLabel = fpDisp.label;
+        currentIcon = fpDisp.icon;
+      }
+      freeReadyOpts += modelRouteOptHtml(
+        fpVal,
+        fpDisp.label,
+        fpDisp.icon,
+        fpOn,
+        modelRouteOfferMeta('free', fp.label || fp.id, fp.id)
+      );
+    }
+    if (freeReadyOpts) {
+      html +=
+        modelRouteGroupHtml(t('ha2ModelTagFreeReady', '免费模型')) + freeReadyOpts;
+    }
+
+    var softReady = '';
     for (var si = 0; si < SOFTPAD_FREEMODEL_CATALOG.length; si++) {
       var sp = SOFTPAD_FREEMODEL_CATALOG[si];
       var st = softPadFreemodelKeys[sp.id] || {};
-      var ready = !!st.configured;
-      html += opt(
-        'sp:' + sp.id,
-        sp.label +
-          (ready
-            ? ' · Soft Pad'
-            : ' · ' + t('ha2ModelSoftPadNeedKey', '填 Key 可用')),
-        currentValue === 'sp:' + sp.id
+      if (!st.configured) continue;
+      var spDisp = modelRouteDisplay(sp.label || sp.id, sp.id);
+      var spVal = 'sp:' + sp.id;
+      var spOn = currentValue === spVal;
+      if (spOn) {
+        currentLabel = spDisp.label;
+        currentIcon = spDisp.icon;
+      }
+      softReady += modelRouteOptHtml(
+        spVal,
+        spDisp.label,
+        spDisp.icon,
+        spOn,
+        modelRouteOfferMeta('sp', sp.label || sp.id, sp.id)
       );
     }
-    html += '</optgroup>';
-
-    var apiOpts = '';
+    var paidApiOpts = '';
     for (var pi = 0; pi < providers.length; pi++) {
       var p = providers[pi];
       if (!p || !p.id || p.id === 'workbuddy') continue;
       if (p.id === 'softpad_our_freemodel' || p.source === 'softpad') continue;
-      // Skip the empty custom placeholder until user actually configured one
-      // with the same id — configured customs get distinct ids (minimax_cn…).
+      if (freeLaneIds[p.id]) continue;
       if (p.id === 'custom_openai_compatible' && !p.configured) continue;
-      apiOpts += opt(
-        'api:' + p.id,
-        (p.label || p.name || p.id) + ' · API',
-        currentValue === 'api:' + p.id
+      var pDisp = modelRouteDisplay(p.label || p.name || p.id, p.id);
+      var pVal = 'api:' + p.id;
+      var pOn = currentValue === pVal;
+      if (pOn) {
+        currentLabel = pDisp.label;
+        currentIcon = pDisp.icon;
+      }
+      paidApiOpts += modelRouteOptHtml(
+        pVal,
+        pDisp.label,
+        pDisp.icon,
+        pOn,
+        modelRouteOfferMeta('api', p.label || p.id, p.id)
       );
     }
-    if (apiOpts) {
+    if (softReady || paidApiOpts) {
       html +=
-        '<optgroup label="' +
-        esc(t('ha2ModelTagApi', 'API 提供方')) +
-        '">' +
-        apiOpts +
-        '</optgroup>';
+        modelRouteGroupHtml(t('ha2ModelTagApi', 'API 提供方')) +
+        softReady +
+        paidApiOpts;
     }
-    html += opt(
+
+    html += modelRouteOptHtml(
       '__add__',
-      t('ha2ModelAddProvider', '+ 免费额度签到 / 添加 API…'),
-      false
+      t('ha2ModelAddProvider', '开通免费模型…'),
+      MODEL_BRAND_ICON_BASE + 'workbuddy.png',
+      false,
+      null
     );
 
+    if (!currentLabel) {
+      var fallback = modelRouteDisplay(currentProvider, currentProvider);
+      currentLabel = fallback.label;
+      currentIcon = fallback.icon;
+    }
+
+    var hint = t(
+      'ha2ModelMixHint',
+      '只列已可用模型；未开通请点「开通免费模型」'
+    );
     return (
-      '<label class="ha2-model-route-label" data-ha2-model-route-label>' +
+      '<div class="ha2-model-route-label" data-ha2-model-route-label>' +
+      '<span class="ha2-model-route-caption">' +
       esc(t('ha2Model', '模型')) +
-      '<select data-ha2-model-route="' +
+      '</span>' +
+      '<div class="ha2-model-dd" data-ha2-model-route-dd>' +
+      '<button type="button" class="ha2-model-dd-trigger" data-ha2-model-route-trigger data-ha2-model-route="' +
       esc(purpose) +
-      '" title="' +
-      esc(
-        t(
-          'ha2ModelMixHint',
-          'WorkBuddy / 免费额度签到 / API Key 混排'
-        )
-      ) +
-      '">' +
+      '" data-ha2-model-route-value="' +
+      esc(currentValue) +
+      '" aria-haspopup="listbox" aria-expanded="false" title="' +
+      esc(hint) +
+      '"><img class="ha2-model-dd-ico" src="' +
+      esc(currentIcon) +
+      '" alt="" width="16" height="16" decoding="async"><span class="ha2-model-dd-name">' +
+      esc(currentLabel) +
+      '</span><span class="ha2-model-dd-caret" aria-hidden="true">▾</span></button>' +
+      '<div class="ha2-model-dd-menu" data-ha2-model-route-menu hidden>' +
+      '<div class="ha2-model-dd-search">' +
+      '<span class="ha2-model-dd-search-ico" aria-hidden="true">⌕</span>' +
+      '<input type="search" class="ha2-model-dd-search-input" data-ha2-model-route-search placeholder="' +
+      esc(t('ha2ModelSearch', '搜索')) +
+      '" autocomplete="off" spellcheck="false">' +
+      '</div>' +
+      '<div class="ha2-model-dd-list" data-ha2-model-route-list role="listbox">' +
       html +
-      '</select></label>'
+      '</div></div></div></div>'
     );
   }
 
@@ -5498,97 +6040,564 @@
     return global.OneToneFreemodelChannels || null;
   }
 
-  function freemodelCheckinCtaLabel(ch) {
-    if (!ch) return '';
-    if (ch.authKind === 'oauth') {
-      return t('ha2FmCtaOauth', '一键登录');
-    }
-    if (ch.authKind === 'anonymous') {
-      return t('ha2FmCtaAnon', '启用免费池');
-    }
-    return t('ha2FmCtaCheckin', '签到');
+  function freemodelTokenCapture(ch) {
+    var FM = freemodelChannelsApi();
+    if (FM && FM.tokenCaptureOf) return FM.tokenCaptureOf(ch);
+    if (!ch) return 'none';
+    if (ch.tokenCapture) return ch.tokenCapture;
+    if (ch.authKind === 'oauth') return 'oauth_poll';
+    if (ch.authKind === 'paste_key') return 'paste_key';
+    return 'none';
   }
 
-  function freemodelCheckinCardsHtml(priority) {
+  function freemodelCheckinCtaLabel(ch, cap) {
     var FM = freemodelChannelsApi();
-    if (!FM || !FM.channels) return '';
-    var rows = FM.channels({ priority: priority, activeOnly: true });
+    if (FM && FM.connectCtaLabel) return FM.connectCtaLabel(ch, cap);
+    if (!ch) return '';
+    if (cap && cap.state === 'ready') return t('ha2FmReady', '已可用');
+    if (ch.id === 'workbuddy' && cap && cap.wbPhase === 'no_models') {
+      return t('ha2FmWbRefresh', '刷新模型');
+    }
+    var kind = (FM && FM.connectKindOf && FM.connectKindOf(ch)) || ch.connectKind || '';
+    if (kind === 'one_tap') return t('ha2FmCtaOneTap', '一键启用');
+    if (optsSiteLoginCta(ch)) return t('ha2FmCtaOpenSite', '打开登录页');
+    return t('ha2FmCtaOauth', '登录开通');
+  }
+
+  function optsSiteLoginCta(ch) {
+    return !!(ch && ch.authKind === 'browser_checkin');
+  }
+
+  function freemodelChannelIcon(ch) {
+    var meta = modelBrandMeta((ch && (ch.id + ' ' + ch.label)) || '');
+    return MODEL_BRAND_ICON_BASE + meta.icon;
+  }
+
+  /**
+   * Freemodel rows. Default = connectChannels (connectOrder).
+   * opts.siteOnly = vendor-site quota only (kept for browser_checkin; not shown in modal).
+   * Ready lanes collapse to one icon row (no duplicate「已可用」button).
+   */
+  function freemodelCheckinCardsHtml(opts) {
+    opts = opts || {};
+    var siteOnly = !!opts.siteOnly;
+    var FM = freemodelChannelsApi();
+    if (!FM) return '';
+    var rows = siteOnly
+      ? FM.channels
+        ? FM.channels({ siteOnly: true })
+        : []
+      : FM.connectChannels
+        ? FM.connectChannels()
+        : FM.channels
+          ? FM.channels({ chatCapable: true })
+          : [];
     if (!rows.length) return '';
     return rows
       .map(function (ch) {
-        var done = FM.checkedToday(ch.id);
-        var summary = FM.summaryLine(ch);
-        var cta = freemodelCheckinCtaLabel(ch);
+        var ctx = freemodelCapCtx(ch);
+        var cap =
+          FM.resolveCapability ? FM.resolveCapability(ch, ctx) : { state: 'unconfigured', label: '未开通' };
+        var summary = FM.summaryLine ? FM.summaryLine(ch, cap) : cap.label;
+        var cta = freemodelCheckinCtaLabel(ch, cap);
+        var kind =
+          (FM.connectKindOf && FM.connectKindOf(ch)) || ch.connectKind || '';
+        var tok = freemodelTokenCapture(ch);
+        var showPaste =
+          !siteOnly &&
+          (kind === 'paste_key' || tok === 'paste_key' || kind === 'one_tap');
+        var isReady = cap.state === 'ready';
+        var needWbRefresh =
+          ch.id === 'workbuddy' && (cap.wbPhase === 'no_models' || !isReady);
+        var pasteHidden = kind === 'one_tap' || isReady;
+        var pasteBlock = showPaste
+          ? '<div class="ha2-fm-paste" data-fm-paste-host="' +
+            esc(ch.id) +
+            '"' +
+            (pasteHidden ? ' hidden' : '') +
+            '>' +
+            '<label class="ha2-fm-field">' +
+            esc(t('ha2FmPasteLabel', 'Token / API Key')) +
+            '<input type="password" autocomplete="new-password" data-fm-paste-key="' +
+            esc(ch.id) +
+            '" placeholder="' +
+            esc(t('ha2FmPastePh', '粘贴后保存开通')) +
+            '"></label>' +
+            '<button type="button" class="ha2-btn primary ha2-fm-row-cta" data-fm-paste-save="' +
+            esc(ch.id) +
+            '">' +
+            esc(t('ha2FmPasteSave', '保存并选用')) +
+            '</button></div>'
+          : '';
+        var pasteReveal =
+          showPaste && kind === 'one_tap' && !isReady
+            ? '<button type="button" class="ha2-btn ha2-fm-ghost" data-fm-paste-reveal="' +
+              esc(ch.id) +
+              '">' +
+              esc(t('ha2FmPasteReveal', '填写 API Key')) +
+              '</button>'
+            : '';
+        var loomySms =
+          ch.id === 'loomy' && !isReady
+            ? '<div class="ha2-fm-sms" data-loomy-sms-host>' +
+              '<label class="ha2-fm-field">' +
+              esc(t('ha2FmLoomyPhone', '手机号')) +
+              '<input type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" data-loomy-phone placeholder="11 位手机号"></label>' +
+              '<label class="ha2-fm-field">' +
+              esc(t('ha2FmLoomyCode', '验证码')) +
+              '<input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" data-loomy-code placeholder="短信验证码"></label>' +
+              '<input type="hidden" data-loomy-msgid value="">' +
+              '<div class="ha2-fm-card-acts">' +
+              '<button type="button" class="ha2-btn" data-loomy-sms-send>' +
+              esc(t('ha2FmLoomySend', '发送验证码')) +
+              '</button>' +
+              '<button type="button" class="ha2-btn primary" data-loomy-sms-login>' +
+              esc(t('ha2FmLoomyLogin', '登录开通')) +
+              '</button></div></div>'
+            : '';
+        var raccoonQr =
+          ch.id === 'raccoon' && !isReady
+            ? '<div class="ha2-fm-qr" data-raccoon-qr-host hidden>' +
+              '<p class="ha2-model-provider-hint">' +
+              esc(t('ha2FmRaccoonQrHint', '请用微信扫一扫下方二维码（不要用浏览器打开）')) +
+              '</p>' +
+              '<div class="ha2-fm-qr-frame" data-raccoon-qr-svg></div></div>'
+            : '';
+        var stateClass =
+          isReady
+            ? ' is-ready'
+            : cap.state === 'connecting'
+              ? ' is-connecting'
+              : cap.state === 'error'
+                ? ' is-error'
+                : '';
+        var wbPhaseAttr =
+          ch.id === 'workbuddy' && cap.wbPhase
+            ? ' data-fm-wb-phase="' + esc(cap.wbPhase) + '"'
+            : '';
+        var icon = freemodelChannelIcon(ch);
+        var primaryCta = '';
+        if (ch.id === 'loomy' && !isReady) {
+          primaryCta = '';
+        } else if (isReady && !needWbRefresh) {
+          primaryCta = '';
+        } else {
+          primaryCta =
+            '<button type="button" class="ha2-btn primary ha2-fm-row-cta" data-fm-checkin="' +
+            esc(ch.id) +
+            '">' +
+            esc(cta) +
+            '</button>';
+        }
+        var sub =
+          isReady
+            ? ''
+            : esc(ch.freeQuota || (siteOnly ? '' : summary) || '');
         return (
-          '<div class="ha2-fm-card' +
-          (done ? ' is-done' : '') +
+          '<div class="ha2-fm-card ha2-fm-connect' +
+          stateClass +
+          (siteOnly ? ' is-site' : '') +
           '" data-fm-card="' +
           esc(ch.id) +
-          '">' +
+          '" data-fm-cap="' +
+          esc(cap.state) +
+          '"' +
+          wbPhaseAttr +
+          '>' +
           '<div class="ha2-fm-card-hd">' +
-          '<div><b>' +
+          '<div class="ha2-fm-card-title">' +
+          '<img class="ha2-fm-ico" src="' +
+          esc(icon) +
+          '" alt="" width="20" height="20" decoding="async">' +
+          '<div class="ha2-fm-card-copy"><b>' +
           esc(ch.label) +
-          '</b><span class="ha2-fm-pri">' +
-          esc(ch.priority) +
-          '</span></div>' +
+          '</b>' +
+          (sub ? '<span class="ha2-fm-quota-inline">' + sub + '</span>' : '') +
+          '</div></div>' +
           '<span class="ha2-fm-state">' +
-          esc(summary) +
+          esc(isReady ? t('ha2FmReady', '已可用') : summary) +
           '</span></div>' +
-          '<p class="ha2-fm-quota">' +
-          esc(ch.freeQuota || '') +
-          '</p>' +
-          '<div class="ha2-model-provider-actions">' +
-          (ch.checkinUrl
-            ? '<a class="ha2-link" href="' +
-              esc(ch.checkinUrl) +
-              '" target="_blank" rel="noopener noreferrer">' +
-              esc(t('ha2FmOpenSite', '官网')) +
-              '</a>'
-            : '<span></span>') +
-          '<button type="button" class="ha2-btn' +
-          (done ? '' : ' primary') +
-          '" data-fm-checkin="' +
+          (primaryCta || pasteReveal
+            ? '<div class="ha2-fm-card-acts">' + primaryCta + pasteReveal + '</div>'
+            : '') +
+          loomySms +
+          raccoonQr +
+          '<p class="ha2-fm-login-status" data-fm-login-status="' +
           esc(ch.id) +
-          '">' +
-          esc(done ? t('ha2FmRecheck', '再签一次') : cta) +
-          '</button></div></div>'
+          '" hidden></p>' +
+          pasteBlock +
+          '</div>'
         );
       })
       .join('');
   }
 
-  function freemodelEliminatedHtml() {
+  /** Upsert OpenAI-compatible freemodel channel into model_provider + optional key. */
+  function upsertFreemodelProvider(ch, apiKey) {
+    if (!ch || !ch.baseUrl) {
+      return Promise.reject(new Error('no_base_url'));
+    }
+    var ipc = global.OneToneIpc;
+    if (!ipc || typeof ipc.invoke !== 'function') {
+      return Promise.reject(new Error('no_ipc'));
+    }
+    var key = apiKey == null ? '' : String(apiKey).trim();
+    return ipc
+      .invoke('cmd_model_provider_upsert', {
+        args: {
+          id: ch.id,
+          name: ch.label || ch.id,
+          protocol: 'openai_compatible',
+          baseUrl: ch.baseUrl,
+          model: ch.defaultModel || 'default',
+          enabled: true,
+          timeoutMs: 60000,
+          supportsJson: true,
+          supportsStreaming: false,
+          supportsTools: false
+        }
+      })
+      .then(function () {
+        if (!key) {
+          // Kilo anonymous free — sentinel so chat may omit Authorization.
+          if (ch.id === 'kilo') {
+            return ipc.invoke('cmd_model_provider_set_key', {
+              args: { providerId: ch.id, apiKey: 'anonymous' }
+            });
+          }
+          return null;
+        }
+        return ipc.invoke('cmd_model_provider_set_key', {
+          args: { providerId: ch.id, apiKey: key }
+        });
+      });
+  }
+
+  function afterFreemodelProviderReady(channelId) {
     var FM = freemodelChannelsApi();
-    if (!FM || !FM.channels) return '';
-    var rows = FM.channels({ priority: 'P2' }).filter(function (c) {
-      return c.status === 'eliminated' || c.status === 'deferred';
+    if (FM && FM.markChecked) {
+      FM.markChecked(channelId, { status: 'ok', note: 'provider_ready' });
+    }
+    if (FM && FM.setConnectState) FM.setConnectState(channelId, 'ready');
+    if (FM && FM.setEnabled) FM.setEnabled(channelId, true);
+    var gateway = global.OneToneModelGateway;
+    var refresh = gateway && gateway.refreshCustomProviders
+      ? gateway.refreshCustomProviders()
+      : Promise.resolve();
+    return refresh.then(function () {
+      if (gateway && gateway.setRoute) {
+        ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+          gateway.setRoute(p, channelId);
+        });
+      }
+      if (!mounted || !root) return;
+      var host = root.querySelector('[data-ha2-model-route-host]');
+      if (host) host.removeAttribute('data-sig');
+      syncModeChrome(store() && store().getSnapshot && store().getSnapshot());
     });
-    if (!rows.length) return '';
+  }
+
+  function stopZenOauthPoll() {
+    if (zenOauthPollTimer) {
+      try {
+        global.clearTimeout(zenOauthPollTimer);
+      } catch (_) {}
+      zenOauthPollTimer = 0;
+    }
+  }
+
+  function markZenOauthFail(errMsg) {
+    var FM = freemodelChannelsApi();
+    if (FM && FM.setConnectState) {
+      FM.setConnectState('opencode_zen', 'error', {
+        error: String(errMsg || 'oauth_fail')
+      });
+    }
+  }
+
+  function finishZenOauthOk(messageFn) {
+    stopZenOauthPoll();
+    zenOauthBusy = false;
+    zenOauthPendingId = '';
+    zenOauthStatus = '';
+    var msg = messageFn || function () {};
+    msg(t('ha2FmZenOk', '已登录 OpenCode Zen — 可在模型列表选用'));
+    return afterFreemodelProviderReady('opencode_zen').then(function () {
+      toast(t('ha2FmZenOk', '已登录 OpenCode Zen — 可在模型列表选用'));
+    });
+  }
+
+  function pollZenOauth(pendingId, messageFn) {
+    if (!pendingId || pendingId !== zenOauthPendingId) return;
+    var msg = messageFn || function () {};
+    invoke('cmd_opencode_zen_oauth_poll', { pendingId: pendingId })
+      .then(function (res) {
+        if (pendingId !== zenOauthPendingId) return;
+        var st = res && res.status;
+        if (st === 'ok') {
+          return finishZenOauthOk(msg);
+        }
+        if (st === 'fail' || st === 'expired') {
+          stopZenOauthPoll();
+          zenOauthBusy = false;
+          zenOauthPendingId = '';
+          zenOauthStatus = st === 'expired' ? 'expired' : 'fail';
+          var failLine =
+            st === 'expired'
+              ? t('ha2AtrWbLoginExpired', '登录超时，请重试')
+              : t('ha2AtrWbLoginFail', '登录失败，请重试');
+          markZenOauthFail(failLine);
+          msg(failLine);
+          return;
+        }
+        zenOauthStatus = 'pending';
+        msg(t('ha2FmZenPending', '请在浏览器完成 OpenCode 登录…'));
+        zenOauthPollTimer = global.setTimeout(function () {
+          pollZenOauth(pendingId, messageFn);
+        }, 2000);
+      })
+      .catch(function () {
+        if (pendingId !== zenOauthPendingId) return;
+        stopZenOauthPoll();
+        zenOauthBusy = false;
+        zenOauthPendingId = '';
+        zenOauthStatus = 'fail';
+        var failLine = t('ha2AtrWbLoginFail', '登录失败，请重试');
+        markZenOauthFail(failLine);
+        msg(failLine);
+      });
+  }
+
+  function startOpencodeZenOauth(messageFn) {
+    var msg = messageFn || function (s) {
+      toast(s);
+    };
+    if (zenOauthBusy) return;
+    stopZenOauthPoll();
+    zenOauthBusy = true;
+    zenOauthStatus = 'pending';
+    var FM = freemodelChannelsApi();
+    if (FM && FM.setConnectState) FM.setConnectState('opencode_zen', 'connecting');
+    msg(t('ha2FmLoginWaiting', '已打开登录页，等待授权…（最长约 10 分钟）'));
+    invoke('cmd_opencode_zen_oauth_start', {})
+      .then(function (res) {
+        var pendingId = res && res.pendingId ? String(res.pendingId) : '';
+        var userCode = res && res.userCode ? String(res.userCode) : '';
+        if (!pendingId) {
+          zenOauthBusy = false;
+          zenOauthStatus = 'fail';
+          var noPending = t('ha2AtrWbLoginFail', '登录失败，请重试');
+          markZenOauthFail(noPending);
+          msg(noPending);
+          return;
+        }
+        // Rust already opened verification_uri_complete once — do not open again
+        // (second tab can race and show「Unable to verify this device code」).
+        zenOauthPendingId = pendingId;
+        msg(
+          t('ha2FmZenCodeHint', '请在浏览器登录 OpenCode 并点 Authorize') +
+            (userCode ? ' · 验证码 ' + userCode : '') +
+            ' · ' +
+            t('ha2FmLoginWaiting', '等待授权…（最长约 10 分钟）')
+        );
+        pollZenOauth(pendingId, messageFn);
+      })
+      .catch(function (err) {
+        zenOauthBusy = false;
+        zenOauthPendingId = '';
+        zenOauthStatus = 'fail';
+        var detail = String((err && err.message) || err || 'oauth_start_failed');
+        // Do not open bare /console/device without a device code — page will fail verify.
+        var failLine =
+          t(
+            'ha2FmZenIpcFail',
+            '无法启动 OpenCode 设备登录（需本机后端；无需另装 CLI）。请重启应用后重试。'
+          ) +
+          ' · ' +
+          detail;
+        markZenOauthFail(detail);
+        msg(failLine);
+      });
+  }
+
+  var raccoonOauthBusy = false;
+  var raccoonOauthPendingId = '';
+  var raccoonOauthPollTimer = 0;
+
+  function stopRaccoonOauthPoll() {
+    if (raccoonOauthPollTimer) {
+      try {
+        global.clearTimeout(raccoonOauthPollTimer);
+      } catch (_) {}
+      raccoonOauthPollTimer = 0;
+    }
+  }
+
+  function markRaccoonOauthFail(errMsg) {
+    var FM = freemodelChannelsApi();
+    if (FM && FM.setConnectState) {
+      FM.setConnectState('raccoon', 'error', {
+        error: String(errMsg || 'oauth_fail')
+      });
+    }
+  }
+
+  function pollRaccoonOauth(pendingId, messageFn) {
+    if (!pendingId || pendingId !== raccoonOauthPendingId) return;
+    var msg = messageFn || function () {};
+    invoke('cmd_raccoon_oauth_poll', { pendingId: pendingId })
+      .then(function (res) {
+        if (pendingId !== raccoonOauthPendingId) return;
+        var st = res && res.status;
+        if (st === 'ok') {
+          stopRaccoonOauthPoll();
+          raccoonOauthBusy = false;
+          raccoonOauthPendingId = '';
+          hideRaccoonQr();
+          msg(t('ha2FmRaccoonOk', '已登录 Raccoon — 可在模型列表选用'));
+          return afterFreemodelProviderReady('raccoon').then(function () {
+            toast(t('ha2FmRaccoonOk', '已登录 Raccoon — 可在模型列表选用'));
+          });
+        }
+        if (st === 'fail' || st === 'expired') {
+          stopRaccoonOauthPoll();
+          raccoonOauthBusy = false;
+          raccoonOauthPendingId = '';
+          hideRaccoonQr();
+          var failLine =
+            st === 'expired'
+              ? t('ha2FmRaccoonExpired', '二维码已过期，请重新点「登录开通」')
+              : t('ha2AtrWbLoginFail', '登录失败，请重试');
+          markRaccoonOauthFail(failLine);
+          msg(failLine);
+          return;
+        }
+        msg(t('ha2FmRaccoonPending', '请用微信扫一扫卡片内二维码…'));
+        raccoonOauthPollTimer = global.setTimeout(function () {
+          pollRaccoonOauth(pendingId, messageFn);
+        }, 2000);
+      })
+      .catch(function () {
+        if (pendingId !== raccoonOauthPendingId) return;
+        stopRaccoonOauthPoll();
+        raccoonOauthBusy = false;
+        raccoonOauthPendingId = '';
+        hideRaccoonQr();
+        var failLine = t('ha2AtrWbLoginFail', '登录失败，请重试');
+        markRaccoonOauthFail(failLine);
+        msg(failLine);
+      });
+  }
+
+  function raccoonQrModalScope() {
     return (
-      '<details class="ha2-fm-elim"><summary>' +
-      esc(t('ha2FmElimTitle', '已淘汰 / 暂缓（P2）')) +
-      '</summary><ul>' +
-      rows
-        .map(function (c) {
-          return (
-            '<li><b>' +
-            esc(c.label) +
-            '</b> — ' +
-            esc(c.reason || c.status) +
-            '</li>'
-          );
-        })
-        .join('') +
-      '</ul></details>'
+      (document && document.querySelector('[data-ha2-model-provider-modal]')) ||
+      root ||
+      null
     );
+  }
+
+  function showRaccoonQr(authUrl) {
+    if (!authUrl) return;
+    var scope = raccoonQrModalScope();
+    if (!scope) return;
+    var host = scope.querySelector('[data-raccoon-qr-host]');
+    var frame = scope.querySelector('[data-raccoon-qr-svg]');
+    if (!host || !frame) return;
+    var Qr = global.OneToneRaccoonQr;
+    var svg =
+      Qr && typeof Qr.renderSvg === 'function'
+        ? Qr.renderSvg(String(authUrl), { size: 168 })
+        : '';
+    if (!svg) {
+      host.hidden = true;
+      return;
+    }
+    frame.innerHTML = svg;
+    host.hidden = false;
+  }
+
+  function hideRaccoonQr() {
+    var scope = raccoonQrModalScope();
+    if (!scope) return;
+    var host = scope.querySelector('[data-raccoon-qr-host]');
+    var frame = scope.querySelector('[data-raccoon-qr-svg]');
+    if (frame) frame.innerHTML = '';
+    if (host) host.hidden = true;
+  }
+
+  function startRaccoonOauth(messageFn) {
+    var msg = messageFn || function (s) {
+      toast(s);
+    };
+    if (raccoonOauthBusy) return;
+    stopRaccoonOauthPoll();
+    hideRaccoonQr();
+    raccoonOauthBusy = true;
+    var FM = freemodelChannelsApi();
+    if (FM && FM.setConnectState) FM.setConnectState('raccoon', 'connecting');
+    msg(t('ha2FmRaccoonOpening', '正在生成微信登录码…'));
+    invoke('cmd_raccoon_oauth_start', {})
+      .then(function (res) {
+        var pendingId = res && res.pendingId ? String(res.pendingId) : '';
+        var authUrl = res && res.authUrl ? String(res.authUrl) : '';
+        if (!pendingId || !authUrl) {
+          raccoonOauthBusy = false;
+          var noPending = t('ha2AtrWbLoginFail', '登录失败，请重试');
+          markRaccoonOauthFail(noPending);
+          msg(noPending);
+          return;
+        }
+        raccoonOauthPendingId = pendingId;
+        showRaccoonQr(authUrl);
+        msg(t('ha2FmRaccoonPending', '请用微信扫一扫卡片内二维码…'));
+        pollRaccoonOauth(pendingId, messageFn);
+      })
+      .catch(function (err) {
+        raccoonOauthBusy = false;
+        raccoonOauthPendingId = '';
+        hideRaccoonQr();
+        var detail = String((err && err.message) || err || 'oauth_start_failed');
+        markRaccoonOauthFail(detail);
+        msg(
+          t('ha2FmRaccoonIpcFail', '无法启动 Raccoon 扫码登录，请重启应用后重试。') +
+            ' · ' +
+            detail
+        );
+      });
+  }
+
+  function startFreemodelOauthById(channelId, messageFn) {
+    if (channelId === 'workbuddy') {
+      startWbFreemodelLoginFromDock();
+      return;
+    }
+    if (channelId === 'opencode_zen') {
+      startOpencodeZenOauth(messageFn);
+      return;
+    }
+    if (channelId === 'raccoon') {
+      startRaccoonOauth(messageFn);
+      return;
+    }
+    if (channelId === 'loomy') {
+      if (messageFn) {
+        messageFn(t('ha2FmLoomyHint', '请在卡片内填写手机号并完成短信登录'));
+      }
+      return;
+    }
+    if (messageFn) messageFn(t('ha2FmOauthUnknown', '未知 OAuth 渠道'));
   }
 
   function openModelProviderModal(opts) {
     opts = opts || {};
     var softPadFocus = String(opts.softPadFocus || '').trim();
+    var fmFocus = String(opts.fmFocus || '').trim();
     var old = document.querySelector('[data-ha2-model-provider-modal]');
     if (old) {
       old.hidden = false;
+      var reuseTab = softPadFocus ? 'paid' : fmFocus ? 'free' : '';
+      if (reuseTab && typeof old.__ha2SetTab === 'function') old.__ha2SetTab(reuseTab);
       if (softPadFocus) {
         var focusEl = old.querySelector('[data-softpad-key="' + softPadFocus + '"]');
         if (focusEl) {
@@ -5597,139 +6606,174 @@
           } catch (_) {}
         }
       }
+      if (fmFocus) {
+        var fmCard = old.querySelector('[data-fm-card="' + fmFocus + '"]');
+        if (fmCard) {
+          try {
+            fmCard.scrollIntoView({ block: 'nearest' });
+            var fmBtn = fmCard.querySelector('[data-fm-checkin]');
+            if (fmBtn) fmBtn.focus();
+          } catch (_) {}
+        }
+      }
       return;
     }
     var modal = document.createElement('div');
     modal.className = 'ha2-model-provider-modal';
     modal.setAttribute('data-ha2-model-provider-modal', '');
-    var def = wbDefaultAccount(wbLocalCache);
-    var wbModels = def && Array.isArray(def.models) ? def.models : [];
-    var wbModelList = wbModels.length
-      ? '<ul class="ha2-model-provider-models">' +
-        wbModels
-          .slice(0, 12)
-          .map(function (m) {
-            return '<li>' + esc((m && (m.name || m.id)) || '') + '</li>';
-          })
-          .join('') +
-        '</ul>'
-      : '<p class="ha2-model-provider-hint">' +
-        esc(t('ha2ModelWbLoginModelsHint', '登录后会导入账号额度下的多个可用模型')) +
-        '</p>';
     var softCards = SOFTPAD_FREEMODEL_CATALOG.map(function (row) {
       var st = softPadFreemodelKeys[row.id] || {};
+      var disp = modelRouteDisplay(row.label || row.id, row.id);
       var status = st.configured
         ? esc(t('ha2ModelSoftPadReady', '已配置')) +
           (st.masked ? ' · ' + esc(st.masked) : '')
-        : esc(t('ha2ModelSoftPadNeedKey', '填 Key 可用'));
+        : esc(t('ha2ModelSoftPadNeedKey', '待填 Key'));
       return (
-        '<div class="ha2-softpad-key-card" data-softpad-card="' +
+        '<div class="ha2-fm-card ha2-softpad-key-card' +
+        (st.configured ? ' is-ready' : '') +
+        '" data-softpad-card="' +
         esc(row.id) +
         '">' +
-        '<div class="ha2-softpad-key-hd"><b>' +
-        esc(row.label) +
-        '</b><span>' +
+        '<div class="ha2-fm-card-hd">' +
+        '<div class="ha2-fm-card-title"><img class="ha2-fm-ico" src="' +
+        esc(disp.icon) +
+        '" alt="" width="18" height="18" decoding="async"><b>' +
+        esc(disp.label || row.label) +
+        '</b></div><span class="ha2-fm-state" data-softpad-state="' +
+        esc(row.id) +
+        '">' +
         status +
         '</span></div>' +
-        '<p class="ha2-model-provider-hint">' +
-        esc(row.model) +
-        '</p>' +
-        '<label>' +
-        esc(t('ha2ModelSoftPadKeyLabel', 'API Key')) +
-        '<input type="password" autocomplete="new-password" data-softpad-key="' +
+        softPadCapsHtml(row.caps) +
+        '<div class="ha2-softpad-key-row">' +
+        '<input type="password" class="ha2-softpad-key-input" autocomplete="new-password" data-softpad-key="' +
         esc(row.id) +
         '" placeholder="' +
-        esc(st.configured ? '•••• 已保存，重填可覆盖' : '粘贴后即可在首页选用') +
-        '"></label>' +
-        '<div class="ha2-model-provider-actions">' +
-        '<a class="ha2-link" href="' +
+        esc(st.configured ? '•••• 已保存，粘贴可覆盖' : '粘贴即自动保存') +
+        '">' +
+        '<a class="ha2-softpad-key-link" href="' +
         esc(row.consoleUrl) +
         '" target="_blank" rel="noopener noreferrer">' +
-        esc(t('ha2ModelSoftPadGetKey', '去控制台拿 Key')) +
-        '</a>' +
-        '<button type="button" class="ha2-btn primary" data-softpad-save="' +
-        esc(row.id) +
-        '">' +
-        esc(t('ha2ModelSoftPadSave', '保存并选用')) +
-        '</button></div></div>'
+        esc(t('ha2ModelSoftPadGetKey', '拿 Key')) +
+        '</a></div></div>'
       );
     }).join('');
     var FM = freemodelChannelsApi();
-    var dueN = FM && FM.dueCount ? FM.dueCount() : 0;
-    var p0Cards = freemodelCheckinCardsHtml('P0');
-    var p1Cards = freemodelCheckinCardsHtml('P1');
-    var elimHtml = freemodelEliminatedHtml();
+    var readyIds = freemodelReadyIds();
+    var dueN = FM && FM.dueCount ? FM.dueCount({ readyIds: readyIds }) : 0;
+    var freeModelCards = freemodelCheckinCardsHtml();
     modal.innerHTML =
       '<div class="ha2-model-provider-backdrop" data-model-provider-close></div>' +
-      '<section class="ha2-model-provider-dialog ha2-fm-dialog" role="dialog" aria-modal="true" aria-labelledby="ha2ModelProviderTitle">' +
-      '<button type="button" class="ha2-model-provider-close" data-model-provider-close>×</button>' +
+      '<section class="ha2-model-provider-dialog ha2-fm-dialog ha2-fm-connect-sheet" role="dialog" aria-modal="true" aria-labelledby="ha2ModelProviderTitle">' +
+      '<button type="button" class="ha2-model-provider-close" data-model-provider-close aria-label="关闭">×</button>' +
+      '<header class="ha2-fm-sheet-hd">' +
       '<h2 id="ha2ModelProviderTitle">' +
-      esc(t('ha2ModelProviders', '模型提供方')) +
+      esc(t('ha2ModelProviders', '开通免费模型')) +
+      (dueN ? '<span class="ha2-fm-due-badge">' + dueN + '</span>' : '') +
       '</h2>' +
-      '<p>' +
+      '<p class="ha2-fm-sheet-lead">' +
       esc(
         t(
           'ha2ModelProviderFuseHint',
-          'P0–P2 免费额度：一键登录 / 签到领取今日额度；付费 Key 请走自定义 API。'
+          '开通后进首页模型下拉。已可用只显示状态；未开通才展开操作。'
         )
       ) +
-      '</p>' +
-      '<div class="ha2-model-provider-tabs" role="tablist">' +
-      '<button type="button" class="ha2-model-provider-tab is-on" data-provider-tab="login" role="tab" aria-selected="true">' +
-      esc(t('ha2ModelTabLogin', '免费额度 / 签到')) +
-      (dueN
-        ? '<span class="ha2-fm-due-badge">' + dueN + '</span>'
-        : '') +
+      '</p></header>' +
+      '<div class="ha2-model-provider-tabs" role="tablist" data-fm-subtabs>' +
+      '<button type="button" class="ha2-model-provider-tab is-on" role="tab" aria-selected="true" data-fm-tab="free">' +
+      esc(t('ha2FmTabFree', '免费开通')) +
       '</button>' +
-      '<button type="button" class="ha2-model-provider-tab" data-provider-tab="api" role="tab" aria-selected="false">' +
+      '<button type="button" class="ha2-model-provider-tab" role="tab" aria-selected="false" data-fm-tab="paid">' +
+      esc(t('ha2FmTabSoftPad', 'Soft Pad 能力')) +
+      '</button>' +
+      '<button type="button" class="ha2-model-provider-tab" role="tab" aria-selected="false" data-fm-tab="api">' +
       esc(t('ha2ModelTabApi', '自定义 API')) +
       '</button></div>' +
-      '<div class="ha2-model-provider-pane" data-provider-pane="login">' +
-      '<div class="ha2-fm-toolbar">' +
+      '<div class="ha2-model-provider-pane" data-fm-pane="free" data-fm-connect-list>' +
+      '<div class="ha2-fm-connect-list">' +
+      freeModelCards +
+      '</div></div>' +
+      '<div class="ha2-model-provider-pane" data-fm-pane="paid" data-fm-paid-keys hidden>' +
       '<p class="ha2-model-provider-hint">' +
       esc(
         t(
-          'ha2ModelLoginPaneHint',
-          'P0：WorkBuddy 真 OAuth + OpenCode/Kilo 匿名免费池。P1：官方页一键签到。今日未签会显示角标。'
+          'ha2FmSoftPadCapsHint',
+          '目前仅这 4 家接了 Soft Pad 余额/计量/ATR；粘贴 Key 后自动保存。其它厂商请用「自定义 API」。'
         )
       ) +
       '</p>' +
-      '<button type="button" class="ha2-btn primary" data-fm-checkin-all>' +
-      esc(t('ha2FmCheckinAll', '一键签到全部')) +
-      '</button></div>' +
-      '<div class="ha2-model-provider-section"><b>' +
-      esc(t('ha2FmP0', 'P0 · 立即可用')) +
-      '</b>' +
-      p0Cards +
-      (wbModelList
-        ? '<div class="ha2-fm-wb-models"><span class="ha2-model-provider-hint">' +
-          esc(t('ha2ModelTagWb', 'WorkBuddy 已导入模型')) +
-          '</span>' +
-          wbModelList +
-          '</div>'
-        : '') +
-      '</div>' +
-      '<div class="ha2-model-provider-section"><b>' +
-      esc(t('ha2FmP1', 'P1 · 每日签到')) +
-      '</b>' +
-      p1Cards +
-      '</div>' +
-      elimHtml +
-      '</div>' +
-      '<div class="ha2-model-provider-pane" data-provider-pane="api" hidden>' +
-      '<label>名称<input name="name" value="MiniMax CN"></label>' +
-      '<label>Provider ID<input name="id" value="minimax_cn"></label>' +
-      '<label>API 地址<input name="baseUrl" value="https://api.minimaxi.com/v1"></label>' +
-      '<label>模型名称<input name="model" list="ha2-minimax-models" value="MiniMax-M2.7"></label>' +
-      '<datalist id="ha2-minimax-models"><option value="MiniMax-M2.7"></option><option value="MiniMax-M2.7-highspeed"></option><option value="MiniMax-M3"></option><option value="MiniMax-Text-01"></option><option value="MiniMax-M1"></option></datalist>' +
-      '<label>API Key<input name="apiKey" type="password" autocomplete="new-password"></label>' +
-      '<label>默认用途<select name="purpose"><option value="synthesis">调研成稿</option><option value="intent">意图解析</option><option value="planning">调研规划</option><option value="review">调研审查</option></select></label>' +
-      '<div class="ha2-model-provider-actions"><button type="button" class="ha2-btn" data-model-provider-test>测试连接</button><button type="button" class="ha2-btn primary" data-model-provider-save>保存</button></div>' +
-      '<details class="ha2-fm-paid-keys"><summary>' +
-      esc(t('ha2FmPaidKeys', '兼容：Soft Pad 付费 Key（非 freemodel）')) +
-      '</summary>' +
+      '<div class="ha2-fm-connect-list">' +
       softCards +
-      '</details></div>' +
+      '</div></div>' +
+      '<div class="ha2-model-provider-pane" data-fm-pane="api" data-provider-pane="api" hidden>' +
+      (function () {
+        var def = customApiDefaultPreset();
+        var defId = def ? def.id : '';
+        var defLabel = def ? def.label : t('ha2FmCustomPickProv', '请选择提供商');
+        var defModel = def ? def.model || '' : '';
+        var defIco = def && def.icon
+          ? '<img class="ha2-fm-ico" data-custom-prov-ico src="' +
+            esc(def.icon) +
+            '" alt="" width="18" height="18" decoding="async">'
+          : '<span class="ha2-fm-ico ha2-fm-ico--empty" data-custom-prov-ico-empty aria-hidden="true"></span><img class="ha2-fm-ico" data-custom-prov-ico hidden alt="" width="18" height="18" decoding="async">';
+        var opts = customApiPresets()
+          .map(function (p) {
+            return customApiProvOptHtml(p, defId, {});
+          })
+          .join('');
+        return (
+          '<div class="ha2-fm-custom-grid" data-custom-api>' +
+          '<div class="ha2-fm-field">' +
+          esc(t('ha2FmCustomProvider', '提供商')) +
+          '<button type="button" class="ha2-fm-prov-trigger" data-custom-prov-trigger aria-haspopup="listbox" aria-expanded="false">' +
+          defIco +
+          '<span data-custom-prov-label>' +
+          esc(defLabel) +
+          '</span><span class="ha2-fm-prov-caret" aria-hidden="true">▾</span></button>' +
+          '<div class="ha2-fm-prov-menu" data-custom-prov-menu role="listbox" hidden>' +
+          '<input type="search" class="ha2-fm-prov-search" data-custom-prov-search placeholder="' +
+          esc(t('ha2FmCustomSearch', '搜索提供商')) +
+          '" autocomplete="off">' +
+          '<div class="ha2-fm-prov-list" data-custom-prov-list>' +
+          opts +
+          '<button type="button" class="ha2-fm-prov-opt ha2-fm-prov-other" role="option" data-custom-prov="__other__">' +
+          '<span class="ha2-fm-prov-plus">+</span><span>' +
+          esc(t('ha2FmCustomOther', '其他')) +
+          '</span></button></div></div></div>' +
+          '<label class="ha2-fm-field" data-custom-model-field>' +
+          esc(t('ha2FmCustomModel', '模型')) +
+          '<input data-custom-model list="ha2-custom-model-list" value="' +
+          esc(defModel) +
+          '" placeholder="' +
+          esc(t('ha2FmCustomModelPh', '有 Key 后可下拉选择')) +
+          '"><datalist id="ha2-custom-model-list" data-custom-model-list></datalist></label>' +
+          '<div class="ha2-fm-custom-other" data-custom-other hidden>' +
+          '<label class="ha2-fm-field">' +
+          esc(t('ha2FmCustomName', '名称')) +
+          '<input data-custom-other-name value="Custom"></label>' +
+          '<label class="ha2-fm-field">Provider ID<input data-custom-other-id value="custom"></label>' +
+          '<label class="ha2-fm-field">' +
+          esc(t('ha2FmCustomBaseUrl', 'API 地址')) +
+          '<input data-custom-other-base placeholder="https://…/v1"></label></div>' +
+      '<label class="ha2-fm-field">API Key<input name="apiKey" type="password" autocomplete="new-password" placeholder="' +
+      esc(t('ha2FmCustomKeyPh', '粘贴 API Key')) +
+      '"></label>' +
+      '<p class="ha2-model-provider-hint" data-custom-key-note hidden>' +
+      esc(
+        t(
+          'ha2FmCustomMinimaxKeyNote',
+          'Soft Pad 的 MiniMax Coding Plan Key 只管 5h 余量，和这里的开放平台 Chat API Key 不是同一把；首页模型下拉要用这边保存的 Key。'
+        )
+      ) +
+      '</p>' +
+      '<div class="ha2-fm-card-acts"><button type="button" class="ha2-btn" data-model-provider-test>' +
+          esc(t('ha2FmCustomTest', '测试连接')) +
+          '</button><button type="button" class="ha2-btn primary ha2-fm-row-cta" data-model-provider-save>' +
+          esc(t('ha2FmCustomSave', '保存')) +
+          '</button></div></div>'
+        );
+      })() +
+      '</div>' +
       '<div class="ha2-model-provider-status" role="status"></div></section>';
     document.body.appendChild(modal);
     var close = function () {
@@ -5739,27 +6783,267 @@
       el.onclick = close;
     });
     var setTab = function (tab) {
-      modal.querySelectorAll('[data-provider-tab]').forEach(function (btn) {
-        var on = btn.getAttribute('data-provider-tab') === tab;
+      tab = String(tab || 'free');
+      if (tab !== 'free' && tab !== 'paid' && tab !== 'api') tab = 'free';
+      modal.querySelectorAll('[data-fm-tab]').forEach(function (btn) {
+        var on = btn.getAttribute('data-fm-tab') === tab;
         btn.classList.toggle('is-on', on);
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      modal.querySelectorAll('[data-provider-pane]').forEach(function (pane) {
-        pane.hidden = pane.getAttribute('data-provider-pane') !== tab;
+      modal.querySelectorAll('[data-fm-pane]').forEach(function (pane) {
+        var on = pane.getAttribute('data-fm-pane') === tab;
+        if (on) pane.removeAttribute('hidden');
+        else pane.setAttribute('hidden', '');
       });
     };
-    modal.querySelectorAll('[data-provider-tab]').forEach(function (btn) {
+    modal.querySelectorAll('[data-fm-tab]').forEach(function (btn) {
       btn.onclick = function () {
-        setTab(btn.getAttribute('data-provider-tab'));
+        setTab(btn.getAttribute('data-fm-tab'));
       };
     });
-    var values = function () {
-      var out = {};
-      modal.querySelectorAll('input,select').forEach(function (el) {
-        if (!el.name) return;
-        out[el.name] = String(el.value || '').trim();
+    modal.__ha2SetTab = setTab;
+    var customDef = customApiDefaultPreset();
+    var customProvId = customDef ? customDef.id : '';
+    var customConfiguredIds = {};
+    var customSavedModels = {};
+    var customProvMenu = modal.querySelector('[data-custom-prov-menu]');
+    var customProvTrigger = modal.querySelector('[data-custom-prov-trigger]');
+    var customProvSearch = modal.querySelector('[data-custom-prov-search]');
+    var customProvList = modal.querySelector('[data-custom-prov-list]');
+    var customModelsSeq = 0;
+    var seedModelsForProv = function (id) {
+      var preset = customApiPresetById(id);
+      return preset && Array.isArray(preset.models) ? preset.models.slice() : [];
+    };
+    var fillCustomModelList = function (ids, prefer) {
+      var dl = modal.querySelector('[data-custom-model-list]');
+      var modelEl = modal.querySelector('[data-custom-model]');
+      if (!dl) return;
+      ids = Array.isArray(ids) ? ids : [];
+      var seen = {};
+      var merged = [];
+      ids.concat(seedModelsForProv(customProvId)).forEach(function (id) {
+        id = String(id || '').trim();
+        if (!id || seen[id]) return;
+        seen[id] = true;
+        merged.push(id);
       });
-      return out;
+      dl.innerHTML = merged
+        .map(function (id) {
+          return '<option value="' + esc(id) + '"></option>';
+        })
+        .join('');
+      if (modelEl && prefer) {
+        if (merged.indexOf(prefer) >= 0 || !modelEl.value) modelEl.value = prefer;
+      }
+    };
+    var syncCustomKeyPlaceholder = function () {
+      var keyEl = modal.querySelector('[name="apiKey"]');
+      if (!keyEl) return;
+      var saved = !!(customProvId && customConfiguredIds[customProvId]);
+      keyEl.placeholder = saved
+        ? t('ha2FmCustomKeySavedPh', '已保存 · 留空沿用，重填可覆盖')
+        : t('ha2FmCustomKeyPh', '粘贴 API Key');
+    };
+    var fetchCustomModels = function () {
+      var cfg = resolveCustomApi();
+      if (!cfg || !cfg.baseUrl) {
+        fillCustomModelList(seedModelsForProv(customProvId));
+        return;
+      }
+      // Always seed known catalog models (API /models can lag or omit latest).
+      fillCustomModelList(
+        seedModelsForProv(cfg.id),
+        cfg.model || customSavedModels[cfg.id] || ''
+      );
+      var hasKey = !!(cfg.apiKey || customConfiguredIds[cfg.id]);
+      if (!hasKey) return;
+      var seq = ++customModelsSeq;
+      invokeMp('cmd_model_provider_list_models', {
+        providerId: cfg.id || undefined,
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey || undefined
+      })
+        .then(function (ids) {
+          if (seq !== customModelsSeq) return;
+          fillCustomModelList(
+            (Array.isArray(ids) ? ids : []).concat(seedModelsForProv(cfg.id)),
+            cfg.model || customSavedModels[cfg.id] || ''
+          );
+        })
+        .catch(function () {
+          /* seed list already shown */
+        });
+    };
+    var bindCustomProvOpts = function () {
+      modal.querySelectorAll('[data-custom-prov]').forEach(function (opt) {
+        opt.onclick = function () {
+          applyCustomProv(opt.getAttribute('data-custom-prov'));
+        };
+      });
+    };
+    var rebuildCustomProvList = function () {
+      if (!customProvList) return;
+      var html = customApiPresets()
+        .map(function (p) {
+          return customApiProvOptHtml(p, customProvId, customConfiguredIds);
+        })
+        .join('');
+      html +=
+        '<button type="button" class="ha2-fm-prov-opt ha2-fm-prov-other" role="option" data-custom-prov="__other__">' +
+        '<span class="ha2-fm-prov-plus">+</span><span>' +
+        esc(t('ha2FmCustomOther', '其他')) +
+        '</span></button>';
+      customProvList.innerHTML = html;
+      bindCustomProvOpts();
+      filterCustomProv(customProvSearch ? customProvSearch.value : '');
+    };
+    var applyCustomProv = function (id) {
+      customProvId = String(id || '');
+      var isOther = customProvId === '__other__';
+      var preset = isOther ? null : customApiPresetById(customProvId);
+      var ico = modal.querySelector('[data-custom-prov-ico]');
+      var icoEmpty = modal.querySelector('[data-custom-prov-ico-empty]');
+      var lab = modal.querySelector('[data-custom-prov-label]');
+      var modelEl = modal.querySelector('[data-custom-model]');
+      var other = modal.querySelector('[data-custom-other]');
+      if (isOther) {
+        if (ico) ico.hidden = true;
+        if (icoEmpty) icoEmpty.hidden = false;
+        if (lab) lab.textContent = t('ha2FmCustomOther', '其他');
+        if (other) other.hidden = false;
+      } else if (preset) {
+        if (preset.icon) {
+          if (ico) {
+            ico.hidden = false;
+            ico.src = preset.icon;
+          }
+          if (icoEmpty) icoEmpty.hidden = true;
+        } else {
+          if (ico) ico.hidden = true;
+          if (icoEmpty) icoEmpty.hidden = false;
+        }
+        if (lab) lab.textContent = preset.label;
+        if (modelEl) {
+          modelEl.value = customSavedModels[preset.id] || preset.model || '';
+        }
+        if (other) other.hidden = true;
+      }
+      modal.querySelectorAll('[data-custom-prov]').forEach(function (opt) {
+        opt.classList.toggle('on', opt.getAttribute('data-custom-prov') === customProvId);
+      });
+      if (customProvMenu) customProvMenu.hidden = true;
+      if (customProvTrigger) customProvTrigger.setAttribute('aria-expanded', 'false');
+      if (customProvSearch) customProvSearch.value = '';
+      filterCustomProv('');
+      syncCustomKeyPlaceholder();
+      var note = modal.querySelector('[data-custom-key-note]');
+      if (note) {
+        var showMm =
+          !isOther &&
+          preset &&
+          (/^minimax/i.test(preset.id) || /minimax/i.test(preset.label || ''));
+        note.hidden = !showMm;
+      }
+      fetchCustomModels();
+    };
+    var filterCustomProv = function (q) {
+      q = String(q || '')
+        .trim()
+        .toLowerCase();
+      modal.querySelectorAll('[data-custom-prov-list] [data-custom-prov]').forEach(function (opt) {
+        if (opt.getAttribute('data-custom-prov') === '__other__') {
+          opt.hidden = false;
+          return;
+        }
+        var label = String(opt.getAttribute('data-custom-prov-label') || opt.textContent || '')
+          .toLowerCase();
+        var id = String(opt.getAttribute('data-custom-prov') || '').toLowerCase();
+        var savedOnly = q === '已保存' || q === 'saved';
+        if (savedOnly) {
+          opt.hidden = opt.getAttribute('data-custom-saved') !== '1';
+          return;
+        }
+        opt.hidden = !!(q && label.indexOf(q) < 0 && id.indexOf(q) < 0);
+      });
+    };
+    if (customProvTrigger) {
+      customProvTrigger.onclick = function (ev) {
+        ev.preventDefault();
+        if (!customProvMenu) return;
+        var open = customProvMenu.hidden;
+        customProvMenu.hidden = !open;
+        customProvTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && customProvSearch) {
+          try {
+            customProvSearch.focus();
+          } catch (_) {}
+        }
+      };
+    }
+    if (customProvSearch) {
+      customProvSearch.oninput = function () {
+        filterCustomProv(customProvSearch.value);
+      };
+      customProvSearch.onclick = function (ev) {
+        ev.stopPropagation();
+      };
+    }
+    bindCustomProvOpts();
+    var keyInput = modal.querySelector('[name="apiKey"]');
+    if (keyInput) {
+      var keyTimer = 0;
+      keyInput.oninput = function () {
+        if (keyTimer) clearTimeout(keyTimer);
+        keyTimer = setTimeout(function () {
+          fetchCustomModels();
+        }, 450);
+      };
+    }
+    var resolveCustomApi = function () {
+      var keyEl = modal.querySelector('[name="apiKey"]');
+      var apiKey = keyEl ? String(keyEl.value || '').trim() : '';
+      var modelEl = modal.querySelector('[data-custom-model]');
+      var model = modelEl ? String(modelEl.value || '').trim() : '';
+      if (customProvId === '__other__') {
+        return {
+          id: String(
+            (modal.querySelector('[data-custom-other-id]') || {}).value || ''
+          ).trim(),
+          name: String(
+            (modal.querySelector('[data-custom-other-name]') || {}).value || ''
+          ).trim(),
+          baseUrl: String(
+            (modal.querySelector('[data-custom-other-base]') || {}).value || ''
+          ).trim(),
+          model: model,
+          apiKey: apiKey
+        };
+      }
+      var preset = customApiPresetById(customProvId);
+      if (!preset) return null;
+      return {
+        id: preset.id,
+        name: preset.label,
+        baseUrl: preset.baseUrl,
+        model: model || preset.model || '',
+        apiKey: apiKey
+      };
+    };
+    var applyCustomRoutes = function (cfg) {
+      var gateway = global.OneToneModelGateway;
+      if (!gateway || !cfg || !cfg.id) return;
+      gateway.registerProvider({
+        id: cfg.id,
+        name: cfg.name || cfg.id,
+        label: cfg.name || cfg.id,
+        kind: 'custom',
+        source: 'user',
+        configured: true
+      });
+      ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+        if (gateway.setRoute) gateway.setRoute(p, cfg.id);
+      });
     };
     var message = function (s) {
       var el = modal.querySelector('.ha2-model-provider-status');
@@ -5775,39 +7059,84 @@
       syncModeChrome(store() && store().getSnapshot());
     };
     function refreshFreemodelModalCards() {
-      // Rebuild is heavy; update card chrome in place.
       var api = freemodelChannelsApi();
       if (!api) return;
       modal.querySelectorAll('[data-fm-card]').forEach(function (card) {
         var id = card.getAttribute('data-fm-card');
         var ch = api.byId(id);
         if (!ch) return;
-        var done = api.checkedToday(id);
-        card.classList.toggle('is-done', done);
+        var ctx = freemodelCapCtx(ch);
+        var cap = api.resolveCapability
+          ? api.resolveCapability(ch, ctx)
+          : { state: 'unconfigured', label: '' };
+        card.classList.toggle('is-ready', cap.state === 'ready');
+        card.classList.toggle('is-connecting', cap.state === 'connecting');
+        card.classList.toggle('is-error', cap.state === 'error');
+        card.classList.remove('is-done');
+        card.setAttribute('data-fm-cap', cap.state || 'unconfigured');
+        if (cap.wbPhase) card.setAttribute('data-fm-wb-phase', cap.wbPhase);
+        else card.removeAttribute('data-fm-wb-phase');
         var stEl = card.querySelector('.ha2-fm-state');
-        if (stEl) stEl.textContent = api.summaryLine(ch);
+        if (stEl) {
+          stEl.textContent = api.summaryLine
+            ? api.summaryLine(ch, cap)
+            : cap.label || '';
+        }
         var btn = card.querySelector('[data-fm-checkin]');
-        if (btn) {
-          btn.classList.toggle('primary', !done);
-          btn.textContent = done
-            ? t('ha2FmRecheck', '再签一次')
-            : freemodelCheckinCtaLabel(ch);
+        var acts = card.querySelector('.ha2-fm-card-acts');
+        var needWbRefresh =
+          ch.id === 'workbuddy' &&
+          (cap.wbPhase === 'no_models' || cap.state !== 'ready');
+        if (cap.state === 'ready' && !needWbRefresh) {
+          if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
+          if (acts && !acts.querySelector('button, a')) {
+            acts.setAttribute('hidden', '');
+          }
+        } else if (btn) {
+          btn.classList.add('primary', 'ha2-fm-row-cta');
+          btn.textContent = freemodelCheckinCtaLabel(ch, cap);
+          btn.disabled = false;
+          btn.removeAttribute('disabled');
+          if (acts) acts.removeAttribute('hidden');
         }
       });
       var badge = modal.querySelector('.ha2-fm-due-badge');
-      var due = api.dueCount();
+      var due = api.dueCount({ readyIds: freemodelReadyIds() });
       if (badge) {
         if (due) badge.textContent = String(due);
         else badge.remove();
       } else if (due) {
-        var tab = modal.querySelector('[data-provider-tab="login"]');
-        if (tab) {
+        var title = modal.querySelector('#ha2ModelProviderTitle');
+        if (title) {
           var span = document.createElement('span');
           span.className = 'ha2-fm-due-badge';
           span.textContent = String(due);
-          tab.appendChild(span);
+          title.appendChild(span);
         }
       }
+    }
+
+    function setFmLoginStatus(id, text) {
+      var el = modal.querySelector('[data-fm-login-status="' + id + '"]');
+      if (!el) return;
+      var s = String(text || '').trim();
+      el.hidden = !s;
+      el.textContent = s;
+    }
+
+    function showFreemodelPaste(id) {
+      var host = modal.querySelector('[data-fm-paste-host="' + id + '"]');
+      if (host) {
+        host.hidden = false;
+        var input = host.querySelector('[data-fm-paste-key]');
+        if (input) {
+          try {
+            input.focus();
+          } catch (_) {}
+        }
+      }
+      var reveal = modal.querySelector('[data-fm-paste-reveal="' + id + '"]');
+      if (reveal) reveal.hidden = true;
     }
 
     function runFreemodelCheckin(id) {
@@ -5816,29 +7145,128 @@
         message(t('ha2FmMissing', '签到模块未加载'));
         return;
       }
+      var ch = api.byId ? api.byId(id) : null;
       message(t('ha2FmWorking', '处理中…'));
-      api.checkIn(id).then(function (res) {
-        if (res && res.action === 'oauth') {
-          message(t('ha2AtrWbLoginPending', '请在浏览器完成登录…'));
-          close();
-          startWbFreemodelLoginFromDock();
-          return;
-        }
-        if (res && res.ok) {
-          message(
-            (res.channel && res.channel.label ? res.channel.label + ' · ' : '') +
-              t('ha2FmOk', '已签到 / 已启用')
-          );
-          refreshFreemodelModalCards();
-          refreshRouteHost();
-          return;
-        }
-        message(
-          t('ha2FmFail', '签到失败') +
+      setFmLoginStatus(id, t('ha2FmWorking', '处理中…'));
+      if (api.setConnectState) api.setConnectState(id, 'connecting');
+      refreshFreemodelModalCards();
+      // One open only: oauth opens in Rust; paste/browser open inside checkIn.
+      api
+        .checkIn(id)
+        .then(function (res) {
+          if (res && res.action === 'one_tap') {
+            var tapCh = (res && res.channel) || ch;
+            if (!tapCh) {
+              message(t('ha2FmFail', '开通失败'));
+              return;
+            }
+            return upsertFreemodelProvider(tapCh, '')
+              .then(function () {
+                if (api.setConnectState) api.setConnectState(id, 'ready');
+                return afterFreemodelProviderReady(id);
+              })
+              .then(function () {
+                refreshFreemodelModalCards();
+                refreshRouteHost();
+                var ready = t(
+                  'ha2FmKiloAnonReady',
+                  '已一键启用 — 需要账号额度时再点「填写 API Key」'
+                );
+                message(ready);
+                setFmLoginStatus(id, ready);
+              })
+              .catch(function (err) {
+                if (api.setConnectState) {
+                  api.setConnectState(id, 'error', {
+                    error: String((err && err.message) || err || '')
+                  });
+                }
+                refreshFreemodelModalCards();
+                var fail =
+                  t('ha2FmFail', '开通失败') +
+                  '：' +
+                  String((err && err.message) || err || '');
+                message(fail);
+                setFmLoginStatus(id, fail);
+              });
+          }
+          if (res && res.action === 'oauth') {
+            var chId = (res.channel && res.channel.id) || id;
+            var waiting = t(
+              'ha2FmLoginWaiting',
+              '已打开登录页，等待授权…（最长约 10 分钟）'
+            );
+            message(waiting);
+            setFmLoginStatus(chId, waiting);
+            if (chId === 'workbuddy') {
+              close();
+              startFreemodelOauthById(chId, message);
+              return;
+            }
+            startFreemodelOauthById(chId, function (s) {
+              message(s);
+              setFmLoginStatus(chId, s);
+              refreshFreemodelModalCards();
+            });
+            return;
+          }
+          if (res && res.action === 'paste_key') {
+            showFreemodelPaste(id);
+            var pasteHint = t(
+              'ha2FmPasteHint',
+              '已打开控制台 — 登录后复制 Key 粘到下方即可进下拉'
+            );
+            message(pasteHint);
+            setFmLoginStatus(id, pasteHint);
+            return;
+          }
+          if (res && res.action === 'opened') {
+            var openedLine =
+              (res.channel && res.channel.label ? res.channel.label + ' · ' : '') +
+              t('ha2FmPageOpened', '已打开登录页 — 请在浏览器完成登录');
+            message(openedLine);
+            setFmLoginStatus(id, openedLine);
+            refreshFreemodelModalCards();
+            return;
+          }
+          if (res && res.ok) {
+            if (api.setConnectState) api.setConnectState(id, 'ready');
+            var okLine =
+              (res.channel && res.channel.label ? res.channel.label + ' · ' : '') +
+              t('ha2FmOk', '已开通');
+            message(okLine);
+            setFmLoginStatus(id, okLine);
+            refreshFreemodelModalCards();
+            refreshRouteHost();
+            return;
+          }
+          if (api.setConnectState) {
+            api.setConnectState(id, 'error', {
+              error: String((res && res.message) || '')
+            });
+          }
+          var fail =
+            t('ha2FmFail', '开通失败') +
             '：' +
-            String((res && res.message) || '')
-        );
-      });
+            String((res && res.message) || '');
+          message(fail);
+          setFmLoginStatus(id, fail);
+          refreshFreemodelModalCards();
+        })
+        .catch(function (err) {
+          if (api.setConnectState) {
+            api.setConnectState(id, 'error', {
+              error: String((err && err.message) || err || '')
+            });
+          }
+          var fail =
+            t('ha2FmFail', '开通失败') +
+            '：' +
+            String((err && err.message) || err || '');
+          message(fail);
+          setFmLoginStatus(id, fail);
+          refreshFreemodelModalCards();
+        });
     }
 
     var checkAllBtn = modal.querySelector('[data-fm-checkin-all]');
@@ -5849,27 +7277,75 @@
           message(t('ha2FmMissing', '签到模块未加载'));
           return;
         }
-        message(t('ha2FmBatchWorking', '正在批量签到…'));
-        api.checkInAllDue({ staggerMs: 400 }).then(function (batch) {
+        message(t('ha2FmBatchWorking', '正在批量开通…'));
+        api
+          .checkInAllDue({ staggerMs: 400, readyIds: freemodelReadyIds() })
+          .then(function (batch) {
           var opened = (batch.results || []).filter(function (r) {
             return r && r.ok;
           }).length;
-          refreshFreemodelModalCards();
-          if (batch.oauthIds && batch.oauthIds.indexOf('workbuddy') >= 0) {
+          var tapQueue = Promise.resolve();
+          (batch.results || []).forEach(function (r) {
+            if (r && r.action === 'paste_key' && r.channel) {
+              showFreemodelPaste(r.channel.id);
+            }
+            if (r && r.action === 'one_tap' && r.channel) {
+              tapQueue = tapQueue
+                .then(function () {
+                  return upsertFreemodelProvider(r.channel, '').then(function () {
+                    if (api.setConnectState) {
+                      api.setConnectState(r.channel.id, 'ready');
+                    }
+                    return afterFreemodelProviderReady(r.channel.id);
+                  });
+                })
+                .catch(function () {});
+            }
+          });
+          (batch.oneTapIds || []).forEach(function (tapId) {
+            var already = (batch.results || []).some(function (r) {
+              return r && r.channel && r.channel.id === tapId;
+            });
+            if (already) return;
+            var tapCh = api.byId(tapId);
+            if (!tapCh) return;
+            tapQueue = tapQueue
+              .then(function () {
+                return upsertFreemodelProvider(tapCh, '').then(function () {
+                  if (api.setConnectState) api.setConnectState(tapId, 'ready');
+                  return afterFreemodelProviderReady(tapId);
+                });
+              })
+              .catch(function () {});
+          });
+          return tapQueue.then(function () {
+            refreshFreemodelModalCards();
+            refreshRouteHost();
+            var oauthIds = batch.oauthIds || [];
+            if (oauthIds.length) {
+              var first =
+                oauthIds.indexOf('workbuddy') >= 0
+                  ? 'workbuddy'
+                  : oauthIds[0];
+              message(
+                t('ha2FmBatchPartial', '已处理') +
+                  ' · ' +
+                  opened +
+                  ' · ' +
+                  t('ha2AtrWbLoginPending', '请在浏览器完成登录…')
+              );
+              if (first === 'workbuddy') close();
+              startFreemodelOauthById(first, message);
+              return;
+            }
             message(
-              t('ha2FmBatchPartial', '已打开签到页') +
+              t('ha2FmBatchDone', '批量开通完成') +
                 ' · ' +
                 opened +
-                ' · ' +
-                t('ha2AtrWbLoginPending', '请在浏览器完成登录…')
+                '/' +
+                (batch.dueCount || 0)
             );
-            close();
-            startWbFreemodelLoginFromDock();
-            return;
-          }
-          message(
-            t('ha2FmBatchDone', '批量签到完成') + ' · ' + opened + '/' + (batch.dueCount || 0)
-          );
+          });
         });
       };
     }
@@ -5878,55 +7354,228 @@
         runFreemodelCheckin(btn.getAttribute('data-fm-checkin'));
       };
     });
-    modal.querySelectorAll('[data-softpad-save]').forEach(function (btn) {
+    modal.querySelectorAll('[data-fm-paste-save]').forEach(function (btn) {
       btn.onclick = function () {
-        var pid = String(btn.getAttribute('data-softpad-save') || '').trim();
-        var input = modal.querySelector('[data-softpad-key="' + pid + '"]');
-        var key = input ? String(input.value || '').trim() : '';
-        if (!key) {
-          message(t('ha2ModelSoftPadKeyEmpty', '请先粘贴 Soft Pad API Key'));
+        var pid = String(btn.getAttribute('data-fm-paste-save') || '').trim();
+        var api = freemodelChannelsApi();
+        var ch = api && api.byId ? api.byId(pid) : null;
+        if (!ch) {
+          message(t('ha2FmMissing', '签到模块未加载'));
           return;
         }
-        message(t('ha2ModelSoftPadSaving', '正在保存 Soft Pad Key…'));
-        // Soft Pad key IPC takes flat provider/key — not { args: … }.
-        global.OneToneIpc.invoke('cmd_soft_pad_provider_key_set', {
-          provider: pid,
-          key: key
-        })
+        var input = modal.querySelector('[data-fm-paste-key="' + pid + '"]');
+        var key = input ? String(input.value || '').trim() : '';
+        if (!key) {
+          message(t('ha2FmPasteEmpty', '请先粘贴 Token / API Key'));
+          return;
+        }
+        message(t('ha2FmPasteSaving', '正在保存…'));
+        upsertFreemodelProvider(ch, key)
           .then(function () {
-            writeSoftPadPreferredProvider(pid);
-            var gateway = global.OneToneModelGateway;
-            if (gateway && gateway.setRoute) {
-              ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
-                gateway.setRoute(p, 'softpad_our_freemodel');
+            if (api.setConnectState) api.setConnectState(pid, 'ready');
+            return afterFreemodelProviderReady(pid);
+          })
+          .then(function () {
+            message(
+              (ch.label || pid) + ' · ' + t('ha2FmPasteSaved', '已保存并选用')
+            );
+            refreshFreemodelModalCards();
+            refreshRouteHost();
+          })
+          .catch(function (err) {
+            if (api.setConnectState) {
+              api.setConnectState(pid, 'error', {
+                error: String((err && err.message) || err || '')
               });
             }
-            return refreshSoftPadFreemodelKeys();
-          })
-          .then(function () {
             message(
-              t('ha2ModelSoftPadSaved', '已保存并切换到 Soft Pad freemodel') +
-                ' · ' +
-                pid
-            );
-            refreshRouteHost();
-            close();
-          })
-          .catch(function (e) {
-            message(
-              t('ha2ModelSoftPadSaveFail', '保存失败') +
+              t('ha2FmFail', '开通失败') +
                 '：' +
-                String((e && e.message) || e || '')
+                String((err && err.message) || err || '')
             );
+            refreshFreemodelModalCards();
           });
       };
     });
+    modal.querySelectorAll('[data-fm-paste-reveal]').forEach(function (btn) {
+      btn.onclick = function () {
+        var pid = String(btn.getAttribute('data-fm-paste-reveal') || '').trim();
+        showFreemodelPaste(pid);
+        setFmLoginStatus(
+          pid,
+          t('ha2FmPasteOptional', '可选：粘贴账号 API Key 覆盖匿名额度')
+        );
+      };
+    });
+    var loomySmsSendBtn = modal.querySelector('[data-loomy-sms-send]');
+    if (loomySmsSendBtn) {
+      loomySmsSendBtn.onclick = function () {
+        var phoneEl = modal.querySelector('[data-loomy-phone]');
+        var msgidEl = modal.querySelector('[data-loomy-msgid]');
+        var phone = phoneEl ? String(phoneEl.value || '').trim() : '';
+        var api = freemodelChannelsApi();
+        if (api && api.setConnectState) api.setConnectState('loomy', 'connecting');
+        message(t('ha2FmLoomySending', '正在发送验证码…'));
+        setFmLoginStatus('loomy', t('ha2FmLoomySending', '正在发送验证码…'));
+        refreshFreemodelModalCards();
+        invoke('cmd_loomy_sms_send', { phone: phone })
+          .then(function (res) {
+            var msgid = res && res.msgid ? String(res.msgid) : '';
+            if (msgidEl) msgidEl.value = msgid;
+            var ok = t('ha2FmLoomySent', '验证码已发送，请查收短信');
+            message(ok);
+            setFmLoginStatus('loomy', ok);
+          })
+          .catch(function (err) {
+            if (api && api.setConnectState) {
+              api.setConnectState('loomy', 'error', {
+                error: String((err && err.message) || err || '')
+              });
+            }
+            var fail =
+              t('ha2FmFail', '开通失败') +
+              '：' +
+              String((err && err.message) || err || '');
+            message(fail);
+            setFmLoginStatus('loomy', fail);
+            refreshFreemodelModalCards();
+          });
+      };
+    }
+    var loomySmsLoginBtn = modal.querySelector('[data-loomy-sms-login]');
+    if (loomySmsLoginBtn) {
+      loomySmsLoginBtn.onclick = function () {
+        var phoneEl = modal.querySelector('[data-loomy-phone]');
+        var codeEl = modal.querySelector('[data-loomy-code]');
+        var msgidEl = modal.querySelector('[data-loomy-msgid]');
+        var phone = phoneEl ? String(phoneEl.value || '').trim() : '';
+        var code = codeEl ? String(codeEl.value || '').trim() : '';
+        var msgid = msgidEl ? String(msgidEl.value || '').trim() : '';
+        var api = freemodelChannelsApi();
+        if (!msgid) {
+          message(t('ha2FmLoomyNeedSend', '请先发送验证码'));
+          return;
+        }
+        if (api && api.setConnectState) api.setConnectState('loomy', 'connecting');
+        message(t('ha2FmWorking', '处理中…'));
+        setFmLoginStatus('loomy', t('ha2FmWorking', '处理中…'));
+        invoke('cmd_loomy_sms_login', { phone: phone, code: code, msgid: msgid })
+          .then(function () {
+            if (api && api.setConnectState) api.setConnectState('loomy', 'ready');
+            return afterFreemodelProviderReady('loomy');
+          })
+          .then(function () {
+            var ok = t('ha2FmLoomyOk', '已登录 Loomy — 可在模型列表选用');
+            message(ok);
+            setFmLoginStatus('loomy', ok);
+            refreshFreemodelModalCards();
+            refreshRouteHost();
+          })
+          .catch(function (err) {
+            if (api && api.setConnectState) {
+              api.setConnectState('loomy', 'error', {
+                error: String((err && err.message) || err || '')
+              });
+            }
+            var fail =
+              t('ha2FmFail', '开通失败') +
+              '：' +
+              String((err && err.message) || err || '');
+            message(fail);
+            setFmLoginStatus('loomy', fail);
+            refreshFreemodelModalCards();
+          });
+      };
+    }
+    var softPadSaveBusy = {};
+    var saveSoftPadKey = function (pid, key, opts) {
+      opts = opts || {};
+      pid = String(pid || '').trim();
+      key = String(key || '').trim();
+      if (!pid || !key || softPadSaveBusy[pid]) return;
+      // Ignore obvious incomplete paste.
+      if (key.length < 12) return;
+      softPadSaveBusy[pid] = true;
+      var stEl = modal.querySelector('[data-softpad-state="' + pid + '"]');
+      var card = modal.querySelector('[data-softpad-card="' + pid + '"]');
+      if (stEl) stEl.textContent = t('ha2ModelSoftPadSaving', '保存中…');
+      message(t('ha2ModelSoftPadSaving', '正在保存 Soft Pad Key…'));
+      // Soft Pad key IPC takes flat provider/key — not { args: … }.
+      global.OneToneIpc.invoke('cmd_soft_pad_provider_key_set', {
+        provider: pid,
+        key: key
+      })
+        .then(function () {
+          writeSoftPadPreferredProvider(pid);
+          var gateway = global.OneToneModelGateway;
+          if (gateway && gateway.setRoute) {
+            ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
+              gateway.setRoute(p, 'softpad_our_freemodel');
+            });
+          }
+          return refreshSoftPadFreemodelKeys();
+        })
+        .then(function () {
+          var st = softPadFreemodelKeys[pid] || {};
+          if (stEl) {
+            stEl.textContent =
+              t('ha2ModelSoftPadReady', '已配置') +
+              (st.masked ? ' · ' + st.masked : '');
+          }
+          if (card) card.classList.add('is-ready');
+          var input = modal.querySelector('[data-softpad-key="' + pid + '"]');
+          if (input) {
+            input.value = '';
+            input.placeholder = t('ha2ModelSoftPadKeySavedPh', '•••• 已保存，粘贴可覆盖');
+          }
+          message(
+            t('ha2ModelSoftPadSaved', '已自动保存并选用 Soft Pad') + ' · ' + pid
+          );
+          refreshRouteHost();
+          if (opts.close) close();
+        })
+        .catch(function (e) {
+          if (stEl) stEl.textContent = t('ha2ModelSoftPadNeedKey', '待填 Key');
+          message(
+            t('ha2ModelSoftPadSaveFail', '保存失败') +
+              '：' +
+              String((e && e.message) || e || '')
+          );
+        })
+        .finally(function () {
+          softPadSaveBusy[pid] = false;
+        });
+    };
+    modal.querySelectorAll('[data-softpad-key]').forEach(function (input) {
+      var pid = String(input.getAttribute('data-softpad-key') || '').trim();
+      var timer = 0;
+      var trySave = function () {
+        saveSoftPadKey(pid, input.value);
+      };
+      input.addEventListener('paste', function () {
+        setTimeout(trySave, 0);
+      });
+      input.addEventListener('change', trySave);
+      input.addEventListener('input', function () {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(trySave, 500);
+      });
+    });
     modal.querySelector('[data-model-provider-save]').onclick = function () {
-      var v = values();
-      message('正在保存…');
+      var v = resolveCustomApi();
+      if (!v || !v.id || !v.baseUrl || !v.model) {
+        message(t('ha2FmCustomNeedProv', '请先选择提供商（或其他里填完整信息）'));
+        return;
+      }
+      var hadKey = !!customConfiguredIds[v.id];
+      if (!v.apiKey && !hadKey) {
+        message(t('ha2FmCustomNeedKey', '请粘贴 API Key'));
+        return;
+      }
+      message(t('ha2FmCustomSaving', '正在保存…'));
       invokeMp('cmd_model_provider_upsert', {
         id: v.id,
-        name: v.name,
+        name: v.name || v.id,
         protocol: 'openai_compatible',
         baseUrl: v.baseUrl,
         model: v.model,
@@ -5944,31 +7593,39 @@
             : null;
         })
         .then(function () {
-          if (global.OneToneModelGateway) {
-            global.OneToneModelGateway.registerProvider({
-              id: v.id,
-              name: v.name,
-              label: v.name,
-              kind: 'custom',
-              source: 'user',
-              configured: true
-            });
-            global.OneToneModelGateway.setRoute(v.purpose, v.id);
-          }
+          applyCustomRoutes(v);
           writeSoftPadPreferredProvider('');
-          message('已保存并切换为当前用途模型。');
+          customConfiguredIds[v.id] = true;
+          customSavedModels[v.id] = v.model || '';
+          rebuildCustomProvList();
+          syncCustomKeyPlaceholder();
+          fetchCustomModels();
+          message(t('ha2FmCustomSaved', '已保存，可在首页模型下拉选用'));
           refreshRouteHost();
         })
         .catch(function (e) {
-          message('保存失败：' + String(e.message || e));
+          message(
+            t('ha2FmCustomSaveFail', '保存失败') +
+              '：' +
+              String(e.message || e)
+          );
         });
     };
     modal.querySelector('[data-model-provider-test]').onclick = function () {
-      var v = values();
-      message('正在测试连接…');
-      var config = {
+      var v = resolveCustomApi();
+      if (!v || !v.id || !v.baseUrl || !v.model) {
+        message(t('ha2FmCustomNeedProv', '请先选择提供商（或其他里填完整信息）'));
+        return;
+      }
+      var hadKey = !!customConfiguredIds[v.id];
+      if (!v.apiKey && !hadKey) {
+        message(t('ha2FmCustomNeedKey', '请粘贴 API Key'));
+        return;
+      }
+      message(t('ha2FmCustomTesting', '正在测试连接…'));
+      invokeMp('cmd_model_provider_upsert', {
         id: v.id,
-        name: v.name,
+        name: v.name || v.id,
         protocol: 'openai_compatible',
         baseUrl: v.baseUrl,
         model: v.model,
@@ -5976,8 +7633,7 @@
         supportsJson: true,
         supportsStreaming: false,
         supportsTools: false
-      };
-      invokeMp('cmd_model_provider_upsert', config)
+      })
         .then(function () {
           return v.apiKey
             ? invokeMp('cmd_model_provider_set_key', {
@@ -5995,46 +7651,64 @@
           });
         })
         .then(function () {
-          if (global.OneToneModelGateway) {
-            global.OneToneModelGateway.registerProvider({
-              id: v.id,
-              name: v.name,
-              label: v.name,
-              kind: 'custom',
-              source: 'user',
-              configured: true
-            });
-            global.OneToneModelGateway.setRoute(v.purpose, v.id);
-          }
+          applyCustomRoutes(v);
           writeSoftPadPreferredProvider('');
-          message('连接成功，已保存并切换为当前用途模型。');
+          customConfiguredIds[v.id] = true;
+          customSavedModels[v.id] = v.model || '';
+          rebuildCustomProvList();
+          syncCustomKeyPlaceholder();
+          fetchCustomModels();
+          message(t('ha2FmCustomTestOk', '连接成功，已保存'));
           refreshRouteHost();
         })
         .catch(function (e) {
-          message('连接失败：' + String(e.message || e));
+          message(
+            t('ha2FmCustomTestFail', '连接失败') +
+              '：' +
+              String(e.message || e)
+          );
         });
     };
     invokeMp('cmd_model_provider_snapshot', {})
       .then(function (items) {
-        var current = (Array.isArray(items) ? items : []).filter(function (p) {
-          return p.id === 'minimax_cn';
-        })[0];
-        if (!current) return;
-        ['name', 'id', 'baseUrl', 'model'].forEach(function (name) {
-          var el = modal.querySelector('[name="' + name + '"]');
-          var key = name === 'baseUrl' ? 'baseUrl' : name;
-          if (el && current[key]) el.value = current[key];
+        var list = Array.isArray(items) ? items : [];
+        customConfiguredIds = {};
+        customSavedModels = {};
+        list.forEach(function (p) {
+          if (!p || !p.id) return;
+          if (p.configured) customConfiguredIds[p.id] = true;
+          if (p.model) customSavedModels[p.id] = p.model;
         });
+        rebuildCustomProvList();
+        var matchId = '';
+        var presets = customApiPresets();
+        for (var i = 0; i < presets.length; i++) {
+          if (customConfiguredIds[presets[i].id]) {
+            matchId = presets[i].id;
+            break;
+          }
+        }
+        if (matchId) applyCustomProv(matchId);
+        else fetchCustomModels();
       })
       .catch(function () {});
     if (softPadFocus) {
-      setTab('api');
-      var paid = modal.querySelector('.ha2-fm-paid-keys');
-      if (paid) paid.open = true;
+      setTab('paid');
       var focusInput = modal.querySelector('[data-softpad-key="' + softPadFocus + '"]');
       if (focusInput) {
         try {
           focusInput.focus();
+        } catch (_) {}
+      }
+    }
+    if (fmFocus) {
+      setTab('free');
+      var fmCardNew = modal.querySelector('[data-fm-card="' + fmFocus + '"]');
+      if (fmCardNew) {
+        try {
+          fmCardNew.scrollIntoView({ block: 'nearest' });
+          var fmBtnNew = fmCardNew.querySelector('[data-fm-checkin]');
+          if (fmBtnNew) fmBtnNew.focus();
         } catch (_) {}
       }
     }
@@ -6409,7 +8083,11 @@
   function onDocPointerDown(e) {
     if (!mounted || !root) return;
     var t = e.target;
-    if (t && t.closest && t.closest('[data-ha2-model-route]')) return;
+    if (modelRouteMenuOpen) {
+      if (!(t && t.closest && t.closest('[data-ha2-model-route-dd]'))) {
+        closeModelRouteMenu();
+      }
+    }
     var S = store();
     var snap = S && S.getSnapshot ? S.getSnapshot() : null;
     if (snap && snap.pickerOpen) {
@@ -6454,6 +8132,11 @@
       return;
     }
     if (e.key !== 'Escape') return;
+    if (modelRouteMenuOpen) {
+      e.preventDefault();
+      closeModelRouteMenu();
+      return;
+    }
     if (wbChatPageOpen) {
       e.preventDefault();
       closeWbChatPage();
@@ -6834,10 +8517,11 @@
       esc(t('ha2ModelProvidersShort', '提供方')) +
       (function () {
         var fm = freemodelChannelsApi();
-        var n = fm && fm.dueCount ? fm.dueCount() : 0;
+        var n =
+          fm && fm.dueCount ? fm.dueCount({ readyIds: freemodelReadyIds() }) : 0;
         return n
           ? '<span class="ha2-fm-due-badge" aria-label="' +
-              esc(t('ha2FmDue', '待签到')) +
+              esc(t('ha2FmDue', '待开通')) +
               '">' +
               n +
               '</span>'
@@ -7244,13 +8928,8 @@
 
   function paint(snap) {
     if (!root || !snap) return;
-    // Native select popups are owned by the WebView. Replacing the home DOM
-    // while one is focused closes the popup before the user can choose an
-    // option. Defer the repaint until focus leaves the selector.
-    if (document.activeElement && document.activeElement.matches &&
-        document.activeElement.matches('[data-ha2-model-route]')) {
-      return;
-    }
+    // Keep the custom model dropdown open while the user is choosing.
+    if (modelRouteMenuOpen) return;
     if (composing || (store() && store().isComposing())) {
       // IME: skip dock rebuild, but still refresh ATR steps (failure / tool results).
       maybeOpenAtrWbPage(store().getSnapshot() || snap);
@@ -8836,6 +10515,9 @@
         '模型返回为空（可换非纯推理模型，或去 Agent 页刷新模型后再试）'
       );
     }
+    if (/iam_confirm_required|raccoon_relogin|auth_failed/i.test(msg)) {
+      return t('ha2WbAuthFail', '账号鉴权失败，请到 Agent 页重新登录或换 Key');
+    }
     if (msg === 'cancelled') {
       return t('ha2WbChatCancelled', '已停止');
     }
@@ -9305,10 +10987,12 @@
         temperature: 0.3
       }).then(function (res) {
         if (routedGen !== wbChatPaintGen) return;
-        if (!res || res.ok === false) throw new Error((res && res.message) || 'model_failed');
+        if (!res || res.ok === false) throw new Error((res && (res.message || res.code)) || 'model_failed');
+        var reply = String(res.text || '').trim();
+        if (!reply) throw new Error('empty_model_content');
         appendWbChatTurn({
           role: 'assistant',
-          text: String(res.text || ''),
+          text: reply,
           model: res.model || routedProvider.model || routedProvider.id,
           providerId: res.providerId || routedProvider.id,
           fallbackFrom: res.fallbackFrom || ''
@@ -9319,12 +11003,13 @@
         if (routedGen !== wbChatPaintGen) return;
         wbStreamingText = '';
         paintWbTranscript();
+        var raw = (e && (e.message || e.code)) || String(e || 'model_failed');
         S.setDeliveryReceipt({
           kind: 'local_chat',
           phase: 'failed',
           outcome: 'failed',
           title: '模型调用失败',
-          message: (e && e.message) || String(e || 'model_failed'),
+          message: mapWbChatError(raw),
           verified: false,
           inputConfirmed: false
         });
@@ -9880,79 +11565,7 @@
       if (mounted) paint(Sprov && Sprov.getSnapshot ? Sprov.getSnapshot() : null);
       return;
     }
-    if (el.matches('[data-ha2-model-route]')) {
-      var gatewayRoute = global.OneToneModelGateway;
-      var routePurpose = el.getAttribute('data-ha2-model-route') || 'synthesis';
-      var routeId = String(el.value || '');
-      if (routeId === '__add__') {
-        openModelProviderModal();
-        // Keep previous selection visible after opening the add modal.
-        var prev =
-          gatewayRoute && gatewayRoute.resolveProvider
-            ? gatewayRoute.resolveProvider(routePurpose).id
-            : 'workbuddy';
-        var defAcc = wbDefaultAccount(wbLocalCache);
-        var softPrev = softPadPreferredProvider();
-        el.value =
-          prev === 'softpad_our_freemodel' && softPrev
-            ? 'sp:' + softPrev
-            : prev === 'workbuddy' && defAcc && defAcc.selectedModel
-              ? 'wb:' + defAcc.selectedModel
-              : 'api:' + prev;
-        return;
-      }
-      var providerId = routeId;
-      var wbModel = '';
-      var softPadId = '';
-      if (routeId.indexOf('wb:') === 0) {
-        providerId = 'workbuddy';
-        wbModel = routeId.slice(3);
-        writeSoftPadPreferredProvider('');
-      } else if (routeId.indexOf('sp:') === 0) {
-        softPadId = routeId.slice(3);
-        providerId = 'softpad_our_freemodel';
-        writeSoftPadPreferredProvider(softPadId);
-        var softSt = softPadFreemodelKeys[softPadId] || {};
-        if (!softSt.configured) {
-          openModelProviderModal({ softPadFocus: softPadId });
-        }
-      } else if (routeId.indexOf('api:') === 0) {
-        providerId = routeId.slice(4);
-        writeSoftPadPreferredProvider('');
-      }
-      if (gatewayRoute && gatewayRoute.setRoute && providerId) {
-        gatewayRoute.setRoute(routePurpose, providerId);
-        // One research picker drives the whole loop (intent→plan→repair→synth).
-        if (el.getAttribute('data-ha2-research-routes') === '1' || routePurpose === 'intent') {
-          ['intent', 'planning', 'review', 'repair', 'synthesis'].forEach(function (p) {
-            gatewayRoute.setRoute(p, providerId);
-          });
-        }
-      }
-      if (wbModel) {
-        var acc = wbDefaultAccount(wbLocalCache);
-        if (acc && acc.id) {
-          invoke('cmd_workbuddy_local_account_set_model', {
-            id: acc.id,
-            model: wbModel
-          })
-            .then(function (res) {
-              if (res && res.snapshot) wbLocalCache = projectWbLocal(res.snapshot);
-              else return refreshWbLocal(true);
-            })
-            .catch(function () {
-              return refreshWbLocal(true);
-            });
-        }
-      }
-      // Do not repaint the whole home surface here. Replacing the DOM while
-      // the native select is committing its value makes the dropdown close
-      // immediately and feels like the selection was not kept.
-      el.title =
-        '当前模型：' +
-        (el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : el.value);
-      return;
-    }
+    /* model route uses custom dropdown click handler (applyModelRouteSelection) */
     if (el.matches('[data-ha2-consult-skill]')) {
       var Csk = concierge();
       if (Csk && Csk.setFlowSkill) Csk.setFlowSkill(el.value);
@@ -10005,6 +11618,10 @@
 
   function onInput(e) {
     var D = dock();
+    if (e.target.matches && e.target.matches('[data-ha2-model-route-search]')) {
+      filterModelRouteMenu(e.target.value);
+      return;
+    }
     if (e.target.matches && e.target.matches('[data-ha2-mat-text]')) {
       if (composing) return;
       var mid = e.target.getAttribute('data-ha2-mat-text');
@@ -10334,11 +11951,24 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
     var D = dock();
+    if (tEl.hasAttribute('data-ha2-model-route-trigger')) {
+      toggleModelRouteMenu();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-model-route-opt')) {
+      var routeOpt = tEl.getAttribute('data-ha2-model-route-opt') || '';
+      var routeTrig =
+        (root && root.querySelector('[data-ha2-model-route-trigger]')) || null;
+      var routePurpose =
+        (routeTrig && routeTrig.getAttribute('data-ha2-model-route')) || 'synthesis';
+      applyModelRouteSelection(routeOpt, routePurpose);
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-atr-accept-recommend')) {
       var Arec = global.OneToneHomeAgentTask;
       var nRec = S && S.getSnapshot && S.getSnapshot().validationNotice;

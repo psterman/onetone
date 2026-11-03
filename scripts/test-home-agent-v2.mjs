@@ -217,6 +217,9 @@ assert.match(shell, /appendWbChatTurn/);
 assert.match(shell, /kind:\s*'local_chat'/);
 assert.match(shell, /outcome:\s*'local_replied'/);
 assert.match(shell, /empty_model_content/);
+// Freemodel (non-WB) route: empty reply is a hard fail, not a silent blank bubble.
+assert.match(shell, /if \(!reply\) throw new Error\('empty_model_content'\)/);
+assert.match(shell, /iam_confirm_required\|raccoon_relogin\|auth_failed/);
 assert.match(shell, /ha2PillLocalChat/);
 assert.match(shell, /wbMessagesForApi\(snapCtx\)|wbMessagesForApi\(snap/);
 assert.match(shell, /wbLocalSystemContent|buildLocalChatSystemPrompt/);
@@ -376,12 +379,70 @@ assert.match(shell, /atrUserStepLine|degradedNextHint|atrFailureNextHint/);
 assert.match(shell, /if \(workConfirmOpen\) return ''/);
 assert.match(shell, /atrLive[\s\S]{0,80}pillsHtml|taskCoreHtml\(snap\) \+ pillsHtml/);
 assert.match(shell, /function modelRouteSelectHtml|data-ha2-model-route-host/);
-// Mixed model picker: WB models + API providers + add.
+// Mixed model picker: WB models + API providers + add (custom dropdown with brand icons).
 assert.match(shell, /wb:|api:|__add__/);
 assert.match(shell, /ha2ModelTagWb|ha2ModelTagApi|ha2ModelAddProvider/);
-assert.match(shell, /ha2ModelTagSoftPad|data-provider-tab|data-model-provider-login/);
+assert.match(shell, /modelBrandMeta|data-ha2-model-route-trigger|icons\/model-brand\//);
+assert.match(shell, /applyModelRouteSelection|data-ha2-model-route-opt/);
+assert.match(shell, /positionModelRouteMenu|fixed/);
+assert.match(shell, /space\[-_\\s\]\?bunny|太空兔|space-bunny\.png/);
+assert.doesNotMatch(shell, /· WB/);
+assert.ok(
+  fs.existsSync('src/icons/model-brand/space-bunny.png'),
+  'space-bunny brand icon missing'
+);
+assert.match(css, /\.ha2-model-dd-trigger|\.ha2-model-dd-menu/);
+assert.match(css, /\.ha2-model-dd-search|\.ha2-model-dd-list|scrollbar-width:\s*thin/);
+assert.match(css, /\.ha2-model-dd-tag|\.ha2-model-dd-rate|\.ha2-model-dd-speed/);
+assert.match(shell, /modelRouteOfferMeta|data-ha2-model-route-search|filterModelRouteMenu/);
+assert.match(shell, /限时免费|夜间折扣|订阅优先|0\.00x/);
+assert.doesNotMatch(shell, /ha2-fm-wb-models|freemodelEliminatedHtml|ha2FmElimTitle/);
+assert.match(shell, /ha2ModelTagSoftPad|data-fm-subtabs|data-fm-tab|ha2-fm-connect|开通免费模型/);
+assert.match(shell, /ha2-fm-ico|ha2FmTabFree|data-fm-paid-keys|data-fm-pane/);
 assert.match(shell, /ha2ModelProviderFuseHint|startWbFreemodelLoginFromDock/);
-// Soft Pad paid keys remain under API tab (not freemodel primary).
+assert.match(shell, /setTab\('paid'\)|softPadFocus/);
+assert.match(shell, /customApiPresets|OneToneCustomApiPresets|data-custom-prov|ha2-fm-prov-trigger/);
+assert.match(shell, /resolveCustomApi|applyCustomProv|data-custom-prov-search|filterCustomProv/);
+assert.match(shell, /ha2FmCustomSavedBadge|data-custom-saved|fetchCustomModels|cmd_model_provider_list_models/);
+assert.match(shell, /ha2FmTabSoftPad|Soft Pad 能力|softPadCapsHtml|余额可见|ATR 可驱动/);
+assert.match(shell, /ha2-softpad-key-row|ha2-softpad-key-link|拿 Key|saveSoftPadKey|粘贴即自动保存/);
+assert.doesNotMatch(shell, /data-softpad-save/);
+assert.match(css, /\.ha2-softpad-key-row|\.ha2-softpad-key-input|\.ha2-softpad-key-link/);
+assert.match(shell, /ha2FmCustomMinimaxKeyNote|Coding Plan Key|seedModelsForProv|MiniMax-M3\.1-Flash/);
+assert.match(shell, /brand: 'MiniMax'|minimax\.png/);
+assert.doesNotMatch(shell, /minimax\|hailuo\|海螺\|abab/);
+assert.match(css, /\.ha2-softpad-key-row|\.ha2-softpad-key-input/);
+{
+  const presetsSrc = read('src/js/features/now/custom-api-presets.js');
+  assert.match(presetsSrc, /minimax-cn-openai[\s\S]*minimax\.png/);
+  assert.match(presetsSrc, /MiniMax-M3\.1-Flash/);
+  assert.ok(fs.existsSync('src/icons/model-brand/minimax.png'), 'minimax brand icon');
+  const modelLists = (presetsSrc.match(/"models":\s*\[/g) || []).length;
+  assert.ok(modelLists >= 100, 'most presets should ship models[] seed: ' + modelLists);
+}
+assert.doesNotMatch(shell, /name="purpose"|默认用途/);
+assert.doesNotMatch(shell, /ha2FmSiteOnlyTitle|官网额度/);
+assert.doesNotMatch(shell, /data-fm-more|ha2FmMore/);
+assert.match(css, /\.ha2-fm-prov-trigger|\.ha2-fm-prov-menu|\.ha2-fm-prov-search|\.ha2-fm-prov-saved|\.ha2-fm-caps/);
+{
+  const presetsSrc = read('src/js/features/now/custom-api-presets.js');
+  assert.match(html, /custom-api-presets\.js/);
+  assert.match(presetsSrc, /OneToneCustomApiPresets/);
+  assert.match(presetsSrc, /above\.dev|AgentRouter|DeepSeek|OpenAI/);
+  const presetCount = (presetsSrc.match(/"baseUrl":/g) || []).length;
+  assert.ok(presetCount >= 100, 'custom api presets too few: ' + presetCount);
+}
+{
+  const mp = fs.readFileSync('src-tauri/src/model_provider.rs', 'utf8');
+  assert.match(mp, /fn list_models|pub fn list_models/);
+  const ipcToml = fs.readFileSync('src-tauri/permissions/app-ipc.toml', 'utf8');
+  assert.match(ipcToml, /allow-cmd-model-provider-list-models/);
+}
+assert.doesNotMatch(
+  shell,
+  /cap\.state === 'ready' && ch\.id !== 'workbuddy' \? ' disabled'/
+);
+// Soft Pad paid keys live on their own subtab (not freemodel primary).
 assert.match(shell, /SOFTPAD_FREEMODEL_CATALOG|refreshSoftPadFreemodelKeys/);
 assert.match(shell, /sp:|data-softpad-save|cmd_soft_pad_provider_key_set/);
 assert.match(shell, /onetone\.softpadPreferredProvider|preferredProvider/);
@@ -392,15 +453,97 @@ assert.match(html, /freemodel-channels\.js/);
 assert.match(html, /model-gateway\.js[\s\S]*freemodel-channels\.js[\s\S]*home-agent-v2\.js/);
 assert.match(freemodelSrc, /OneToneFreemodelChannels/);
 assert.match(freemodelSrc, /authKind:\s*'oauth'/);
+assert.match(freemodelSrc, /tokenCapture:\s*'oauth_poll'/);
+assert.match(freemodelSrc, /connectKind:\s*'oauth'/);
 assert.match(freemodelSrc, /checkInAllDue|dueCount|markChecked/);
 assert.match(freemodelSrc, /id:\s*'workbuddy'/);
 assert.match(freemodelSrc, /id:\s*'opencode_zen'/);
 assert.match(freemodelSrc, /id:\s*'gemini_ca'/);
 assert.match(freemodelSrc, /softpad_paid_keys[\s\S]*eliminated/);
-assert.match(shell, /freemodelCheckinCardsHtml|data-fm-checkin-all|runFreemodelCheckin/);
-assert.match(shell, /免费额度 \/ 签到/);
+assert.match(freemodelSrc, /muse_spark[\s\S]*eliminated/);
+assert.match(freemodelSrc, /sensenova[\s\S]*eliminated/);
+assert.match(freemodelSrc, /action:\s*'oauth'/);
+assert.match(shell, /freemodelCheckinCardsHtml|runFreemodelCheckin|chatCapable/);
+assert.match(shell, /开通免费模型/);
+assert.doesNotMatch(shell, /登录后免费模型/);
+assert.doesNotMatch(shell, /免费额度签到/);
+assert.match(shell, /startFreemodelOauthById|startOpencodeZenOauth|cmd_opencode_zen_oauth_start/);
+assert.match(shell, /startRaccoonOauth|cmd_raccoon_oauth_start|data-loomy-sms-send|cmd_loomy_sms_login/);
+assert.match(shell, /data-raccoon-qr-host|showRaccoonQr|OneToneRaccoonQr/);
+assert.match(shell, /请用微信扫一扫|不要用浏览器打开/);
+assert.ok(fs.existsSync('src/js/features/now/raccoon-qr.js'), 'raccoon qr svg helper');
+assert.match(html, /raccoon-qr\.js/);
+{
+  const raccoonRs = fs.readFileSync('src-tauri/src/raccoon_oauth.rs', 'utf8');
+  assert.match(raccoonRs, /WeChat QR|QR payload|不要|Do NOT open/);
+  assert.match(raccoonRs, /\/api\/iam\/v1\/auth\/mp\/qrcode/);
+  assert.match(raccoonRs, /source=platform/);
+  assert.doesNotMatch(raccoonRs, /AUTH_PREFIX\}\/login_with_qrcode_code|\/api\/web\/auth\/v1\/login_with_qrcode_code/);
+  assert.doesNotMatch(
+    raccoonRs,
+    /let _ = open_system_browser\(&auth_url\)/
+  );
+}
+{
+  const ipcToml = fs.readFileSync('src-tauri/permissions/app-ipc.toml', 'utf8');
+  assert.match(ipcToml, /allow-cmd-opencode-zen-oauth-start/);
+  assert.match(ipcToml, /allow-cmd-opencode-zen-oauth-poll/);
+  assert.match(ipcToml, /allow-cmd-opencode-zen-oauth-cancel/);
+  assert.match(ipcToml, /allow-cmd-loomy-sms-send/);
+  assert.match(ipcToml, /allow-cmd-loomy-sms-login/);
+  assert.match(ipcToml, /allow-cmd-raccoon-oauth-start/);
+  assert.match(ipcToml, /allow-cmd-raccoon-oauth-poll/);
+  assert.match(ipcToml, /allow-cmd-raccoon-oauth-cancel/);
+  assert.ok(
+    fs.existsSync('src-tauri/permissions/autogenerated/cmd_opencode_zen_oauth_start.toml'),
+    'opencode oauth start permission file'
+  );
+  assert.ok(
+    fs.existsSync('src-tauri/permissions/autogenerated/cmd_loomy_sms_send.toml'),
+    'loomy sms permission file'
+  );
+  assert.ok(
+    fs.existsSync('src-tauri/permissions/autogenerated/cmd_raccoon_oauth_start.toml'),
+    'raccoon oauth permission file'
+  );
+}
+assert.match(shell, /upsertFreemodelProvider|afterFreemodelProviderReady|data-fm-paste-save/);
+assert.match(shell, /data-fm-paste-reveal|填写 API Key/);
+assert.doesNotMatch(shell, /data-fm-anon|先用匿名 free/);
+// Picker: ready-only options; unconfigured channels are NOT select options.
+assert.match(shell, /开通免费模型/);
+assert.match(shell, /fmFocus|connectChannels|resolveCapability/);
+assert.doesNotMatch(shell, /ha2ModelFreeNeedLogin|ha2ModelFreeNeedPaste/);
+assert.doesNotMatch(shell, /ha2ModelTagFreeGroup/);
+assert.match(freemodelSrc, /connectKind:\s*'one_tap'/);
+assert.match(freemodelSrc, /connectOrder:\s*10/);
+assert.match(freemodelSrc, /connectKind:\s*'oauth'/);
+assert.match(freemodelSrc, /connectChannels|resolveCapability|setConnectState/);
+assert.match(freemodelSrc, /loginUrl:\s*'https:\/\/opencode\.ai\/console\/device'/);
+assert.doesNotMatch(freemodelSrc, /loginUrl:\s*'[^']*\/console\/console\//);
+// OAuth action must dispatch by channel id — not hardcode WorkBuddy only.
+assert.match(shell, /action === 'oauth'[\s\S]{0,400}startFreemodelOauthById/);
+assert.match(shell, /action === 'one_tap'|一键启用/);
+assert.match(shell, /ha2FmLoginWaiting|setFmLoginStatus|api\.checkIn\(id\)/);
+assert.doesNotMatch(shell, /openFreemodelSite\(ch\)/);
+assert.match(freemodelSrc, /antigravity\.google\.com|loomy\.xunfei\.cn|portal#\/login/);
+assert.match(freemodelSrc, /qoder\.com\.cn\/users\/sign-in/);
+assert.match(freemodelSrc, /e\.status === 'ok'/);
+assert.match(shell, /ha2FmZenCodeHint|验证码|Unable to verify|verification_uri_complete/);
+assert.doesNotMatch(shell, /data-fm-open-site[\s\S]{0,80}target="_blank"/);
+assert.doesNotMatch(shell, /P1 · 每日签到|ha2FmP1/);
+assert.match(freemodelSrc, /Loomy（讯飞|Raccoon（商汤/);
+assert.match(freemodelSrc, /loomyad\.xunfei\.cn|xiaohuanxiong\.com\/api\/web\/llm/);
+assert.match(freemodelSrc, /filter\.siteOnly|siteOnly: true/);
+assert.match(freemodelSrc, /id:\s*'raccoon'/);
+assert.match(freemodelSrc, /id:\s*'loomy'/);
+assert.match(freemodelSrc, /defaultModel:\s*'spark-x'/);
+assert.match(freemodelSrc, /sn-sensenova-6-8-flash-lite/);
+// WB tristate + capability status (not checkedToday as primary card state).
+assert.match(shell, /wbPhase|logged_out|no_models|已登录但未导入|未登录/);
+assert.match(shell, /unconfigured|connecting|ready|resolveCapability/);
 assert.match(shell, /markChecked\('workbuddy'/);
-assert.match(css, /\.ha2-fm-card|\.ha2-fm-due-badge/);
+assert.match(css, /\.ha2-fm-card|\.ha2-fm-connect/);
 // Home freemodel login: chat-mode strip + dock 登录/换号 (not ATR-only).
 assert.match(shell, /function atrWbLoginShouldShow/);
 assert.match(shell, /wbRouteIsActive\(\) && !wbLocalReady\(\)/);

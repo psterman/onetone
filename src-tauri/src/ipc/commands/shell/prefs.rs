@@ -75,10 +75,15 @@ pub fn cmd_clear_last_ui_stall() {
 
 #[tauri::command]
 pub fn cmd_open_url(url: String) -> Result<(), String> {
+    // rundll32 keeps #/?/& intact — `cmd start` treats `#` as a comment (breaks Lobster portal#/login).
+    let url = url.trim();
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("invalid_url".into());
+    }
     #[cfg(windows)]
     {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
+        std::process::Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", url])
             .spawn()
             .map_err(|e| e.to_string())?;
         Ok(())

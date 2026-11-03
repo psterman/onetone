@@ -86,6 +86,9 @@ mod shell_agent_usage;
 mod soft_pad_purpose;
 mod assist_runtime;
 mod model_provider;
+mod opencode_zen_oauth;
+mod loomy_oauth;
+mod raccoon_oauth;
 mod network;
 mod run_archive;
 mod agent_task_runtime;
@@ -1370,6 +1373,7 @@ pub fn run() {
             ipc::cmd_model_provider_upsert,
             ipc::cmd_model_provider_remove,
             ipc::cmd_model_provider_set_key,
+            ipc::cmd_model_provider_list_models,
             ipc::cmd_model_provider_chat,
             ipc::cmd_network_diagnostics,
             ipc::cmd_network_ping,
@@ -1410,6 +1414,14 @@ pub fn run() {
             ipc::cmd_workbuddy_local_oauth_start,
             ipc::cmd_workbuddy_local_oauth_poll,
             ipc::cmd_workbuddy_local_oauth_cancel,
+            ipc::cmd_opencode_zen_oauth_start,
+            ipc::cmd_opencode_zen_oauth_poll,
+            ipc::cmd_opencode_zen_oauth_cancel,
+            ipc::cmd_loomy_sms_send,
+            ipc::cmd_loomy_sms_login,
+            ipc::cmd_raccoon_oauth_start,
+            ipc::cmd_raccoon_oauth_poll,
+            ipc::cmd_raccoon_oauth_cancel,
             ipc::cmd_claude_cli_inject,
             ipc::cmd_claude_cli_decide,
             ipc::cmd_codex_pad_binding_diagnose,

@@ -35,6 +35,27 @@ pub fn cmd_model_provider_set_key(args: ProviderKeyArgs) -> Result<(), String> {
     model_provider::set_key(&args.provider_id, &args.api_key)
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListModelsArgs {
+    pub provider_id: Option<String>,
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
+}
+
+#[tauri::command]
+pub async fn cmd_model_provider_list_models(args: ListModelsArgs) -> Result<Vec<String>, String> {
+    tokio::task::spawn_blocking(move || {
+        model_provider::list_models(
+            args.provider_id.as_deref(),
+            args.base_url.as_deref(),
+            args.api_key.as_deref(),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn cmd_model_provider_chat(args: ModelChatRequest) -> Result<Value, String> {
     tokio::task::spawn_blocking(move || model_provider::chat(args))

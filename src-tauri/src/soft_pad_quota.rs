@@ -138,7 +138,30 @@ fn now_ms() -> u64 {
 }
 
 fn key_path(p: SoftPadQuotaProvider) -> PathBuf {
-    data_root::effective_data_root().join(p.key_filename())
+    #[cfg(test)]
+    {
+        // Unit tests must not write sk-test fixtures into real AppData.
+        return test_key_root().join(p.key_filename());
+    }
+    #[cfg(not(test))]
+    {
+        data_root::effective_data_root().join(p.key_filename())
+    }
+}
+
+#[cfg(test)]
+fn test_key_root() -> PathBuf {
+    use std::sync::OnceLock;
+    static ROOT: OnceLock<PathBuf> = OnceLock::new();
+    ROOT.get_or_init(|| {
+        let d = std::env::temp_dir().join(format!(
+            "onetone-softpad-keys-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::create_dir_all(&d);
+        d
+    })
+    .clone()
 }
 
 fn is_plausible_key(key: &str) -> bool {
