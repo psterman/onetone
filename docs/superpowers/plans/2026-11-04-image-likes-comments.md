@@ -1949,6 +1949,57 @@ Expected: 两条命令退出码都是 0。
 >
 > 预检实测：沙箱里 **21/21 通过**；未实现的基线跑同一份测试确实红（第 1 条断言就红），
 > 确认测试不空转。
+>
+> ---
+>
+> **第 1 轮评审之后又改了 7 处（2026-11-04）**
+>
+> 评审结论：需求侧全 ✅、无 Critical；**1 个 Important + 8 个 Minor**。
+>
+> **先说一条控制器独立核实过的「误报」**：评审报的那条 Important
+> 「伪造 thumb 不出现在 img src 里」是恒真的断言。控制器用 Playwright 实测推翻了它 ——
+> `#imgCtx img` **匹配 1 个元素**（模板里就有的 `<img id="imgCtxImg">`），不是评审说的零匹配：
+>
+> | 情况 | `srcs` | `every()` |
+> |---|---|---|
+> | 伪造 thumb（现状） | `[null]` | `true` ✓ 通过 |
+> | 正常 thumb | `["/img/2026-11-03/jianxiao/ab12cd34ef_012_t.webp"]` | `true` ✓ |
+> | **真把 evil URL 写进 src** | `["https://evil.example.com/x.png"]` | **`false`** → 断言会红 ✓ |
+>
+> 所以这条断言**有牙**（evil URL 真被写进去就会红）。
+> 评审建议的改法（放宽到 `page.locator('img')` 再断言 `length === 0`）**反而是错的** ——
+> 页面上本来就有 logo 和留言缩略图，`length === 0` 永远不会成立。
+> 但「扫全页所有 img」这个**加强方向**是对的，已经照做（见下）。
+>
+> 实际改了 7 处：
+>
+> 1. **测试：evil URL 的断言放宽到全页所有 img**，并补一条
+>    「图上下文那张 img 的 src 压根没被写进去」。原来的只看 `#imgCtx img`，
+>    万一 evil URL 被写进「留言前的缩略图」就漏了。
+> 2. **测试补 6 条断言**：`#showAll` 的 href、
+>    **点缩略图跳回那天的日期页**（本任务新增的唯一用户可见行为）、
+>    「这张图还没有评论」的空状态、
+>    **参数不全（只给 `img`+`id`、不给 `thumb`）时退回普通留言板**。
+> 3. **缩略图点击前给 `it.imgDate` 也过一遍白名单**（`IMG_DATE_RE`）——
+>    `it.imgThumb` 挡过了，`it.imgDate` 却直接拼进 URL。理论上不可达（后端写入时校验过），
+>    但万一后端以后改了校验，这里拼出 `//evil.com/` 就把用户带离本站。
+> 4. **空状态文案区分「这张图」**：过滤后一条评论都没有时，别再显示
+>    「还没有留言，来抢第一条」（留言板上明明有别的留言）；计数也改成「这张图 N 条评论」。
+> 5. **缩略图加 `cursor: pointer`** —— 它是本任务唯一新增的可交互元素，鼠标用户却看不出它可点。
+>    `alt` 也从空串改成「跳到这张图」。
+> 6. **`.img-ctx a` 的颜色改用 `var(--accent)`** —— 本文件已定义 `--accent`，
+>    现有链接全走它，新规则单开一个 `#8ab4f8` 是多余的。
+> 7. **修一条指向不存在规则的注释** ——
+>    「同款规则在 `.like-badge[hidden]{display:none}` 里已经有了」在 board.html 里根本不存在
+>    （真身在 site/app.css），已改成写明路径。
+>
+> **留给最终全局评审分诊的**：
+> #4 `#imgCtxSub` 把内部 id（`jianxiao_012`）原样暴露给用户
+> （显示栏目名「见笑」更合适，但那要加一张「栏目 key → 中文名」的映射，超出本任务范围）、
+> #7 缩略图的键盘可达性（`<img>` 不可聚焦）、#8 其余覆盖率缺口、
+> #9 白名单三处复制（board.html ↔ functions/board/api.js ↔ build.mjs 的命名规则）。
+>
+> 改后预检实测：沙箱里 **29/29 通过**。
 
 **Files:**
 - Modify: `E:\voice-pilot\daily-image-site\site\board.html`
@@ -1956,7 +2007,9 @@ Expected: 两条命令退出码都是 0。
 
 **Interfaces:**
 - Consumes: Task 2 的 `GET /board/api` → item 增加 `imgDate` / `imgId` / `imgThumb`；Task 3 的评论链接 `?img=&id=&thumb=`
-- Produces: 留言板页在带 `?img=` 参数时显示目标图并只列该图的评论；不带参数时行为与现在完全一样
+- Produces: 留言板页在带 `?img=` 参数时显示目标图、并只列这张图的评论；
+  不带参数时列出全部留言 —— 但**带图的留言仍然显示那张图的缩略图**
+  （这样在总列表里也看得出这条留言说的是哪张图，缩略图可点回那天的日期页）
 
 - [ ] **Step 1: 确认 site/board.html 的现状结构**
 
@@ -2110,7 +2163,9 @@ await page.waitForTimeout(600);
     check('缩略图跟正文同一行', !!g && g.textLeft !== null && g.textLeft > g.thumbRight, g);
   }
   const tip = await page.locator('#countTip').textContent();
-  check('计数按过滤后的条数', tip === '共 2 条留言', tip);
+  check('计数按过滤后的条数', tip === '这张图 2 条评论', tip);
+  const showAllHref = await page.locator('#showAll').getAttribute('href');
+  check('「看全部留言」指向留言板', showAllHref === '/board/', showAllHref);
 }
 
 console.log('\n── 不带图参数（行为跟现在完全一样）──');
@@ -2128,8 +2183,40 @@ await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID + '&thumb=' + enc
 await page.waitForTimeout(600);
 {
   check('伪造 thumb 时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
-  const srcs = await page.locator('#imgCtx img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
-  check('伪造 thumb 不出现在 img src 里', srcs.every((s) => !s || s.indexOf('evil.example.com') < 0), srcs);
+  // 扫全页所有 img 的 src —— 不只是图上下文里那一张：
+  // 万一 evil URL 被写进了「留言前的缩略图」，这条也要挡住。
+  const srcs = await page.locator('img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+  check('伪造 thumb 不出现在任何 img src 里', srcs.every((s) => !s || s.indexOf('evil.example.com') < 0), srcs);
+  // 图上下文那张 img 的 src 应当压根没被写进去
+  const ctxSrcs = await page.locator('#imgCtx img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+  check('伪造 thumb 没有写进图上下文的 img', ctxSrcs.every((s) => !s), ctxSrcs);
+}
+
+console.log('\n── 这张图还没有评论 ──');
+{
+  await page.goto(base + '/board/?img=' + DATE + '&id=jianxiao_099&thumb=' + encodeURIComponent('/img/' + DATE + '/jianxiao/ab12cd34ef_099_t.webp'), { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  check('空列表时显示空状态提示', await page.locator('#emptyTip').isVisible());
+  const t = await page.locator('#emptyTip').textContent();
+  check('空状态文案说的是「这张图」', t.indexOf('这张图') >= 0, t);
+  check('空列表时计数为空', (await page.locator('#countTip').textContent()) === '');
+}
+
+console.log('\n── 参数不全时退回普通留言板 ──');
+{
+  await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  check('没有 thumb 时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
+  check('没有 thumb 时列出全部留言', (await page.locator('p.msg-body').allTextContents()).some((t) => t.includes('普通留言')));
+}
+
+console.log('\n── 点缩略图跳回那天的日期页 ──');
+{
+  await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID + '&thumb=' + encodeURIComponent(THUMB), { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  await page.locator('img.msg-thumb').first().click();
+  await page.waitForTimeout(600);
+  check('点缩略图跳到那天的日期页', page.url().indexOf('/' + DATE + '/') >= 0, page.url());
 }
 
 console.log('\n── 提交时带上图上下文 ──');
@@ -2219,7 +2306,7 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
   /* 必须有这一句：作者样式表里的 display:flex 优先级高于 UA 样式表的
      [hidden]{display:none}，不写的话 <div hidden> 照样显示得出来，
      「不带参数时不显示图上下文」那条断言就永远失败。
-     （同款规则在 .like-badge[hidden]{display:none} 里已经有了。） */
+     （同款规则在 site/app.css 的 .like-badge[hidden]{display:none} 里已经有了。） */
   .img-ctx[hidden] { display: none; }
   .img-ctx img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: #000; }
   /* 不用 flex gap —— iOS 13 的 WKWebView 不支持（board.html 里现有的样式一个 gap 都没用，
@@ -2233,8 +2320,9 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
   /* --text-dim 是本文件定义的变量名（board.html 里用了 12 次）；
      写成 var(--dim) 的话变量不存在，这行 color 直接失效，文字会继承父级颜色。 */
   .img-ctx-txt span { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-  .img-ctx a { margin-left: 12px; font-size: 13px; color: #8ab4f8; white-space: nowrap; }
-  .msg-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
+  /* 用本文件定义的 --accent，别另开一个色值 —— 现有链接走的都是 var(--accent)。 */
+  .img-ctx a { margin-left: 12px; font-size: 13px; color: var(--accent); white-space: nowrap; }
+  .msg-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; cursor: pointer; }
 ```
 
 **③ JS**（加在 `site/board.html` 现有的 `<script>` 里，紧跟 `var api = '/board/api';` 之后）：
@@ -2310,8 +2398,11 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
         var ti = document.createElement('img');
         ti.className = 'msg-thumb';
         ti.setAttribute('src', it.imgThumb);
-        ti.alt = '';
+        ti.alt = '跳到这张图';
         ti.addEventListener('click', function () {
+          // 日期也要过白名单 —— it.imgDate 是服务端给的，后端写入时已经校验过，
+          // 但拼进 URL 前再挡一次：万一以后后端改了校验，这里拼出 //evil.com/ 就把用户带走了。
+          if (!IMG_DATE_RE.test(it.imgDate)) return;
           location.href = '/' + it.imgDate + '/';
         });
         p.insertBefore(ti, p.firstChild);
@@ -2331,7 +2422,15 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
 
 ```js
     emptyTip.hidden = list.length > 0;
-    countTip.textContent = list.length ? ('共 ' + list.length + ' 条留言') : '';
+    // 带图参数进来却一条评论都没有时，别让页面说「还没有留言，来抢第一条」——
+    // 留言板上明明有别的留言，只是这张图还没有。
+    // 计数同理：过滤后要说明数的是「这张图的评论」，不是整个留言板。
+    emptyTip.textContent = imgCtx
+      ? '这张图还没有评论，来说第一句。'
+      : '还没有留言，来抢第一条。';
+    countTip.textContent = list.length
+      ? (imgCtx ? ('这张图 ' + list.length + ' 条评论') : ('共 ' + list.length + ' 条留言'))
+      : '';
 ```
 
 **⑤ `submit()` 的请求体带上图上下文**
