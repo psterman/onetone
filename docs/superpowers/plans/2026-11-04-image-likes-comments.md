@@ -1916,6 +1916,40 @@ Expected: 两条命令退出码都是 0。
 
 ### Task 4: 留言板页的图上下文（缩略图 + 按图过滤）
 
+> **本轮计划改了什么、为什么（2026-11-04 派工前预检）**
+>
+> 预检方式：把计划里的代码块原样抽出来，搭沙箱用真实 Chrome 实跑（跟 Task 3 同一套路）。
+> 逮到 6 处问题，都已修进计划：
+>
+> 1. **`var(--dim)` 这个变量根本不存在** —— `site/board.html` 定义的是 `--text-dim`
+>    （文件里用了 12 次）。`var(--dim)` 查不到变量 → 那条 `color` 声明整个失效 →
+>    副标题会继承父级颜色而不是灰的。已改成 `var(--text-dim)`。
+>    实测修完副标题颜色是 `rgb(139,139,153)` = `#8b8b99` ✓
+> 2. **CSS 里用了 flex `gap`** —— `site/board.html` 现有的样式**一个 `gap` 属性都没有**，
+>    `site/app.css:3` 也写死了「不用 flex/grid 的 gap，用 margin / column-gap」
+>    （iOS 13 的 WKWebView 不支持 flex gap）。已改成 margin：
+>    `.img-ctx-img{margin-right:12px}` / `.img-ctx a{margin-left:12px}` /
+>    `.img-ctx-txt span{margin-top:4px}`。
+> 3. **新规则没带 `-webkit-` 前缀** —— board.html 现有的 flex 写法都是成对的
+>    （`display: -webkit-flex; display: flex;`），新规则原来只有无前缀版。已补齐。
+> 4. **Step 2 只给了断言片段，没给可跑的文件** —— 实现者得自己搭服务器 + route 拦截 +
+>    断言框架。已改成**完整文件照抄**，并补了几条断言：缩略图 src 就是白名单里那张、
+>    计数按过滤后的条数、**提交时 payload 要带那三个键**、不带上下文时 payload 里不能有那三个键。
+> 5. **缩略图那段没有原文锚点**（整个计划里最松的一条指令）。
+>    已改成给出确切的「从哪改」：`p.textContent = it.body;` + `li.appendChild(p);` 两行。
+> 6. **缩略图原本挂在 `li` 上，会自己独占一行** —— `<p>` 是块级元素，挂在 `li` 上的行内图片
+>    会被块级 `<p>` 挤到下一行，于是 CSS 里的 `vertical-align: middle` / `margin-right: 8px`
+>    全成了摆设（截图实拍：正文被挤到缩略图下面）。
+>    已改成 `p.insertBefore(ti, p.firstChild)` —— 放进 `<p>` 里、正文文本节点前面，
+>    这样才是 CSS 想要的「缩略图在正文左边同一行」。
+>    实测缩略图右边缘到正文文本 = **8px**（正好是 `margin-right: 8px`）✓
+>    并加了一条断言把「缩略图跟正文同一行」锁住。
+>
+> 另外把 ④⑤ 的「改成」补上了**原文锚点**（原来只写「改成什么」，没写「从哪改」），照着替换不容易错位。
+>
+> 预检实测：沙箱里 **21/21 通过**；未实现的基线跑同一份测试确实红（第 1 条断言就红），
+> 确认测试不空转。
+
 **Files:**
 - Modify: `E:\voice-pilot\daily-image-site\site\board.html`
 - Create: `E:\voice-pilot\daily-image-site\tools\test-board-ui.mjs`
@@ -1948,52 +1982,190 @@ Select-String -Path E:\voice-pilot\daily-image-site\site\board.html -Pattern 'id
 
 - [ ] **Step 2: 写失败测试**
 
-新建 `tools/test-board-ui.mjs`，结构与 `tools/test-likes-ui.mjs` 相同（本地静态服务器 + playwright + route 拦截），但这次：
-
-- 直接把 `site/board.html` 读出来当首页（它本来就是自包含页面，`/board/` 也由它自己处理）。
-  **注意：静态服务器必须同时在 `/` 和 `/board/`（以及 `/board/` 带查询串）上返回这份 HTML** ——
-  下面的断言是 `page.goto(base + '/board/?img=...')` 去的，只在 `/` 提供服务的话会 404，
-  报错会指向「页面元素不存在」这种误导性的地方。
-  `site/board.html` 的样式和脚本都是内联的（只有 favicon 指向 `/assets/logo.jpg`，404 无所谓），
-  所以不需要额外提供静态资源。
-- 拦截 `**/board/api`，返回固定的留言数组，其中两条带图字段：
+新建 `tools/test-board-ui.mjs`（**完整文件，照抄**）：
 
 ```js
+/**
+ * 留言板「跟图评论」的 Playwright 测试
+ *
+ * 为什么要起一个假页面：
+ *   本机的 workerd 跑不起来（VC++ 运行库问题），wrangler pages dev 用不了，
+ *   所以这里用 Node 起一个静态服务器，把 site/board.html 原样端上来，
+ *   再用 playwright 的 route 拦截把 /board/api 换成假的响应。
+ *   留言板页的前端逻辑（读 ?img=&id=&thumb=、白名单、按图过滤、缩略图、
+ *   提交时带上图上下文）都是真的在跑。
+ */
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const SITE = path.join(ROOT, 'site');
+
+const DATE = '2026-11-03';
+const IMG_ID = 'jianxiao_012';
+const THUMB = '/img/' + DATE + '/jianxiao/ab12cd34ef_012_t.webp';
+
 const MESSAGES = [
   { id: 'm1', ts: 1750000000000, name: 'A', body: '这张图绝了', link: '', cat: '',
-    imgDate: '2026-11-03', imgId: 'jianxiao_012', imgThumb: '/img/2026-11-03/jianxiao/ab12cd34ef_012_t.webp', mine: false },
+    imgDate: DATE, imgId: IMG_ID, imgThumb: THUMB, mine: false },
   { id: 'm2', ts: 1750000001000, name: 'B', body: '跟图留言', link: '', cat: '',
-    imgDate: '2026-11-03', imgId: 'jianxiao_012', imgThumb: '/img/2026-11-03/jianxiao/ab12cd34ef_012_t.webp', mine: false },
-  { id: 'm3', ts: 1750000002000, name: 'C', body: '普通留言', link: '', cat: '', imgDate: '', imgId: '', imgThumb: '', mine: false },
+    imgDate: DATE, imgId: IMG_ID, imgThumb: THUMB, mine: false },
+  { id: 'm3', ts: 1750000002000, name: 'C', body: '普通留言', link: '', cat: '',
+    imgDate: '', imgId: '', imgThumb: '', mine: false },
 ];
-```
 
-断言（选择器全部用上表里的真实 id / class）：
+let pass = 0;
+let fail = 0;
+function check(name, cond, extra) {
+  if (cond) { pass++; console.log('  ✓ ' + name); }
+  else { fail++; console.log('  ✗ ' + name + (extra !== undefined ? '  -> ' + JSON.stringify(extra) : '')); }
+}
 
-```js
-// 带图参数进入
-await page.goto(base + '/board/?img=2026-11-03&id=jianxiao_012&thumb=' + encodeURIComponent(THUMB), { waitUntil: 'domcontentloaded' });
+const MIME = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+};
+
+const server = http.createServer((req, res) => {
+  // board.html 是自包含页面（样式脚本都内联），只有 favicon 指向 /assets/logo.jpg（404 无所谓）。
+  // 必须在 / 和 /board/ 上都返回它 —— 下面的断言是 page.goto(base + '/board/?img=...') 去的，
+  // 只在 / 提供服务的话会 404，报错会指向「页面元素不存在」这种误导性的地方。
+  const pathname = req.url.split('?')[0];
+  if (pathname === '/' || pathname === '/index.html' || pathname === '/board/' || pathname === '/board') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(fs.readFileSync(path.join(SITE, 'board.html'), 'utf8'));
+    return;
+  }
+  const file = path.join(SITE, path.basename(pathname));
+  if (fs.existsSync(file)) {
+    // 按扩展名给 MIME。别图省事全按 text/css 发 ——
+    // 将来加了 nosniff 或者换到会强制校验 MIME 的内核，测试会红得莫名其妙。
+    const mime = MIME[path.extname(file)] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': mime });
+    res.end(fs.readFileSync(file));
+    return;
+  }
+  res.writeHead(404).end('404');
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const base = 'http://127.0.0.1:' + server.address().port;
+
+const browser = await chromium.launch({ channel: 'chrome', args: ['--no-sandbox'] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+
+// 假的留言接口
+let posted = [];
+await page.route('**/board/api*', async (route) => {
+  const req = route.request();
+  if (req.method() === 'POST') {
+    posted.push(JSON.parse(req.postData() || '{}'));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    return;
+  }
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: MESSAGES }) });
+});
+// 缩略图用 1x1 png 顶着
+await page.route('**/img/**', (route) => route.fulfill({
+  status: 200, contentType: 'image/png',
+  body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+}));
+
+console.log('\n── 带图参数进入 ──');
+await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID + '&thumb=' + encodeURIComponent(THUMB), { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(600);
+{
+  check('显示目标图上下文', await page.locator('#imgCtx').isVisible());
+  check('目标图缩略图已渲染', await page.locator('#imgCtx img').count() > 0);
+  const src = await page.locator('#imgCtx img').first().getAttribute('src');
+  check('缩略图用的是白名单里的那张', src === THUMB, src);
+  check('列表只剩这张图的评论', (await page.locator('p.msg-body').allTextContents()).filter((t) => t.includes('普通留言')).length === 0);
+  check('这张图的两条评论都在', (await page.locator('p.msg-body').allTextContents()).filter((t) => t.indexOf('图') >= 0).length >= 2);
+  check('有「看全部留言」入口', await page.locator('#showAll').isVisible());
+  check('留言带缩略图', await page.locator('img.msg-thumb').count() >= 1);
+  // 缩略图要跟正文**同一行**。挂在 li 上（li 里 p 是块级元素）的话，
+  // 缩略图会自己独占一行、把正文挤到下面 —— CSS 里的 vertical-align / margin-right 就白写了。
+  {
+    const g = await page.evaluate(() => {
+      const t = document.querySelector('img.msg-thumb');
+      const p = document.querySelector('p.msg-body');
+      if (!t || !p) return null;
+      const tr = t.getBoundingClientRect();
+      let textLeft = null;
+      for (const n of p.childNodes) {
+        if (n.nodeType === 3 && n.nodeValue.trim()) {
+          const rg = document.createRange();
+          rg.selectNodeContents(n);
+          textLeft = rg.getBoundingClientRect().left;
+          break;
+        }
+      }
+      return { thumbRight: tr.right, textLeft: textLeft };
+    });
+    check('缩略图跟正文同一行', !!g && g.textLeft !== null && g.textLeft > g.thumbRight, g);
+  }
+  const tip = await page.locator('#countTip').textContent();
+  check('计数按过滤后的条数', tip === '共 2 条留言', tip);
+}
 
-check('显示目标图上下文', await page.locator('#imgCtx').isVisible());
-check('目标图缩略图已渲染', await page.locator('#imgCtx img').count() > 0);
-check('列表只剩这张图的评论', (await page.locator('p.msg-body').allTextContents()).filter((t) => t.includes('普通留言')).length === 0);
-check('这张图的两条评论都在', (await page.locator('p.msg-body').allTextContents()).filter((t) => t.indexOf('图') >= 0).length >= 2);
-check('有「看全部留言」入口', await page.locator('#showAll').isVisible());
-check('留言带缩略图', await page.locator('img.msg-thumb').count() >= 1);
-
-// 不带图参数 —— 行为跟现在完全一样
+console.log('\n── 不带图参数（行为跟现在完全一样）──');
 await page.goto(base + '/board/', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(600);
-check('不带参数时列出全部留言', (await page.locator('p.msg-body').allTextContents()).some((t) => t.includes('普通留言')));
-check('不带参数时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
+{
+  check('不带参数时列出全部留言', (await page.locator('p.msg-body').allTextContents()).some((t) => t.includes('普通留言')));
+  check('不带参数时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
+  const tip = await page.locator('#countTip').textContent();
+  check('不带参数时计数是全部', tip === '共 3 条留言', tip);
+}
 
-// 伪造的 thumb 不得被当成图片渲染
-await page.goto(base + '/board/?img=2026-11-03&id=jianxiao_012&thumb=' + encodeURIComponent('https://evil.example.com/x.png'), { waitUntil: 'domcontentloaded' });
+console.log('\n── 伪造的 thumb 不得被当成图片渲染 ──');
+await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID + '&thumb=' + encodeURIComponent('https://evil.example.com/x.png'), { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(600);
-check('伪造 thumb 时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
-const srcs = await page.locator('#imgCtx img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
-check('伪造 thumb 不出现在 img src 里', srcs.every((s) => !s || s.indexOf('evil.example.com') < 0), srcs);
+{
+  check('伪造 thumb 时不显示图上下文', !(await page.locator('#imgCtx').isVisible()));
+  const srcs = await page.locator('#imgCtx img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+  check('伪造 thumb 不出现在 img src 里', srcs.every((s) => !s || s.indexOf('evil.example.com') < 0), srcs);
+}
+
+console.log('\n── 提交时带上图上下文 ──');
+{
+  // 带图上下文时提交，payload 要带那三个键
+  await page.goto(base + '/board/?img=' + DATE + '&id=' + IMG_ID + '&thumb=' + encodeURIComponent(THUMB), { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  posted.length = 0;
+  await page.locator('#bodyInput').fill('测试留言');
+  await page.locator('#submitBtn').click();
+  await page.waitForTimeout(500);
+  const p = posted[0] || {};
+  check('提交带上了 imgDate', p.imgDate === DATE, p);
+  check('提交带上了 imgId', p.imgId === IMG_ID, p);
+  check('提交带上了 imgThumb', p.imgThumb === THUMB, p);
+  check('提交也带了正文', p.body === '测试留言', p);
+
+  // 不带图上下文时提交，payload 里不能有那三个键
+  // （后端约定「要么都不给，要么都给」）
+  await page.goto(base + '/board/', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  posted.length = 0;
+  await page.locator('#bodyInput').fill('普通留言');
+  await page.locator('#submitBtn').click();
+  await page.waitForTimeout(500);
+  const q = posted[0] || {};
+  check('不带上下文时没有 imgDate', !('imgDate' in q), q);
+  check('不带上下文时没有 imgId', !('imgId' in q), q);
+  check('不带上下文时没有 imgThumb', !('imgThumb' in q), q);
+}
+
+await browser.close();
+server.close();
+
+console.log('\n通过 ' + pass + ' / 失败 ' + fail);
+if (fail) process.exit(1);
 ```
 
 - [ ] **Step 3: 跑测试，确认失败**
@@ -2011,33 +2183,58 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
 
 **① 顶部图上下文区**（插在 `#listCard` 里、`#msgList` 之前，默认隐藏）：
 
+把 `site/board.html` 里这一段：
+
 ```html
-<div id="imgCtx" class="img-ctx" hidden>
-  <img id="imgCtxImg" alt="">
-  <div class="img-ctx-txt">
-    <strong id="imgCtxTitle"></strong>
-    <span id="imgCtxSub"></span>
-  </div>
-  <a id="showAll" href="/board/">看全部留言</a>
-</div>
+  <div class="card" id="listCard" hidden>
+    <h2>留言</h2>
+    <ul class="msg-list" id="msgList"></ul>
+```
+
+改成：
+
+```html
+  <div class="card" id="listCard" hidden>
+    <h2>留言</h2>
+    <div id="imgCtx" class="img-ctx" hidden>
+      <img id="imgCtxImg" class="img-ctx-img" alt="">
+      <div class="img-ctx-txt">
+        <strong id="imgCtxTitle"></strong>
+        <span id="imgCtxSub"></span>
+      </div>
+      <a id="showAll" href="/board/">看全部留言</a>
+    </div>
+    <ul class="msg-list" id="msgList"></ul>
 ```
 
 **② CSS**（加在 `site/board.html` 现有的 `<style>` 里）：
 
 ```css
-.img-ctx{display:flex;align-items:center;gap:12px;padding:12px 14px;margin:0 0 12px;
-  border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.04)}
-/* 必须有这一句：作者样式表里的 display:flex 优先级高于 UA 样式表的
-   [hidden]{display:none}，不写的话 <div hidden> 照样显示得出来，
-   「不带参数时不显示图上下文」那条断言就永远失败。
-   （同款规则在 .like-badge[hidden]{display:none} 里已经有了。） */
-.img-ctx[hidden]{display:none}
-.img-ctx img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#000}
-.img-ctx-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.img-ctx-txt strong{font-size:14px}
-.img-ctx-txt span{font-size:12px;color:var(--dim)}
-.img-ctx a{font-size:13px;color:#8ab4f8;white-space:nowrap}
-.msg-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:8px}
+  /* ── 跟图评论的图上下文 ── */
+  .img-ctx {
+    display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+    padding: 12px 14px; margin: 0 0 12px;
+    border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.04);
+  }
+  /* 必须有这一句：作者样式表里的 display:flex 优先级高于 UA 样式表的
+     [hidden]{display:none}，不写的话 <div hidden> 照样显示得出来，
+     「不带参数时不显示图上下文」那条断言就永远失败。
+     （同款规则在 .like-badge[hidden]{display:none} 里已经有了。） */
+  .img-ctx[hidden] { display: none; }
+  .img-ctx img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: #000; }
+  /* 不用 flex gap —— iOS 13 的 WKWebView 不支持（board.html 里现有的样式一个 gap 都没用，
+     site/app.css 顶部也写死了这条约束），相邻元素之间用 margin 撑开。 */
+  .img-ctx-img { margin-right: 12px; }
+  .img-ctx-txt {
+    -webkit-flex: 1; flex: 1; min-width: 0;
+    display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column;
+  }
+  .img-ctx-txt strong { font-size: 14px; }
+  /* --text-dim 是本文件定义的变量名（board.html 里用了 12 次）；
+     写成 var(--dim) 的话变量不存在，这行 color 直接失效，文字会继承父级颜色。 */
+  .img-ctx-txt span { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .img-ctx a { margin-left: 12px; font-size: 13px; color: #8ab4f8; white-space: nowrap; }
+  .msg-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
 ```
 
 **③ JS**（加在 `site/board.html` 现有的 `<script>` 里，紧跟 `var api = '/board/api';` 之后）：
@@ -2072,7 +2269,15 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
 
 **④ `render(items)` 加过滤和缩略图**
 
-把 `render(items)` 的开头改成：
+把 `site/board.html` 里 `render()` 的开头：
+
+```js
+  function render(items) {
+    msgList.innerHTML = '';
+    items.forEach(function (it) {
+```
+
+改成：
 
 ```js
   function render(items) {
@@ -2086,10 +2291,21 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
     list.forEach(function (it) {
 ```
 
-在 `p.textContent = it.body;` 之后、`li.appendChild(p);` 之前插入缩略图：
+把 `site/board.html` 里 `render()` 里的这两行：
 
 ```js
-      // 带图的留言：正文前放一张缩略图，点它跳回那张图
+      p.textContent = it.body;
+      li.appendChild(p);
+```
+
+改成（缩略图放进 `<p>` 里、正文文本节点**前面**）：
+
+```js
+      p.textContent = it.body;
+
+      // 带图的留言：正文前面放一张缩略图，点它跳回那张图。
+      // 放进 p 里而不是挂在 li 上 —— p 是块级元素，缩略图如果挂在 li 上会自己独占一行，
+      // CSS 里的 vertical-align / margin-right 就全成了摆设（实测：正文被挤到缩略图下面）。
       if (it.imgThumb && IMG_THUMB_RE.test(it.imgThumb)) {
         var ti = document.createElement('img');
         ti.className = 'msg-thumb';
@@ -2098,11 +2314,20 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
         ti.addEventListener('click', function () {
           location.href = '/' + it.imgDate + '/';
         });
-        li.appendChild(ti);
+        p.insertBefore(ti, p.firstChild);
       }
+
+      li.appendChild(p);
 ```
 
-把 `render()` 末尾的计数改成按过滤后的条数：
+把 `site/board.html` 里 `render()` 末尾的这两行：
+
+```js
+    emptyTip.hidden = items.length > 0;
+    countTip.textContent = items.length ? ('共 ' + items.length + ' 条留言') : '';
+```
+
+改成按**过滤后**的条数：
 
 ```js
     emptyTip.hidden = list.length > 0;
@@ -2111,7 +2336,24 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
 
 **⑤ `submit()` 的请求体带上图上下文**
 
-把 `submit()` 里的 `fetch(api, { ... })` 改成先拼 payload：
+把 `site/board.html` 里 `submit()` 的这段：
+
+```js
+    fetch(api, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        name: nameInput.value.trim(),
+        cat: catSelect.value,
+        body: body,
+        link: linkInput.value.trim(),
+      }),
+    })
+```
+
+改成先拼 payload 再发：
 
 ```js
     var payload = {
