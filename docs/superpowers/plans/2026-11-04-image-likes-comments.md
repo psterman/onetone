@@ -29,6 +29,12 @@
 - **中文文案里的换行用 `String.fromCharCode(10)`**，不要写 `'\n'` —— `site/app.js` 里的代码不在模板字符串里，但 `site/board.html` / `functions/board/api.js` 里的模板片段要注意同样的坑（`functions/board/api.js` 的模板字符串里已经踩过一次）。
 - **`.ps1` 必须是 UTF-8 with BOM。** 本计划不新增 `.ps1`，但改到现有 `.ps1` 时必须跑 `node tools/fix-ps1-encoding.mjs <file>` 验语法。
 - **每步必须先写失败测试、跑到失败、再写实现、跑到通过。**
+- **R2 条件写只有一个契约，必须照抄**（来源：https://developers.cloudflare.com/r2/api/workers/workers-api-reference/ ，文档更新于 2026-07-31）：
+  - 字段名是 **`etagMatches`**，**没有 `etagMatch`** —— 传错会被运行时忽略，条件写退化成无条件写，乐观锁等于不存在。
+  - 前置条件不满足时 **`put()` 返回 `null`**（不是抛异常），对象不会被存。不看返回值就会把「没写成」当成「写成了」。
+  - 「仅当对象不存在才创建」要用 `onlyIf: new Headers({ 'If-None-Match': '*' })`；
+    `etagDoesNotMatch: '*'` 的语义是「etag 不等于 `*` 就执行」，**不等于**「对象必须不存在」。
+- **共享代码放 `lib/`，不放 `functions/` 下** —— `functions/` 里的每个文件都会变成一条 Pages 路由。
 - **站点代码不在 git 里**（见「附录 A」）。所以每个 Task 的最后一步是**验证**，不是 commit；只有 `docs/superpowers/plans/` 下的本计划文件在仓库里。
 
 ---
@@ -37,10 +43,12 @@
 
 | 文件 | 职责 | 状态 |
 |---|---|---|
-| `functions/likes/api.js` | 点赞接口：`GET /likes/api`（读计数）、`POST /likes/api`（切换点赞）。自带 R2 读写、etag 乐观锁、IP 哈希限流、Origin 校验。**自包含**，不 import 别的 Function（与现有 `functions/board/api.js` 的风格一致） | 新建 |
-| `tools/r2-mock.mjs` | 测试用的 R2 替身（支持 etag 条件写）。从 `tools/test-board.mjs` 里抽出来共用 | 新建 |
+| `lib/r2-json.mjs` | **共享**读写层：`json` / `clip` / `sha256hex` / `sameOrigin` / `readJson` / `writeJson`（etag 条件写）/ `mutate`（乐观锁重试）。留言板和点赞接口共用一份 | 新建 |
+| `lib/rate-limit.mjs` | **共享**限流器：`makeRateLimiter({key, salt, perMinute, perHour, historyMax})`，按 IP 加盐哈希计数。放在 `functions/` 外面，不会变成 Pages 路由 | 新建 |
+| `functions/likes/api.js` | 点赞接口：`GET /likes/api`（读计数）、`POST /likes/api`（切换点赞）。R2 读写和限流走共享层 | 新建 |
+| `tools/r2-mock.mjs` | 测试用的 R2 替身，**严格按 Cloudflare 官方契约**实现（只认 `etagMatches`、冲突返回 `null`、带延迟、暴露 `stats`）。从 `tools/test-board.mjs` 里抽出来共用 | 新建 |
 | `tools/test-likes.mjs` | 点赞接口单测 + 留言板图字段单测 | 新建 |
-| `functions/board/api.js` | 扩展：接受并校验 `imgDate` / `imgId` / `imgThumb`；GET 回传这三个字段 | 修改 |
+| `functions/board/api.js` | Task 1：改用共享层并修正 etag 条件写（原 `etagMatch` 键名错，乐观锁从未生效）。Task 2：再扩展 —— 接受并校验 `imgDate` / `imgId` / `imgThumb`；GET 回传这三个字段 | 修改 |
 | `tools/test-board.mjs` | 改用 `tools/r2-mock.mjs`（去掉内联的 mock R2），其余断言不动 | 修改 |
 | `site/app.js` | 访客 ID、拉计数、渲染角标、查看器操作栏、点赞请求、本地「赞过」记录 | 修改 |
 | `site/app.css` | 角标样式、查看器操作栏样式 | 修改 |
@@ -52,46 +60,119 @@
 
 ---
 
-### Task 1: 点赞后端接口 + 单元测试
+### Task 1: 点赞后端接口 + 共享 R2 读写层 + 单元测试
 
 **Files:**
-- Create: `E:\voice-pilot\daily-image-site\tools\r2-mock.mjs`
+- Create: `E:\voice-pilot\daily-image-site\lib\r2-json.mjs`（共享读写层）
+- Create: `E:\voice-pilot\daily-image-site\lib\rate-limit.mjs`（共享限流器）
+- Create: `E:\voice-pilot\daily-image-site\tools\r2-mock.mjs`（严格按官方契约的 R2 替身）
 - Create: `E:\voice-pilot\daily-image-site\tools\test-likes.mjs`
 - Create: `E:\voice-pilot\daily-image-site\functions\likes\api.js`
-- Modify: `E:\voice-pilot\daily-image-site\tools\test-board.mjs`（改成 import 共享 mock，删掉内联副本）
+- Modify: `E:\voice-pilot\daily-image-site\functions\board\api.js`（改用共享层；修条件写）
+- Modify: `E:\voice-pilot\daily-image-site\tools\test-board.mjs`（改成 import 共享 mock）
 
 **Interfaces:**
 - Consumes: `env.IMAGES`（R2 bucket binding，key 形如 `likes/2026-11-03.json`、`likes/rate.json`、`board/messages.json`）
 - Produces:
+  - `lib/r2-json.mjs` 导出：`json(data, status, extraHeaders)`、`clip(s, max)`、`sha256hex(text)`、`sameOrigin(request)`、`readJson(bucket, key, fallback)`、`writeJson(bucket, key, data, currentEtag)`、`mutate(bucket, key, fallback, mutateFn)`
+  - `lib/rate-limit.mjs` 导出：`makeRateLimiter(cfg)`，返回 `{ key, check(bucket, request), record(bucket, ipHash, now) }`
   - `GET /likes/api?date=YYYY-MM-DD` → `200 { ok: true, date, counts: {<id>: n}, comments: {<id>: n} }`，缓存头 `Cache-Control: public, max-age=30`
   - `POST /likes/api`，请求头 `x-daily-visitor: <16 位小写 hex>`，请求体 `{ date, id, on }` → `200 { ok: true, id, count, on }`
-  - 错误：`400`（date/id/visitor 非法）、`403`（跨站 Origin）、`405`（非 GET/POST）、`409`（该图 voters 达上限）、`429`（限流）、`503`（R2 没绑定）
+  - 错误：`400`（date/id/visitor 非法）、`403`（跨站 Origin）、`405`（非 GET/POST）、`409`（该图 voters 达上限）、`429`（限流）、`503`（R2 没绑定 / 写冲突重试耗尽）
 
-- [ ] **Step 1: 抽出共享的 mock R2**
+#### 背景：这一版和初版计划不一样，初版是错的
 
-新建 `tools/r2-mock.mjs`，内容就是把 `tools/test-board.mjs` 第 32–68 行（`etagOf` + `makeR2`）原样搬出来并导出：
+初版计划让每个 Function 自带一份读写辅助函数。评审时发现两处都写了
+`onlyIf: { etagMatch: ... }` —— **按 Cloudflare 官方契约这个键名不存在**。
+
+> 官方契约（逐字出自 https://developers.cloudflare.com/r2/api/workers/workers-api-reference/ ，文档更新于 2026-07-31）：
+>
+> - `R2Conditional` 的字段是 `etagMatches` / `etagDoesNotMatch` / `uploadedBefore` / `uploadedAfter`。
+>   **没有 `etagMatch`**。传了会被运行时忽略 —— 条件写退化成无条件写，乐观锁等于不存在。
+> - 「If the condition check for `put()` fails, `null` will be returned instead of the `R2Object`」
+>   —— 冲突是**返回 `null`**，不是抛异常。
+> - `etagDoesNotMatch` 的语义是「对象的 etag 不等于给定字符串就执行」。
+>   `*` 永远不等于任何真实 etag → **它不等于「对象必须不存在」**。
+>   「仅当不存在才创建」的正确写法是传 `Headers`：`onlyIf: new Headers({ 'If-None-Match': '*' })`。
+>
+> 连带影响：**线上留言板的 `functions/board/api.js` 用的也是这个错键名**，
+> 也就是说留言板的乐观锁从来没生效过（代码里那句「并发提交不会互相覆盖」是假的）。
+> 两份拷贝各修一次 = 以后还得再修一次，所以抽成共享模块。
+
+#### 共享模块放在 `lib/`，不放在 `functions/` 下
+
+`functions/` 下的每个文件都会变成一条 Pages 路由（`functions/board/index.js` → `/board/`）。
+共享模块放 `functions/` 外面，用相对路径 import，Wrangler 打包时会被 esbuild 内联进函数包里。
+
+> **这条在 Task 5 部署时才能最终确认**：本机跑不了 workerd，
+> 如果 `wrangler pages deploy` 不接受 `functions/` 外的 import，构建会当场报错（不会静默出错）。
+> 届时若失败，把 `lib/` 挪到 `functions/_lib/`（下划线开头的目录不会被路由）并同步改 import 路径。
+
+#### 严格 mock 是这次修复的关键，不是可选项
+
+初版 mock 认错了键名、冲突时抛异常、`'*'` 语义也不对 —— 结果把上面这些 bug 全挡住了。
+评审做了变异测试：**把乐观锁整个删掉，「并发点赞不丢」那条断言照样通过**；
+实测该场景 12 次写、**0 次** etag 冲突（mock 的 get/put 是同步体，并发请求被天然串行化了）。
+
+所以这一版 mock 必须：
+1. 只认 `etagMatches`；遇到不认识的 `onlyIf` 键**直接抛错**（拼错键名要当场炸，不能悄悄退化成无条件写）
+2. 只认 `Headers` 形式的 `If-None-Match: *`
+3. 前置条件不满足时**返回 `null`**（官方契约），不抛异常
+4. `get`/`put` 之间有真实延迟 —— 不加延迟就永远撞不上冲突，那条并发断言就是白写的
+5. 暴露 `stats`（`gets` / `puts` / `conflicts`），让测试能断言「冲突真的发生过」
+
+- [ ] **Step 1: 写严格 mock R2**
+
+新建 `tools/r2-mock.mjs`：
 
 ```js
 /**
- * 测试用的 R2 替身（支持 etag 条件写）。
+ * 测试用的 R2 替身 —— 严格按 Cloudflare 官方契约实现。
  *
- * 为什么抽出来：留言板和点赞两边的测试都要用同一份 mock ——
- * 两份拷贝改起来容易只改一处，测试就出现「一边过一边不过」的假象。
+ * 为什么必须严格：
+ *   之前这版 mock 认错了 etag 键名（etagMatch 而非 etagMatches）、
+ *   冲突时抛异常而不是返回 null，结果把生产代码里的条件写 bug 完全挡住了 ——
+ *   「并发点赞不丢」那条断言在把乐观锁整个删掉后照样通过。
+ *   mock 宽松 = 测试在测 fiction，不是在测产品。
  *
- * 从 tools/test-board.mjs 搬过来，逻辑一个字没改。
+ * 严格的五个点：
+ *   1. 只认 etagMatches。遇到不认识的 onlyIf 键直接抛错 ——
+ *      拼错键名要当场炸，不能悄悄退化成无条件写。
+ *   2. 只认 Headers 形式的 If-None-Match: *（官方唯一的「仅当不存在才创建」写法）。
+ *   3. 前置条件不满足时返回 null（官方契约），不抛异常。
+ *   4. get/put 之间有真实延迟 —— 不加延迟的话并发请求会被同步体天然串行化，
+ *      永远撞不上 etag 冲突，那条并发断言就白写了。
+ *   5. 暴露 stats，让测试能断言「冲突真的发生过」。
+ *
+ * 官方契约：https://developers.cloudflare.com/r2/api/workers/workers-api-reference/
  */
-export function etagOf(text) {
+
+/** FNV-1a。真实 R2 的 etag 是不带引号的十六进制（httpEtag 才带引号） */
+function etagOf(text) {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
-  return '"' + h.toString(16) + '"';
+  return h.toString(16);
 }
 
-export function makeR2(store) {
+/**
+ * @param {object} store 存对象的字典
+ * @param {object} [opts]
+ * @param {number} [opts.delayMs] get/put 的模拟延迟（默认 2ms；顺序跑的用例可以传 0 提速）
+ */
+export function makeR2(store, opts) {
+  const delayMs = opts && typeof opts.delayMs === 'number' ? opts.delayMs : 2;
+  const stats = { gets: 0, puts: 0, conflicts: 0 };
+  const sleep = () => new Promise((r) => setTimeout(r, delayMs));
+
   return {
+    stats,
+
     async get(key) {
+      stats.gets++;
+      await sleep();
       if (!(key in store)) return null;
       const val = store[key];
       const text = typeof val === 'string' ? val : new TextDecoder().decode(val);
@@ -102,41 +183,365 @@ export function makeR2(store) {
         },
       };
     },
-    async put(key, value, opts) {
+
+    async put(key, value, putOpts) {
+      stats.puts++;
+      await sleep();
       const cur = key in store ? store[key] : undefined;
       const curEtag = cur === undefined ? null : etagOf(cur);
-      const only = opts?.onlyIf;
-      if (only?.etagMatch !== undefined && only.etagMatch !== curEtag) {
-        throw new Error('PreconditionFailed: etag mismatch');
+      const only = putOpts && putOpts.onlyIf;
+
+      if (only !== undefined && only !== null) {
+        if (typeof only.get === 'function') {
+          /* Headers 形式：目前只用 If-None-Match: *（仅当对象不存在才写） */
+          const inm = only.get('if-none-match');
+          if (inm !== null && inm !== undefined) {
+            if (inm === '*') {
+              if (cur !== undefined) {
+                stats.conflicts++;
+                return null;
+              }
+            } else if (curEtag === inm) {
+              stats.conflicts++;
+              return null;
+            }
+          }
+        } else if (typeof only === 'object') {
+          for (const k of Object.keys(only)) {
+            if (k === 'etagMatches') {
+              if (only[k] !== curEtag) {
+                stats.conflicts++;
+                return null;
+              }
+            } else if (k === 'etagDoesNotMatch') {
+              if (only[k] === curEtag) {
+                stats.conflicts++;
+                return null;
+              }
+            } else {
+              /* 注意：这条错误消息里不能出现 "precondition" / "412" /
+                 "etag" 这些词 —— 生产代码的 writeJson 靠正则识别「这是条件写冲突」，
+                 消息里带上就会把「拼错键名」这个真错误当成冲突吞掉。 */
+              throw new Error(
+                'mock R2: onlyIf 出现了未知键 "' + k +
+                '"（R2Conditional 只认 etagMatches / etagDoesNotMatch / uploadedBefore / uploadedAfter）',
+              );
+            }
+          }
+        } else {
+          throw new Error('mock R2: onlyIf 既不是对象也不是 Headers');
+        }
       }
-      if (only?.etagDoesNotMatch !== undefined && only.etagDoesNotMatch === curEtag) {
-        throw new Error('PreconditionFailed: object already exists');
-      }
+
       store[key] = value;
+      const text = typeof value === 'string' ? value : new TextDecoder().decode(value);
+      return { key, etag: etagOf(text) };
     },
   };
 }
 ```
 
-- [ ] **Step 2: 让 test-board.mjs 改用共享 mock**
+- [ ] **Step 2: 让 test-board.mjs 改用严格 mock，并先看它炸**
 
 改 `tools/test-board.mjs`：
-
 1. 顶部加 import：`import { makeR2 } from './r2-mock.mjs';`
-2. 删掉文件里内联的 `etagOf` 和 `makeR2` 两个函数定义（第 32–68 行那一段）。
+2. 删掉文件里内联的 `etagOf` 和 `makeR2` 两个函数定义（原第 32–68 行那一段）
 
-改完立刻跑一次，确认 41 项还是全过：
+跑一次：
 
 ```powershell
 cd E:\voice-pilot\daily-image-site
 node tools/test-board.mjs
 ```
 
-Expected: `41/41`（具体计数以当前输出为准，关键是 fail 数为 0）。
+**Expected: FAIL** —— 报错类似
+`mock R2: onlyIf 出现了未知键 "etagMatch"（...）`。
 
-- [ ] **Step 3: 写失败测试**
+> **这一步是故意的**：留言板现在还在用错键名，严格 mock 会当场把它炸出来。
+> 这条红证明了「严格 mock 真的能抓到这个 bug」——
+> 初版 mock 下这一步是**绿的**（bug 被完全挡住）。
+> 记下这条红输出，它是这次修复最直接的证据。
 
-新建 `tools/test-likes.mjs`。完整内容：
+- [ ] **Step 3: 写共享读写层**
+
+新建 `lib/r2-json.mjs`：
+
+```js
+/**
+ * 共享的 R2 JSON 读写层 —— 留言板和点赞接口都用它。
+ *
+ * 为什么要抽出来：
+ *   这层里有安全性和正确性要求最高的部分（条件写、CSRF 校验）。
+ *   之前 board 和 likes 各存一份，结果两份都用了错的 etag 键名 ——
+ *   留言板的乐观锁从来没生效过。改一处漏一处就是一次真实事故，所以只留一份。
+ *
+ * R2 条件写的官方契约（https://developers.cloudflare.com/r2/api/workers/workers-api-reference/）：
+ *   - R2Conditional 的字段是 etagMatches / etagDoesNotMatch / uploadedBefore / uploadedAfter。
+ *     没有 etagMatch —— 传了会被忽略，条件写退化成无条件写。
+ *   - 条件不满足时 put() 返回 null（不是抛异常），对象不会被存。
+ *   - etagDoesNotMatch 的语义是「对象的 etag 不等于给定字符串就执行」，
+ *     所以 '*' 不等于「对象必须不存在」。
+ *     「仅当不存在才创建」的正确写法是传 Headers：If-None-Match: *。
+ */
+
+export function clip(s, max) {
+  return String(s == null ? '' : s).trim().slice(0, max);
+}
+
+export async function sha256hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  const view = new Uint8Array(buf);
+  let out = '';
+  for (let i = 0; i < view.length; i++) out += view[i].toString(16).padStart(2, '0');
+  return out;
+}
+
+const noStore = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+  'CDN-Cache-Control': 'no-store, no-cache, must-revalidate',
+  'Cloudflare-CDN-Cache-Control': 'no-store, no-cache, must-revalidate',
+};
+
+/** 统一 JSON 响应（默认 no-store —— Pages 会给没设 Cache-Control 的响应套 4 小时缓存） */
+export function json(data, status = 200, extraHeaders) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...noStore,
+      ...(extraHeaders || {}),
+    },
+  });
+}
+
+/** 校验 Origin，防 CSRF（跨站表单提交） */
+export function sameOrigin(request) {
+  const origin = request.headers.get('Origin');
+  if (!origin) return true; // 同源 fetch / 部分客户端不带 Origin
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
+/** 读 R2 对象并解析 JSON；不存在或内容坏了返回 fallback */
+export async function readJson(bucket, key, fallback) {
+  const obj = await bucket.get(key);
+  if (!obj) return fallback;
+  try {
+    return JSON.parse(await obj.text());
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * 条件写。
+ *   currentEtag 有值 -> 只在 etag 匹配时写（etagMatches）
+ *   没有           -> 只在对象不存在时写（If-None-Match: *）
+ *
+ * 返回 true = 写成功；false = 前置条件不满足（有人同时在写），调用方该重读重试。
+ */
+export async function writeJson(bucket, key, data, currentEtag) {
+  const opts = currentEtag
+    ? { onlyIf: { etagMatches: currentEtag } }
+    : { onlyIf: new Headers({ 'If-None-Match': '*' }) };
+  try {
+    const obj = await bucket.put(key, JSON.stringify(data), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' },
+      ...opts,
+    });
+    // 官方契约：前置条件不满足时 put() 返回 null，对象不会被存。
+    // 不看返回值的话，冲突会被当成「写成功了」—— 返回一个从未落盘的计数。
+    if (obj === null) return false;
+    return true;
+  } catch (err) {
+    const msg = String(err?.message || err);
+    // 真运行时是返回 null 不是抛异常；这里只是兜底。
+    // 注意正则里不要带 "etag" —— mock 抛「拼错键名」时消息里含 etag，
+    // 会被误当成冲突吞掉，把真错误变成「重试 8 次仍失败」。
+    if (/precondition|412/i.test(msg)) return false;
+    throw err;
+  }
+}
+
+/**
+ * 读-改-写，带 etag 乐观锁重试。
+ *   mutateFn 返回 false -> 放弃这次写（mutate 也返回 false）
+ *   写成功             -> 返回 mutateFn 的返回值；没返回值则返回 true
+ *   重试用尽           -> 抛错（调用方负责兜成 503）
+ */
+export async function mutate(bucket, key, fallback, mutateFn) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const obj = await bucket.get(key);
+    const etag = obj?.etag || null;
+    let data;
+    try {
+      data = obj ? JSON.parse(await obj.text()) : structuredClone(fallback);
+    } catch {
+      data = structuredClone(fallback);
+    }
+    const result = mutateFn(data);
+    if (result === false) return false; // mutateFn 主动放弃
+    const ok = await writeJson(bucket, key, data, etag);
+    if (ok) return result === undefined ? true : result;
+    // etag 不匹配 -> 有人同时在写 -> 重新读再来。
+    // 必须加随机退避：所有人点赞都写同一个对象，不错开的话
+    // 所有写入者会「同步」地读同一份、撞同一份 etag、一起失败，
+    // 退避把它们打散，几轮就能收敛。
+    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 40) + 5));
+  }
+  throw new Error('写入冲突，重试 8 次仍失败');
+}
+```
+
+- [ ] **Step 4: 写共享限流器**
+
+新建 `lib/rate-limit.mjs`：
+
+```js
+/**
+ * 共享的按 IP 哈希限流器。
+ *
+ * 留言板和点赞接口的限流逻辑结构一样，只有几个常量不同，所以抽出来共用一份。
+ * IP 只存加盐哈希，不存原始 IP。
+ */
+import { readJson, mutate, sha256hex } from './r2-json.mjs';
+
+/**
+ * @param {object} cfg
+ * @param {string} cfg.key         计数文件在 R2 里的 key
+ * @param {string} cfg.salt        哈希盐（不同用途要用不同的盐，避免哈希可互相反查）
+ * @param {number} cfg.perMinute   每分钟上限
+ * @param {number} cfg.perHour     每小时上限
+ * @param {number} cfg.historyMax  计数文件里最多留多少条历史
+ */
+export function makeRateLimiter(cfg) {
+  const { key, salt, perMinute, perHour, historyMax } = cfg;
+
+  return {
+    key,
+
+    async check(bucket, request) {
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      // 加盐再哈希：不存原始 IP，也避免有人反查哈希表
+      const ipHash = (await sha256hex(salt + '|' + ip)).slice(0, 16);
+      const now = Date.now();
+      const rate = await readJson(bucket, key, { hits: [] });
+      const hits = Array.isArray(rate.hits) ? rate.hits : [];
+      const hourAgo = now - 3600_000;
+
+      const mine = hits.filter((h) => h && h.ip === ipHash && typeof h.ts === 'number' && h.ts > hourAgo);
+      const inMinute = mine.filter((h) => h.ts > now - 60_000).length;
+
+      if (inMinute >= perMinute || mine.length >= perHour) {
+        return { ok: false, ipHash, retryAfter: inMinute >= perMinute ? 60 : 600 };
+      }
+
+      return { ok: true, ipHash, now };
+    },
+
+    async record(bucket, ipHash, now) {
+      try {
+        await mutate(bucket, key, { hits: [] }, (data) => {
+          const hourAgo = now - 3600_000;
+          const hits = (Array.isArray(data.hits) ? data.hits : []).filter(
+            (h) => h && typeof h.ts === 'number' && h.ts > hourAgo,
+          );
+          hits.push({ ts: now, ip: ipHash });
+          data.hits = hits.slice(-historyMax);
+        });
+      } catch {
+        // 限流计数写失败不该拦住用户操作 —— 顶多少拦一次
+      }
+    },
+  };
+}
+```
+
+- [ ] **Step 5: 让 functions/board/api.js 改用共享层**
+
+改 `functions/board/api.js`：
+
+1. 顶部加 import：
+
+```js
+import { json, clip, sha256hex, sameOrigin, readJson, mutate } from '../../lib/r2-json.mjs';
+import { makeRateLimiter } from '../../lib/rate-limit.mjs';
+```
+
+2. 删掉文件里的这几个函数定义（改成 import 进来的）：
+   `json`（原 44–53 行）、`sha256hex`（原 55–61 行）、`clip`（原 84–86 行）、
+   `readJson`（原 88–97 行）、`writeJson`（原 99–119 行）、`mutate`（原 121–139 行）、
+   `checkRate`（原 141–160 行）、`recordHit`（原 162–175 行）、`sameOrigin`（原 177–186 行）、
+   以及 `noStore` 常量（原 38–42 行）。
+
+3. **保留不动**：`randomId`、`safeUrl`、`MSG_KEY`、`RATE_KEY`、`MAX_ITEMS`、`MAX_BODY`、
+   `MAX_NAME`、`MAX_LINK`。
+
+4. 加限流器实例（放在常量区）：
+
+```js
+const limiter = makeRateLimiter({
+  key: RATE_KEY,
+  salt: 'board-rate-v1',
+  perMinute: 3,
+  perHour: 20,
+  historyMax: 500,
+});
+```
+
+5. 把两处 `await checkRate(bucket, request)` 改成 `await limiter.check(bucket, request)`，
+   两处 `await recordHit(bucket, rate.ipHash, rate.now)` 改成
+   `await limiter.record(bucket, rate.ipHash, rate.now)`。
+
+6. 两处 `await mutate(...)`（删除留言、提交留言）包一层 try/catch，
+   写冲突重试耗尽时返回 503 而不是让异常逃出去变成通用 500：
+
+```js
+  // 写冲突重试 8 次仍失败 —— 返回 503，别让异常逃出去变成没有正文的 500
+  let removed;
+  try {
+    removed = await mutate(bucket, MSG_KEY, { items: [] }, (data) => {
+      const items = Array.isArray(data.items) ? data.items : [];
+      const idx = items.findIndex((it) => it && it.id === id && it.author === authorHash);
+      if (idx < 0) return false;
+      items.splice(idx, 1);
+      data.items = items;
+      return true;
+    });
+  } catch {
+    return json({ ok: false, error: '写入冲突，请稍后重试' }, 503);
+  }
+```
+
+提交留言那一段同理。
+
+7. 更新文件头注释里那句错的话（原第 16 行）：
+
+```
+ *   - 写的时候用 onlyIf.etagMatches 做条件写，并发提交不会互相覆盖；
+ *     真撞上了（etag 不匹配）就重读重写，最多重试 8 次
+```
+
+- [ ] **Step 6: 跑留言板测试，确认还是全过**
+
+```powershell
+cd E:\voice-pilot\daily-image-site
+node tools/test-board.mjs
+```
+
+Expected: **41/41 通过，fail 数为 0**，退出码 0。
+
+> 这一步是重构的安全网：留言板的 41 条断言（口令鉴权、限流、CSRF、
+> 「5 条并发提交一条都不能丢」等）必须一条不少地继续通过。
+> 「5 条并发提交一条都不能丢」这条现在**第一次真正有效** ——
+> 严格 mock + 延迟会让并发真的撞上 etag 冲突。
+
+- [ ] **Step 7: 写失败测试**
+
+新建 `tools/test-likes.mjs`：
 
 ```js
 /**
@@ -144,7 +549,8 @@ Expected: `41/41`（具体计数以当前输出为准，关键是 fail 数为 0�
  *
  * workerd 在本机因 VC++ 运行库问题崩溃，跑不了 wrangler pages dev，
  * 所以直接用 Node 的 Web API（Request/Response/Headers/crypto.subtle）模拟 Cloudflare 运行时。
- * mock R2 与留言板测试共用 tools/r2-mock.mjs。
+ * mock R2 与留言板测试共用 tools/r2-mock.mjs —— 那份 mock 严格按官方契约实现，
+ * 冲突会真的发生，所以并发用例测得到乐观锁。
  */
 import { onRequest as likesApi } from '../functions/likes/api.js';
 import { makeR2 } from './r2-mock.mjs';
@@ -166,8 +572,9 @@ const DATE = '2026-11-03';
 const ID = 'jianxiao_012';
 const VISITOR = 'a1b2c3d4e5f60718';
 
-function ctx(request, store) {
-  return { request, env: { IMAGES: makeR2(store) } };
+function makeCtx(request, store, opts) {
+  const bucket = makeR2(store, opts);
+  return { request, env: { IMAGES: bucket }, bucket };
 }
 
 function getReq(date) {
@@ -187,7 +594,7 @@ async function main() {
 
   console.log('\n── 基本点赞 ──');
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: true }), store));
     const j = await r.json();
     check('首次点赞返回 200', r.status === 200, r.status);
     check('首次点赞 count = 1', j.count === 1, j);
@@ -195,22 +602,22 @@ async function main() {
   }
   {
     // 同一个访客重复赞 —— 幂等，不能变成 2
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: true }), store));
     const j = await r.json();
     check('同一访客重复点赞 count 仍为 1', j.count === 1, j);
   }
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: false }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: false }), store));
     const j = await r.json();
     check('取消点赞 count = 0', j.count === 0, j);
   }
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: false }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: false }), store));
     const j = await r.json();
     check('重复取消仍为 0（幂等）', j.count === 0, j);
   }
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: true }), store));
     const j = await r.json();
     check('重新点赞 count = 1', j.count === 1, j);
   }
@@ -218,7 +625,7 @@ async function main() {
   console.log('\n── 换一个访客 ──');
   {
     const r = await likesApi(
-      ctx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': 'ffffffffffffffff' }), store),
+      makeCtx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': 'ffffffffffffffff' }), store),
     );
     const j = await r.json();
     check('换访客点赞 count = 2', j.count === 2, j);
@@ -226,43 +633,48 @@ async function main() {
 
   console.log('\n── 读取计数 ──');
   {
-    const r = await likesApi(ctx(getReq(DATE), store));
+    const r = await likesApi(makeCtx(getReq(DATE), store));
     const j = await r.json();
     check('GET 返回 200', r.status === 200, r.status);
     check('GET counts 含该图', j.counts && j.counts[ID] === 2, j);
     check('GET 可缓存', (r.headers.get('Cache-Control') || '').includes('max-age=30'), r.headers.get('Cache-Control'));
-    check('GET 不含访客字段', !('mine' in j) && !('voters' in j), j);
+    // 不要只查 mine / voters 两个具体键名 —— 换个名字就漏了。
+    // 「不含任何访客相关字段」的判据是：整个响应里找不到访客 id 本体。
+    check(
+      'GET 不含访客字段',
+      !JSON.stringify(j).includes(VISITOR) && !JSON.stringify(j).includes('voters'),
+      j,
+    );
   }
   {
-    const r = await likesApi(ctx(getReq('2026-11-02'), store));
+    const r = await likesApi(makeCtx(getReq('2026-11-02'), store));
     const j = await r.json();
     check('GET 别的日期 counts 为空', j.counts && Object.keys(j.counts).length === 0, j);
   }
   {
-    const r = await likesApi(ctx(getReq('不是日期'), store));
+    const r = await likesApi(makeCtx(getReq('不是日期'), store));
     check('GET 非法日期 → 400', r.status === 400, r.status);
   }
 
   console.log('\n── 参数校验 ──');
   {
-    const r = await likesApi(ctx(postReq({ date: '2026/11/03', id: ID, on: true }), store));
+    const r = await likesApi(makeCtx(postReq({ date: '2026/11/03', id: ID, on: true }), store));
     check('非法 date → 400', r.status === 400, r.status);
   }
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: '../../etc/passwd', on: true }), store));
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: '../../etc/passwd', on: true }), store));
     check('非法 id → 400', r.status === 400, r.status);
   }
   {
     // 注意：这里必须用纯 ASCII 的非法值。
     // HTTP 头值是 ByteString，塞中文会让 Node 的 undici 在构造 Request 时
-    // 直接抛 TypeError（Cannot convert argument to a ByteString），
-    // 测试会崩在构造请求上，根本走不到断言。
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': 'nothex' }), store));
+    // 直接抛 TypeError，测试会崩在构造请求上，根本走不到断言。
+    const r = await likesApi(makeCtx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': 'nothex' }), store));
     check('非法 visitor → 400', r.status === 400, r.status);
   }
   {
     const r = await likesApi(
-      ctx(new Request('http://x/likes/api', { method: 'DELETE' }), store),
+      makeCtx(new Request('http://x/likes/api', { method: 'DELETE' }), store),
     );
     check('非 GET/POST → 405', r.status === 405, r.status);
   }
@@ -270,13 +682,13 @@ async function main() {
   console.log('\n── CSRF ──');
   {
     const r = await likesApi(
-      ctx(postReq({ date: DATE, id: ID, on: true }, { Origin: 'http://evil.example.com' }), store),
+      makeCtx(postReq({ date: DATE, id: ID, on: true }, { Origin: 'http://evil.example.com' }), store),
     );
     check('跨站 Origin → 403', r.status === 403, r.status);
   }
   {
     const r = await likesApi(
-      ctx(postReq({ date: DATE, id: ID, on: true }, { Origin: 'http://x' }), store),
+      makeCtx(postReq({ date: DATE, id: ID, on: true }, { Origin: 'http://x' }), store),
     );
     check('同站 Origin → 放行', r.status === 200, r.status);
   }
@@ -291,7 +703,7 @@ async function main() {
         { id: 'm4' },
       ],
     });
-    const r = await likesApi(ctx(getReq(DATE), store));
+    const r = await likesApi(makeCtx(getReq(DATE), store));
     const j = await r.json();
     check('该图评论数 = 2', j.comments && j.comments[ID] === 2, j);
   }
@@ -310,15 +722,51 @@ async function main() {
     const N = 6;
     const CONC = 'jianwen_001';
     const posts = [];
+    let bucket = null;
     for (let i = 0; i < N; i++) {
       const vid = ('000000000000000' + i.toString(16)).slice(-16);
-      posts.push(likesApi(ctx(postReq({ date: DATE, id: CONC, on: true }, { 'x-daily-visitor': vid }), cStore)));
+      const ctx = makeCtx(postReq({ date: DATE, id: CONC, on: true }, { 'x-daily-visitor': vid }), cStore);
+      bucket = ctx.bucket;
+      posts.push(likesApi(ctx));
     }
     const results = await Promise.all(posts);
     const statuses = results.map((r) => r.status);
     check('并发点赞全部返回 200', statuses.every((s) => s === 200), statuses);
     const raw = JSON.parse(cStore['likes/' + DATE + '.json']);
     check('并发后计数 = ' + N + '（没有互相覆盖）', raw.counts && raw.counts[CONC] === N, raw.counts);
+    // 关键：必须真的撞上过冲突，否则这条断言是假护栏。
+    // 初版 mock 没有延迟，6 个请求被天然串行化，实测 12 次写、0 次冲突 ——
+    // 把乐观锁整个删掉，这条断言照样通过。
+    check('并发时真的撞上了 etag 冲突（否则断言是假护栏）', bucket.stats.conflicts > 0, bucket.stats);
+  }
+
+  console.log('\n── 单图点赞人数上限 ──');
+  {
+    // MAX_VOTERS_PER_IMAGE = 500。用不同 IP 绕过限流（限流是按 IP 算的），
+    // delayMs 0 是因为这里是顺序跑的、不需要制造并发窗口。
+    const capStore = {};
+    let last = null;
+    let got409 = false;
+    for (let i = 0; i < 501; i++) {
+      // 必须是**正好 16 位**小写 hex —— VISITOR_RE 是 /^[0-9a-f]{16}$/。
+      // 别用 '前缀' + i.toString(16) 再 slice(-16)：i < 16 时整个串只有 15 位，
+      // 会全部被判成非法访客（400），计数永远到不了上限。
+      const vid = i.toString(16).padStart(16, '0');
+      const ip = { 'CF-Connecting-IP': '10.0.' + Math.floor(i / 256) + '.' + (i % 256) };
+      const ctx = makeCtx(
+        postReq({ date: DATE, id: 'jianxiao_099', on: true }, { 'x-daily-visitor': vid, ...ip }),
+        capStore,
+        { delayMs: 0 },
+      );
+      last = await likesApi(ctx);
+      if (last.status === 409) {
+        got409 = true;
+        break;
+      }
+    }
+    check('第 501 个访客点赞 → 409', got409, last && last.status);
+    const raw = JSON.parse(capStore['likes/' + DATE + '.json']);
+    check('撞上限时计数没有被误改', raw.counts['jianxiao_099'] === 500, raw.counts);
   }
 
   console.log('\n── 限流 ──');
@@ -328,7 +776,7 @@ async function main() {
     const rStore = {};
     let last = null;
     for (let i = 0; i < 31; i++) {
-      last = await likesApi(ctx(postReq({ date: DATE, id: 'jianwen_002', on: true }), rStore));
+      last = await likesApi(makeCtx(postReq({ date: DATE, id: 'jianwen_002', on: true }), rStore));
     }
     check('一分钟内第 31 次 → 429', last.status === 429, last.status);
     check('429 带 Retry-After', !!last.headers.get('Retry-After'));
@@ -350,7 +798,7 @@ main().catch((e) => {
 });
 ```
 
-- [ ] **Step 4: 跑测试，确认失败**
+- [ ] **Step 8: 跑测试，确认失败**
 
 ```powershell
 cd E:\voice-pilot\daily-image-site
@@ -359,7 +807,7 @@ node tools/test-likes.mjs
 
 Expected: FAIL —— 报 `Cannot find module '.../functions/likes/api.js'`（模块还不存在）。
 
-- [ ] **Step 5: 实现点赞接口**
+- [ ] **Step 9: 实现点赞接口**
 
 新建 `E:\voice-pilot\daily-image-site\functions\likes\api.js`：
 
@@ -376,9 +824,9 @@ Expected: FAIL —— 报 `Cannot find module '.../functions/likes/api.js'`（�
  *   一张图一个对象 = 243 次 R2 请求，页面直接卡死；
  *   一期一个文件 = 1 次请求拿全部计数。
  *
- * 为什么写入用 etag 乐观锁：
+ * 为什么写入用 etag 乐观锁（具体契约见 lib/r2-json.mjs 的文件头）：
  *   所有人点赞都写同一个对象，不加条件写的话并发提交会互相覆盖
- *   （后写的把先写的计数抹掉）。和留言板用的是同一套。
+ *   （后写的把先写的计数抹掉）。
  *
  * 安全要点：
  *   - 写操作校验 Origin，防 CSRF
@@ -388,23 +836,18 @@ Expected: FAIL —— 报 `Cannot find module '.../functions/likes/api.js'`（�
  *     混进访客数据会把一个人的点赞清单发给所有人
  */
 
+import { json, clip, sha256hex, sameOrigin, readJson, mutate } from '../../lib/r2-json.mjs';
+import { makeRateLimiter } from '../../lib/rate-limit.mjs';
+
 const RATE_KEY = 'likes/rate.json';
 const BOARD_KEY = 'board/messages.json';
 
 const MAX_VOTERS_PER_IMAGE = 500;
-const LIMIT_PER_MINUTE = 30;
-const LIMIT_PER_HOUR = 300;
 const RATE_HISTORY_MAX = 2000;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ID_RE = /^[a-z]{3,10}_\d{3}$/;
 const VISITOR_RE = /^[0-9a-f]{16}$/;
-
-const noStore = {
-  'Cache-Control': 'no-store, no-cache, must-revalidate',
-  'CDN-Cache-Control': 'no-store, no-cache, must-revalidate',
-  'Cloudflare-CDN-Cache-Control': 'no-store, no-cache, must-revalidate',
-};
 
 // 计数是可以被边缘缓存的（访客无关），30 秒后自然过期。
 // 本项目 API Token 没有 Cache Purge 权限（实测 401），所以不做主动失效。
@@ -414,132 +857,13 @@ const publicCache = {
   'Cloudflare-CDN-Cache-Control': 'public, max-age=30',
 };
 
-function json(data, status = 200, extraHeaders) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      ...noStore,
-      ...(extraHeaders || {}),
-    },
-  });
-}
-
-async function sha256hex(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  const view = new Uint8Array(buf);
-  let out = '';
-  for (let i = 0; i < view.length; i++) out += view[i].toString(16).padStart(2, '0');
-  return out;
-}
-
-function clip(s, max) {
-  return String(s == null ? '' : s).trim().slice(0, max);
-}
-
-/** 读 R2 对象并解析 JSON；不存在返回默认值 */
-async function readJson(bucket, key, fallback) {
-  const obj = await bucket.get(key);
-  if (!obj) return fallback;
-  try {
-    return JSON.parse(await obj.text());
-  } catch {
-    return fallback;
-  }
-}
-
-/**
- * 条件写：带 etag 条件，并发写时不会静默覆盖别人的数据。
- * 返回 true 表示写成功。
- */
-async function writeJson(bucket, key, data, currentEtag) {
-  const opts = currentEtag
-    ? { onlyIf: { etagMatch: currentEtag } }
-    : { onlyIf: { etagDoesNotMatch: '*' } };
-  try {
-    await bucket.put(key, JSON.stringify(data), {
-      httpMetadata: { contentType: 'application/json; charset=utf-8' },
-      ...opts,
-    });
-    return true;
-  } catch (err) {
-    const msg = String(err?.message || err);
-    // 并发写冲突 / 对象在读之后被别人建出来了 —— 让调用方重试
-    if (/precondition|412|etag/i.test(msg)) return false;
-    throw err;
-  }
-}
-
-/** 读-改-写，带 etag 乐观锁重试。mutateFn 返回 false 表示「放弃这次写」 */
-async function mutate(bucket, key, fallback, mutateFn) {
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const obj = await bucket.get(key);
-    const etag = obj?.etag || null;
-    let data;
-    try {
-      data = obj ? JSON.parse(await obj.text()) : structuredClone(fallback);
-    } catch {
-      data = structuredClone(fallback);
-    }
-    const result = mutateFn(data);
-    if (result === false) return false;
-    const ok = await writeJson(bucket, key, data, etag);
-    if (ok) return true;
-    // etag 不匹配 -> 有人同时在写 -> 重新读再来。
-    // 必须加随机退避：所有人点赞都写同一个对象，不错开的话
-    // 所有写入者会「同步」地读同一份、撞同一份 etag、一起失败，
-    // 退避把它们打散，几轮就能收敛。
-    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 40) + 5));
-  }
-  throw new Error('写入冲突，重试 8 次仍失败');
-}
-
-/** 校验 Origin，防 CSRF（跨站表单提交） */
-function sameOrigin(request) {
-  const origin = request.headers.get('Origin');
-  if (!origin) return true; // 同源 fetch / 部分客户端不带 Origin
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
-}
-
-/** 限流：按 IP 哈希计数 */
-async function checkRate(bucket, request) {
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  // 加盐再哈希：不存原始 IP，也避免有人反查哈希表
-  const ipHash = (await sha256hex('like-rate-v1|' + ip)).slice(0, 16);
-  const now = Date.now();
-  const rate = await readJson(bucket, RATE_KEY, { hits: [] });
-  const hits = Array.isArray(rate.hits) ? rate.hits : [];
-  const hourAgo = now - 3600_000;
-
-  const mine = hits.filter((h) => h && h.ip === ipHash && typeof h.ts === 'number' && h.ts > hourAgo);
-  const perMinute = mine.filter((h) => h.ts > now - 60_000).length;
-  const perHour = mine.length;
-
-  if (perMinute >= LIMIT_PER_MINUTE || perHour >= LIMIT_PER_HOUR) {
-    return { ok: false, ipHash, retryAfter: perMinute >= LIMIT_PER_MINUTE ? 60 : 600 };
-  }
-
-  return { ok: true, ipHash, now };
-}
-
-async function recordHit(bucket, ipHash, now) {
-  try {
-    await mutate(bucket, RATE_KEY, { hits: [] }, (data) => {
-      const hourAgo = now - 3600_000;
-      const hits = (Array.isArray(data.hits) ? data.hits : []).filter(
-        (h) => h && typeof h.ts === 'number' && h.ts > hourAgo,
-      );
-      hits.push({ ts: now, ip: ipHash });
-      data.hits = hits.slice(-RATE_HISTORY_MAX);
-    });
-  } catch {
-    // 限流计数写失败不该拦住用户点赞 —— 顶多少拦一次
-  }
-}
+const limiter = makeRateLimiter({
+  key: RATE_KEY,
+  salt: 'like-rate-v1',
+  perMinute: 30,
+  perHour: 300,
+  historyMax: RATE_HISTORY_MAX,
+});
 
 function likesKey(date) {
   return 'likes/' + date + '.json';
@@ -606,7 +930,7 @@ export async function onRequest(context) {
     return json({ ok: false, error: 'id 格式不对（要 栏目_序号）' }, 400);
   }
 
-  const rate = await checkRate(bucket, request);
+  const rate = await limiter.check(bucket, request);
   if (!rate.ok) {
     return json(
       { ok: false, error: `点赞太频繁了，${rate.retryAfter} 秒后再试` },
@@ -617,45 +941,52 @@ export async function onRequest(context) {
 
   const voterHash = await sha256hex('like-voter-v1|' + vid);
   const key = likesKey(date);
+
   let out = { ok: true, count: 0 };
 
-  const written = await mutate(bucket, key, { counts: {}, voters: {} }, (data) => {
-    const counts = data.counts && typeof data.counts === 'object' ? data.counts : {};
-    const voters = data.voters && typeof data.voters === 'object' ? data.voters : {};
-    const list = Array.isArray(voters[id]) ? voters[id].slice() : [];
-    const has = list.indexOf(voterHash) >= 0;
+  let written;
+  try {
+    written = await mutate(bucket, key, { counts: {}, voters: {} }, (data) => {
+      const counts = data.counts && typeof data.counts === 'object' ? data.counts : {};
+      const voters = data.voters && typeof data.voters === 'object' ? data.voters : {};
+      const list = Array.isArray(voters[id]) ? voters[id].slice() : [];
+      const has = list.indexOf(voterHash) >= 0;
 
-    if (on) {
-      if (has) {
-        // 已经赞过 —— 幂等，不能重复计数
-        out = { ok: true, count: counts[id] || 0 };
-        return;
+      if (on) {
+        if (has) {
+          // 已经赞过 —— 幂等，不能重复计数
+          out = { ok: true, count: counts[id] || 0 };
+          return;
+        }
+        if (list.length >= MAX_VOTERS_PER_IMAGE) {
+          out = { ok: false, error: '这张图点赞太多啦' };
+          return false; // 放弃这次写
+        }
+        list.push(voterHash);
+        voters[id] = list;
+        counts[id] = (counts[id] || 0) + 1;
+        out = { ok: true, count: counts[id] };
+      } else {
+        if (!has) {
+          out = { ok: true, count: counts[id] || 0 };
+          return;
+        }
+        const kept = list.filter((h) => h !== voterHash);
+        if (kept.length) voters[id] = kept;
+        else delete voters[id];
+        const c = Math.max(0, (counts[id] || 0) - 1);
+        if (c) counts[id] = c;
+        else delete counts[id];
+        out = { ok: true, count: c };
       }
-      if (list.length >= MAX_VOTERS_PER_IMAGE) {
-        out = { ok: false, error: '这张图点赞太多啦' };
-        return false; // 放弃这次写
-      }
-      list.push(voterHash);
-      voters[id] = list;
-      counts[id] = (counts[id] || 0) + 1;
-      out = { ok: true, count: counts[id] };
-    } else {
-      if (!has) {
-        out = { ok: true, count: counts[id] || 0 };
-        return;
-      }
-      const kept = list.filter((h) => h !== voterHash);
-      if (kept.length) voters[id] = kept;
-      else delete voters[id];
-      const c = Math.max(0, (counts[id] || 0) - 1);
-      if (c) counts[id] = c;
-      else delete counts[id];
-      out = { ok: true, count: c };
-    }
 
-    data.counts = counts;
-    data.voters = voters;
-  });
+      data.counts = counts;
+      data.voters = voters;
+    });
+  } catch {
+    // 重试 8 次仍撞上冲突 —— 返回 503，别让异常逃出去变成没有正文的 500
+    return json({ ok: false, error: '写入冲突，请重试' }, 503);
+  }
 
   if (!out.ok) {
     return json({ ok: false, error: out.error }, 409);
@@ -664,13 +995,13 @@ export async function onRequest(context) {
     return json({ ok: false, error: '写入冲突，请重试' }, 503);
   }
 
-  await recordHit(bucket, rate.ipHash, rate.now);
+  await limiter.record(bucket, rate.ipHash, rate.now);
 
   return json({ ok: true, id, count: out.count, on }, 200);
 }
 ```
 
-- [ ] **Step 6: 跑测试，确认全过**
+- [ ] **Step 10: 跑测试，确认全过**
 
 ```powershell
 cd E:\voice-pilot\daily-image-site
@@ -679,7 +1010,7 @@ node tools/test-likes.mjs
 
 Expected: 全部 `✓`，末尾 `通过 N / 失败 0`，退出码 0。
 
-- [ ] **Step 7: 回归 —— 留言板测试必须还是全过**
+- [ ] **Step 11: 回归 —— 留言板测试必须还是全过**
 
 ```powershell
 cd E:\voice-pilot\daily-image-site
@@ -688,19 +1019,22 @@ node tools/test-board.mjs
 
 Expected: fail 数为 0（当前是 41 项）。
 
-- [ ] **Step 8: 验证**
+- [ ] **Step 12: 验证**
 
 ```powershell
 cd E:\voice-pilot\daily-image-site
+node --check lib/r2-json.mjs
+node --check lib/rate-limit.mjs
+node --check functions/board/api.js
 node --check functions/likes/api.js
 node tools/test-likes.mjs
 node tools/test-board.mjs
+node tools/test-functions.mjs
 ```
 
-Expected: 三条命令退出码都是 0。记录两条测试的通过项数，写进本计划文件的执行记录里。
+Expected: 七条命令退出码都是 0。记录三条测试各自的通过项数，写进本计划文件的执行记录里。
 
 ---
-
 ### Task 2: 留言板扩展「跟图评论」字段
 
 **Files:**
@@ -709,6 +1043,12 @@ Expected: 三条命令退出码都是 0。记录两条测试的通过项数，�
 
 **Interfaces:**
 - Consumes: Task 1 产出的 `/likes/api`（本 Task 不依赖它，只是共用 `imgId` / `imgDate` 的命名约定）
+
+> **注意**：`functions/board/api.js` 在 Task 1 里已经被改成从 `../../lib/r2-json.mjs` 和
+> `../../lib/rate-limit.mjs` import 辅助函数了。留言板自己的 `json` / `clip` / `sha256hex` /
+> `sameOrigin` / `readJson` / `writeJson` / `mutate` / `checkRate` / `recordHit` / `noStore`
+> **本地定义已经删掉了** —— 本 Task 要用其中任何一个，先从 `lib/` import，别再在 board 文件里本地写一份。
+> `randomId`、`safeUrl` 和几个常量仍在 board 文件里，本 Task 不用动它们。
 - Produces:
   - `POST /board/api` 接受可选的 `imgDate` / `imgId` / `imgThumb`；三者要么都不给，要么都给且都合法，否则 `400`
   - `GET /board/api` 的每个 item 增加 `imgDate` / `imgId` / `imgThumb` 三个字段（没有就是空字符串）
