@@ -1306,8 +1306,9 @@ Expected: 三条命令退出码都是 0。
 >    flex `gap` 是 Safari 14.1 才支持的，iOS 13 的微信（WKWebView）不认 →
 >    两个按钮会贴死、图标和数字会粘连。**这是计划自己的疏漏**（评审标为 plan-mandated）。
 >    改成 `.viewer-actions .vbtn + .vbtn { margin-left: 10px; }` 和
->    `.vbtn .vbtn-ico + span { margin-left: 6px; }` —— 实测几何完全一样（间距仍是 10px / 6px），
->    但 iOS 13 也能用。
+>    `.vbtn > span + span { margin-left: 6px; }` —— iOS 13 也能用。
+>    （**第一版这里写的是 `.vbtn .vbtn-ico + span`，漏了「数字→文案」那一段**，
+>    评审复审时才发现，见下面第 7 条。）
 > 2. **新规则补 `-webkit-` 前缀** —— 同样是 app.css 顶部的约定（关键属性全部带前缀兜底），
 >    对照 `.viewer-stage` 的写法补齐。
 > 3. **`site/app.js` 的四段代码统一缩进 2 空格** —— app.js 全篇（IIFE 体内）都是 2 空格起头，
@@ -1318,8 +1319,16 @@ Expected: 三条命令退出码都是 0。
 >    `app.js` 能跑只是因为 Chrome 在没有 `nosniff` 时不强制校验经典脚本的 MIME，脆得很。
 > 6. **测试补两条断言**：GET 必须带 `date=`（不带就是跨期串味）、评论链接必须带 `thumb=`
 >    （Task 4 要原样塞进 board API，必须过 `IMG_THUMB_RE` 白名单）。
+> 7. **（复审后补）`.vbtn` 里的三段间距要全补上** —— 上一版的 margin 规则只覆盖了
+>    「图标 → 数字」，漏了「数字 → 文案」。`.vbtn` 是 flex 容器，评论按钮里有三个相邻元素
+>    （💬 图标 / 数字 / 「评论这张图」），原来的 `gap: 6px` 对三段都生效，
+>    换成 margin 只补一段 → 「数字 → 文案」实测 **0px**，按钮渲染成「💬 0评论这张图」。
+>    修法两条一起改：模板里把「评论这张图」包成 `<span class="vbtn-txt">评论这张图</span>`，
+>    CSS 规则改成 `.vbtn > span + span { margin-left: 6px; }`（相邻的两个 span 之间都留 6px）。
+>    同时测试里补一条断言把「数字和文案没贴死」锁住。
 >
-> 改完预检实测：沙箱里 **19/19 通过**；按钮间距 10px、图标到数字 6px（与改之前一致）。
+> 改完预检实测：沙箱里 **20/20 通过**；三段间距实测 —— 按钮间 10px、图标→数字 6px、
+> 数字→文案 6px（与改之前的 `gap` 完全一致）。
 
 
 **Files:**
@@ -1352,7 +1361,7 @@ Expected: 三条命令退出码都是 0。
       <span class="vbtn-ico" id="viewerLikeIco">🤍</span><span id="viewerLikeCount">0</span>
     </button>
     <a class="vbtn vbtn-cmt" id="viewerComment" href="/board/">
-      <span class="vbtn-ico">💬</span><span id="viewerCommentCount">0</span> 评论这张图
+      <span class="vbtn-ico">💬</span><span id="viewerCommentCount">0</span><span class="vbtn-txt">评论这张图</span>
     </a>
   </div>
 </div>
@@ -1435,8 +1444,11 @@ Expected: 三条命令退出码都是 0。
 .vbtn:active { -webkit-transform: scale(.97); transform: scale(.97); }
 .vbtn.is-on { border-color: #4a8cff; color: #8ab4f8; }
 .vbtn-ico { font-size: 16px; line-height: 1; }
-/* 图标和后面的数字之间同理 —— 还是 margin，不是 gap */
-.vbtn .vbtn-ico + span { margin-left: 6px; }
+/* 图标和后面的文字之间 —— 还是 margin，不是 gap。
+   .vbtn 里最多三个相邻元素（图标 / 数字 / 文案），**相邻的两个 span 之间都要留 6px**。
+   早先只写了 `.vbtn-ico + span`，结果「数字 → 文案」那一段没人管，
+   按钮渲染成「💬 0评论这张图」，数字和文案贴死（真实 Chrome 实测 0px）。 */
+.vbtn > span + span { margin-left: 6px; }
 .vbtn-like.is-on .vbtn-ico { -webkit-filter: saturate(1.4); filter: saturate(1.4); }
 
 /* ── 缩略图格子的赞数角标（只显示，不可点） ── */
@@ -1816,6 +1828,30 @@ console.log('\n── 版面 ──');
     ? Math.max(0, Math.min(g.hint.bottom, g.acts.bottom) - Math.max(g.hint.top, g.acts.top))
     : -1;
   check('操作栏没盖住滑动提示', overlap === 0, { overlap, hint: g.hint, acts: g.acts });
+}
+
+// 评论按钮里是三个相邻元素：图标 / 数字 / 文案。
+// flex gap 时代三段之间都有 6px；改成 margin 之后如果只补了「图标→数字」那一段，
+// 「数字→文案」就会贴成 0px，按钮显示成「💬 0评论这张图」。
+{
+  const g = await page.evaluate(() => {
+    const cnt = document.querySelector('#viewerCommentCount');
+    if (!cnt) return null;
+    const cr = cnt.getBoundingClientRect();
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let textLeft = null;
+    while (w.nextNode()) {
+      const n = w.currentNode;
+      if (n.nodeValue && n.nodeValue.indexOf('评论这张图') >= 0) {
+        const rg = document.createRange();
+        rg.selectNodeContents(n);
+        textLeft = rg.getBoundingClientRect().left;
+        break;
+      }
+    }
+    return { countRight: cr.right, textLeft: textLeft };
+  });
+  check('评论按钮里数字和文案没贴死', !!g && g.textLeft !== null && g.textLeft - g.countRight >= 3, g);
 }
 
 console.log('\n── 点赞 ──');
