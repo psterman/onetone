@@ -2742,6 +2742,7 @@ scoped re-review（独立 verifier 子会话）出报告：**无 Critical**，2 
 
 - 部署：`https://8abcdaab.daily-image-site.pages.dev`（exit 0，45 个文件，Functions 一并打包）
 - 线上冒烟：**35/35 全绿**（带口令那几项因本机拿不到 `SUBMIT_TOKEN` 而跳过）
+- 全量线上字节级校验：**4516 张图片，0 处不一致**，10 期 manifest 本地/线上全部一致
 - 全套单元测试：**67 + 42 + 35 + 32 + 45 + 23 = 244/244 全绿**
 - 打包验证：`wrangler pages functions build` 编译通过；
   产物里 `lib/` 共享层确实在（`R2_CONFLICT` 3 处、`isWriteConflict` 5 处），
