@@ -36,6 +36,12 @@
       `#[cfg(test)] mod tests` —— agent_memory 的 DB 连接是进程级全局的
       （`store::with_write` → `WRITE_CONN.get_or_init`），库内单测里的
       `ONETONE_AGENT_MEMORY_DB` 覆盖有竞态，会把测试数据写进**用户真实的数据库**。
+11. **本计划在隔离 worktree 里执行**（`C:\Users\pstem\WorkBuddy\Worktrees\voice-pilot\project-instructions`，
+    分支 `feature/project-instructions-batch-a`）。E:\voice-pilot 同时被另一个会话使用，**不得改动**。
+    cargo 使用**独立的 target 目录** `E:\cargo-target-project-instructions`
+    （设 `$env:CARGO_TARGET_DIR='E:\cargo-target-project-instructions'`）：
+    共享 target 里的 `onetone.exe` 被正在运行的 OneTone 进程锁住，
+    `cargo test --test <name>` 在链接阶段会失败（`拒绝访问 os error 5`）。
 
 ### 已核实的既有 API（实施时直接用，不要重新发明）
 
@@ -327,6 +333,19 @@ fn lists_by_status_and_project() {
     assert_eq!(list_candidates("p3", Some(STATUS_ACCEPTED)).unwrap().len(), 0);
     assert_eq!(list_candidates("other", None).unwrap().len(), 0);
 }
+
+/// created_at_ms 与 updated_at_ms 必须各写各的 —— 候选列表按 updated_at_ms 倒序排，
+/// 两者混用会让「最近被推导触碰过的候选」这个信号失效。
+#[test]
+fn upsert_keeps_created_and_updated_apart() {
+    let _g = lock_db();
+    let mut c = cand("p4", "时间戳要分开");
+    c.updated_at_ms = c.created_at_ms + 5_000;
+    upsert_candidate(&c).unwrap();
+    let got = candidate_by_id(&c.candidate_id).unwrap().unwrap();
+    assert_eq!(got.created_at_ms, c.created_at_ms);
+    assert_eq!(got.updated_at_ms, c.updated_at_ms, "updated_at must not reuse created_at");
+}
 ```
 
 然后创建 `src-tauri/src/project_instructions/store.rs`（**只有实现，不带 `#[cfg(test)]`**）：
@@ -376,7 +395,7 @@ pub fn upsert_candidate(c: &Candidate) -> Result<(), String> {
                candidate_id, project_id, kind, section, proposed_content,
                evidence_json, confidence, status, accepted_memory_id,
                created_at_ms, updated_at_ms
-             ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10)
+             ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
              ON CONFLICT(project_id, kind, section, proposed_content) DO UPDATE SET
                evidence_json = excluded.evidence_json,
                confidence    = excluded.confidence,
@@ -392,6 +411,7 @@ pub fn upsert_candidate(c: &Candidate) -> Result<(), String> {
                 c.status,
                 c.accepted_memory_id,
                 c.created_at_ms as i64,
+                c.updated_at_ms as i64,
             ],
         )
         .map_err(|e| format!("upsert candidate: {e}"))?;
