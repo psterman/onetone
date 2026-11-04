@@ -214,12 +214,13 @@ pub fn revert_block(root: &Path, target: &TargetDef) -> Result<ApplyOutcome, Str
             wrote: false,
         });
     };
+    // Concatenate head + tail only — do not trim or force a trailing newline.
+    // Outside-block bytes (including trailing spaces / missing final NL) must survive.
     let mut out = String::with_capacity(text.len());
     out.push_str(&text[..b]);
     out.push_str(&text[e..]);
-    let cleaned = out.trim_end().to_string() + "\n";
     let tmp = path.with_extension("onetone-tmp");
-    fs::write(&tmp, &cleaned).map_err(|e| format!("write tmp: {e}"))?;
+    fs::write(&tmp, &out).map_err(|e| format!("write tmp: {e}"))?;
     fs::rename(&tmp, &path).map_err(|e| format!("rename: {e}"))?;
     Ok(ApplyOutcome {
         code: ApplyCode::Ok,
@@ -335,6 +336,26 @@ mod tests {
         assert!(text.contains("KEEP"));
         assert!(text.contains("TAIL"));
         assert!(!text.contains(BLOCK_BEGIN));
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn revert_preserves_trailing_whitespace_after_block_byte_for_byte() {
+        let d = tmpdir("revert-trail");
+        // Suffix has trailing spaces and no final newline — trim_end would destroy this.
+        let head = "KEEP-HEAD\n";
+        let tail = "TAIL  \n  ";
+        let with_block = format!("{head}{BLOCK_BEGIN}\nx\n{BLOCK_END}{tail}");
+        fs::write(d.join("AGENTS.md"), &with_block).unwrap();
+        let out = revert_block(&d, &target()).unwrap();
+        assert_eq!(out.code, ApplyCode::Ok);
+        assert!(out.wrote);
+        let expected = format!("{head}{tail}");
+        let text = fs::read_to_string(d.join("AGENTS.md")).unwrap();
+        assert_eq!(
+            text, expected,
+            "outside-block bytes must survive revert verbatim"
+        );
         let _ = fs::remove_dir_all(&d);
     }
 
