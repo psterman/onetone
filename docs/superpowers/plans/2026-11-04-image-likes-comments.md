@@ -228,9 +228,10 @@ export function makeR2(store, opts) {
                 return null;
               }
             } else {
-              /* 注意：这条错误消息里不能出现 "precondition" / "412" /
-                 "etag" 这些词 —— 生产代码的 writeJson 靠正则识别「这是条件写冲突」，
+              /* 注意：这条错误消息里不能出现 "precondition" / "412" 这些词 ——
+                 生产代码的 writeJson 靠这个正则识别「这是条件写冲突」，
                  消息里带上就会把「拼错键名」这个真错误当成冲突吞掉。
+                 （"etag" 是安全的：catch 已经收窄成 /precondition|412/i。）
                  消息里只列**本 mock 真正实现了**的键 —— 列了不实现的键，
                  就是在骗读代码的人。 */
               throw new Error(
@@ -1796,7 +1797,12 @@ Select-String -Path E:\voice-pilot\daily-image-site\site\board.html -Pattern 'id
 
 新建 `tools/test-board-ui.mjs`，结构与 `tools/test-likes-ui.mjs` 相同（本地静态服务器 + playwright + route 拦截），但这次：
 
-- 直接把 `site/board.html` 读出来当首页（它本来就是自包含页面，`/board/` 也由它自己处理）
+- 直接把 `site/board.html` 读出来当首页（它本来就是自包含页面，`/board/` 也由它自己处理）。
+  **注意：静态服务器必须同时在 `/` 和 `/board/`（以及 `/board/` 带查询串）上返回这份 HTML** ——
+  下面的断言是 `page.goto(base + '/board/?img=...')` 去的，只在 `/` 提供服务的话会 404，
+  报错会指向「页面元素不存在」这种误导性的地方。
+  `site/board.html` 的样式和脚本都是内联的（只有 favicon 指向 `/assets/logo.jpg`，404 无所谓），
+  所以不需要额外提供静态资源。
 - 拦截 `**/board/api`，返回固定的留言数组，其中两条带图字段：
 
 ```js
