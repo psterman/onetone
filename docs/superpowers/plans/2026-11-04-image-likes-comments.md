@@ -195,7 +195,9 @@ export function makeR2(store, opts) {
 
       if (only !== undefined && only !== null) {
         if (typeof only.get === 'function') {
-          /* Headers 形式：目前只用 If-None-Match: *（仅当对象不存在才写） */
+          /* Headers 形式：目前只用 If-None-Match: *（仅当对象不存在才写）。
+             别的条件头（If-Match 等）本 mock 不实现 —— 静默忽略比报错更危险，
+             会让人以为条件生效了。 */
           const inm = only.get('if-none-match');
           if (inm !== null && inm !== undefined) {
             if (inm === '*') {
@@ -206,6 +208,11 @@ export function makeR2(store, opts) {
             } else if (curEtag === inm) {
               stats.conflicts++;
               return null;
+            }
+          }
+          for (const h of ['if-match', 'if-modified-since', 'if-unmodified-since']) {
+            if (only.get(h) !== null && only.get(h) !== undefined) {
+              throw new Error('mock R2: 不支持的条件头 "' + h + '"');
             }
           }
         } else if (typeof only === 'object') {
@@ -223,10 +230,12 @@ export function makeR2(store, opts) {
             } else {
               /* 注意：这条错误消息里不能出现 "precondition" / "412" /
                  "etag" 这些词 —— 生产代码的 writeJson 靠正则识别「这是条件写冲突」，
-                 消息里带上就会把「拼错键名」这个真错误当成冲突吞掉。 */
+                 消息里带上就会把「拼错键名」这个真错误当成冲突吞掉。
+                 消息里只列**本 mock 真正实现了**的键 —— 列了不实现的键，
+                 就是在骗读代码的人。 */
               throw new Error(
-                'mock R2: onlyIf 出现了未知键 "' + k +
-                '"（R2Conditional 只认 etagMatches / etagDoesNotMatch / uploadedBefore / uploadedAfter）',
+                'mock R2: onlyIf 出现了未实现的键 "' + k +
+                '"（本 mock 只实现了 etagMatches / etagDoesNotMatch）',
               );
             }
           }
@@ -732,12 +741,18 @@ async function main() {
     const N = 6;
     const CONC = 'jianwen_001';
     const posts = [];
-    let bucket = null;
+    // 6 个并发请求必须共用**同一个** mock 实例 —— 真实的 R2 就是一个 bucket。
+    // 各用各的 mock 的话，stats 是分开计的，断言只能看到「最后一个请求」的计数，
+    // 不是整场竞争 —— 实测最后那个请求有约 1/6 的概率一次冲突都没撞上 → 假红。
+    const cBucket = makeR2(cStore);
     for (let i = 0; i < N; i++) {
       const vid = ('000000000000000' + i.toString(16)).slice(-16);
-      const ctx = makeCtx(postReq({ date: DATE, id: CONC, on: true }, { 'x-daily-visitor': vid }), cStore);
-      bucket = ctx.bucket;
-      posts.push(likesApi(ctx));
+      posts.push(
+        likesApi({
+          request: postReq({ date: DATE, id: CONC, on: true }, { 'x-daily-visitor': vid }),
+          env: { IMAGES: cBucket },
+        }),
+      );
     }
     const results = await Promise.all(posts);
     const statuses = results.map((r) => r.status);
@@ -747,7 +762,7 @@ async function main() {
     // 关键：必须真的撞上过冲突，否则这条断言是假护栏。
     // 初版 mock 没有延迟，6 个请求被天然串行化，实测 12 次写、0 次冲突 ——
     // 把乐观锁整个删掉，这条断言照样通过。
-    check('并发时真的撞上了 etag 冲突（否则断言是假护栏）', bucket.stats.conflicts > 0, bucket.stats);
+    check('并发时真的撞上了 etag 冲突（否则断言是假护栏）', cBucket.stats.conflicts > 0, cBucket.stats);
   }
 
   console.log('\n── 单图点赞人数上限 ──');
@@ -998,11 +1013,13 @@ export async function onRequest(context) {
     return json({ ok: false, error: '写入冲突，请重试' }, 503);
   }
 
-  if (!out.ok) {
-    return json({ ok: false, error: out.error }, 409);
-  }
-  if (!written) {
-    return json({ ok: false, error: '写入冲突，请重试' }, 503);
+  /* mutate 只有两种返回：写成功（written === true），或 mutateFn 主动放弃（written === false）。
+     放弃的那条分支已经把 out 设成了 { ok: false }，状态码由 out 决定：
+     「这张图点赞太多啦」是 409；万一以后加了别的放弃原因而忘了设 out，
+     这里会退化成 503，而不是误报成功。
+     （写成两段 if 的话，第二段是走不到的死代码 —— 那正是上一轮评审挑出来的。） */
+  if (written === false) {
+    return json({ ok: false, error: out.error || '写入未完成，请重试' }, out.ok ? 503 : 409);
   }
 
   await limiter.record(bucket, rate.ipHash, rate.now);
