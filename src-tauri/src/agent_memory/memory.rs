@@ -34,7 +34,14 @@ fn clip_content(s: &str) -> Result<String, String> {
 fn valid_type(t: &str) -> bool {
     matches!(
         t,
-        "observation" | "decision" | "gotcha" | "task" | "reasoning" | "summary" | "context"
+        "observation"
+            | "decision"
+            | "gotcha"
+            | "task"
+            | "reasoning"
+            | "summary"
+            | "context"
+            | "instruction"
     )
 }
 
@@ -274,6 +281,44 @@ pub fn list_recent_memory(project_id: &str, limit: usize) -> Result<Vec<MemoryRe
     })
 }
 
+/// 按类型列出某项目的记忆，最新优先。
+///
+/// **为什么不能直接用 `query_memory(project_id, "", n)`**：
+/// 空 query 会退化成 `list_recent_memory` —— 返回最近 n 条**所有类型**的记忆。
+/// 项目里普通记忆一多（observation / decision / gotcha …），
+/// `type='instruction'` 的行会被挤出窗口、被**静默丢弃**。
+/// 说明书条目丢一条就是用户规则少一条，所以这里在 SQL 里按类型过滤。
+pub fn list_memories_by_type(
+    project_id: &str,
+    memory_type: &str,
+    limit: usize,
+) -> Result<Vec<MemoryRecordDto>, String> {
+    if project_id.trim().is_empty() {
+        return Err("project_id required".into());
+    }
+    if !valid_type(memory_type) {
+        return Err(format!("invalid memory_type: {memory_type}"));
+    }
+    let lim = limit.clamp(1, 200);
+    with_read_path(|conn| {
+        let mut stmt = conn
+            .prepare(
+                "SELECT memory_id, project_id, session_id, memory_type, content,
+                        source_event_id, confidence, created_at_ms, updated_at_ms, supersedes_id,
+                        COALESCE(user_authored, 0)
+                 FROM memory_records
+                 WHERE project_id = ?1 AND memory_type = ?2
+                 ORDER BY updated_at_ms DESC, memory_id ASC
+                 LIMIT ?3",
+            )
+            .map_err(|e| e.to_string())?;
+        let mapped = stmt
+            .query_map(params![project_id, memory_type, lim as i64], map_memory_row)
+            .map_err(|e| e.to_string())?;
+        Ok(mapped.flatten().collect())
+    })
+}
+
 /// Provider context injection pack — project memories + optional checkpoint next_action.
 pub fn context_for_provider(
     project_id: &str,
@@ -337,4 +382,14 @@ pub fn rebuild_memory_fts() -> Result<usize, String> {
         }
         Ok(n)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_instruction_memory_type() {
+        assert!(valid_type("instruction"));
+    }
 }

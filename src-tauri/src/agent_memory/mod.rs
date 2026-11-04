@@ -64,7 +64,8 @@ pub use mcp_readonly::{
     tool_checkpoint_preview, tool_memory_search, tool_project_context, tool_session_history,
 };
 pub use memory::{
-    context_for_provider, list_recent_memory, query_memory, rebuild_memory_fts, upsert_memory,
+    context_for_provider, list_memories_by_type, list_recent_memory, query_memory,
+    rebuild_memory_fts, upsert_memory,
 };
 pub use model::{
     CheckpointDto, ContinuationBrief, MemoryRecordDto, ProjectMatch, SessionCandidate,
@@ -87,7 +88,7 @@ pub use registry::{
 };
 pub use session_events::list_session_events;
 pub use snapshot::{build_agent_home_snapshot, AgentHomeSnapshot};
-pub use store::{with_read_path, with_write};
+pub use store::{now_ms, with_read_path, with_write};
 pub use title::{resolve_title, AgentTitle, TitleDerivedFrom, TitleInputs, TitleSource};
 pub use work_descriptor::{
     resolve_live_session, resolve_work_descriptor, FreshEvidence, LiveSessionMatch,

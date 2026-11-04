@@ -237,6 +237,24 @@ pub(crate) fn migrate(conn: &Connection) -> Result<(), String> {
         )
         .map_err(|e| format!("record migration v6: {e}"))?;
     }
+
+    let applied_v7: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM schema_migrations WHERE version = 7",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if applied_v7 == 0 {
+        conn.execute_batch(MIGRATION_V7)
+            .map_err(|e| format!("migrate v7: {e}"))?;
+        let now = now_ms() as i64;
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (7, ?1)",
+            [now],
+        )
+        .map_err(|e| format!("record migration v7: {e}"))?;
+    }
     Ok(())
 }
 
@@ -352,6 +370,26 @@ CREATE INDEX IF NOT EXISTS idx_agent_registry_runtime_kind
   ON agent_registry(runtime_kind);
 CREATE INDEX IF NOT EXISTS idx_agent_registry_presence
   ON agent_registry(presence_state);
+"#;
+
+/// Project Instructions: candidate table for AGENTS.md / Cursor .mdc generation.
+const MIGRATION_V7: &str = r#"
+CREATE TABLE IF NOT EXISTS instruction_candidates (
+  candidate_id       TEXT PRIMARY KEY,
+  project_id         TEXT NOT NULL,
+  kind               TEXT NOT NULL,
+  section            TEXT NOT NULL,
+  proposed_content   TEXT NOT NULL,
+  evidence_json      TEXT,
+  confidence         REAL NOT NULL DEFAULT 0.5,
+  status             TEXT NOT NULL DEFAULT 'pending',
+  accepted_memory_id TEXT,
+  created_at_ms      INTEGER NOT NULL,
+  updated_at_ms      INTEGER NOT NULL,
+  UNIQUE(project_id, kind, section, proposed_content)
+);
+CREATE INDEX IF NOT EXISTS idx_ic_project_status
+  ON instruction_candidates(project_id, status, updated_at_ms DESC);
 "#;
 
 pub fn now_ms() -> u64 {
@@ -487,5 +525,19 @@ mod tests {
             )
             .unwrap();
         assert_eq!(after, 1);
+    }
+
+    #[test]
+    fn migration_v7_creates_instruction_candidates() {
+        let conn = super::open_rw(Path::new(":memory:")).expect("open in-memory");
+        super::migrate(&conn).expect("migrate");
+        let n: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='instruction_candidates'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count tables");
+        assert_eq!(n, 1, "instruction_candidates table must exist after migrate");
     }
 }

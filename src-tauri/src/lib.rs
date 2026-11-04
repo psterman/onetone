@@ -93,6 +93,7 @@ mod network;
 mod run_archive;
 mod agent_task_runtime;
 mod project_context;
+pub mod project_instructions;
 mod soft_pad_quota;
 mod soft_pad_runtime;
 mod soft_pad_voice_pending;
