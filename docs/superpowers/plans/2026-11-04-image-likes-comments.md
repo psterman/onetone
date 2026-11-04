@@ -1295,6 +1295,33 @@ Expected: 三条命令退出码都是 0。
 
 ### Task 3: 前端点赞（角标 + 查看器操作栏）
 
+> **本轮计划改了什么、为什么（2026-11-04 评审之后）**
+>
+> 简报是从本计划抽出来的，所以改动直接写在这里，改了什么、为什么都写清楚，
+> 评审好区分「照抄」和「照着改过的抄」。清单：
+>
+> 1. **`.viewer-actions` / `.vbtn` 里的 flex `gap` 改成 `margin`** ——
+>    `site/app.css` 顶部自己写死了兼容性约束：「不用 flex/grid 的 gap，用 margin / column-gap」，
+>    第 127 行还专门解释「不用 flex gap —— iOS 13 的 WKWebView 不支持，改用 margin」。
+>    flex `gap` 是 Safari 14.1 才支持的，iOS 13 的微信（WKWebView）不认 →
+>    两个按钮会贴死、图标和数字会粘连。**这是计划自己的疏漏**（评审标为 plan-mandated）。
+>    改成 `.viewer-actions .vbtn + .vbtn { margin-left: 10px; }` 和
+>    `.vbtn .vbtn-ico + span { margin-left: 6px; }` —— 实测几何完全一样（间距仍是 10px / 6px），
+>    但 iOS 13 也能用。
+> 2. **新规则补 `-webkit-` 前缀** —— 同样是 app.css 顶部的约定（关键属性全部带前缀兜底），
+>    对照 `.viewer-stage` 的写法补齐。
+> 3. **`site/app.js` 的四段代码统一缩进 2 空格** —— app.js 全篇（IIFE 体内）都是 2 空格起头，
+>    新代码原来是第 0 列，一个文件里出现两套缩进。
+> 4. **模板里点赞图标的默认值从 👍 改成 🤍** —— 默认状态是「未赞」，
+>    别在 JS 纠正之前闪一下「已赞」。
+> 5. **测试文件的假服务器按扩展名给 MIME** —— 之前所有静态资源一律按 `text/css` 发，
+>    `app.js` 能跑只是因为 Chrome 在没有 `nosniff` 时不强制校验经典脚本的 MIME，脆得很。
+> 6. **测试补两条断言**：GET 必须带 `date=`（不带就是跨期串味）、评论链接必须带 `thumb=`
+>    （Task 4 要原样塞进 board API，必须过 `IMG_THUMB_RE` 白名单）。
+>
+> 改完预检实测：沙箱里 **19/19 通过**；按钮间距 10px、图标到数字 6px（与改之前一致）。
+
+
 **Files:**
 - Modify: `E:\voice-pilot\daily-image-site\site\template.html`（查看器操作栏 DOM）
 - Modify: `E:\voice-pilot\daily-image-site\site\app.js`
@@ -1322,7 +1349,7 @@ Expected: 三条命令退出码都是 0。
        缩略图格子上只显示赞数角标，真正能点的是这里。 -->
   <div class="viewer-actions" id="viewerActions">
     <button class="vbtn vbtn-like" id="viewerLike" type="button">
-      <span class="vbtn-ico" id="viewerLikeIco">👍</span><span id="viewerLikeCount">0</span>
+      <span class="vbtn-ico" id="viewerLikeIco">🤍</span><span id="viewerLikeCount">0</span>
     </button>
     <a class="vbtn vbtn-cmt" id="viewerComment" href="/board/">
       <span class="vbtn-ico">💬</span><span id="viewerCommentCount">0</span> 评论这张图
@@ -1330,6 +1357,9 @@ Expected: 三条命令退出码都是 0。
   </div>
 </div>
 ```
+
+（初始图标是 🤍「未赞」—— 模板里写死成 👍 的话，JS 纠正之前会闪一下「已赞」。真实状态由
+`syncViewerActions()` 写，模板只给一个不会误导人的默认值。）
 
 - [ ] **Step 2: 在 app.css 里加样式**
 
@@ -1370,8 +1400,10 @@ Expected: 三条命令退出码都是 0。
 ```css
 /* ── 点赞 / 评论操作栏（查看器底部） ── */
 .viewer-actions {
+  display: -webkit-flex;
   display: flex;
-  gap: 10px;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
   padding: 10px 14px calc(12px + var(--safe-bottom));
   background: linear-gradient(180deg, rgba(11,11,15,0), rgba(11,11,15,.92) 42%);
   /* 必须是 flex 流里的一个普通项，不能用 position:absolute 压到底部。
@@ -1379,12 +1411,16 @@ Expected: 三条命令退出码都是 0。
      整条（重叠 46px），「左右滑动切换 · 长按可保存」这个提示就永远看不见；
      极端长宽比的图还会被操作栏切掉一截。改成流里的项之后，
      .viewer-stage 自动让出高度，图和提示都盖不住。 */
-  flex: 0 0 auto;
 }
+/* 不用 flex gap —— iOS 13 的 WKWebView 不支持（app.css 顶部的兼容性约束），
+   改用 margin 撑开两个按钮之间的距离。 */
+.viewer-actions .vbtn + .vbtn { margin-left: 10px; }
+
 .vbtn {
+  display: -webkit-inline-flex;
   display: inline-flex;
+  -webkit-align-items: center;
   align-items: center;
-  gap: 6px;
   min-height: 44px;           /* 微信里的可点区域不能太小 */
   padding: 0 16px;
   border: 1px solid var(--line);
@@ -1396,10 +1432,12 @@ Expected: 三条命令退出码都是 0。
   cursor: pointer;
   -webkit-tap-highlight-color: rgba(255,255,255,.08);
 }
-.vbtn:active { transform: scale(.97); }
+.vbtn:active { -webkit-transform: scale(.97); transform: scale(.97); }
 .vbtn.is-on { border-color: #4a8cff; color: #8ab4f8; }
 .vbtn-ico { font-size: 16px; line-height: 1; }
-.vbtn-like.is-on .vbtn-ico { filter: saturate(1.4); }
+/* 图标和后面的数字之间同理 —— 还是 margin，不是 gap */
+.vbtn .vbtn-ico + span { margin-left: 6px; }
+.vbtn-like.is-on .vbtn-ico { -webkit-filter: saturate(1.4); filter: saturate(1.4); }
 
 /* ── 缩略图格子的赞数角标（只显示，不可点） ── */
 .like-badge {
@@ -1425,50 +1463,50 @@ Expected: 三条命令退出码都是 0。
 在 `site/app.js` 顶部（`var DATA = window.__DAILY_MANIFEST__ || null;` 之后）加：
 
 ```js
-/* ─────────────── 点赞 / 评论 ─────────────── */
+  /* ─────────────── 点赞 / 评论 ─────────────── */
 
-var VISITOR_KEY = 'like-vid-v1';
-var MINE_KEY = 'like-mine-v1';
-var VISITOR_RE = /^[0-9a-f]{16}$/;
+  var VISITOR_KEY = 'like-vid-v1';
+  var MINE_KEY = 'like-mine-v1';
+  var VISITOR_RE = /^[0-9a-f]{16}$/;
 
-var social = { counts: {}, comments: {} };
+  var social = { counts: {}, comments: {} };
 
-function randomHex16() {
-  var bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  var out = '';
-  for (var i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, '0');
-  return out;
-}
-
-/** 访客 id：第一次访问时生成，存 localStorage。拿不到存储也不影响点赞 */
-function visitorId() {
-  var v = null;
-  try { v = localStorage.getItem(VISITOR_KEY); } catch (e) { v = null; }
-  if (!v || !VISITOR_RE.test(v)) {
-    v = randomHex16();
-    try { localStorage.setItem(VISITOR_KEY, v); } catch (e) { /* 隐私模式：用内存里的就行 */ }
+  function randomHex16() {
+    var bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    var out = '';
+    for (var i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, '0');
+    return out;
   }
-  return v;
-}
 
-/** 「我赞过哪些图」记在本地 —— 服务端的 GET 是访客无关的（能缓存） */
-function mineMap() {
-  try { return JSON.parse(localStorage.getItem(MINE_KEY) || '{}') || {}; } catch (e) { return {}; }
-}
-function setMine(date, id, on) {
-  try {
-    var m = mineMap();
-    var list = m[date] || [];
-    if (on) { if (list.indexOf(id) < 0) list.push(id); }
-    else { list = list.filter(function (x) { return x !== id; }); }
-    m[date] = list;
-    localStorage.setItem(MINE_KEY, JSON.stringify(m));
-  } catch (e) { /* 存不了就算了，计数照样对 */ }
-}
-function isMined(date, id) {
-  return (mineMap()[date] || []).indexOf(id) >= 0;
-}
+  /** 访客 id：第一次访问时生成，存 localStorage。拿不到存储也不影响点赞 */
+  function visitorId() {
+    var v = null;
+    try { v = localStorage.getItem(VISITOR_KEY); } catch (e) { v = null; }
+    if (!v || !VISITOR_RE.test(v)) {
+      v = randomHex16();
+      try { localStorage.setItem(VISITOR_KEY, v); } catch (e) { /* 隐私模式：用内存里的就行 */ }
+    }
+    return v;
+  }
+
+  /** 「我赞过哪些图」记在本地 —— 服务端的 GET 是访客无关的（能缓存） */
+  function mineMap() {
+    try { return JSON.parse(localStorage.getItem(MINE_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function setMine(date, id, on) {
+    try {
+      var m = mineMap();
+      var list = m[date] || [];
+      if (on) { if (list.indexOf(id) < 0) list.push(id); }
+      else { list = list.filter(function (x) { return x !== id; }); }
+      m[date] = list;
+      localStorage.setItem(MINE_KEY, JSON.stringify(m));
+    } catch (e) { /* 存不了就算了，计数照样对 */ }
+  }
+  function isMined(date, id) {
+    return (mineMap()[date] || []).indexOf(id) >= 0;
+  }
 ```
 
 - [ ] **Step 4: 继续在 app.js 里加：拉计数 + 角标渲染**
@@ -1476,46 +1514,46 @@ function isMined(date, id) {
 在上面的代码块之后追加：
 
 ```js
-/** 拉当期计数 —— 一次请求拿全部图的赞数和评论数 */
-function loadSocial(date) {
-  if (!date) return;
-  return fetch('/likes/api?date=' + encodeURIComponent(date))
-    .then(function (r) { return r.json(); })
-    .then(function (j) {
-      if (!j || !j.ok) return;
-      social.counts = j.counts || {};
-      social.comments = j.comments || {};
-      applyBadges();
-      syncViewerActions();
-    })
-    .catch(function () { /* 点赞功能挂了也不该影响看图 */ });
-}
+  /** 拉当期计数 —— 一次请求拿全部图的赞数和评论数 */
+  function loadSocial(date) {
+    if (!date) return;
+    return fetch('/likes/api?date=' + encodeURIComponent(date))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) return;
+        social.counts = j.counts || {};
+        social.comments = j.comments || {};
+        applyBadges();
+        syncViewerActions();
+      })
+      .catch(function () { /* 点赞功能挂了也不该影响看图 */ });
+  }
 
-/** 把赞数画到格子上。只在 > 0 时显示，0 赞不画 —— 免得 243 个角标糊满屏 */
-function applyBadges() {
-  for (var key in state) {
-    var s = state[key];
-    if (!s || !s.cells) continue;
-    for (var i = 0; i < s.cells.length; i++) {
-      var c = s.cells[i];
-      if (!c || !c.item) continue;
-      var n = social.counts[c.item.id] || 0;
-      if (!c.badge) {
-        c.badge = document.createElement('span');
-        c.badge.className = 'like-badge';
-        c.badge.hidden = true;
-        c.el.appendChild(c.badge);
-      }
-      if (n > 0) {
-        c.badge.textContent = '👍 ' + n;
-        c.badge.hidden = false;
-      } else {
-        c.badge.textContent = '';
-        c.badge.hidden = true;
+  /** 把赞数画到格子上。只在 > 0 时显示，0 赞不画 —— 免得 243 个角标糊满屏 */
+  function applyBadges() {
+    for (var key in state) {
+      var s = state[key];
+      if (!s || !s.cells) continue;
+      for (var i = 0; i < s.cells.length; i++) {
+        var c = s.cells[i];
+        if (!c || !c.item) continue;
+        var n = social.counts[c.item.id] || 0;
+        if (!c.badge) {
+          c.badge = document.createElement('span');
+          c.badge.className = 'like-badge';
+          c.badge.hidden = true;
+          c.el.appendChild(c.badge);
+        }
+        if (n > 0) {
+          c.badge.textContent = '👍 ' + n;
+          c.badge.hidden = false;
+        } else {
+          c.badge.textContent = '';
+          c.badge.hidden = true;
+        }
       }
     }
   }
-}
 ```
 
 - [ ] **Step 5: 继续在 app.js 里加：查看器操作栏的同步与点赞**
@@ -1523,59 +1561,59 @@ function applyBadges() {
 在 `applyBadges` 之后追加：
 
 ```js
-/** 查看器底部的赞数 / 评论数 / 评论链接 */
-function syncViewerActions() {
-  var likeBtn = document.getElementById('viewerLike');
-  var cmtLink = document.getElementById('viewerComment');
-  if (!likeBtn || !cmtLink) return;
-  var s = state[vTab];
-  var entry = s && s.cells ? s.cells[vIndex] : null;
-  if (!entry || !entry.item) return;
+  /** 查看器底部的赞数 / 评论数 / 评论链接 */
+  function syncViewerActions() {
+    var likeBtn = document.getElementById('viewerLike');
+    var cmtLink = document.getElementById('viewerComment');
+    if (!likeBtn || !cmtLink) return;
+    var s = state[vTab];
+    var entry = s && s.cells ? s.cells[vIndex] : null;
+    if (!entry || !entry.item) return;
 
-  var id = entry.item.id;
-  var n = social.counts[id] || 0;
-  document.getElementById('viewerLikeCount').textContent = String(n);
-  document.getElementById('viewerCommentCount').textContent = String(social.comments[id] || 0);
+    var id = entry.item.id;
+    var n = social.counts[id] || 0;
+    document.getElementById('viewerLikeCount').textContent = String(n);
+    document.getElementById('viewerCommentCount').textContent = String(social.comments[id] || 0);
 
-  var on = isMined(DATA.date, id);
-  likeBtn.classList.toggle('is-on', on);
-  document.getElementById('viewerLikeIco').textContent = on ? '👍' : '🤍';
+    var on = isMined(DATA.date, id);
+    likeBtn.classList.toggle('is-on', on);
+    document.getElementById('viewerLikeIco').textContent = on ? '👍' : '🤍';
 
-  // 评论入口：把「哪一天、哪张图、缩略图」带给留言板页
-  cmtLink.setAttribute(
-    'href',
-    '/board/?img=' + encodeURIComponent(DATA.date) +
-      '&id=' + encodeURIComponent(id) +
-      '&thumb=' + encodeURIComponent(entry.item.thumb),
-  );
-}
+    // 评论入口：把「哪一天、哪张图、缩略图」带给留言板页
+    cmtLink.setAttribute(
+      'href',
+      '/board/?img=' + encodeURIComponent(DATA.date) +
+        '&id=' + encodeURIComponent(id) +
+        '&thumb=' + encodeURIComponent(entry.item.thumb),
+    );
+  }
 
-/** 点赞：幂等切换，on = 目标状态 */
-function toggleLike() {
-  var s = state[vTab];
-  var entry = s && s.cells ? s.cells[vIndex] : null;
-  if (!entry || !entry.item) return;
-  var id = entry.item.id;
-  var on = !isMined(DATA.date, id);
-  var btn = document.getElementById('viewerLike');
-  if (btn) btn.disabled = true;
+  /** 点赞：幂等切换，on = 目标状态 */
+  function toggleLike() {
+    var s = state[vTab];
+    var entry = s && s.cells ? s.cells[vIndex] : null;
+    if (!entry || !entry.item) return;
+    var id = entry.item.id;
+    var on = !isMined(DATA.date, id);
+    var btn = document.getElementById('viewerLike');
+    if (btn) btn.disabled = true;
 
-  fetch('/likes/api', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-daily-visitor': visitorId() },
-    body: JSON.stringify({ date: DATA.date, id: id, on: on }),
-  })
-    .then(function (r) { return r.json(); })
-    .then(function (j) {
-      if (!j || !j.ok) return;
-      social.counts[id] = j.count;
-      setMine(DATA.date, id, on);
-      applyBadges();
-      syncViewerActions();
+    fetch('/likes/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-daily-visitor': visitorId() },
+      body: JSON.stringify({ date: DATA.date, id: id, on: on }),
     })
-    .catch(function () { /* 静默失败：角标还是上一个值 */ })
-    .then(function () { if (btn) btn.disabled = false; });
-}
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) return;
+        social.counts[id] = j.count;
+        setMine(DATA.date, id, on);
+        applyBadges();
+        syncViewerActions();
+      })
+      .catch(function () { /* 静默失败：角标还是上一个值 */ })
+      .then(function () { if (btn) btn.disabled = false; });
+  }
 ```
 
 - [ ] **Step 6: 把新代码挂进既有流程**
@@ -1590,11 +1628,11 @@ function toggleLike() {
    > 所以必须放在 `})();` **前面** —— 具体位置是「横竖屏切换后重算」那段监听器的后面。
 
 ```js
-/* 点赞：计数 + 角标 */
-document.getElementById('viewerLike').addEventListener('click', function () {
-  toggleLike();
-});
-loadSocial(DATA.date);
+  /* 点赞：计数 + 角标 */
+  document.getElementById('viewerLike').addEventListener('click', function () {
+    toggleLike();
+  });
+  loadSocial(DATA.date);
 ```
 
 3. `renderTab` 里创建 cell 之后、`state[tab.key].cells.push(entry);` 之前不需要改 —— 角标由 `applyBadges()` 统一补上。但要保证 `applyBadges()` 在 cell 都建好之后被调用：`loadSocial(DATA.date)` 是异步的，返回时 cell 已经建完 ✓。另外 `applyBadges()` 里的 `c.el.appendChild(c.badge)` 会把角标加在 cell 末尾 —— `.cell img` 是 `position:absolute`，角标也是 absolute，不影响布局 ✓。
@@ -1625,11 +1663,12 @@ const SITE = path.join(ROOT, 'site');
 
 const DATE = '2026-11-03';
 const ID = 'jianxiao_001';
+const THUMB = '/img/' + DATE + '/jianxiao/ab12cd34ef_001_t.webp';
 
 function manifest() {
   const item = (id) => ({
     id, w: 800, h: 800, tw: 400, th: 400,
-    thumb: '/img/' + DATE + '/jianxiao/ab12cd34ef_001_t.webp',
+    thumb: THUMB,
     full: '/img/' + DATE + '/jianxiao/ab12cd34ef_001.webp',
   });
   return {
@@ -1674,6 +1713,12 @@ function check(name, cond, extra) {
   else { fail++; console.log('  ✗ ' + name + (extra !== undefined ? '  -> ' + JSON.stringify(extra) : '')); }
 }
 
+const MIME = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+};
+
 const server = http.createServer((req, res) => {
   if (req.url === '/' || req.url === '/index.html') {
     const html = renderTemplate();
@@ -1683,7 +1728,11 @@ const server = http.createServer((req, res) => {
   }
   const file = path.join(SITE, path.basename(req.url.split('?')[0]));
   if (fs.existsSync(file)) {
-    res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8' });
+    // 按扩展名给 MIME。别图省事全按 text/css 发 ——
+    // app.js 能跑只是因为 Chrome 在没有 nosniff 时不强制校验经典脚本的 MIME，
+    // 哪天加了 nosniff 或者换成会强制校验的内核，整个测试会红得莫名其妙。
+    const mime = MIME[path.extname(file)] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': mime });
     res.end(fs.readFileSync(file));
     return;
   }
@@ -1698,6 +1747,7 @@ const page = await ctx.newPage();
 
 // 假的点赞接口
 let posted = [];
+let getUrls = [];
 let serverCounts = { [ID]: 3 };
 await page.route('**/likes/api*', async (route) => {
   const req = route.request();
@@ -1708,6 +1758,7 @@ await page.route('**/likes/api*', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, id: body.id, count: serverCounts[body.id], on: body.on }) });
     return;
   }
+  getUrls.push(req.url());
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, date: DATE, counts: serverCounts, comments: { [ID]: 2 } }) });
 });
 await page.route('**/img/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') }));
@@ -1725,6 +1776,9 @@ console.log('\n── 角标 ──');
   check('角标元素存在', await badge.count() > 0);
   check('角标显示赞数', (await badge.textContent()) === '👍 3', await badge.textContent());
   check('角标不可点', (await badge.evaluate((el) => getComputedStyle(el).pointerEvents)) === 'none');
+  // GET 必须带 date —— 单图键是「<日期>/<栏目_序号>」，日期丢了就是跨期串味。
+  // route 的匹配模式盖不住这个（**/likes/api* 什么查询串都收），所以要单独断言。
+  check('GET 带上了 date', getUrls.length > 0 && getUrls[0].indexOf('date=' + DATE) >= 0, getUrls);
 }
 
 console.log('\n── 查看器操作栏 ──');
@@ -1738,6 +1792,9 @@ await page.waitForTimeout(300);
   const href = await page.locator('#viewerComment').getAttribute('href');
   check('评论链接带图上下文', href && href.indexOf('img=' + DATE) >= 0 && href.indexOf('id=' + ID) >= 0, href);
   check('评论链接指到留言板', href && href.indexOf('/board/') === 0, href);
+  // thumb 是 Task 4 要原样塞进 board API 的字段，必须过 IMG_THUMB_RE 白名单 ——
+  // 取错（比如写成 imgThumb）这里会放行，留言板那边会返回 400「图片信息格式不对」。
+  check('评论链接带了缩略图', href && href.indexOf('thumb=' + encodeURIComponent(THUMB)) >= 0, href);
 }
 
 console.log('\n── 版面 ──');
