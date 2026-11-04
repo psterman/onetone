@@ -1333,7 +1333,39 @@ Expected: 三条命令退出码都是 0。
 
 - [ ] **Step 2: 在 app.css 里加样式**
 
-在 `site/app.css` 里 `.viewer-hint` 那段之后追加：
+先改 `site/app.css` 里 `.viewer-hint` 那一条 —— 底部安全区以后由新加的操作栏管，这里不用再留一份：
+
+把：
+
+```css
+.viewer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,.42);
+  padding: 12px 0 calc(var(--safe-bottom) + 16px);
+  background: linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0));
+  -webkit-transition: opacity .3s ease;
+  transition: opacity .3s ease;
+}
+```
+
+改成：
+
+```css
+.viewer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,.42);
+  /* 底部安全区交给下面新加的操作栏管，这里不再重复留一份 ——
+     两处都留的话，iPhone 上会在提示和按钮中间多出 34px 死空间。 */
+  padding: 12px 0 10px;
+  background: linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0));
+  -webkit-transition: opacity .3s ease;
+  transition: opacity .3s ease;
+}
+```
+
+然后在 `site/app.css` 里 `.viewer-hint.is-hidden { opacity: 0; }` 那条**之后**追加：
 
 ```css
 /* ── 点赞 / 评论操作栏（查看器底部） ── */
@@ -1342,11 +1374,12 @@ Expected: 三条命令退出码都是 0。
   gap: 10px;
   padding: 10px 14px calc(12px + var(--safe-bottom));
   background: linear-gradient(180deg, rgba(11,11,15,0), rgba(11,11,15,.92) 42%);
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
+  /* 必须是 flex 流里的一个普通项，不能用 position:absolute 压到底部。
+     真实 Chrome（390x844）实测过：absolute 的话操作栏正好盖住 .viewer-hint
+     整条（重叠 46px），「左右滑动切换 · 长按可保存」这个提示就永远看不见；
+     极端长宽比的图还会被操作栏切掉一截。改成流里的项之后，
+     .viewer-stage 自动让出高度，图和提示都盖不住。 */
+  flex: 0 0 auto;
 }
 .vbtn {
   display: inline-flex;
@@ -1548,7 +1581,13 @@ function toggleLike() {
 - [ ] **Step 6: 把新代码挂进既有流程**
 
 1. 在 `renderViewer()` 函数末尾（`preload(vIndex + 1);` 之后）加一行 `syncViewerActions();`
-2. 在文件末尾（`showHint` 等初始化之后）加上：
+2. 在 **IIFE 内部**（`site/app.js` 最后一行 `})();` 的**前面**）加上：
+
+   > ⚠️ **`site/app.js` 的整个逻辑都在一个 IIFE 里**（第 6 行 `(function () {` … 文件末尾 `})();`）。
+   > `DATA` / `state` / `vTab` / `vIndex` 全是 IIFE 作用域内的 `var`。
+   > 初始化代码如果放到 `})();` **之后**，就拿不到它们 → 抛 `ReferenceError`，
+   > 整个 app.js 都不执行（页面会退化成「只有格子框架、没有交互」的样子，还很难看出来）。
+   > 所以必须放在 `})();` **前面** —— 具体位置是「横竖屏切换后重算」那段监听器的后面。
 
 ```js
 /* 点赞：计数 + 角标 */
@@ -1699,6 +1738,27 @@ await page.waitForTimeout(300);
   const href = await page.locator('#viewerComment').getAttribute('href');
   check('评论链接带图上下文', href && href.indexOf('img=' + DATE) >= 0 && href.indexOf('id=' + ID) >= 0, href);
   check('评论链接指到留言板', href && href.indexOf('/board/') === 0, href);
+}
+
+console.log('\n── 版面 ──');
+{
+  // 实测过的坑：操作栏一开始写成 position:absolute; bottom:0，
+  // 结果正好盖住 .viewer-hint 整条（重叠 46px）——
+  // 「左右滑动切换 · 长按可保存」这个提示就永远看不见了。
+  // 这里量盒模型，把「不重叠」锁死。
+  const g = await page.evaluate(() => {
+    const r = (s) => {
+      const e = document.querySelector(s);
+      if (!e) return null;
+      const b = e.getBoundingClientRect();
+      return { top: b.top, bottom: b.bottom };
+    };
+    return { hint: r('.viewer-hint'), acts: r('.viewer-actions') };
+  });
+  const overlap = g.hint && g.acts
+    ? Math.max(0, Math.min(g.hint.bottom, g.acts.bottom) - Math.max(g.hint.top, g.acts.top))
+    : -1;
+  check('操作栏没盖住滑动提示', overlap === 0, { overlap, hint: g.hint, acts: g.acts });
 }
 
 console.log('\n── 点赞 ──');
