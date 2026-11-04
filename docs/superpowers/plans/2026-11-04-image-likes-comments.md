@@ -253,7 +253,11 @@ async function main() {
     check('非法 id → 400', r.status === 400, r.status);
   }
   {
-    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': '短' }), store));
+    // 注意：这里必须用纯 ASCII 的非法值。
+    // HTTP 头值是 ByteString，塞中文会让 Node 的 undici 在构造 Request 时
+    // 直接抛 TypeError（Cannot convert argument to a ByteString），
+    // 测试会崩在构造请求上，根本走不到断言。
+    const r = await likesApi(ctx(postReq({ date: DATE, id: ID, on: true }, { 'x-daily-visitor': 'nothex' }), store));
     check('非法 visitor → 400', r.status === 400, r.status);
   }
   {
@@ -1306,14 +1310,19 @@ await page.waitForTimeout(600);
 
 console.log('\n── 角标 ──');
 {
-  const badge = await page.locator('.like-badge').first();
+  // 必须锁定「当前激活的那个 tab」的格子。
+  // 所有 tab 的格子是一起建进 DOM 的，顺序跟 tab 顺序一致，
+  // 而没激活的 .grid 是 display:none —— 所以 .cell.first() 点的是
+  // 未激活 tab 里的隐藏格子，Playwright 会一直等到超时。
+  const badge = page.locator('#grid-jianxiao .like-badge').first();
   check('角标元素存在', await badge.count() > 0);
   check('角标显示赞数', (await badge.textContent()) === '👍 3', await badge.textContent());
   check('角标不可点', (await badge.evaluate((el) => getComputedStyle(el).pointerEvents)) === 'none');
 }
 
 console.log('\n── 查看器操作栏 ──');
-await page.locator('.cell').first().click();
+// 同上：点当前激活 tab 里的第一格
+await page.locator('#grid-jianxiao .cell').first().click();
 await page.waitForTimeout(300);
 {
   check('点赞按钮可见', await page.locator('#viewerLike').isVisible());
@@ -1492,6 +1501,11 @@ Expected: FAIL —— 「显示目标图上下文」失败（页面上还没有�
 ```css
 .img-ctx{display:flex;align-items:center;gap:12px;padding:12px 14px;margin:0 0 12px;
   border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.04)}
+/* 必须有这一句：作者样式表里的 display:flex 优先级高于 UA 样式表的
+   [hidden]{display:none}，不写的话 <div hidden> 照样显示得出来，
+   「不带参数时不显示图上下文」那条断言就永远失败。
+   （同款规则在 .like-badge[hidden]{display:none} 里已经有了。） */
+.img-ctx[hidden]{display:none}
 .img-ctx img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#000}
 .img-ctx-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .img-ctx-txt strong{font-size:14px}
