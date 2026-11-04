@@ -128,3 +128,143 @@ fn instruction_memory_round_trips() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].content, "跑测试必须带 --no-default-features");
 }
+
+// ---- decide (Task 4) ----
+
+use onetone::project_instructions::decide::{
+    accept_candidate, add_manual, confirmed_instructions, instruction_source_for,
+    mark_stale_candidates, reject_candidate,
+};
+// 只补 Task 1 那个 `use` 里没有的三个名字 —— 同一个文件里重复 import 同名会报 E0252。
+use onetone::project_instructions::model::{KIND_MANUAL, MEMORY_TYPE_INSTRUCTION, SECTION_GOTCHAS};
+
+fn seed_candidate(project: &str, content: &str, evidence: &str) -> Candidate {
+    let now = now_ms();
+    Candidate {
+        candidate_id: candidate_id_for(project, KIND_DERIVED, SECTION_GOTCHAS, content),
+        project_id: project.into(),
+        kind: KIND_DERIVED.into(),
+        section: SECTION_GOTCHAS.into(),
+        proposed_content: content.into(),
+        evidence_json: Some(evidence.into()),
+        confidence: 0.8,
+        status: STATUS_PENDING.into(),
+        accepted_memory_id: None,
+        created_at_ms: now,
+        updated_at_ms: now,
+    }
+}
+
+#[test]
+fn accept_writes_instruction_memory() {
+    let _g = lock_db();
+    let c = seed_candidate("acc-1", "worker.rs 写锁是进程内的", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    let mid = accept_candidate(&c.candidate_id).unwrap();
+    assert!(!mid.is_empty());
+    let found = confirmed_instructions("acc-1").unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].content, "worker.rs 写锁是进程内的");
+    assert_eq!(found[0].memory_type, MEMORY_TYPE_INSTRUCTION);
+}
+
+#[test]
+fn accept_is_idempotent() {
+    let _g = lock_db();
+    let c = seed_candidate("acc-2", "同一条", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    let a = accept_candidate(&c.candidate_id).unwrap();
+    let b = accept_candidate(&c.candidate_id).unwrap();
+    assert_eq!(a, b);
+    assert_eq!(confirmed_instructions("acc-2").unwrap().len(), 1);
+}
+
+#[test]
+fn reject_does_not_write_memory() {
+    let _g = lock_db();
+    let c = seed_candidate("rej-1", "不要的", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    reject_candidate(&c.candidate_id).unwrap();
+    assert!(confirmed_instructions("rej-1").unwrap().is_empty());
+}
+
+#[test]
+fn manual_entry_is_queryable() {
+    let _g = lock_db();
+    let mid = add_manual("man-1", SECTION_GOTCHAS, "用 pnpm 不用 npm").unwrap();
+    assert!(!mid.is_empty());
+    let found = confirmed_instructions("man-1").unwrap();
+    assert_eq!(found.len(), 1);
+    assert!(found[0].user_authored);
+}
+
+#[test]
+fn manual_rejects_bad_section() {
+    let _g = lock_db();
+    assert!(add_manual("man-2", "nope", "x").is_err());
+}
+
+#[test]
+fn drift_marks_derived_stale_without_rewriting() {
+    let _g = lock_db();
+    let c = seed_candidate("drift-1", "会过时的一条", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    accept_candidate(&c.candidate_id).unwrap();
+    let n = mark_stale_candidates("drift-1", "v2").unwrap();
+    assert_eq!(n, 1);
+    let found = confirmed_instructions("drift-1").unwrap();
+    assert_eq!(found.len(), 1, "memory must not be deleted");
+    assert_eq!(found[0].content, "会过时的一条", "content must not be rewritten");
+}
+
+#[test]
+fn instruction_source_lookup_uses_candidate_section() {
+    let _g = lock_db();
+    let c = seed_candidate("src-1", "worker.rs 写锁是进程内的", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    accept_candidate(&c.candidate_id).unwrap();
+    let rows = confirmed_instructions("src-1").unwrap();
+    assert_eq!(rows.len(), 1);
+    let src = instruction_source_for("src-1", &rows[0].memory_id, rows[0].source_event_id.as_deref())
+        .expect("source must resolve from the accepted candidate");
+    assert_eq!(src.section, SECTION_GOTCHAS);
+    assert_eq!(src.origin_kind, KIND_DERIVED);
+}
+
+#[test]
+fn instruction_source_lookup_finds_manual_by_memory_id() {
+    let _g = lock_db();
+    let mid = add_manual("src-2", SECTION_COMMANDS, "cargo test --no-default-features").unwrap();
+    // 人工录入的 memory 没有 source_event_id，只能靠 accepted_memory_id 反查。
+    let rows = confirmed_instructions("src-2").unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(rows[0].source_event_id.is_none());
+    let src = instruction_source_for("src-2", &mid, None).expect("manual source must resolve");
+    assert_eq!(src.section, SECTION_COMMANDS);
+    assert_eq!(src.origin_kind, KIND_MANUAL);
+}
+
+/// 说明书条目不能被项目的普通记忆挤掉 —— 这条是回归护栏。
+#[test]
+fn instructions_survive_ordinary_memories() {
+    let _g = lock_db();
+    let c = seed_candidate("bulk-1", "真正的说明书条目", "{\"sourceVersion\":\"v1\"}");
+    upsert_candidate(&c).unwrap();
+    accept_candidate(&c.candidate_id).unwrap();
+    // 灌 60 条普通记忆（超过 list_recent_memory 的 50 条上限）。
+    for i in 0..60 {
+        onetone::agent_memory::upsert_memory(
+            "bulk-1",
+            None,
+            "observation",
+            &format!("普通记忆 {i}"),
+            None,
+            Some(0.5),
+            None,
+            true,
+        )
+        .unwrap();
+    }
+    let found = confirmed_instructions("bulk-1").unwrap();
+    assert_eq!(found.len(), 1, "instruction row must not be crowded out");
+}
