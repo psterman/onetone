@@ -42,7 +42,7 @@ pub fn upsert_candidate(c: &Candidate) -> Result<(), String> {
                candidate_id, project_id, kind, section, proposed_content,
                evidence_json, confidence, status, accepted_memory_id,
                created_at_ms, updated_at_ms
-             ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10)
+             ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
              ON CONFLICT(project_id, kind, section, proposed_content) DO UPDATE SET
                evidence_json = excluded.evidence_json,
                confidence    = excluded.confidence,
@@ -58,6 +58,7 @@ pub fn upsert_candidate(c: &Candidate) -> Result<(), String> {
                 c.status,
                 c.accepted_memory_id,
                 c.created_at_ms as i64,
+                c.updated_at_ms as i64,
             ],
         )
         .map_err(|e| format!("upsert candidate: {e}"))?;

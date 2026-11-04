@@ -6,7 +6,7 @@
 //! （`store::with_write` → `WRITE_CONN.get_or_init`），
 //! 只有独占进程才能保证 `ONETONE_AGENT_MEMORY_DB` 覆盖在第一次写库之前生效。
 
-use onetone::agent_memory::now_ms;
+use onetone::agent_memory::{list_memories_by_type, now_ms, upsert_memory};
 use onetone::project_instructions::model::{
     Candidate, KIND_DERIVED, SECTION_COMMANDS, STATUS_ACCEPTED, STATUS_PENDING, STATUS_REJECTED,
 };
@@ -76,4 +76,55 @@ fn lists_by_status_and_project() {
     assert_eq!(list_candidates("p3", Some(STATUS_PENDING)).unwrap().len(), 1);
     assert_eq!(list_candidates("p3", Some(STATUS_ACCEPTED)).unwrap().len(), 0);
     assert_eq!(list_candidates("other", None).unwrap().len(), 0);
+}
+
+/// created_at_ms 与 updated_at_ms 必须各写各的 —— 候选列表按 updated_at_ms 倒序排，
+/// 两者混用会让「最近被推导触碰过的候选」这个信号失效。
+#[test]
+fn upsert_keeps_created_and_updated_apart() {
+    let _g = lock_db();
+    let mut c = cand("p4", "时间戳要分开");
+    c.updated_at_ms = c.created_at_ms + 5_000;
+    upsert_candidate(&c).unwrap();
+    let got = candidate_by_id(&c.candidate_id).unwrap().unwrap();
+    assert_eq!(got.created_at_ms, c.created_at_ms);
+    assert_eq!(got.updated_at_ms, c.updated_at_ms, "updated_at must not reuse created_at");
+}
+
+/// 非法状态必须被拒 —— 状态是下游 decide/render 会依赖的契约。
+#[test]
+fn set_candidate_status_rejects_unknown_status() {
+    let _g = lock_db();
+    let c = cand("p5", "状态要校验");
+    upsert_candidate(&c).unwrap();
+    assert!(set_candidate_status(&c.candidate_id, "bogus", None).is_err());
+}
+
+/// 查不到时必须返回 Ok(None)，而不是 Err。
+#[test]
+fn candidate_by_id_returns_none_for_unknown_id() {
+    let _g = lock_db();
+    assert!(candidate_by_id("no-such-candidate").unwrap().is_none());
+}
+
+/// `instruction` 类型必须能真正写进 memory_records 并按类型读回来 ——
+/// 说明书条目全靠这条链路，且它是「能用 query_memory 查到」的前提。
+#[test]
+fn instruction_memory_round_trips() {
+    let _g = lock_db();
+    let row = upsert_memory(
+        "rt-1",
+        None,
+        "instruction",
+        "跑测试必须带 --no-default-features",
+        Some("evt-1"),
+        Some(0.9),
+        None,
+        false,
+    )
+    .unwrap();
+    assert_eq!(row.memory_type, "instruction");
+    let found = list_memories_by_type("rt-1", "instruction", 200).unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].content, "跑测试必须带 --no-default-features");
 }
