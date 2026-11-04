@@ -165,7 +165,9 @@ function etagOf(text) {
 export function makeR2(store, opts) {
   const delayMs = opts && typeof opts.delayMs === 'number' ? opts.delayMs : 2;
   const stats = { gets: 0, puts: 0, conflicts: 0 };
-  const sleep = () => new Promise((r) => setTimeout(r, delayMs));
+  /* delayMs 0 = 完全不等（顺序跑的用例用它提速）。
+     setTimeout(r, 0) 在 Node 里也有 ~1ms 的粒度，500 多次请求累积起来很可观。 */
+  const sleep = delayMs > 0 ? () => new Promise((r) => setTimeout(r, delayMs)) : () => Promise.resolve();
 
   return {
     stats,
@@ -254,13 +256,21 @@ cd E:\voice-pilot\daily-image-site
 node tools/test-board.mjs
 ```
 
-**Expected: FAIL** —— 报错类似
-`mock R2: onlyIf 出现了未知键 "etagMatch"（...）`。
+**Expected: FAIL** —— 报错是 `写入冲突，重试 5 次仍失败`。
 
 > **这一步是故意的**：留言板现在还在用错键名，严格 mock 会当场把它炸出来。
 > 这条红证明了「严格 mock 真的能抓到这个 bug」——
-> 初版 mock 下这一步是**绿的**（bug 被完全挡住）。
-> 记下这条红输出，它是这次修复最直接的证据。
+> 初版 mock 下这一步是**绿的**（bug 被完全挡住）。记下这条红输出，
+> 它是这次修复最直接的证据。
+>
+> 注意报错的**形态**：冒出来的是「写入冲突，重试 5 次仍失败」而不是 mock 的
+> 「onlyIf 出现了未知键 "etagMatch"」—— 因为旧留言板 `writeJson` 的 catch
+> 用了 `/precondition|412|etag/i`，把 mock 抛的错当成「条件写冲突」吞掉了。
+> Step 3 的共享层把 catch 收窄成 `/precondition|412/i`（不带 `etag`），
+> 所以修完之后再拼错键名，mock 的原始错误会**直接冒出来**，不会被伪装成冲突。
+>
+> 另外：mock 是**第二次写**才炸 —— 第一次写对象还不存在，走的是 `etagDoesNotMatch`
+> 分支（那个键名 mock 认得）。所以看红的时候别以为是第一次 POST 就炸了。
 
 - [ ] **Step 3: 写共享读写层**
 
