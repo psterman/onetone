@@ -146,7 +146,7 @@
               WB_ICON +
               '" alt="" /><span>WorkBuddy</span>' +
               modelBit
-            : '<span class="wb-avatar-me" aria-hidden="true">我</span><span>我</span>';
+            : '<span class="wb-avatar-me">我</span>';
         return (
           '<div class="wb-turn wb-turn--' +
           role +

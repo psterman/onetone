@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 现网首页 vs 原型对齐对照</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e7eef4;
+      --paper: #f8fafc;
+      --ink: #152238;
+      --muted: #5a7086;
+      --line: rgba(26, 45, 74, 0.12);
+      --accent: #2a9cc4;
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --err: #c44;
+      --live: #3d5a80;
+      --proto: #176f68;
+      --shadow: 0 14px 36px rgba(31, 43, 40, 0.1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 480px at 50% -8%, #f5f9fc 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, #d8e3ec 100%);
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { width: min(1180px, calc(100% - 28px)); margin: 24px auto 48px; }
+    h1 {
+      margin: 0 0 8px;
+      font-family: Sora, "Noto Sans SC", sans-serif;
+      font-size: clamp(22px, 3vw, 30px);
+      letter-spacing: -0.03em; font-weight: 700;
+    }
+    .lede { margin: 0 0 18px; color: var(--muted); max-width: 72ch; line-height: 1.55; font-size: 14.5px; }
+    .rule {
+      margin: 0 0 22px; padding: 14px 16px; border-radius: 14px;
+      background: var(--paper); box-shadow: var(--shadow);
+      color: var(--muted); font-size: 13.5px; line-height: 1.55;
+    }
+    .rule strong { color: var(--ink); }
+    .rule code, table code, .gap code, .phone code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px; color: var(--accent);
+    }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+    a.btn {
+      display: inline-flex; align-items: center; text-decoration: none;
+      border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 13px;
+      background: var(--accent); color: #fff;
+    }
+    a.btn.sec {
+      background: transparent; color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    a.btn.proto { background: var(--proto); }
+
+    .split {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px;
+    }
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+    .col {
+      background: var(--paper); border-radius: 16px; padding: 14px 14px 16px;
+      box-shadow: var(--shadow); border: 1px solid transparent;
+    }
+    .col.live { border-color: color-mix(in srgb, var(--live) 25%, transparent); }
+    .col.proto { border-color: color-mix(in srgb, var(--proto) 28%, transparent); }
+    .col header {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+    }
+    .col h2 { margin: 0; font-size: 16px; font-weight: 750; }
+    .tag {
+      font-size: 11px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+    }
+    .tag.live { background: color-mix(in srgb, var(--live) 12%, white); color: var(--live); }
+    .tag.proto { background: color-mix(in srgb, var(--proto) 12%, white); color: var(--proto); }
+    .tag.warn { background: color-mix(in srgb, var(--warn) 14%, white); color: var(--warn); }
+    .tag.ok { background: color-mix(in srgb, var(--ok) 12%, white); color: var(--ok); }
+    .tag.miss { background: color-mix(in srgb, var(--err) 10%, white); color: var(--err); }
+
+    /* mini phone wireframe */
+    .phone {
+      border-radius: 14px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 55%, white);
+      padding: 10px; min-height: 420px;
+      display: flex; flex-direction: column; gap: 8px;
+      font-size: 11.5px; color: var(--muted);
+    }
+    .ph-top {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px;
+    }
+    .ph-chip {
+      justify-self: start; height: 22px; padding: 0 8px; border-radius: 999px;
+      border: 1px solid var(--line); background: white; font-size: 10px; font-weight: 650;
+      display: inline-flex; align-items: center; gap: 4px; color: var(--ink);
+    }
+    .ph-intent {
+      justify-self: center; display: inline-flex; gap: 2px; padding: 2px;
+      border-radius: 8px; border: 1px solid var(--line); background: white;
+    }
+    .ph-intent span {
+      padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 650;
+    }
+    .ph-intent span.on { background: color-mix(in srgb, var(--bg) 80%, white); color: var(--ink); }
+    .ph-end { justify-self: end; display: flex; gap: 4px; }
+    .ph-ico {
+      width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line);
+      background: white; display: grid; place-items: center; font-size: 9px; font-weight: 800;
+      color: var(--ink); position: relative;
+    }
+    .ph-ico .badge {
+      position: absolute; top: -4px; right: -4px; min-width: 12px; height: 12px;
+      border-radius: 999px; background: var(--ink); color: #fff;
+      font-size: 8px; line-height: 12px; text-align: center;
+    }
+    .ph-invite, .ph-card, .ph-teaser, .ph-compose, .ph-desk {
+      border-radius: 12px; border: 1px solid var(--line); background: white; padding: 10px 11px;
+    }
+    .ph-invite h3, .ph-card h3 {
+      margin: 0; font-size: 14px; font-weight: 750; color: var(--ink);
+      font-family: Sora, "Noto Sans SC", sans-serif;
+    }
+    .ph-invite p, .ph-card p { margin: 4px 0 0; line-height: 1.45; }
+    .ph-card .who {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .ph-card .ai {
+      width: 22px; height: 22px; border-radius: 7px; background: #1a1d24; color: #fff;
+      display: grid; place-items: center; font-size: 9px; font-weight: 800;
+    }
+    .ph-card .pill {
+      margin-left: auto; font-size: 9px; font-weight: 750; padding: 2px 7px;
+      border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--line));
+      color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, white);
+    }
+    .ph-card .cta {
+      display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 999px;
+      background: var(--ink); color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .ph-teaser {
+      display: flex; align-items: center; gap: 8px; cursor: default;
+      border-style: dashed;
+      border-color: color-mix(in srgb, var(--proto) 35%, var(--line));
+      background: color-mix(in srgb, var(--proto) 5%, white);
+      color: var(--ink); font-weight: 650;
+    }
+    .ph-teaser .go { margin-left: auto; color: var(--proto); font-size: 11px; }
+    .ph-compose .rail {
+      margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+    }
+    .ph-compose .chip {
+      height: 22px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line);
+      font-size: 10px; font-weight: 650; color: var(--ink); background: color-mix(in srgb, var(--bg) 40%, white);
+      display: inline-flex; align-items: center;
+    }
+    .ph-compose .send {
+      margin-left: auto; width: 24px; height: 24px; border-radius: 999px;
+      background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 11px;
+    }
+    .ph-desk {
+      opacity: 0.72; font-size: 10.5px;
+      border-style: dashed;
+    }
+    .ph-miss {
+      border: 1px dashed color-mix(in srgb, var(--err) 40%, var(--line));
+      background: color-mix(in srgb, var(--err) 5%, white);
+      color: var(--err); border-radius: 10px; padding: 8px 10px; font-size: 11px; font-weight: 650;
+    }
+    .ph-ok {
+      border: 1px dashed color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: color-mix(in srgb, var(--ok) 6%, white);
+      color: var(--ok); border-radius: 10px; padding: 8px 10px; font-size: 11px; font-weight: 650;
+    }
+    .ph-note { font-size: 10.5px; line-height: 1.45; margin-top: 2px; }
+
+    table {
+      width: 100%; border-collapse: collapse; margin: 0 0 22px;
+      background: var(--paper); border-radius: 16px; overflow: hidden;
+      box-shadow: var(--shadow); font-size: 13px;
+    }
+    th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th {
+      background: color-mix(in srgb, var(--bg) 55%, white);
+      color: var(--muted); font-size: 11.5px; font-weight: 750; letter-spacing: 0.02em;
+    }
+    tr:last-child td { border-bottom: 0; }
+    td.st { white-space: nowrap; font-weight: 750; font-size: 12px; }
+    td.st.ok { color: var(--ok); }
+    td.st.partial { color: var(--warn); }
+    td.st.miss { color: var(--err); }
+
+    .plan {
+      display: grid; gap: 12px; margin-bottom: 18px;
+    }
+    .gap {
+      background: var(--paper); border-radius: 14px; padding: 14px 16px;
+      box-shadow: var(--shadow); border-left: 4px solid var(--line);
+    }
+    .gap.p0 { border-left-color: var(--err); }
+    .gap.p1 { border-left-color: var(--warn); }
+    .gap.p2 { border-left-color: var(--accent); }
+    .gap h3 { margin: 0 0 6px; font-size: 14.5px; font-weight: 750; }
+    .gap p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .gap .meta { margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+    .gap .meta b { color: var(--ink); }
+
+    .footer {
+      color: var(--muted); font-size: 12.5px; line-height: 1.5;
+      padding-top: 8px; border-top: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>现网首页 vs 原型 · 对齐对照</h1>
+    <p class="lede">
+      左边是当前默认首页（Home Focus + 嵌入 ha2 compose）；右边是目标原型
+      <code>mock-home-hero-center.html</code>。对照目的：看清「已对齐 / 半对齐 / 缺口」，
+      用最少改动把工作区与主舞台接到原型，而不是再造一套 desk。
+    </p>
+
+    <div class="rule">
+      <strong>对齐原则：</strong>
+      主舞台保持「一状态一动作」；工作区记录不堆在舞台上，复用 ha2
+      <code>listHtml</code> / <code>workspaceResumeRowHtml</code> 挂进右抽屉宿主；
+      紧急项才升 primary。compose 已嵌 ha2，不要再画第二套输入栏。
+    </div>
+
+    <div class="links">
+      <a class="btn proto" href="home-focus-simple.html">新稿 · 居中简单 Hero</a>
+      <a class="btn sec" href="../mock-home-hero-center.html#history">旧原型 · 工作区</a>
+      <a class="btn sec" href="../mock-home-hero-center.html">旧原型首页</a>
+      <a class="btn sec" href="home-schemes-compare.html">更早方案比较</a>
+    </div>
+
+    <div class="split">
+      <!-- LIVE -->
+      <section class="col live">
+        <header>
+          <h2>现网 · Focus</h2>
+          <span class="tag live">默认</span>
+          <span class="tag warn">半对齐</span>
+        </header>
+        <div class="phone" aria-label="现网线框">
+          <div class="ph-top">
+            <span class="ph-chip">应用 · 项目</span>
+            <div class="ph-intent"><span class="on">对话</span><span>工作</span></div>
+            <div class="ph-end">
+              <span class="ph-ico">习</span>
+              <span class="ph-ico" title="历史抽屉（条目偏 session，非 ha2 工作区）">🕒</span>
+            </div>
+          </div>
+          <div class="ph-invite">
+            <h3>写一句，开始</h3>
+            <p>空闲邀请 · 或一张 task card（有 primary 时）</p>
+          </div>
+          <div class="ph-compose">
+            <div>ha2 compose 已嵌入 ✓</div>
+            <div class="rail">
+              <span class="chip">Agent</span>
+              <span class="chip">模型</span>
+              <span class="chip">整理</span>
+              <span class="chip">+</span>
+              <span class="send">↑</span>
+            </div>
+            <p class="ph-note">与原型目标一致：同一套 dock，不再自建输入栏。</p>
+          </div>
+          <div class="ph-miss">缺：输入框下方工作区 teaser / 角标条数</div>
+          <div class="ph-desk">
+            desk 仅非 Agent「需要处理 / 需重新确认」· Agent / resume / Cursor 行被滤掉
+          </div>
+          <div class="ph-miss">
+            历史抽屉 = session/草稿列表 · 未挂 <code>data-ha2-list</code> ·
+            无恢复/放弃/放弃并发送
+          </div>
+        </div>
+        <p class="ph-note" style="margin-top:10px">
+          入口：<code>now-home.js</code> → <code>renderFocus</code> →
+          <code>embedCompose</code>。<br />
+          工作区真相仍在纯 ha2（<code>?homeAgentV2=1</code>）的主内容区。
+        </p>
+      </section>
+
+      <!-- PROTO -->
+      <section class="col proto">
+        <header>
+          <h2>原型 · Hero Center</h2>
+          <span class="tag proto">目标</span>
+          <span class="tag ok">含工作区</span>
+        </header>
+        <div class="phone" aria-label="原型线框">
+          <div class="ph-top">
+            <span class="ph-chip">前台 · Cursor</span>
+            <div class="ph-intent"><span class="on">对话</span><span>工作</span></div>
+            <div class="ph-end">
+              <span class="ph-ico">🕒<span class="badge">3</span></span>
+            </div>
+          </div>
+          <div class="ph-invite">
+            <h3>写一句，开始</h3>
+            <p>先写新的，或继续下面的任务</p>
+          </div>
+          <div class="ph-compose">
+            <div>compose 在上 · 落地 = 现网 ha2 dock</div>
+            <div class="rail">
+              <span class="chip">Agent</span>
+              <span class="chip">账号</span>
+              <span class="chip">整理任务</span>
+              <span class="send">↑</span>
+            </div>
+          </div>
+          <div class="ph-teaser">
+            <span><b>工作区</b> · 3 条记录</span>
+            <span class="go">打开 →</span>
+          </div>
+          <div class="ph-card">
+            <div class="who">
+              <span class="ai">Cu</span>
+              <span><b style="color:var(--ink)">Cursor</b> · voice-pilot</span>
+              <span class="pill">可恢复</span>
+            </div>
+            <h3>上次停在「最近修改了什么代码？」</h3>
+            <p>任务卡在输入框 + 工作区下方</p>
+            <span class="cta">继续上次工作</span>
+          </div>
+        </div>
+        <p class="ph-note" style="margin-top:10px">
+          文件：<code>docs/mock-home-hero-center.html</code> ·
+          打开 <code>#history</code> 看工作区复用稿。
+        </p>
+      </section>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:18%">区块</th>
+          <th style="width:28%">现网</th>
+          <th style="width:28%">原型</th>
+          <th style="width:12%">状态</th>
+          <th>对齐动作（不重复建设）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>顶栏 · 应用/项目</td>
+          <td><code>chromeHtml</code> 左上 ctx</td>
+          <td>chip「前台 · Cursor」</td>
+          <td class="st ok">已齐</td>
+          <td>保持；项目确认仍走 Focus gate</td>
+        </tr>
+        <tr>
+          <td>顶栏 · 对话/工作</td>
+          <td><code>set_intent</code></td>
+          <td>intent 双钮</td>
+          <td class="st ok">已齐</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>顶栏 · 历史/工作区</td>
+          <td>时钟钮 → session 历史抽屉</td>
+          <td>时钟 + 角标 → 工作区抽屉</td>
+          <td class="st partial">半齐</td>
+          <td>角标 = ha2 <code>workRows</code>+resume 条数；打开同一宿主</td>
+        </tr>
+        <tr>
+          <td>主舞台</td>
+          <td>invite / 单 task card</td>
+          <td>一状态一动作卡</td>
+          <td class="st ok">已齐</td>
+          <td>勿把 ha2 三卡搬回舞台</td>
+        </tr>
+        <tr>
+          <td>工作区 teaser</td>
+          <td>无</td>
+          <td>「工作区 · N 条」条</td>
+          <td class="st miss">缺口</td>
+          <td>有记录才显示；点击 <code>openHistoryDrawer('now')</code></td>
+        </tr>
+        <tr>
+          <td>compose</td>
+          <td>ha2 <code>embedCompose</code></td>
+          <td>稿态 dock（语义同 ha2）</td>
+          <td class="st ok">已齐</td>
+          <td>继续用 embed；整理需草稿同步（已修）</td>
+        </tr>
+        <tr>
+          <td>工作区列表</td>
+          <td>只在纯 ha2 页；Focus 滤掉 Agent 行</td>
+          <td>抽屉内复用 listHtml 形态</td>
+          <td class="st miss">缺口</td>
+          <td>抽屉 body 挂 <code>data-ha2-list</code>，调用现有 <code>listHtml</code></td>
+        </tr>
+        <tr>
+          <td>恢复 / 放弃 / 放弃并发送</td>
+          <td>ha2 全页有；Focus 抽屉无</td>
+          <td>抽屉 resume 行三按钮</td>
+          <td class="st miss">缺口</td>
+          <td>复用 <code>workspaceResumeRowHtml</code> + 现有 click 委托</td>
+        </tr>
+        <tr>
+          <td>附属提醒</td>
+          <td>toast / 少量 desk</td>
+          <td>side-notice 不抢主位</td>
+          <td class="st partial">半齐</td>
+          <td>Focus 用 toast 即可；勿叠 validation 主区</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 style="margin:0 0 10px;font-size:18px;font-weight:750;font-family:Sora,'Noto Sans SC',sans-serif">落地顺序（P0 → P2）</h2>
+    <div class="plan">
+      <article class="gap p0">
+        <h3>P0 · 抽屉改挂 ha2 工作区</h3>
+        <p>
+          <code>openHistoryDrawer</code> 不再只渲 session 条目。抽屉内放
+          <code>[data-ha2-list]</code> 宿主，调用已有
+          <code>listHtml(snap)</code>（含 <code>workspaceResumeRowHtml</code>）。
+          点击继续走 ha2 根委托（resume / abandon / detail），Focus 不写第二套动作。
+        </p>
+        <div class="meta"><b>改动面：</b> <code>now-home.js</code> 开抽屉 ·
+          <code>home-agent-v2.js</code> 导出/填充 list · CSS 抽屉宽一点即可</div>
+      </article>
+      <article class="gap p0">
+        <h3>P0 · 舞台 teaser + 角标</h3>
+        <p>
+          有 <code>workRows</code> / interrupted / resume 时，在 <b>输入框下方</b>插一条
+          「工作区 · N」；顶栏历史钮显示角标。空闲无记录则隐藏。对应原型
+          <code>#wsTeaser</code> / <code>#wsBadge</code>。
+        </p>
+        <div class="meta"><b>改动面：</b> <code>home-focus-view.js</code> 一行宿主 +
+          <code>mountHomeFocusChrome</code> 填 N</div>
+      </article>
+      <article class="gap p1">
+        <h3>P1 · 主卡与工作区分工</h3>
+        <p>
+          档案冲突若已是唯一紧急项 → 升主舞台 primary（继续/决定）；其余行只在抽屉。
+          「查看步骤 / 失败详情」打开抽屉并切到对应 tab（原型已演示）。
+        </p>
+        <div class="meta"><b>改动面：</b> adapter 选 primary · 抽屉 tab 参数</div>
+      </article>
+      <article class="gap p2">
+        <h3>P2 · 视觉与文案</h3>
+        <p>
+          抽屉标题「工作区」；tab：此刻 / 可恢复 / 最近（过滤 listHtml，不重拉数据）。
+          历史 session 合并进「最近」，仍用同一行点击协议。
+        </p>
+        <div class="meta"><b>不要做：</b> 在 Focus desk 重画三张彩色工作区卡；不要为抽屉新建 store</div>
+      </article>
+    </div>
+
+    <p class="footer">
+      对照页只服务对齐决策，不接 IPC。
+      原型可交互：<a href="../mock-home-hero-center.html#history">mock-home-hero-center.html#history</a>。
+      现网切回纯 ha2 工作台：<code>?homeAgentV2=1</code>（看旧「任务与会话」密度，作视觉参照，不是默认目标）。
+    </p>
+  </div>
+</body>
+</html>

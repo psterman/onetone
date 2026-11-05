@@ -117,8 +117,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (vm.mode !== expectMode) {
     throw new Error(`focus mode want ${expectMode} got ${vm.mode}`);
   }
-  const showComposer =
-    (expectMode === 'quiet' && !expectPrimaryId) || expectMode === 'return';
+  const idleQuiet = expectMode === 'quiet' && !expectPrimaryId;
   const smokeProbeTargets = [
     { kind: 'cursor', label: 'Cursor', installed: true },
     { kind: 'claude', label: 'Claude', channel: 'cli', installed: true },
@@ -130,9 +129,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     { kind: 'qoder', label: 'Qoder' }
   ];
   const html = HFView.renderFocus(vm, {
-    draftText: showComposer ? '' : undefined,
+    draftText: '',
     handoffDisabled: true,
-    probeTargets: showComposer ? smokeProbeTargets : undefined
+    probeTargets: smokeProbeTargets
   });
   if (!html.includes('hn-canvas')) throw new Error('focus missing hn-canvas');
   if (!html.includes('homePromptPrepHost')) throw new Error('focus missing prompt prep host');
@@ -141,12 +140,30 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (html.includes('hn-context-card')) {
     throw new Error('focus must not show Agent context cards');
   }
-  if (showComposer) {
-    if (!html.includes('data-hn-quiet-composer')) {
-      throw new Error(`${expectMode} must render quiet composer`);
-    }
-    if (expectMode === 'quiet' && !html.includes('今天想推进什么')) {
-      throw new Error('quiet composer missing opening headline');
+  // Composer always mounts; task card (if any) sits below input.
+  if (!html.includes('data-hn-quiet-composer')) {
+    throw new Error(`${expectMode} must render quiet composer`);
+  }
+  // ha2 compose embeds into Focus host (model / + materials / send).
+  if (
+    !html.includes('data-hf-ha2-compose-host') ||
+    !html.includes('data-ha2-dock-host') ||
+    !html.includes('hn-quiet-composer--ha2')
+  ) {
+    throw new Error('composer must host ha2 compose dock (data-hf-ha2-compose-host)');
+  }
+  if (!html.includes('data-ha2-wb-page-host')) {
+    throw new Error('focus must keep ha2 wb page host for in-place chat');
+  }
+  if (!html.includes('hn-ctx-pair') || !html.includes('hn-ctx-proj')) {
+    throw new Error('focus chrome must show app · project pair (top-left)');
+  }
+  if (html.includes('hn-prep-launch')) {
+    throw new Error(`${expectMode} must not show legacy prepLaunch card`);
+  }
+  if (idleQuiet) {
+    if (!html.includes('写一句，开始') || !html.includes('hn-invite')) {
+      throw new Error('quiet missing idle invite (写一句，开始)');
     }
     if (html.includes('暂时无需处理') || html.includes('需要你时再提醒')) {
       throw new Error('quiet composer must not use long quiet narrative');
@@ -154,52 +171,58 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     if (/quiet\s*·|轻量开场/.test(html) && html.includes('quiet-tag')) {
       throw new Error('production quiet must not show internal quiet-tag copy');
     }
-    if (!html.includes('data-hn-agent-grid') || !html.includes('data-hf-act="quick_handoff"')) {
-      throw new Error('quiet composer must expose agent icon grid handoff');
-    }
     if (html.includes('复制并打开 Agent') || html.includes('跳转 ')) {
       throw new Error('quiet composer must not use text handoff / 跳转 labels');
     }
-    if (!html.includes('disabled')) {
-      throw new Error('empty quiet composer handoff must be disabled');
+    // Legacy letter dock / split material chips must stay gone.
+    if (html.includes('hn-compose-dock') || html.includes('hn-app-ico')) {
+      throw new Error('quiet must not render legacy letter deliver dock');
     }
-    if (!html.includes('data-hf-act="open_prep"')) {
-      throw new Error('quiet composer must expose open_prep');
+    if (html.includes('data-hf-collect="')) {
+      throw new Error('quiet must use ha2 + menu materials, not split collect chips');
     }
-    if (!html.includes('加入内容')) {
-      throw new Error('quiet composer must label material chips');
-    }
-    for (const kind of ['paste', 'attach', 'url', 'folder', 'capture']) {
-      if (!html.includes(`data-hf-collect="${kind}"`)) {
-        throw new Error(`quiet composer missing collect chip ${kind}`);
-      }
-    }
-    if (html.includes('data-hf-collect="image"') || html.includes('data-hf-collect="file"')) {
-      throw new Error('quiet must use unified 附件 chip, not fixed 图片/文件');
-    }
-    if (html.includes('data-hf-act="quiet_paste_text"')) {
-      throw new Error('quiet must use quiet_collect chips, not draft-only paste act');
-    }
-    if (html.includes('hn-prep-launch')) {
-      throw new Error('quiet must not also show legacy prepLaunch card');
-    }
-    if (expectMode === 'return' && html.includes('hn-hero')) {
-      throw new Error('return mode mounts composer, not separate Hero gate');
+    if (html.includes('hn-task-card') || html.includes('data-hn-task-card="1"')) {
+      throw new Error('idle quiet must not show task status card');
     }
   } else {
-    if (!html.includes('hn-hero')) throw new Error('focus missing situational hn-hero');
-    if (html.includes('data-hn-quiet-composer')) {
-      throw new Error(`${expectMode} must not render quiet composer`);
+    if (!html.includes('hn-task-card') || !html.includes('data-hn-task-card="1"')) {
+      throw new Error(`${expectMode} must render task status card below compose`);
     }
-    if (html.includes('hn-prep-launch')) {
-      throw new Error(`${expectMode} must not show legacy prepLaunch card`);
+    if (!html.includes('hn-invite') || !html.includes('写一句，开始')) {
+      throw new Error(`${expectMode} must keep invite above compose`);
+    }
+    if (!html.includes('先写新的，或继续下面的任务')) {
+      throw new Error(`${expectMode} invite fact must point at card below`);
+    }
+    if (html.includes('发起另一项任务') || html.includes('is-secondary')) {
+      throw new Error(`${expectMode} must not demote compose; card is below input`);
+    }
+    // Order: compose host before the task card section (ignore data-hn-task-card on <main>).
+    var composeAt = html.indexOf('data-hf-ha2-compose-host');
+    var cardAt = html.indexOf('class="hn-task-card');
+    if (composeAt < 0 || cardAt < 0 || composeAt > cardAt) {
+      throw new Error(`${expectMode} must place compose above task card`);
+    }
+    if (expectMode === 'return' && html.includes('hn-hero')) {
+      throw new Error('return mode uses task card, not legacy hn-hero');
+    }
+    if (/probe\s*=|来源 · probe/i.test(html)) {
+      throw new Error(`${expectMode} task card must not show probe= evidence pills`);
     }
   }
-  if (!html.includes('data-hf-view="focus"')) throw new Error('focus missing 现在 nav');
-  if (!html.includes('我的习惯')) throw new Error('focus missing 我的习惯 nav');
-  // PRODUCT: top chrome History + Agent overview (acts), not hn-nav data-hf-view.
-  if (!html.includes('data-hf-act="open_history"') || !html.includes('近期对话')) {
-    throw new Error('focus missing 历史 / 近期对话 chrome');
+  if (html.includes('data-hf-view="habits"') || />习惯</.test(html)) {
+    throw new Error('focus must not show 习惯 chrome button');
+  }
+  if (!html.includes('data-hf-act="set_intent"') || !html.includes('hn-intent')) {
+    throw new Error('focus missing 对话/工作 intent switch');
+  }
+  // PRODUCT: short history icon (acts), not hn-nav data-hf-view.
+  if (
+    !html.includes('data-hf-act="open_history"') ||
+    !html.includes('hn-hist-btn') ||
+    !html.includes('data-voice-phrases="历史|近期对话|打开历史"')
+  ) {
+    throw new Error('focus missing short 历史 chrome');
   }
   if (!html.includes('id="hnRecallDrawer"')) {
     throw new Error('focus missing history recall drawer host');
@@ -339,8 +362,8 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!r.html.includes('开始新任务')) {
     throw new Error('return mode must label secondary 开始新任务');
   }
-  if (!r.html.includes('data-hf-collect="capture"')) {
-    throw new Error('return mode must allow immediate capture collect');
+  if (!r.html.includes('data-hf-ha2-compose-host') || !r.html.includes('data-ha2-dock-host')) {
+    throw new Error('return mode must host ha2 compose (materials via + menu)');
   }
   if (!r.html.includes('homePromptPrepHost')) {
     throw new Error('return mode home still needs prep host');
@@ -418,7 +441,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (/\d+\s*\/\s*\d+|预计|%/.test((r.vm.assistance || '') + JSON.stringify(r.vm.progress || {}))) {
     throw new Error('running coarse facts must not invent progress or ETA');
   }
-  if (!r.html.includes('运行中')) throw new Error('running Hero must render a running fact chip');
+  if (!r.html.includes('执行中') || !r.html.includes('hn-status-pill--run')) {
+    throw new Error('running task card must render 执行中 status pill');
+  }
   if (/class="hn-cta[^\"]*hn-cta--attention/.test(r.html)) {
     throw new Error('running Agent CTA must not use the attention warning tone');
   }
@@ -489,8 +514,8 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (html.includes('homeAgentRoster')) {
     throw new Error('enriched attention must not remount Agent roster on home');
   }
-  if (!html.includes('hn-hero') || !html.includes('data-hf-act="view_progress"')) {
-    throw new Error('enriched attention must paint Hero with view_progress');
+  if (!html.includes('hn-task-card') || !html.includes('data-hf-act="view_progress"')) {
+    throw new Error('enriched attention must paint task card with view_progress');
   }
   if (!html.includes('homeAgentStatusHost')) {
     throw new Error('enriched attention home must expose status strip host');
@@ -710,8 +735,8 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!vm.secondary || vm.secondary.id !== 'start_new_task') {
     throw new Error('checkpoint→return must expose start_new_task secondary');
   }
-  if (!/停在\s+Cursor/.test(vm.headline || '')) {
-    throw new Error('return H1 must use provider with spacing, got: ' + vm.headline);
+  if (!/上次停在「/.test(vm.headline || '')) {
+    throw new Error('return H1 must be short beginner form, got: ' + vm.headline);
   }
   const homeHtml = HFView.renderFocus(vm, {
     draftText: '',
@@ -724,14 +749,23 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!homeHtml.includes('data-hf-act="start_new_task"') || !homeHtml.includes('开始新任务')) {
     throw new Error('checkpoint→return must still render 开始新任务');
   }
-  if (!homeHtml.includes('hn-quiet-composer') || !homeHtml.includes('data-hf-collect="capture"')) {
-    throw new Error('return mode must mount Quiet Composer for immediate work');
+  if (!homeHtml.includes('hn-quiet-composer') || !homeHtml.includes('data-hf-ha2-compose-host')) {
+    throw new Error('return mode must mount Quiet Composer with ha2 host');
   }
-  if (!homeHtml.includes('data-hn-agent-grid') || !homeHtml.includes('data-hf-handoff-kind="cursor"')) {
-    throw new Error('return mode must show agent icon grid');
+  if (homeHtml.includes('hn-compose-dock') || homeHtml.includes('data-hf-collect="')) {
+    throw new Error('return mode must not resurrect legacy letter dock / collect chips');
   }
-  if (homeHtml.includes('今天想推进什么')) {
-    throw new Error('return composer should keep return headline, not quiet opening copy');
+  if (!homeHtml.includes('写一句，开始') || !homeHtml.includes('hn-task-card')) {
+    throw new Error('return mode must show invite + task card');
+  }
+  if (homeHtml.includes('发起另一项任务') || homeHtml.includes('is-secondary')) {
+    throw new Error('return mode must keep compose primary (card below)');
+  }
+  if (
+    homeHtml.indexOf('data-hf-ha2-compose-host') >
+    homeHtml.indexOf('class="hn-task-card')
+  ) {
+    throw new Error('return mode must place compose above task card');
   }
   // After dismiss, Quiet Composer must mount (homepage agent jump).
   const quietAfter = Object.assign({}, vm, {
@@ -756,32 +790,20 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
       { kind: 'chatgpt', label: 'ChatGPT' }
     ]
   });
-  if (!afterDismiss.includes('今天想推进什么')) {
-    throw new Error('start_new_task dismiss must surface Quiet Composer');
+  if (!afterDismiss.includes('写一句，开始') || !afterDismiss.includes('hn-invite')) {
+    throw new Error('start_new_task dismiss must surface idle invite + composer');
   }
   if (!afterDismiss.includes('data-hf-act="restore_return"')) {
     throw new Error('dismissed return must keep restore_return link');
   }
-  if (!afterDismiss.includes('data-hn-agent-grid')) {
-    throw new Error('dismissed quiet must expose agent icon grid');
+  if (
+    !afterDismiss.includes('data-hf-ha2-compose-host') ||
+    !afterDismiss.includes('hn-quiet-composer--ha2')
+  ) {
+    throw new Error('dismissed quiet must host ha2 compose');
   }
-  if (!afterDismiss.includes('data-hf-handoff-kind="minimax"')) {
-    throw new Error('dismissed quiet must expose MiniMax agent tile');
-  }
-  if (!afterDismiss.includes('data-hf-handoff-kind="workbuddy"')) {
-    throw new Error('dismissed quiet must expose WorkBuddy agent tile');
-  }
-  if (!afterDismiss.includes('data-hf-handoff-kind="trae"')) {
-    throw new Error('dismissed quiet must expose Trae Work agent tile');
-  }
-  if (!afterDismiss.includes('data-hf-handoff-kind="traeCode"')) {
-    throw new Error('dismissed quiet must expose Trae Code agent tile');
-  }
-  if (!afterDismiss.includes('data-hf-handoff-kind="qoder"')) {
-    throw new Error('dismissed quiet must expose Qoder agent tile');
-  }
-  if (!afterDismiss.includes('data-hf-handoff-kind="chatgpt"')) {
-    throw new Error('dismissed quiet must expose ChatGPT agent tile');
+  if (afterDismiss.includes('hn-compose-dock') || afterDismiss.includes('data-hf-deliver-kind=')) {
+    throw new Error('dismissed quiet must not resurrect letter deliver dock');
   }
   // Continue / ledger UI lives on Agent → 总览; home Hero owns resume CTA.
   if (homeHtml.includes('Continue') || homeHtml.includes('Agent 台账') || homeHtml.includes('homeAgentRoster')) {
@@ -1101,19 +1123,20 @@ assertFocus(
   );
   if (html.includes('hf-say')) throw new Error('quiet must not include say card');
   if (!html.includes('homePromptPrepHost')) throw new Error('quiet home must keep prep host');
-  if (!html.includes('voice-pilot')) {
-    throw new Error('quiet composer should name current project');
+  if (!html.includes('voice-pilot') || !html.includes('hn-ctx-proj')) {
+    throw new Error('quiet chrome should name current project (top-left)');
   }
-  // filled draft enables agent tiles
+  // Static Focus HTML hosts ha2 compose; dock paint happens at embedCompose runtime.
   const filled = HFView.renderFocus(vm, {
     draftText: '改一下首页',
     probeTargets: [{ kind: 'cursor', label: 'Cursor', installed: true }]
   });
-  if (/data-hf-act="quick_handoff"[^>]*disabled/.test(filled)) {
-    throw new Error('non-empty quiet draft must enable agent tiles');
-  }
-  if (!filled.includes('hn-agent-tile') || /class="hn-cta[^"]*"[^>]*>复制并打开/.test(filled)) {
-    throw new Error('quiet handoff must be agent tiles, not copy-open CTA');
+  if (
+    !filled.includes('data-hf-ha2-compose-host') ||
+    filled.includes('hn-compose-dock') ||
+    /class="hn-cta[^"]*"[^>]*>复制并打开/.test(filled)
+  ) {
+    throw new Error('quiet handoff must be ha2 compose host, not letter dock / copy-open CTA');
   }
   const withMats = HFView.renderFocus(vm, {
     draftText: 'x',
@@ -1170,6 +1193,38 @@ assertFocus(
   if (nowSrc.includes('Prep._model') || nowSrc.includes('HomePromptPrep._model')) {
     throw new Error('now-home must not read Prep._model');
   }
+  if (
+    !nowSrc.includes('askFromDraft') ||
+    !nowSrc.includes('probeHomeAccountReady') ||
+    !nowSrc.includes('toggleSoftPad') ||
+    !nowSrc.includes('toggleVoice') ||
+    !nowSrc.includes('toggleCamera')
+  ) {
+    throw new Error('Focus must wire askFromDraft + account probe + DockBridge caps');
+  }
+  const ha2Src = fs.readFileSync(path.join(root, 'src/js/features/now/home-agent-v2.js'), 'utf8');
+  if (
+    !ha2Src.includes('askFromDraft:') ||
+    !ha2Src.includes('probeAccountReady:') ||
+    !ha2Src.includes('onetone.focusAskDraft') ||
+    !ha2Src.includes('embedCompose')
+  ) {
+    throw new Error('HA2 must export askFromDraft / probeAccountReady / embedCompose for Focus');
+  }
+  // In-place ask — must not flip surface or reload the window.
+  const askStart = ha2Src.indexOf('function askFromDraft');
+  const askEnd = ha2Src.indexOf('global.OneToneHomeAgentV2 = {', askStart);
+  const askFn = askStart >= 0 && askEnd > askStart ? ha2Src.slice(askStart, askEnd) : '';
+  if (!askFn) throw new Error('askFromDraft function body not found');
+  if (
+    /homeSurface['"]?\s*,\s*['"]agentV2['"]/.test(askFn) ||
+    /location\.reload/.test(askFn)
+  ) {
+    throw new Error('askFromDraft must not set homeSurface=agentV2 or location.reload');
+  }
+  if (!/inPlace:\s*true/.test(askFn) || !/sendWbLocal/.test(askFn)) {
+    throw new Error('askFromDraft must send in-place via sendWbLocal');
+  }
 }
 
 // Quiet + project gate: no submit composer; keep draft summary
@@ -1195,14 +1250,17 @@ assertFocus(
   const html = HFView.renderFocus(vm, {
     draftPreview: '已经写好的草稿内容'
   });
-  if (html.includes('data-hn-quiet-composer')) {
-    throw new Error('gated quiet must not show submit composer');
+  if (!html.includes('hn-task-card')) {
+    throw new Error('gated quiet must lift project gate onto task card');
   }
   if (!html.includes('data-hf-act="confirm_project"')) {
     throw new Error('gated quiet must show confirm project');
   }
   if (!html.includes('已保留你的输入')) {
     throw new Error('gated quiet must keep draft summary');
+  }
+  if (!html.includes('data-hf-ha2-compose-host') || html.includes('发起另一项任务')) {
+    throw new Error('gated quiet keeps primary ha2 compose host above task card');
   }
 }
 
@@ -1304,16 +1362,21 @@ assertFocus(
       ]
     }
   );
-  if (!probeHtml.includes('data-hn-agent-grid')) {
-    throw new Error('quiet composer must expose agent icon grid');
+  if (
+    !probeHtml.includes('data-hf-ha2-compose-host') ||
+    !probeHtml.includes('hn-quiet-composer--ha2') ||
+    !probeHtml.includes('hn-ctx-pair')
+  ) {
+    throw new Error('quiet composer must host ha2 compose + top-left project chrome');
   }
-  if (!probeHtml.includes('悬浮栏') || !probeHtml.includes('粘贴')) {
-    throw new Error('agent grid must explain tray paste into input');
+  if (
+    probeHtml.includes('hn-compose-dock') ||
+    probeHtml.includes('data-hf-collect="') ||
+    probeHtml.includes('data-hf-deliver-kind=')
+  ) {
+    throw new Error('quiet must not resurrect letter dock / collect chips / deliver icons');
   }
-  if (!probeHtml.includes('已检测到的 Agent')) {
-    throw new Error('agent grid hint must mention auto-detected agents');
-  }
-  // Source contract: homepage only floats installed/running tiles (no fixed dim roster).
+  // Source contracts: inventory float + ha2 + materials menu + Focus embed.
   {
     const nowSrc = fs.readFileSync(path.join(root, 'src/js/features/now/now-home.js'), 'utf8');
     if (
@@ -1330,60 +1393,69 @@ assertFocus(
     ) {
       throw new Error('home must session-cache inventory for instant revisit paint');
     }
-  }
-  {
-    const pendingHtml = HFView.renderFocus(
-      HFAdapter.toViewModel({
-        work: { status: 'idle' },
-        project: { confirmed: true, name: 'voice-pilot' },
-        provider: { id: 'cursor' }
-      }),
-      { draftText: 'x', probeTargets: [], probePending: true }
+    if (!nowSrc.includes('embedCompose')) {
+      throw new Error('Focus paint must call HA2.embedCompose');
+    }
+    const ha2Src = fs.readFileSync(path.join(root, 'src/js/features/now/home-agent-v2.js'), 'utf8');
+    const matMenu = ha2Src.slice(
+      ha2Src.indexOf('function matMenuHtml'),
+      ha2Src.indexOf('function closeMatMenu')
     );
-    if (!pendingHtml.includes('正在检测本机 Agent')) {
-      throw new Error('empty probe grid must show pending hint while inventory loads');
+    for (const kind of ['paste', 'url', 'folder', 'screenshot', 'file']) {
+      if (!matMenu.includes('data-ha2-mat="' + kind + '"')) {
+        throw new Error('ha2 + menu must expose mat kind ' + kind);
+      }
     }
-    const emptyHtml = HFView.renderFocus(
-      HFAdapter.toViewModel({
-        work: { status: 'idle' },
-        project: { confirmed: true, name: 'voice-pilot' },
-        provider: { id: 'cursor' }
-      }),
-      { draftText: 'x', probeTargets: [], probePending: false }
+    if (!ha2Src.includes("lucide('plus'") || !ha2Src.includes("lucide('arrow-up'")) {
+      throw new Error('ha2 compose must use real lucide plus / send icons');
+    }
+    if (!/embedMode[\s\S]*data-hf-ha2-compose-host/.test(ha2Src) && !ha2Src.includes('is-hf-ha2-compose')) {
+      throw new Error('ha2 embedCompose must paint into Focus host without replacing chrome');
+    }
+    const dockFn = ha2Src.slice(
+      ha2Src.indexOf('function dockStaticHtml'),
+      ha2Src.indexOf('function agentPickButtons')
     );
-    if (emptyHtml.includes('正在检测本机 Agent')) {
-      throw new Error('empty probe grid must stay blank after inventory settles with none');
+    if (/data-ha2-dest-name[\s\S]{0,200}projectName|项目：/.test(dockFn)) {
+      throw new Error('ha2 Agent chip must not carry project name (lives in Focus chrome)');
+    }
+    const css = fs.readFileSync(path.join(root, 'src/css/now-home.css'), 'utf8');
+    if (
+      !css.includes('.hn-quiet-composer--ha2') ||
+      !css.includes('.hn-ha2-compose-host') ||
+      !css.includes('.hn-ctx-pair')
+    ) {
+      throw new Error('now-home CSS must style ha2 compose host + ctx pair');
+    }
+    if (
+      !css.includes('.now-home.is-hf-ha2-compose') ||
+      !css.includes('--ha2-surface: #ffffff') ||
+      !css.includes('.ha2-cap-panel')
+    ) {
+      throw new Error('Focus embed CSS must define ha2 tokens and hide ready strip');
+    }
+    if (!ha2Src.includes('scrubPortaledOverlays') || !ha2Src.includes('closeModelRouteMenu')) {
+      throw new Error('ha2 must scrub overlays when closing model menu');
+    }
+    if (!ha2Src.includes("esc(t('ha2OrganizeTask', '整理'))")) {
+      throw new Error('整理 must sit on compose rail (not buried only in overflow)');
+    }
+    if (!/aimChipHtml\(hasAim\)[\s\S]{0,400}targetChip/.test(ha2Src)) {
+      throw new Error('aim chip must sit before Agent chip');
     }
   }
-  for (const kind of [
-    'cursor',
-    'claude',
-    'minimax',
-    'workbuddy',
-    'trae',
-    'traeCode',
-    'qoder',
-    'chatgpt'
-  ]) {
-    if (!probeHtml.includes('data-hf-handoff-kind="' + kind + '"')) {
-      throw new Error('quiet composer must expose ' + kind + ' agent tile');
-    }
-  }
-  if (probeHtml.includes('hn-agent-tile__tag')) {
-    throw new Error('agent tiles must not show top-right CLI tag');
+  if (probeHtml.includes('hn-agent-tile__tag') || probeHtml.includes('data-hn-agent-grid')) {
+    throw new Error('Focus must not resurrect agent grid tiles');
   }
   if (!probeHtml.includes('data-voice-phrases=')) {
-    throw new Error('agent tiles must expose data-voice-phrases for voice command mode');
-  }
-  if (!probeHtml.includes('data-hn-aim-mem') || !probeHtml.includes('data-hf-act="aim_change"')) {
-    throw new Error('agent grid must show single-point aim memory row');
+    throw new Error('Focus chrome must expose data-voice-phrases for voice command mode');
   }
   if (probeHtml.includes('跳转 ') || probeHtml.includes('复制并打开 Cursor')) {
-    throw new Error('agent tiles replace text handoff / 跳转 labels');
+    throw new Error('quiet must not use text handoff / 跳转 labels');
   }
   const probeCtas = (probeHtml.match(/class="hn-cta[^"]*"/g) || []).length;
   if (probeCtas !== 0) {
-    throw new Error('quiet agent tiles replace the primary handoff CTA');
+    throw new Error('idle quiet must not show primary handoff CTA');
   }
 
   let focused = false;
@@ -2527,8 +2599,18 @@ if (cleared.length !== 0) throw new Error('empty history should yield empty toda
   if (histBody.includes('未命名工作')) {
     throw new Error('history drawer must not use 未命名工作 fallback');
   }
-  if (!histBody.includes('素材记录')) {
-    throw new Error('history drawer lead must mention 素材记录');
+  if (!histBody.includes('data-hf-hist-tab="recent"') || !histBody.includes('可恢复')) {
+    throw new Error('history drawer must expose 最近/未完成/可恢复 tabs');
+  }
+  const openOnly = HFView.historyDrawerBodyHtml(
+    [
+      { kind: 'session', title: 'cursor 会话', when: '2 小时前', badge: 'cursor' },
+      { kind: 'materials', title: 'brief.md', when: '刚才', badge: '首页素材' }
+    ],
+    'open'
+  );
+  if (openOnly.includes('cursor 会话') || !openOnly.includes('brief.md')) {
+    throw new Error('未完成 tab must filter to open materials/drafts');
   }
 }
 
@@ -2540,6 +2622,15 @@ if (cleared.length !== 0) throw new Error('empty history should yield empty toda
   }
   if (!/\.now-home \.hn-canvas,\s*\.now-home \.hn-page\s*\{[^}]*overflow:\s*hidden/s.test(css)) {
     throw new Error('home canvas must use overflow:hidden (no page scrollbar)');
+  }
+  if (!/\.now-home \.hn-stage\s*\{[^}]*overflow:\s*hidden/s.test(css)) {
+    throw new Error('home stage must use overflow:hidden (no stage scrollbar)');
+  }
+  if (!/\.hn-quiet-composer\.hn-quiet-composer--ha2\s*\{[^}]*padding:\s*0/s.test(css)) {
+    throw new Error('ha2 compose must zero quiet-composer vh padding (prevents stage overflow)');
+  }
+  if (!/hn-canvas--proto\[data-hn-task-card="1"\] \.hn-desk/.test(css)) {
+    throw new Error('proto task-card stage must hide desk (no downward extension)');
   }
   if (css.includes('hn-agent-tile__tag {') || css.includes('.hn-agent-tile__tag{')) {
     throw new Error('agent tile top-right tag styles must be removed');

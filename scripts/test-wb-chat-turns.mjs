@@ -15,6 +15,7 @@ const ha2Css = read('src/css/home-agent-v2.css');
 assert.match(winJs, /wb-turn-body/);
 assert.match(winJs, /wb-avatar-me/);
 assert.match(winJs, /wb-avatar-me[\s\S]*?>我</);
+assert.doesNotMatch(winJs, /wb-avatar-me[^>]*>我<\/span><span>我<\/span>/);
 assert.doesNotMatch(winJs, /: '你'/);
 assert.match(winJs, /icons\/app-target\/workbuddy\.png/);
 
@@ -30,6 +31,11 @@ assert.match(ha2, /ha2WbRoleSoftPadFallback|Soft Pad→WorkBuddy/);
 assert.match(ha2, /ha2WbRoleUser',\s*'我'/);
 assert.match(ha2, /WB_CHAT_ICON|icons\/app-target\/workbuddy\.png/);
 assert.match(ha2, /ha2-wb-avatar-me/);
+assert.match(ha2, /function wbTurnRoleHtml[\s\S]*?modelRouteDisplay\(/);
+assert.doesNotMatch(
+  ha2,
+  /ha2-wb-avatar-me"[^>]*>[\s\S]*?<\/span><span>[\s\S]*?ha2WbRoleUser/
+);
 assert.match(ha2, /providerId: turn\.providerId/);
 assert.doesNotMatch(ha2, /providers\.push\(\{\s*id:\s*'minimax_cn'/);
 

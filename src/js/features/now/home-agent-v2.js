@@ -8,7 +8,11 @@
   var root = null;
   var mounted = false;
   var unsubStore = null;
+  /** Prep materials → show/hide「整理」without a full dock rebuild. */
+  var unsubMaterials = null;
   var shellBuilt = false;
+  /** Focus home embeds dock only — never wipe Focus chrome with ha2-shell. */
+  var embedMode = false;
   var matMenuOpen = false;
   /** Custom model-route dropdown (native <select> cannot show brand icons on Windows). */
   var modelRouteMenuOpen = false;
@@ -24,6 +28,9 @@
   var pickerReposTimer = 0;
   /** 'menu' = top-right vertical list; 'dock' = dock grid. Never share one panel. */
   var pickerSurface = null;
+  /** Lock above/below after first place — threshold flip + scroll re-entry caused jump. */
+  var pickerSide = null;
+  var pickerPositioning = false;
   /** WorkBuddy local-account projection for dock model switch (same store as Soft Pad). */
   var wbLocalCache = null;
   var wbLocalFetchGen = 0;
@@ -74,6 +81,8 @@
   var atrProvidersFetchGen = 0;
   /** Inline WorkBuddy OAuth login on home (freemodel — not Soft Pad API keys). */
   var atrWbLoginForced = false;
+  /** Chat-mode: user closed the login strip — don't re-block the home dock. */
+  var atrWbLoginChatDismissed = false;
   var atrWbLoginBusy = false;
   var atrWbLoginPendingId = '';
   var atrWbLoginPollTimer = 0;
@@ -425,10 +434,12 @@
     }
   }
 
-  /** Pin picker to its own trigger — menu hangs under top-right; dock floats above chip. */
+  /** Pin picker to its own trigger — menu hangs under top-right; dock floats by chip. */
   function positionPickerPanel() {
-    if (!root) return;
-    var panel = root.querySelector('[data-ha2-picker-panel]');
+    if (!root || pickerPositioning) return;
+    var panel =
+      root.querySelector('[data-ha2-picker-host] [data-ha2-picker-panel]') ||
+      root.querySelector('[data-ha2-picker-panel]');
     if (!panel) return;
     var anchor =
       pickerAnchor && pickerAnchor.isConnected
@@ -436,8 +447,9 @@
         : pickerSurface === 'menu'
           ? root.querySelector('[data-ha2-menu-picker]')
           : root.querySelector('.ha2-chip.target[data-ha2-picker]') ||
-            root.querySelector('[data-ha2-picker]');
+            root.querySelector('[data-ha2-agent-fuse] [data-ha2-picker]');
     if (!anchor) return;
+    pickerPositioning = true;
     var ar = anchor.getBoundingClientRect();
     var isMenu = pickerSurface === 'menu' || panel.classList.contains('is-menu');
     var pw = isMenu
@@ -446,38 +458,53 @@
     var gap = 8;
     panel.style.width = pw + 'px';
     panel.style.right = 'auto';
+    panel.style.background = '#ffffff';
+    panel.style.zIndex = embedMode ? '12050' : '';
+    // Measure once (hidden) — avoid bottom→top rAF flip that made Focus dock picker flash.
+    panel.style.visibility = 'hidden';
+    panel.style.left = '12px';
+    panel.style.top = '0';
+    panel.style.bottom = 'auto';
+    var ph = panel.offsetHeight || (isMenu ? 200 : 280);
     if (isMenu) {
-      // Align to the right edge of the task menu (top-right).
       var left = Math.round(ar.right - pw);
       if (left < 12) left = 12;
       if (left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
       panel.style.left = left + 'px';
-      panel.style.bottom = 'auto';
-      panel.style.top = Math.round(ar.bottom + gap) + 'px';
-      global.requestAnimationFrame(function () {
-        if (!panel.isConnected) return;
-        var ph = panel.offsetHeight || 200;
-        if (ar.bottom + gap + ph > window.innerHeight - 12) {
-          panel.style.top = 'auto';
-          panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
-        }
-      });
+      if (ar.bottom + gap + ph > window.innerHeight - 12) {
+        panel.style.top = 'auto';
+        panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
+      } else {
+        panel.style.bottom = 'auto';
+        panel.style.top = Math.round(ar.bottom + gap) + 'px';
+      }
+      panel.style.visibility = '';
+      pickerPositioning = false;
       return;
     }
     var leftDock = Math.round(ar.left);
     if (leftDock + pw > window.innerWidth - 12) leftDock = window.innerWidth - pw - 12;
     if (leftDock < 12) leftDock = 12;
     panel.style.left = leftDock + 'px';
-    panel.style.top = 'auto';
-    panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
-    global.requestAnimationFrame(function () {
-      if (!panel.isConnected) return;
-      var ph = panel.offsetHeight || 200;
-      if (ar.top < ph + gap + 16) {
-        panel.style.bottom = 'auto';
-        panel.style.top = Math.min(window.innerHeight - ph - 12, Math.round(ar.bottom + gap)) + 'px';
-      }
-    });
+    // Stick first choice — mid-page Focus chip sits near the above/below threshold and
+    // scroll(capture) from the picker's own overflow:auto used to flip every frame.
+    var side = pickerSide;
+    if (!side) {
+      // Focus mid-stage: drop below. Bottom ha2 dock: prefer above when room.
+      side =
+        !embedMode && ar.top >= ph + gap + 16 ? 'above' : 'below';
+      pickerSide = side;
+    }
+    if (side === 'above') {
+      panel.style.top = 'auto';
+      panel.style.bottom = Math.max(12, Math.round(window.innerHeight - ar.top + gap)) + 'px';
+    } else {
+      panel.style.bottom = 'auto';
+      panel.style.top =
+        Math.min(window.innerHeight - ph - 12, Math.round(ar.bottom + gap)) + 'px';
+    }
+    panel.style.visibility = '';
+    pickerPositioning = false;
   }
 
   function schedulePositionPicker() {
@@ -751,21 +778,27 @@
 
   function wbRouteIsActive() {
     var gateway = global.OneToneModelGateway;
-    if (!gateway || !gateway.resolveProvider) return true;
+    // Boot / no gateway yet — do not assume WorkBuddy (avoids login-card flash).
+    if (!gateway || !gateway.resolveProvider) return false;
     try {
       return gateway.resolveProvider('synthesis').id === 'workbuddy';
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
   /**
    * Login strip: work-mode when ATR WB not ready; chat-mode when WB route
    * has no account; always when user forced open (换号 / 登录 CTA).
+   * Never flash while accounts list is still probing (wbLocalCache == null).
    */
   function atrWbLoginShouldShow(snap) {
+    // Focus embed: WorkBuddy login belongs in 提供方 sheet — no dock banner.
+    if (embedMode && !atrEditPathOn(snap)) return false;
     if (atrWbLoginForced) return true;
     if (atrEditPathOn(snap)) return !atrWbChatReady();
+    if (wbLocalCache == null) return false;
+    if (atrWbLoginChatDismissed) return false;
     // Chat / freemodel: offer OAuth without leaving home or flipping to 工作.
     if (wbRouteIsActive() && !wbLocalReady()) return true;
     return false;
@@ -791,7 +824,9 @@
     var title = edit
       ? t('ha2AtrWbLoginTitle', '登录 WorkBuddy 开始编辑')
       : t('ha2WbFreemodelLoginTitle', '登录 WorkBuddy 使用账号额度');
-    var canDismiss = edit ? atrWbChatReady() : wbLocalReady();
+    // Chat: always allow 收起 — Soft Pad / 自定义 API 可继续，不必卡在登录上。
+    // Work: dismiss only when WB already ready (otherwise keep 完整配置).
+    var canDismiss = edit ? atrWbChatReady() : true;
     return (
       '<div class="ha2-atr-wb-login" data-ha2-atr-wb-login>' +
       '<div class="ha2-atr-wb-login-hd">' +
@@ -819,9 +854,10 @@
         ? '<button type="button" class="ha2-link" data-ha2-atr-wb-login-dismiss>' +
           esc(t('ha2AtrWbLoginDismiss', '收起')) +
           '</button>'
-        : '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
-          esc(t('ha2WbGoConfig', '完整配置')) +
-          '</button>') +
+        : '') +
+      '<button type="button" class="ha2-link" data-ha2-open-wb-config>' +
+      esc(t('ha2WbGoConfig', '完整配置')) +
+      '</button>' +
       '</div></div>'
     );
   }
@@ -857,7 +893,7 @@
         '</button>'
       );
     }
-    var label = truncateLabel(def.nickname || def.label || 'WorkBuddy', 14);
+    // Short chip — full id lives in title only (was "WorkBuddy OAu… · 换号").
     var tip = [
       def.label || 'WorkBuddy',
       def.authKind === 'oauth' ? 'OAuth' : 'Key',
@@ -868,9 +904,7 @@
     return (
       '<button type="button" class="ha2-link ha2-wb-account-cta" data-ha2-wb-login-cta title="' +
       esc(tip || t('ha2WbSwitchAccount', '换号')) +
-      '"><span class="ha2-wb-account-name">' +
-      esc(label) +
-      '</span> · ' +
+      '">' +
       esc(t('ha2WbSwitchAccount', '换号')) +
       '</button>'
     );
@@ -924,13 +958,20 @@
   function openAtrWbLoginInline() {
     var snap = store() && store().getSnapshot && store().getSnapshot();
     atrWbLoginForced = true;
+    atrWbLoginChatDismissed = false;
     syncAtrWbLoginHost(snap || {});
     return true;
   }
 
   /** Dock「登录 / 换号」: show strip and start browser OAuth immediately. */
   function startWbFreemodelLoginFromDock() {
+    // Focus / providers sheet owns WorkBuddy OAuth — don't expand a dock banner.
+    if (embedMode) {
+      openModelProviderModal({ fmFocus: 'workbuddy' });
+      return;
+    }
     atrWbLoginForced = true;
+    atrWbLoginChatDismissed = false;
     syncAtrWbLoginHost(store() && store().getSnapshot && store().getSnapshot());
     startAtrWbLoginInline();
   }
@@ -957,16 +998,16 @@
         return refreshWbLocal(true);
       })
       .then(function () {
-        if (!mounted) return;
-        var snap = store() && store().getSnapshot && store().getSnapshot();
-        syncAtrProviderHost(snap);
-        syncAtrWbLoginHost(snap);
+      if (!mounted) return;
+      var snap = store() && store().getSnapshot && store().getSnapshot();
+      syncAtrProviderHost(snap);
+      syncAtrWbLoginHost(snap);
         syncWbAccountHost(snap);
         var host = root && root.querySelector('[data-ha2-model-route-host]');
         if (host) host.removeAttribute('data-sig');
         syncModeChrome(snap);
-        paint(snap);
-      });
+      paint(snap);
+    });
   }
 
   function pollAtrWbLogin(pendingId) {
@@ -1340,9 +1381,12 @@
 
   function wbTurnRoleHtml(role, modelId, providerId, fallbackFrom) {
     if (role === 'assistant') {
+      // Icon follows selected model/provider brand; label stays channel-facing.
+      var brand = modelRouteDisplay(modelId, providerId);
+      var icon = (brand && brand.icon) || WB_CHAT_ICON;
       return (
         '<img class="ha2-wb-turn-ico" src="' +
-        esc(WB_CHAT_ICON) +
+        esc(icon) +
         '" alt="" />' +
         '<span>' +
         esc(wbAssistantLabel(providerId, fallbackFrom)) +
@@ -1353,9 +1397,7 @@
       );
     }
     return (
-      '<span class="ha2-wb-avatar-me" aria-hidden="true">' +
-      esc(t('ha2WbRoleUser', '我')) +
-      '</span><span>' +
+      '<span class="ha2-wb-avatar-me">' +
       esc(t('ha2WbRoleUser', '我')) +
       '</span>'
     );
@@ -1687,6 +1729,53 @@
     var rows = (store() && store().workRows && store().workRows(3)) || [];
     var agent = rows[0] || null;
     if (!agent) {
+      // Honest resume path when Focus stayed quiet but archive / continue evidence exists.
+      // Never claim "running" — only surface that work can be continued.
+      var runs = (snap && snap.interruptedWorkRuns) || [];
+      var notice = snap && snap.validationNotice;
+      var noticeInterrupted =
+        !!(
+          notice &&
+          (notice.code === 'interrupted' ||
+            notice.kind === 'atr_interrupted' ||
+            notice.kind === 'atr_archive_interrupted')
+        );
+      var task = snap && snap.agentTask;
+      var taskInterrupted = !!(task && String(task.status || '') === 'interrupted');
+      if (runs.length || noticeInterrupted || taskInterrupted) {
+        var goal =
+          (task && String(task.goal || '').trim()) ||
+          (runs[0] &&
+            String(
+              runs[0].goal || runs[0].title || runs[0].summary || runs[0].runId || ''
+            ).trim()) ||
+          (notice && String(notice.message || '').trim()) ||
+          t('ha2AtrInterruptedTitle', '编辑任务已中断');
+        return {
+          kicker: t('ha2TaskReturn', '可以继续'),
+          title: goal,
+          sub: t(
+            'ha2ResumeArchiveN',
+            '有 {n} 个可恢复档案 — 恢复或放弃'
+          ).replace('{n}', String(runs.length || 1)),
+          menu: sendMenuLabel(snap)
+        };
+      }
+      var ck = fvm && fvm.desk && fvm.desk.continueCard;
+      var ckTitle = ck && String(ck.title || '').trim();
+      var weakCk =
+        !ckTitle ||
+        /上次进度\s*$/.test(ckTitle) ||
+        ckTitle === '可恢复' ||
+        ckTitle === String((ck && ck.badge) || '') + ' 上次进度';
+      if (ckTitle && !weakCk) {
+        return {
+          kicker: t('ha2TaskReturn', '可以继续'),
+          title: ckTitle,
+          sub: String((ck && (ck.detail || ck.note)) || '').trim() || t('ha2ResumeTag', '可恢复'),
+          menu: sendMenuLabel(snap)
+        };
+      }
       // Prefer a real history / help hint over industrial empty boilerplate.
       var hints =
         (store() && store().quietHintLines && store().quietHintLines(1)) || [];
@@ -1710,6 +1799,7 @@
     else if (/fail|error/.test(st)) kicker = t('ha2TaskFailed', '遇到问题');
     else if (/done|complet/.test(st)) kicker = t('ha2TaskDone', '刚刚完成');
     else if (/working|running|active/.test(st)) kicker = t('ha2TaskWorking', '正在处理');
+    else if (/resumable|interrupted/.test(st)) kicker = t('ha2TaskReturn', '可以继续');
     var title = agent.line || agent.title || t('ha2TaskWorkingTitle', '正在处理中');
     var when = relWhen(agent.updated);
     var subParts = [(agent.cat && agent.cat.name) || agent.kind];
@@ -2170,8 +2260,8 @@
       return '';
     }
     if (kind === 'tool_result' || kind === 'patch_applied' || kind === 'exported_desktop') {
-      var r = p.result;
-      if (r && typeof r === 'object') {
+        var r = p.result;
+        if (r && typeof r === 'object') {
         var n = atrResultCount(r);
         if (Array.isArray(r.changedFiles) || r.baselineDirty != null) {
           return n
@@ -3076,10 +3166,10 @@
     var lastLine = liveThink
       ? t('ha2AtrThinking', '思考中') + ' · ' + String(liveThink).replace(/\s+/g, ' ').slice(0, 120)
       : lastEv
-        ? atrUserStepLine(lastEv)
-        : busy
-          ? t('ha2AtrEvPending', '等待模型下一步…')
-          : '';
+      ? atrUserStepLine(lastEv)
+      : busy
+        ? t('ha2AtrEvPending', '等待模型下一步…')
+        : '';
     if (st === 'failed') {
       lastLine = atrFailureNextHint(snap);
     }
@@ -3276,6 +3366,10 @@
     var WB = global.OneToneHomeWorkbench;
     var alert =
       WB && typeof WB.getPrimaryAlertModel === 'function' ? WB.getPrimaryAlertModel() : null;
+    // HA2 thin desk:「开始设置」belongs in Settings — don't block home entry.
+    if (alert && alert.kind === 'needs_setup') {
+      return { html: '', kind: null };
+    }
     if (alert && alert.text) {
       return {
         kind: 'alert',
@@ -3633,39 +3727,39 @@
         (needsClarify
           ? ''
           : '<div class="ha2-research-row">' +
-            '<label>' +
-            esc(t('ha2ResearchPath', '路径')) +
+        '<label>' +
+        esc(t('ha2ResearchPath', '路径')) +
             '<select data-ha2-research-path' +
             (planning ? ' disabled' : '') +
             '>' +
-            '<option value="fast"' +
-            (pathNow === 'fast' ? ' selected' : '') +
-            '>' +
-            esc(t('ha2ResearchPathFast', '快速核实（仍查来源）')) +
-            '</option>' +
-            '<option value="faceted"' +
-            (pathNow === 'faceted' ? ' selected' : '') +
-            '>' +
-            esc(t('ha2ResearchPathFaceted', '分工调研')) +
-            '</option></select></label></div>' +
-            (pathNow === 'faceted'
-              ? '<div class="ha2-research-facets" data-ha2-research-facets>' +
-                '<p class="ha2-research-msg">' +
+        '<option value="fast"' +
+        (pathNow === 'fast' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchPathFast', '快速核实（仍查来源）')) +
+        '</option>' +
+        '<option value="faceted"' +
+        (pathNow === 'faceted' ? ' selected' : '') +
+        '>' +
+        esc(t('ha2ResearchPathFaceted', '分工调研')) +
+        '</option></select></label></div>' +
+        (pathNow === 'faceted'
+          ? '<div class="ha2-research-facets" data-ha2-research-facets>' +
+            '<p class="ha2-research-msg">' +
                 esc(
                   planning
                     ? t('ha2ResearchFacetsPlanning', '模型正在规划调查面…')
                     : t('ha2ResearchFacetsHint', '将调查这些方面（可改查询词）')
                 ) +
-                '</p>' +
-                facetRows +
-                '</div>'
-              : '<p class="ha2-research-msg">' +
-                esc(
-                  t(
-                    'ha2ResearchFastHint',
-                    '快速路径仍会搜索并抓取有限来源，给出可核查短答。'
-                  )
-                ) +
+            '</p>' +
+            facetRows +
+            '</div>'
+          : '<p class="ha2-research-msg">' +
+            esc(
+              t(
+                'ha2ResearchFastHint',
+                '快速路径仍会搜索并抓取有限来源，给出可核查短答。'
+              )
+            ) +
                 '</p>')) +
         '<div class="ha2-research-actions">' +
         (needsClarify || planDegraded
@@ -3864,7 +3958,7 @@
             session.capabilities.write_project.implemented &&
             session.capabilities.approval_execute &&
             session.capabilities.approval_execute.implemented
-          );
+    );
     var modes = [
       {
         id: 'think',
@@ -4043,6 +4137,40 @@
   }
 
   /**
+   * Collapse legacy MiniMax CN ids (minimax_cn / MiniMax CN) with models.dev
+   * minimax-cn-openai — same OpenAI-compat CN lane, not Soft Pad Coding Plan.
+   */
+  function modelRouteApiLaneKey(id, label) {
+    var blob = (String(id || '') + ' ' + String(label || ''))
+      .toLowerCase()
+      .replace(/_/g, '-');
+    if (
+      /minimax\.io|api\.minimax\.io/.test(blob) ||
+      (/(^|[^a-z])minimax-openai([^a-z]|$)/.test(blob) && !/minimax-cn/.test(blob))
+    ) {
+      return 'minimax-io';
+    }
+    if (/minimax[-]?cn|minimaxi\.com|minimax\.cn|(^|[^a-z])minimax cn([^a-z]|$)/.test(blob)) {
+      return 'minimax-cn';
+    }
+    return String(id || '')
+      .toLowerCase()
+      .replace(/_/g, '-');
+  }
+
+  function modelRouteApiPreferScore(p, currentProviderId) {
+    p = p || {};
+    var id = String(p.id || '');
+    var score = 0;
+    // Canonical models.dev ids beat legacy minimax_cn / "MiniMax CN" aliases.
+    if (id === 'minimax-cn-openai' || id === 'minimax-openai') score += 100;
+    if (id && id === String(currentProviderId || '')) score += 20;
+    if (p.configured) score += 10;
+    if (/^minimax[_-]?cn$/.test(id)) score -= 40;
+    return score;
+  }
+
+  /**
    * Display chips for model rows (tag / relative rate / speed).
    * WorkBuddy catalog has no price fields yet — name heuristics mirror the product UI.
    * Soft Pad / free / custom lanes use lane labels, not invented multipliers.
@@ -4056,7 +4184,24 @@
       return { tag: 'Soft Pad', tagKind: 'sub', rate: '计量', speed: '中' };
     }
     if (kind === 'api') {
-      return { tag: 'API', tagKind: 'api', rate: '—', speed: '—' };
+      var lane = modelRouteApiLaneKey(id, name);
+      // OpenAI-compat Chat API has no wallet probe. Coding Plan 5h lives on Soft Pad.
+      if (lane === 'minimax-cn' || lane === 'minimax-io') {
+        return {
+          tag: 'API',
+          tagKind: 'api',
+          rate: '无余额',
+          speed: '—',
+          rateHint: 'Chat API Key 无平台余额接口；Coding Plan 5h 余量请看 Soft Pad'
+        };
+      }
+      return {
+        tag: 'API',
+        tagKind: 'api',
+        rate: '—',
+        speed: '—',
+        rateHint: '自定义 API 无实时余额探针'
+      };
     }
     if (kind === 'add') return null;
     // wb
@@ -4098,7 +4243,10 @@
     if (offer && offer.rate) {
       rateHtml =
         '<span class="ha2-model-dd-rate" title="' +
-        esc(t('ha2ModelRateHint', '相对消耗倍率（展示估算）')) +
+        esc(
+          offer.rateHint ||
+            t('ha2ModelRateHint', '相对消耗倍率（展示估算）')
+        ) +
         '">' +
         esc(offer.rate) +
         '</span>';
@@ -4135,8 +4283,9 @@
   }
 
   function filterModelRouteMenu(q) {
-    if (!root) return;
-    var list = root.querySelector('[data-ha2-model-route-list]');
+    var list =
+      (root && root.querySelector('[data-ha2-model-route-list]')) ||
+      document.querySelector('.ha2-model-dd-menu.is-portaled [data-ha2-model-route-list]');
     if (!list) return;
     var needle = String(q || '')
       .trim()
@@ -4177,6 +4326,25 @@
     menu.style.maxWidth = '';
     menu.style.maxHeight = '';
     menu.style.zIndex = '';
+    menu.style.background = '';
+  }
+
+  function restorePortaledMenu(menu) {
+    if (!menu || !menu.__ha2MenuHome) return;
+    try {
+      menu.__ha2MenuHome.appendChild(menu);
+    } catch (_) {}
+    menu.__ha2MenuHome = null;
+    menu.classList.remove('is-portaled');
+  }
+
+  /** Escape Focus stacking / dock overflow — park on body while open. */
+  function portalOverlayToBody(el) {
+    if (!el || !document.body) return;
+    if (el.parentElement === document.body) return;
+    el.__ha2MenuHome = el.parentElement;
+    document.body.appendChild(el);
+    el.classList.add('is-portaled');
   }
 
   /** Escape .ha2-dock overflow clipping via fixed viewport coords. */
@@ -4185,7 +4353,7 @@
     var r = trig.getBoundingClientRect();
     var vw = global.innerWidth || 0;
     var vh = global.innerHeight || 0;
-    var maxH = Math.min(360, Math.floor(vh * 0.5));
+    var maxH = Math.min(embedMode ? 420 : 360, Math.floor(vh * (embedMode ? 0.58 : 0.5)));
     var spaceAbove = Math.max(0, r.top - 8);
     var spaceBelow = Math.max(0, vh - r.bottom - 8);
     var openUp = spaceAbove >= 160 || spaceAbove > spaceBelow;
@@ -4193,7 +4361,8 @@
     var width = Math.max(r.width, 300);
     var left = Math.min(Math.max(8, r.left), Math.max(8, vw - width - 8));
     menu.style.position = 'fixed';
-    menu.style.zIndex = '120';
+    menu.style.zIndex = '12050';
+    menu.style.background = '#ffffff';
     menu.style.left = left + 'px';
     menu.style.right = 'auto';
     menu.style.minWidth = width + 'px';
@@ -4208,23 +4377,43 @@
     }
   }
 
+  function scrubPortaledOverlays() {
+    var nodes = document.querySelectorAll(
+      '.ha2-model-dd-menu.is-portaled, .ha2-picker.is-portaled'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      el.hidden = true;
+      clearModelRouteMenuPos(el);
+      restorePortaledMenu(el);
+      if (el.classList.contains('ha2-picker') && el.parentElement === document.body) {
+        try {
+          el.remove();
+        } catch (_) {}
+      }
+    }
+  }
+
   function closeModelRouteMenu() {
     modelRouteMenuOpen = false;
-    if (!root) return;
-    var dd = root.querySelector('[data-ha2-model-route-dd]');
-    if (!dd) return;
-    dd.classList.remove('is-open');
-    var menu = dd.querySelector('[data-ha2-model-route-menu]');
-    var trig = dd.querySelector('[data-ha2-model-route-trigger]');
+    var dd = root && root.querySelector('[data-ha2-model-route-dd]');
+    var menu =
+      (dd && dd.querySelector('[data-ha2-model-route-menu]')) ||
+      document.querySelector('[data-ha2-model-route-menu]');
+    var trig = dd && dd.querySelector('[data-ha2-model-route-trigger]');
+    if (dd) dd.classList.remove('is-open');
     if (menu) {
       menu.hidden = true;
       clearModelRouteMenuPos(menu);
+      restorePortaledMenu(menu);
     }
+    scrubPortaledOverlays();
     if (trig) trig.setAttribute('aria-expanded', 'false');
   }
 
   function openModelRouteMenu() {
     if (!root) return;
+    scrubPortaledOverlays();
     var dd = root.querySelector('[data-ha2-model-route-dd]');
     if (!dd) return;
     modelRouteMenuOpen = true;
@@ -4233,6 +4422,7 @@
     var trig = dd.querySelector('[data-ha2-model-route-trigger]');
     if (menu) {
       menu.hidden = false;
+      // Keep menu in-tree; fixed + high z-index (portal left stuck overlays / 假死).
       positionModelRouteMenu(trig, menu);
       var search = menu.querySelector('[data-ha2-model-route-search]');
       if (search) {
@@ -4450,15 +4640,32 @@
       );
     }
     var paidApiOpts = '';
+    var paidByLane = {};
     for (var pi = 0; pi < providers.length; pi++) {
       var p = providers[pi];
       if (!p || !p.id || p.id === 'workbuddy') continue;
       if (p.id === 'softpad_our_freemodel' || p.source === 'softpad') continue;
       if (freeLaneIds[p.id]) continue;
       if (p.id === 'custom_openai_compatible' && !p.configured) continue;
-      var pDisp = modelRouteDisplay(p.label || p.name || p.id, p.id);
-      var pVal = 'api:' + p.id;
-      var pOn = currentValue === pVal;
+      var lane = modelRouteApiLaneKey(p.id, p.label || p.name);
+      var prev = paidByLane[lane];
+      if (
+        !prev ||
+        modelRouteApiPreferScore(p, currentProvider) >
+          modelRouteApiPreferScore(prev, currentProvider)
+      ) {
+        paidByLane[lane] = p;
+      }
+    }
+    var paidLanes = Object.keys(paidByLane);
+    for (var pli = 0; pli < paidLanes.length; pli++) {
+      var pPick = paidByLane[paidLanes[pli]];
+      var pDisp = modelRouteDisplay(pPick.label || pPick.name || pPick.id, pPick.id);
+      var pVal = 'api:' + pPick.id;
+      var curLane = modelRouteApiLaneKey(currentProvider, '');
+      var pOn =
+        currentValue === pVal ||
+        (curLane === paidLanes[pli] && String(currentValue || '').indexOf('api:') === 0);
       if (pOn) {
         currentLabel = pDisp.label;
         currentIcon = pDisp.icon;
@@ -4468,7 +4675,7 @@
         pDisp.label,
         pDisp.icon,
         pOn,
-        modelRouteOfferMeta('api', p.label || p.id, p.id)
+        modelRouteOfferMeta('api', pPick.label || pPick.id, pPick.id)
       );
     }
     if (softReady || paidApiOpts) {
@@ -4512,7 +4719,9 @@
       esc(currentIcon) +
       '" alt="" width="16" height="16" decoding="async"><span class="ha2-model-dd-name">' +
       esc(currentLabel) +
-      '</span><span class="ha2-model-dd-caret" aria-hidden="true">▾</span></button>' +
+      '</span><span class="ha2-model-dd-caret" aria-hidden="true">' +
+      lucide('chevron-down', 12) +
+      '</span></button>' +
       '<div class="ha2-model-dd-menu" data-ha2-model-route-menu hidden>' +
       '<div class="ha2-model-dd-search">' +
       '<span class="ha2-model-dd-search-ico" aria-hidden="true">⌕</span>' +
@@ -4692,7 +4901,8 @@
           ? label + '（Ctrl+Enter）'
           : t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
         : t('ha2SendNeedDraft', '先写一句再发送');
-      sendBtn.textContent = atrEdit ? label : '↑';
+      if (atrEdit) sendBtn.textContent = label;
+      else sendBtn.innerHTML = lucide('arrow-up', 16);
     }
     var secondary = root.querySelectorAll('[data-ha2-work-secondary]');
     var i;
@@ -4709,13 +4919,15 @@
     if (wbModeHost) wbModeHost.hidden = !!atrEdit;
     if (modelRouteHost) {
       modelRouteHost.hidden = !!atrEdit;
-      if (!atrEdit) {
+      // Never wipe the open model dropdown (Focus remount / async chrome refresh).
+      if (!atrEdit && !modelRouteMenuOpen) {
         var routeSig = modelRouteSelectHtml(snap);
         if (modelRouteHost.getAttribute('data-sig') !== routeSig) {
           modelRouteHost.setAttribute('data-sig', routeSig);
           modelRouteHost.innerHTML = routeSig;
         }
-      } else {
+      } else if (atrEdit) {
+        closeModelRouteMenu();
         modelRouteHost.innerHTML = '';
         modelRouteHost.removeAttribute('data-sig');
       }
@@ -4817,22 +5029,22 @@
     // Live ATR: pillsHtml is the sole home progress CTA — skip next row.
     var nextBlock = '';
     if (!atrLive) {
-      var next = '';
-      if (atrNeedsApproval(snap)) {
-        next = t('ha2AtrNextApprove', '批准后才会写入文件');
-      } else if (atrTaskBusy(snap)) {
-        next = t('ha2AtrNextRunning', '查看进度，或放弃当前任务');
-      } else if (st === 'waiting') {
-        next = t('ha2AtrNextInput', '下一步：在下方补充说明，继续当前编辑任务。');
-      } else if (st === 'done') {
-        var files = atrWrittenFiles(snap);
-        next = files.length
-          ? t('ha2AtrDoneWrote', '已写入') + ' ' + files.join(', ')
-          : t('ha2AtrDoneOk', '改动已写入工作区。');
-      } else if (st === 'failed' || st === 'interrupted') {
-        next = atrFailureNextHint(snap);
-      } else {
-        next = t('ha2WorkStartNext', '写清目标后直接开始；未验证引擎会先静默验证');
+    var next = '';
+    if (atrNeedsApproval(snap)) {
+      next = t('ha2AtrNextApprove', '批准后才会写入文件');
+    } else if (atrTaskBusy(snap)) {
+      next = t('ha2AtrNextRunning', '查看进度，或放弃当前任务');
+    } else if (st === 'waiting') {
+      next = t('ha2AtrNextInput', '下一步：在下方补充说明，继续当前编辑任务。');
+    } else if (st === 'done') {
+      var files = atrWrittenFiles(snap);
+      next = files.length
+        ? t('ha2AtrDoneWrote', '已写入') + ' ' + files.join(', ')
+        : t('ha2AtrDoneOk', '改动已写入工作区。');
+    } else if (st === 'failed' || st === 'interrupted') {
+      next = atrFailureNextHint(snap);
+    } else {
+      next = t('ha2WorkStartNext', '写清目标后直接开始；未验证引擎会先静默验证');
       }
       nextBlock = '<div class="ha2-task-core-next">' + esc(next) + '</div>';
     }
@@ -5152,28 +5364,7 @@
         esc(task.menu) +
         ' ▾</button></div>' +
         pillsHtml(snap);
-    var matched = Array.isArray(ctx.matchedApps) ? ctx.matchedApps : [];
-    var matchedLabel = matched.length
-      ? t('ha2MatchedAppsCount', '匹配 {n} 个应用').replace('{n}', String(matched.length))
-      : t('ha2MatchedApps', '匹配应用');
-    var matchedList =
-      matched.length
-        ? matched
-            .map(function (a) {
-              return (
-                '<li class="ha2-matched-item">' +
-                (a.icon
-                  ? '<img src="' + esc(a.icon) + '" alt="" width="14" height="14" />'
-                  : '') +
-                '<span>' +
-                esc(a.name || a.appId) +
-                '</span></li>'
-              );
-            })
-            .join('')
-        : '<li class="ha2-matched-empty">' +
-          esc(t('ha2MatchedAppsEmpty', '当前习惯尚未匹配应用')) +
-          '</li>';
+    // Matched apps stay in habit hub — no「匹配应用」chrome on home (noise).
     var appIcon =
       ctx.appIcon
         ? '<img class="ha2-ctx-app-icon" src="' +
@@ -5189,18 +5380,7 @@
       appIcon +
       '<span class="ha2-ctx-app-name">' +
       esc(ctx.appName) +
-      '</span></button>' +
-      '<details class="ha2-ctx-matched">' +
-      '<summary title="' +
-      esc(t('ha2MatchedAppsHint', '查看 OneTone 为当前习惯匹配的应用')) +
-      '">' +
-      esc(matchedLabel) +
-      '</summary>' +
-      '<ul class="ha2-matched-list" role="list">' +
-      matchedList +
-      '<li class="ha2-matched-actions"><button type="button" class="ha2-link" data-ha2-habit-hub>' +
-      esc(t('ha2OpenHabitHub', '打开习惯')) +
-      '</button></li></ul></details></div>' +
+      '</span></button></div>' +
       sessionChromeHtml(snap) +
       taskBlock +
       pulseHtml(snap) +
@@ -5511,9 +5691,9 @@
     var resume = workspaceResumeRowHtml(snap);
     var history = workHistoryRowsHtml(snap);
     var agentHtml = rows
-      .map(function (r) {
-        return rowHtml(r, snap);
-      })
+        .map(function (r) {
+          return rowHtml(r, snap);
+        })
       .join('');
     if (!rows.length) {
       return resume + history + (history || resume ? '' : emptyListHtml(snap));
@@ -5568,7 +5748,7 @@
     var atrCode = n.code ? String(n.code) : '';
     // Recoverable / interrupted CTAs live in workspaceResumeRowHtml.
     if (
-      atrCode === 'interrupted' ||
+        atrCode === 'interrupted' ||
       n.kind === 'atr_interrupted' ||
       n.kind === 'atr_archive_interrupted'
     ) {
@@ -7852,21 +8032,19 @@
 
   function capPanelText(caps, snap) {
     caps = caps || {};
+    // Ready strip (软键盘/语音/摄像头 就绪) is noise on home — keep caps in overflow only.
+    if (embedMode || atrEditPathOn(snap || {})) return '';
     // ATR edit uses WorkBuddy OAuth / Soft Pad keys as engines — Soft Pad runtime readiness is unrelated.
-    if (atrEditPathOn(snap || {})) return '';
     var bits = [];
     function bit(cap, label) {
       if (!cap) return;
-      if (cap.state === 'on' && cap.runtimeReady) bits.push(label + ' ' + t('ha2CapReady', '就绪'));
-      else if (cap.state === 'on' || cap.configOn) bits.push(label + ' ' + t('ha2CapConfigOn', '已启用'));
-      else if (cap.state === 'pending') bits.push(label + '…');
-      else if (cap.state === 'error') bits.push(label + ' ' + t('ha2CapError', '异常'));
+      if (cap.state === 'error') bits.push(label + ' ' + t('ha2CapError', '异常'));
     }
     bit(caps.softPad, t('ha2SoftPad', 'Soft Pad'));
     bit(caps.voice, t('ha2Voice', '语音'));
     bit(caps.camera, t('ha2Camera', '摄像头'));
     if (!bits.length) return '';
-    return bits.join(' · ') + ' · ' + t('ha2CapPanelHint', '配置开 ≠ 运行就绪');
+    return bits.join(' · ');
   }
 
   function matKindLabel(kind, source) {
@@ -8056,19 +8234,63 @@
     );
   }
 
+  /** Lucide-style stroke icons (inline; no extra dependency). */
+  function lucide(name, size) {
+    size = size || 16;
+    var paths = {
+      'arrow-up':
+        '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+      plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      paperclip:
+        '<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
+      'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+      ellipsis:
+        '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+      infinity:
+        '<path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/>',
+      mic:
+        '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>',
+      video:
+        '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+      'panel-left':
+        '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+      monitor:
+        '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'
+    };
+    var body = paths[name];
+    if (!body) return '';
+    return (
+      '<svg class="ha2-lucide" data-lucide="' +
+      esc(name) +
+      '" viewBox="0 0 24 24" width="' +
+      size +
+      '" height="' +
+      size +
+      '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      body +
+      '</svg>'
+    );
+  }
+
   function matMenuHtml() {
     if (!matMenuOpen) return '';
-    // File picker already accepts images — no separate「图片」row.
+    // Single + menu owns all collect kinds (Focus + ha2).
     return (
       '<div class="ha2-mat-menu" data-ha2-mat-menu role="menu">' +
-      '<button type="button" data-ha2-mat="file">' +
-      esc(t('ha2MatFile', '文件')) +
+      '<button type="button" data-ha2-mat="paste">' +
+      esc(t('ha2MatPaste', '粘贴')) +
+      '</button>' +
+      '<button type="button" data-ha2-mat="url">' +
+      esc(t('ha2MatUrl', '网址')) +
+      '</button>' +
+      '<button type="button" data-ha2-mat="folder">' +
+      esc(t('ha2MatFolder', '目录')) +
       '</button>' +
       '<button type="button" data-ha2-mat="screenshot">' +
       esc(t('ha2MatScreenshot', '截图')) +
       '</button>' +
-      '<button type="button" data-ha2-mat="paste">' +
-      esc(t('ha2MatPaste', '粘贴内容')) +
+      '<button type="button" data-ha2-mat="file">' +
+      esc(t('ha2MatFile', '附件')) +
       '</button></div>'
     );
   }
@@ -8084,9 +8306,19 @@
     if (!mounted || !root) return;
     var t = e.target;
     if (modelRouteMenuOpen) {
-      if (!(t && t.closest && t.closest('[data-ha2-model-route-dd]'))) {
+      if (
+        !(
+          t &&
+          t.closest &&
+          (t.closest('[data-ha2-model-route-dd]') ||
+            t.closest('[data-ha2-model-route-menu]'))
+        )
+      ) {
         closeModelRouteMenu();
       }
+    } else if (document.querySelector('.ha2-model-dd-menu.is-portaled')) {
+      // Leftover portal from a prior stuck open — don't leave a click blackhole.
+      scrubPortaledOverlays();
     }
     var S = store();
     var snap = S && S.getSnapshot ? S.getSnapshot() : null;
@@ -8104,6 +8336,30 @@
         closeMatMenu();
       }
     }
+    var agentPick = root.querySelector('[data-ha2-agent-pick].is-open');
+    if (
+      agentPick &&
+      !(
+        t &&
+        t.closest &&
+        (t.closest('[data-ha2-agent-pick]') || t.closest('[data-ha2-agent-flyout]'))
+      )
+    ) {
+      closeAgentFlyout();
+    }
+  }
+
+  /** Portaled menus live on document.body — forward their clicks into onClick. */
+  function onPortaledDocClick(e) {
+    if (!mounted || !e || !e.target || !e.target.closest) return;
+    if (
+      !e.target.closest(
+        '.ha2-model-dd-menu.is-portaled, .ha2-picker.is-portaled'
+      )
+    ) {
+      return;
+    }
+    onClick(e);
   }
 
   function onDocKeyDown(e) {
@@ -8154,23 +8410,33 @@
       closeMatMenu();
       return;
     }
+    if (root && root.querySelector('[data-ha2-agent-pick].is-open')) {
+      e.preventDefault();
+      closeAgentFlyout();
+    }
   }
 
   /** Crosshair mark: dashed = need aim, solid green = locked. */
   function aimChipHtml(hasAim) {
     var label = hasAim ? t('ha2AimLocked', '已对准输入框') : t('ha2AimNow', '现在定位');
+    var tip = hasAim
+      ? t('ha2AimLockedTip', '已对准当前 Agent 输入框，发送时会快速粘贴')
+      : t(
+          'ha2AimTip',
+          '点击准星：提前定位当前选中 Agent 的输入框，便于快速发送'
+        );
     return (
       '<button type="button" class="ha2-aim-chip' +
       (hasAim ? ' is-ok' : ' is-off') +
-      '" data-ha2-aim title="' +
-      esc(label) +
+      '" data-ha2-aim data-ot-tip-prefer="above" data-ot-tip="' +
+      esc(tip) +
       '" aria-label="' +
       esc(label) +
       '"><span class="ha2-aim-ico" aria-hidden="true">' +
-      '<svg viewBox="0 0 20 20" width="16" height="16" fill="none">' +
-      '<circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/>' +
-      '<circle class="ha2-aim-dot" cx="10" cy="10" r="2.2" fill="currentColor"/>' +
-      '<path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none">' +
+      '<circle cx="12" cy="12" r="7.25" stroke="currentColor" stroke-width="2"/>' +
+      '<circle class="ha2-aim-dot" cx="12" cy="12" r="2.6" fill="currentColor"/>' +
+      '<path d="M12 2.75v2.6M12 18.65v2.6M2.75 12h2.6M18.65 12h2.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
       '</svg></span></button>'
     );
   }
@@ -8180,12 +8446,204 @@
     var aimClear = root && root.querySelector('[data-ha2-aim-clear]');
     if (aimBtn) {
       var label = hasAim ? t('ha2AimLocked', '已对准输入框') : t('ha2AimNow', '现在定位');
+      var tip = hasAim
+        ? t('ha2AimLockedTip', '已对准当前 Agent 输入框，发送时会快速粘贴')
+        : t(
+            'ha2AimTip',
+            '点击准星：提前定位当前选中 Agent 的输入框，便于快速发送'
+          );
       aimBtn.classList.toggle('is-ok', hasAim);
       aimBtn.classList.toggle('is-off', !hasAim);
       aimBtn.setAttribute('aria-label', label);
-      aimBtn.title = label;
+      aimBtn.setAttribute('data-ot-tip', tip);
+      aimBtn.setAttribute('data-ot-tip-prefer', 'above');
+      aimBtn.removeAttribute('title');
     }
     if (aimClear) aimClear.hidden = !hasAim;
+  }
+
+  /** Inline horizontal agent row inside compose — no floating picker. */
+  function agentTipFor(name) {
+    return (
+      t('ha2AgentTipSelect', '选中「') +
+      name +
+      t('ha2AgentTipSend', '」：发送提示词给 ') +
+      name +
+      t('ha2AgentTipAim', '。点击准星可提前定位 ') +
+      name +
+      t('ha2AgentTipAimEnd', ' 输入框，便于快速发送')
+    );
+  }
+
+  function agentIcoBtnHtml(a, selected, opts) {
+    opts = opts || {};
+    if (!a || !a.id) return '';
+    var name = String(a.name || a.id);
+    var on = a.id === selected ? ' on' : '';
+    var attrs = opts.toggle
+      ? ' data-ha2-agent-toggle aria-haspopup="listbox" aria-expanded="false"'
+      : ' role="option" aria-selected="' +
+        (on ? 'true' : 'false') +
+        '" data-ha2-pick="' +
+        esc(a.id) +
+        '"';
+    return (
+      '<button type="button" class="ha2-agent-ico' +
+      on +
+      '"' +
+      attrs +
+      ' data-ot-tip-prefer="above" data-ot-tip="' +
+      esc(agentTipFor(name)) +
+      '" aria-label="' +
+      esc(name) +
+      '">' +
+      iconHtml(a, 'ha2-agent-ico-img') +
+      '</button>'
+    );
+  }
+
+  function agentCatalogSig(snap) {
+    return ((snap && snap.catalog) || [])
+      .map(function (a) {
+        return a && a.id ? a.id : '';
+      })
+      .filter(Boolean)
+      .join('|');
+  }
+
+  function agentCurrentCat(snap) {
+    var catalog = (snap && snap.catalog) || [];
+    var selected = String((snap && snap.selectedKind) || '');
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      if (catalog[i] && catalog[i].id === selected) return catalog[i];
+    }
+    return catalog[0] || { id: '', name: t('ha2PickAgent', '选择 Agent') };
+  }
+
+  /** Fused aim + one selected agent (idle). Flyout is a sibling inside compose. */
+  function agentStripHtml(snap, hasAim) {
+    var selected = String((snap && snap.selectedKind) || '');
+    var cur = agentCurrentCat(snap);
+    var sig = agentCatalogSig(snap);
+    return (
+      '<div class="ha2-agent-pick" data-ha2-agent-pick data-ha2-agent-strip data-sig="' +
+      esc(sig) +
+      '"><div class="ha2-agent-fused">' +
+      aimChipHtml(!!hasAim) +
+      '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
+      (hasAim ? '' : ' hidden') +
+      ' title="' +
+      esc(t('ha2AimClear', '清除')) +
+      '">' +
+      esc(t('ha2AimClear', '清除')) +
+      '</button>' +
+      agentIcoBtnHtml(cur, selected, { toggle: true }) +
+      '</div></div>'
+    );
+  }
+
+  function agentFlyoutHtml(snap) {
+    var catalog = (snap && snap.catalog) || [];
+    var selected = String((snap && snap.selectedKind) || '');
+    var fly = catalog
+      .map(function (a) {
+        return agentIcoBtnHtml(a, selected, {});
+      })
+      .filter(Boolean)
+      .join('');
+    return (
+      '<div class="ha2-agent-flyout" data-ha2-agent-flyout hidden role="listbox" aria-label="' +
+      esc(t('ha2PickTarget', '选择发送目标')) +
+      '">' +
+      fly +
+      '</div>'
+    );
+  }
+
+  function agentFlyoutEl() {
+    return (
+      (root && root.querySelector('[data-ha2-compose] > [data-ha2-agent-flyout]')) ||
+      (root && root.querySelector('[data-ha2-agent-flyout]'))
+    );
+  }
+
+  function closeAgentFlyout() {
+    var pick = root && root.querySelector('[data-ha2-agent-pick]');
+    var fly = agentFlyoutEl();
+    var trig = pick && pick.querySelector('[data-ha2-agent-toggle]');
+    if (pick) pick.classList.remove('is-open');
+    if (root) {
+      var compose = root.querySelector('[data-ha2-compose]');
+      if (compose) compose.classList.remove('is-agent-open');
+    }
+    if (fly) fly.hidden = true;
+    if (trig) trig.setAttribute('aria-expanded', 'false');
+  }
+
+  function openAgentFlyout() {
+    var pick = root && root.querySelector('[data-ha2-agent-pick]');
+    var fly = agentFlyoutEl();
+    var trig = pick && pick.querySelector('[data-ha2-agent-toggle]');
+    if (pick) pick.classList.add('is-open');
+    if (root) {
+      var compose = root.querySelector('[data-ha2-compose]');
+      if (compose) compose.classList.add('is-agent-open');
+    }
+    if (fly) fly.hidden = false;
+    if (trig) trig.setAttribute('aria-expanded', 'true');
+  }
+
+  function syncAgentStrip(snap) {
+    var pick = root && root.querySelector('[data-ha2-agent-pick],[data-ha2-agent-strip]');
+    if (!pick) return false;
+    var selected = String((snap && snap.selectedKind) || '');
+    var catalog = (snap && snap.catalog) || [];
+    var sig = agentCatalogSig(snap);
+    var wasOpen = pick.classList.contains('is-open');
+    var appId = (agentCurrentCat(snap) && agentCurrentCat(snap).appId) || '';
+    var hasAim = !!(snap.aimByAppId && snap.aimByAppId[appId] && snap.aimByAppId[appId].hasActive);
+    if (pick.getAttribute('data-sig') !== sig) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = agentStripHtml(snap, hasAim);
+      var next = wrap.firstChild;
+      if (next) {
+        pick.replaceWith(next);
+        pick = next;
+      }
+      var flyHost = agentFlyoutEl();
+      var flyWrap = document.createElement('div');
+      flyWrap.innerHTML = agentFlyoutHtml(snap);
+      if (flyHost && flyWrap.firstChild) flyHost.replaceWith(flyWrap.firstChild);
+      else if (flyWrap.firstChild) {
+        var compose = root.querySelector('[data-ha2-compose]');
+        var rail = compose && compose.querySelector('[data-ha2-compose-rail]');
+        if (rail && rail.parentNode) rail.parentNode.insertBefore(flyWrap.firstChild, rail.nextSibling);
+      }
+      if (wasOpen) openAgentFlyout();
+      return true;
+    }
+    var cur = agentCurrentCat(snap);
+    var trig = pick.querySelector('[data-ha2-agent-toggle]');
+    if (trig && cur) {
+      var name = String(cur.name || cur.id);
+      trig.classList.add('on');
+      trig.setAttribute('aria-label', name);
+      trig.setAttribute('data-ot-tip', agentTipFor(name));
+      trig.setAttribute('data-ot-tip-prefer', 'above');
+      trig.innerHTML = iconHtml(cur, 'ha2-agent-ico-img');
+    }
+    syncAimChip(hasAim);
+    var fly = agentFlyoutEl();
+    var btns = fly ? fly.querySelectorAll('[data-ha2-pick]') : [];
+    var i;
+    for (i = 0; i < btns.length; i++) {
+      var btn = btns[i];
+      var on = btn.getAttribute('data-ha2-pick') === selected;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    return true;
   }
 
   function targetProjectLabel(snap) {
@@ -8209,16 +8667,15 @@
   }
 
   /** Edit mode: project context only — not a desktop Agent send target. */
-  function atrEditTargetChipHtml(snap) {
-    var projectLabel = targetProjectLabel(snap);
-    // Same chip skeleton as chat target (icon + copy) so dock-bar fuse aligns.
+  function atrEditTargetChipHtml(_snap) {
+    // Project name lives in Focus chrome (top-left) — chip is ATR mode only.
     return (
       '<span class="ha2-chip target is-atr-edit" data-ha2-atr-edit-chip title="' +
       esc(t('ha2AtrEditChipTitle', 'ATR 编辑任务（非投递到桌面 Agent）')) +
-      '"><span class="ha2-chip-icon ha2-icon--fallback" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg></span><span class="ha2-chip-copy"><span data-ha2-dest-name>' +
+      '"><span class="ha2-chip-icon ha2-icon--fallback" aria-hidden="true">' +
+      lucide('panel-left', 14) +
+      '</span><span class="ha2-chip-copy"><span data-ha2-dest-name>' +
       esc(t('ha2AtrEditChip', 'ATR 编辑')) +
-      '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-      esc(projectLabel) +
       '</span></span></span>'
     );
   }
@@ -8269,6 +8726,14 @@
   }
 
   function agentCapBtn(caps, key, label) {
+    var ico =
+      key === 'softPad'
+        ? lucide('panel-left', 14)
+        : key === 'voice'
+          ? lucide('mic', 14)
+          : key === 'camera'
+            ? lucide('video', 14)
+            : '';
     return (
       '<button type="button" class="' +
       capClass(caps[key], key) +
@@ -8278,7 +8743,9 @@
       esc(label) +
       '" aria-label="' +
       esc(label) +
-      '"><span class="ha2-cap-lbl">' +
+      '">' +
+      ico +
+      '<span class="ha2-cap-lbl">' +
       esc(label) +
       '</span></button>'
     );
@@ -8426,7 +8893,6 @@
     var aim = (snap.aimByAppId && snap.aimByAppId[appId]) || {};
     var hasAim = !!aim.hasActive;
     var panel = capPanelText(caps, snap);
-    var projectLabel = targetProjectLabel(snap);
     var sendOk = canSendNow(snap);
     var atrEdit = atrEditPathOn(snap);
     var draftLabel = atrEdit
@@ -8435,17 +8901,36 @@
     var draftPh = atrEdit
       ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
       : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
+    // Project name is Focus chrome — fused aim+agent; flyout lives inside compose.
     var targetChip = atrEdit
       ? atrEditTargetChipHtml(snap)
-      : '<button type="button" class="ha2-chip target" data-ha2-picker title="' +
-        esc(t('ha2PickAgent', '选择 Agent')) +
-        '">' +
-        iconHtml(c, 'ha2-chip-icon') +
-        '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
-        esc(c.name) +
-        '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-        esc(projectLabel) +
-        '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>';
+      : agentStripHtml(snap, hasAim);
+    var agentFly = atrEdit ? '' : agentFlyoutHtml(snap);
+    var providerDue = (function () {
+      var fm = freemodelChannelsApi();
+      var n =
+        fm && fm.dueCount ? fm.dueCount({ readyIds: freemodelReadyIds() }) : 0;
+      return n
+        ? '<span class="ha2-fm-due-badge" aria-label="' +
+            esc(t('ha2FmDue', '待开通')) +
+            '">' +
+            n +
+            '</span>'
+        : '';
+    })();
+    var sendHint = sendOk
+      ? atrEdit
+        ? workPrimaryCtaLabel(snap) + '（Ctrl+Enter）'
+        : gatewayChatEligible(snap)
+          ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
+          : t('ha2SendHint', '发送（Ctrl+Enter）')
+      : atrEdit
+        ? t('ha2SendNeedDraft', '先写一句再发送')
+        : gatewayChatEligible(snap)
+          ? t('ha2SendNeedDraft', '先写一句再发送')
+          : !c.id
+            ? t('ha2PickAgent', '选择 Agent')
+            : t('ha2SendNeedDraft', '先写一句再发送');
     return (
       '<div class="ha2-dock-zone"><section class="ha2-dock ha2-drop" data-ha2-drop>' +
       '<div data-ha2-wb-transcript-host>' +
@@ -8455,13 +8940,102 @@
       '<div data-ha2-consult-host>' +
       consultStripHtml(snap) +
       '</div>' +
-      '<div class="ha2-compose"><label class="ha2-sr-only" for="ha2-draft-input">' +
+      '<div class="ha2-compose" data-ha2-compose><label class="ha2-sr-only" for="ha2-draft-input">' +
       esc(draftLabel) +
       '</label><textarea id="ha2-draft-input" class="ha2-editor" data-ha2-draft aria-label="' +
       esc(draftLabel) +
       '" placeholder="' +
       esc(draftPh) +
-      '" rows="3"></textarea></div>' +
+      '" rows="3"></textarea>' +
+      '<div class="ha2-compose-rail" data-ha2-compose-rail>' +
+      '<div class="ha2-compose-rail-left">' +
+      '<div class="ha2-agent-fuse" data-ha2-agent-fuse>' +
+      (atrEdit
+        ? aimChipHtml(hasAim) +
+          '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
+          (hasAim ? '' : ' hidden') +
+          ' title="' +
+          esc(t('ha2AimClear', '清除')) +
+          '">' +
+          esc(t('ha2AimClear', '清除')) +
+          '</button>'
+        : '') +
+      targetChip +
+      '<span class="ha2-model-route-host" data-ha2-model-route-host' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
+      modelRouteSelectHtml(snap) +
+      '</span>' +
+      '<span class="ha2-wb-mode-host" data-ha2-wb-mode-host' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
+      wbModeToggleHtml(c.id, snap) +
+      '</span>' +
+      '<span class="ha2-wb-model-host" data-ha2-wb-model-host hidden></span>' +
+      '<span class="ha2-atr-provider-host" data-ha2-atr-provider-host' +
+      (atrEdit ? '' : ' hidden') +
+      '>' +
+      atrProviderSelectHtml(snap) +
+      '</span></div></div>' +
+      '<div class="ha2-compose-rail-right">' +
+      '<button type="button" class="ha2-link ha2-organize ha2-work-secondary" data-ha2-work-secondary data-ha2-organize title="' +
+      esc(t('ha2OrganizeTask', '整理任务')) +
+      '"' +
+      // Idle: hide until + loads materials. syncOrganizeChrome reveals.
+      ' hidden' +
+      '>' +
+      esc(t('ha2OrganizeTask', '整理')) +
+      '</button>' +
+      '<button type="button" class="ha2-link ha2-organize-cancel" data-ha2-organize-cancel hidden>' +
+      esc(t('ha2OrganizeCancel', '取消')) +
+      '</button>' +
+      '<button type="button" class="ha2-compose-more" data-ha2-compose-more title="' +
+      esc(t('ha2ComposeMore', '更多')) +
+      '" aria-expanded="false" aria-controls="ha2-compose-overflow">' +
+      lucide('ellipsis', 16) +
+      '</button>' +
+      '<div class="ha2-add-wrap"><button type="button" class="ha2-round" data-ha2-add title="' +
+      esc(t('ha2AddMaterial', '加入材料')) +
+      '" aria-label="' +
+      esc(t('ha2AddMaterial', '加入材料')) +
+      '">' +
+      lucide('plus', 16) +
+      '</button>' +
+      matMenuHtml() +
+      '</div>' +
+      '<button type="button" class="ha2-send' +
+      (atrEdit ? ' is-labeled' : '') +
+      '" data-ha2-send ' +
+      (sendOk ? '' : 'disabled') +
+      ' title="' +
+      esc(sendHint) +
+      '" aria-label="' +
+      esc(atrEdit ? workPrimaryCtaLabel(snap) : t('ha2Send', '发送')) +
+      '">' +
+      (atrEdit ? esc(workPrimaryCtaLabel(snap)) : lucide('arrow-up', 16)) +
+      '</button></div></div>' +
+      agentFly +
+      '<div class="ha2-compose-overflow" id="ha2-compose-overflow" data-ha2-compose-overflow hidden>' +
+      '<div class="ha2-channel-caps" role="group" aria-label="' +
+      esc(t('ha2ChannelCaps', '通道能力')) +
+      '">' +
+      agentCapBtn(caps, 'softPad', t('ha2SoftPad', 'Soft Pad')) +
+      agentCapBtn(caps, 'voice', t('ha2Voice', '语音')) +
+      agentCapBtn(caps, 'camera', t('ha2Camera', '摄像头')) +
+      '</div>' +
+      '<span class="ha2-wb-account-host" data-ha2-wb-account-host' +
+      (atrEdit ? ' hidden' : '') +
+      '>' +
+      wbAccountChipHtml(snap) +
+      '</span>' +
+      '<button type="button" class="ha2-link ha2-model-provider-cta" data-ha2-open-model-providers' +
+      (atrEdit ? ' hidden' : '') +
+      ' title="' +
+      esc(t('ha2ModelProviders', '模型提供方')) +
+      '">' +
+      esc(t('ha2ModelProvidersShort', '提供方')) +
+      providerDue +
+      '</button></div></div>' +
       '<div data-ha2-attach-host>' +
       attachmentsHtml(snap) +
       '</div>' +
@@ -8472,105 +9046,6 @@
       '>' +
       esc(panel) +
       '</div>' +
-      '<div class="ha2-dock-bar">' +
-      '<div class="ha2-add-wrap"><button type="button" class="ha2-round" data-ha2-add title="' +
-      esc(t('ha2AddMaterial', '加入材料')) +
-      '">+</button>' +
-      matMenuHtml() +
-      '</div><i class="ha2-divider" aria-hidden="true"></i>' +
-      '<div class="ha2-channel-caps" role="group" aria-label="' +
-      esc(t('ha2ChannelCaps', '通道能力')) +
-      '">' +
-      agentCapBtn(caps, 'softPad', t('ha2SoftPad', 'Soft Pad')) +
-      agentCapBtn(caps, 'voice', t('ha2Voice', '语音')) +
-      agentCapBtn(caps, 'camera', t('ha2Camera', '摄像头')) +
-      '</div><span class="ha2-spacer"></span>' +
-      '<div class="ha2-agent-fuse" data-ha2-agent-fuse>' +
-      targetChip +
-      '<span class="ha2-wb-mode-host" data-ha2-wb-mode-host' +
-      (atrEdit ? ' hidden' : '') +
-      '>' +
-      wbModeToggleHtml(c.id, snap) +
-      '</span>' +
-      '<span class="ha2-model-route-host" data-ha2-model-route-host' +
-      (atrEdit ? ' hidden' : '') +
-      '>' +
-      modelRouteSelectHtml(snap) +
-      '</span>' +
-      '<span class="ha2-wb-account-host" data-ha2-wb-account-host' +
-      (atrEdit ? ' hidden' : '') +
-      '>' +
-      wbAccountChipHtml(snap) +
-      '</span>' +
-      '<span class="ha2-wb-model-host" data-ha2-wb-model-host hidden>' +
-      '</span>' +
-      '<span class="ha2-atr-provider-host" data-ha2-atr-provider-host' +
-      (atrEdit ? '' : ' hidden') +
-      '>' +
-      atrProviderSelectHtml(snap) +
-      '</span>' +
-      '<button type="button" class="ha2-link ha2-model-provider-cta" data-ha2-open-model-providers' +
-      (atrEdit ? ' hidden' : '') +
-      ' title="' +
-      esc(t('ha2ModelProviders', '模型提供方')) +
-      '">' +
-      esc(t('ha2ModelProvidersShort', '提供方')) +
-      (function () {
-        var fm = freemodelChannelsApi();
-        var n =
-          fm && fm.dueCount ? fm.dueCount({ readyIds: freemodelReadyIds() }) : 0;
-        return n
-          ? '<span class="ha2-fm-due-badge" aria-label="' +
-              esc(t('ha2FmDue', '待开通')) +
-              '">' +
-              n +
-              '</span>'
-          : '';
-      })() +
-      '</button>' +
-      aimChipHtml(hasAim) +
-      '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
-      (hasAim ? '' : ' hidden') +
-      ' title="' +
-      esc(t('ha2AimClear', '清除')) +
-      '">' +
-      esc(t('ha2AimClear', '清除')) +
-      '</button></div>' +
-      '<button type="button" class="ha2-btn ha2-organize ha2-work-secondary" data-ha2-work-secondary data-ha2-organize title="' +
-      esc(t('ha2OrganizeTask', '整理任务')) +
-      '"' +
-      (atrEdit ? ' hidden' : '') +
-      '>' +
-      esc(t('ha2OrganizeTask', '整理任务')) +
-      '</button>' +
-      '<button type="button" class="ha2-link ha2-organize-cancel" data-ha2-organize-cancel hidden>' +
-      esc(t('ha2OrganizeCancel', '取消整理')) +
-      '</button>' +
-      '<button type="button" class="ha2-send' +
-      (atrEdit ? ' is-labeled' : '') +
-      '" data-ha2-send ' +
-      (sendOk ? '' : 'disabled') +
-      ' title="' +
-      esc(
-        sendOk
-          ? atrEdit
-            ? workPrimaryCtaLabel(snap) + '（Ctrl+Enter）'
-            : gatewayChatEligible(snap)
-              ? t('ha2WbLocalSendHint', '本机对话（Ctrl+Enter）')
-              : t('ha2SendHint', '发送（Ctrl+Enter）')
-          : atrEdit
-            ? t('ha2SendNeedDraft', '先写一句再发送')
-            : gatewayChatEligible(snap)
-              ? t('ha2SendNeedDraft', '先写一句再发送')
-              : !c.id
-                ? t('ha2PickAgent', '选择 Agent')
-                : t('ha2SendNeedDraft', '先写一句再发送')
-      ) +
-      '" aria-label="' +
-      esc(atrEdit ? workPrimaryCtaLabel(snap) : t('ha2Send', '发送')) +
-      '">' +
-      (atrEdit ? esc(workPrimaryCtaLabel(snap)) : '↑') +
-      '</button></div>' +
       '<div data-ha2-atr-wb-login-host>' +
       atrWbLoginHtml(snap) +
       '</div></section></div>'
@@ -8656,11 +9131,13 @@
     if (open && pickerSurface === surface) {
       pickerSurface = null;
       pickerAnchor = null;
+      pickerSide = null;
       S.setPickerOpen(false);
       return;
     }
     pickerSurface = surface;
     pickerAnchor = anchorEl || null;
+    pickerSide = null;
     S.setPickerOpen(true);
     schedulePositionPicker();
   }
@@ -8668,6 +9145,8 @@
   function closePickerSurface() {
     pickerSurface = null;
     pickerAnchor = null;
+    pickerSide = null;
+    scrubPortaledOverlays();
     var S = store();
     if (S) S.setPickerOpen(false);
   }
@@ -8695,6 +9174,16 @@
 
   function ensureShell(snap) {
     if (!root) return;
+    // Focus embed: never replace Focus chrome / stage with ha2-shell.
+    if (embedMode) {
+      var embedDock = root.querySelector('[data-hf-ha2-compose-host],[data-ha2-dock-host]');
+      if (embedDock && !embedDock.querySelector('[data-ha2-compose]')) {
+        embedDock.innerHTML = dockStaticHtml(snap);
+        var taEmbed = embedDock.querySelector('[data-ha2-draft]');
+        if (taEmbed) taEmbed.value = snap.draft || '';
+      }
+      return;
+    }
     if (!shellBuilt) {
       root.className = 'now-home is-home-agent-v2';
       root.innerHTML =
@@ -8708,7 +9197,7 @@
       syncDockReserve();
     }
     if (!root.querySelector('[data-ha2-wb-page-host]')) {
-      var shell = root.querySelector('.ha2-shell');
+      var shell = root.querySelector('.ha2-shell') || root.querySelector('.hn-canvas') || root;
       if (shell) {
         var pageHost = document.createElement('div');
         pageHost.className = 'ha2-wb-page-host';
@@ -8812,41 +9301,59 @@
     var c = currentCat(snap);
     var atrEdit = atrEditPathOn(snap);
     var fuse = root.querySelector('[data-ha2-agent-fuse]');
+    var composeEl = root.querySelector('[data-ha2-compose]');
+    var flyNow = agentFlyoutEl();
+    if (atrEdit) {
+      closeAgentFlyout();
+      if (flyNow) flyNow.remove();
+    }
     if (fuse) {
+      var stripNow = fuse.querySelector('[data-ha2-agent-strip]');
       var chipNow = fuse.querySelector('.ha2-chip.target, [data-ha2-atr-edit-chip]');
+      var aimHas =
+        !!(snap.aimByAppId && snap.aimByAppId[c.appId || ''] && snap.aimByAppId[c.appId || ''].hasActive);
       if (atrEdit) {
+        if (stripNow) stripNow.remove();
         if (!chipNow || !chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
           var wrapAtr = document.createElement('div');
           wrapAtr.innerHTML = atrEditTargetChipHtml(snap);
           var nextAtr = wrapAtr.firstChild;
           if (chipNow && nextAtr) chipNow.replaceWith(nextAtr);
-          else if (nextAtr) fuse.insertBefore(nextAtr, fuse.firstChild);
-        } else {
-          var projEl = chipNow.querySelector('[data-ha2-dest-project]');
-          if (projEl) projEl.textContent = targetProjectLabel(snap);
+          else if (nextAtr) {
+            var aimClear = fuse.querySelector('[data-ha2-aim-clear]');
+            if (aimClear && aimClear.nextSibling) {
+              fuse.insertBefore(nextAtr, aimClear.nextSibling);
+            } else fuse.appendChild(nextAtr);
+          }
         }
-      } else if (chipNow && chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
-        var wrapBtn = document.createElement('div');
-        wrapBtn.innerHTML =
-          '<button type="button" class="ha2-chip target" data-ha2-picker title="' +
-          esc(t('ha2PickAgent', '选择 Agent')) +
-          '">' +
-          iconHtml(c, 'ha2-chip-icon') +
-          '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
-          esc(c.name) +
-          '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-          esc(targetProjectLabel(snap)) +
-          '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span></button>';
-        var nextBtn = wrapBtn.firstChild;
-        if (nextBtn) chipNow.replaceWith(nextBtn);
-      } else if (chipNow) {
-        chipNow.innerHTML =
-          iconHtml(c, 'ha2-chip-icon') +
-          '<span class="ha2-chip-copy"><span data-ha2-dest-name>' +
-          esc(c.name) +
-          '</span><span class="ha2-chip-project" data-ha2-dest-project>' +
-          esc(targetProjectLabel(snap)) +
-          '</span></span><span class="ha2-chip-caret" aria-hidden="true">▾</span>';
+      } else {
+        if (chipNow && chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
+          var wrapStrip = document.createElement('div');
+          wrapStrip.innerHTML = agentStripHtml(snap, aimHas);
+          var nextStrip = wrapStrip.firstChild;
+          if (nextStrip) chipNow.replaceWith(nextStrip);
+          if (!agentFlyoutEl() && composeEl) {
+            var rail0 = composeEl.querySelector('[data-ha2-compose-rail]');
+            var fw0 = document.createElement('div');
+            fw0.innerHTML = agentFlyoutHtml(snap);
+            if (rail0 && fw0.firstChild) {
+              rail0.parentNode.insertBefore(fw0.firstChild, rail0.nextSibling);
+            }
+          }
+        } else if (!syncAgentStrip(snap) && !stripNow) {
+          var wrapNew = document.createElement('div');
+          wrapNew.innerHTML = agentStripHtml(snap, aimHas);
+          var inserted = wrapNew.firstChild;
+          if (inserted) fuse.appendChild(inserted);
+          if (!agentFlyoutEl() && composeEl) {
+            var rail1 = composeEl.querySelector('[data-ha2-compose-rail]');
+            var fw1 = document.createElement('div');
+            fw1.innerHTML = agentFlyoutHtml(snap);
+            if (rail1 && fw1.firstChild) {
+              rail1.parentNode.insertBefore(fw1.firstChild, rail1.nextSibling);
+            }
+          }
+        }
       }
     }
     if (!composing && !(store() && store().isComposing())) {
@@ -8908,11 +9415,26 @@
     }
 
     var pickerHost = root.querySelector('[data-ha2-picker-host]');
-    if (pickerHost) pickerHost.innerHTML = pickerHtml(snap);
-    if (snap.pickerOpen && pickerSurface) schedulePositionPicker();
-    else if (!snap.pickerOpen) {
+    if (pickerHost) {
+      var hadPicker = !!pickerHost.querySelector('[data-ha2-picker-panel]');
+      // While open: never rewrite innerHTML — string drift remounted an unpositioned
+      // twin and fought the sticky coords (上下交错跳动).
+      if (!snap.pickerOpen) {
+        var stray = document.querySelector('.ha2-picker.is-portaled[data-ha2-picker-panel]');
+        if (stray) {
+          restorePortaledMenu(stray);
+          stray.remove();
+        }
+        if (pickerHost.innerHTML) pickerHost.innerHTML = '';
+      } else if (pickerSurface && !hadPicker) {
+        pickerHost.innerHTML = pickerHtml(snap);
+        schedulePositionPicker();
+      }
+    }
+    if (!snap.pickerOpen) {
       pickerAnchor = null;
       pickerSurface = null;
+      pickerSide = null;
     }
 
     if (focusedEl && focusedEl.isConnected) {
@@ -8941,6 +9463,13 @@
     }
     snap = store().getSnapshot();
     ensureShell(snap);
+    if (embedMode) {
+      // No maybeOpenAtrWbPage — Focus must not get an unsolicited full-page cover.
+      // Always patchDockMeta: skipping while pickerOpen/matMenuOpen left Agent/+ dead
+      // (menus never got HTML). modelRouteMenuOpen already returns above.
+      patchDockMeta(snap);
+      return;
+    }
     var viewChanged = lastView !== snap.view;
     lastView = snap.view;
     patchCrumb(snap);
@@ -9922,9 +10451,9 @@
                 '左侧先选一个更具体的调研方向，再开始。'
               )
             : t(
-                'ha2ResearchPlanPage',
-                '左侧确认路径与调查面后点「确认并开始」。'
-              )
+            'ha2ResearchPlanPage',
+            '左侧确认路径与调查面后点「确认并开始」。'
+          )
         ) +
         '</p>' +
         researchNodesHtml(null, rs) +
@@ -10841,7 +11370,7 @@
           return Gateway.streamChat({
             purpose: 'synthesis',
             providerId: 'workbuddy',
-            model: model,
+              model: model,
             messages: messages,
             onDelta: function (delta) {
               if (gen !== wbChatPaintGen) return;
@@ -10859,7 +11388,7 @@
                 ok: !(result && result.error)
               });
             }
-          })
+            })
             .catch(function () {
               appendWbChatTurn({
                 role: 'assistant',
@@ -11071,7 +11600,7 @@
     Gateway.streamChat({
       purpose: 'synthesis',
       providerId: 'workbuddy',
-      model: model,
+        model: model,
       messages: messages,
       onDelta: function (payload) {
         if (gen !== wbChatPaintGen) return;
@@ -11089,7 +11618,7 @@
           ok: true
         });
       }
-    })
+      })
       .catch(function (e) {
         if (gen !== wbChatPaintGen) return;
         var msg = mapWbChatError((e && e.message) || String(e || ''));
@@ -11112,18 +11641,26 @@
   function syncOrganizeChrome() {
     if (!root) return;
     var Prep = global.OneToneHomePromptPrep;
-    var Assist = global.OneToneHomeAssistClient;
     var model = Prep && Prep._model ? Prep._model() : null;
     var running =
       organizeBusy ||
       !!(model && model.assist && model.assist.state === 'running');
+    var mats =
+      Prep && typeof Prep.getMaterialSummary === 'function'
+        ? Prep.getMaterialSummary()
+        : { count: 0 };
+    var hasMats = Number(mats.count) > 0;
+    var snap = store() && store().getSnapshot ? store().getSnapshot() : null;
+    var atrEdit = atrEditPathOn(snap || {});
     var orgBtn = root.querySelector('[data-ha2-organize]');
     var cancelBtn = root.querySelector('[data-ha2-organize-cancel]');
     if (orgBtn) {
+      // Only after + loaded materials (keep visible while organize is running).
+      orgBtn.hidden = atrEdit || (!running && !hasMats);
       orgBtn.disabled = !!running;
       orgBtn.textContent = running
         ? t('ha2Organizing', '整理中…')
-        : t('ha2OrganizeTask', '整理任务');
+        : t('ha2OrganizeShort', '整理');
     }
     if (cancelBtn) cancelBtn.hidden = !running;
   }
@@ -11137,25 +11674,52 @@
     });
   }
 
+  /** Focus compose draft lives in ha2 store — Prep must see it before organize. */
+  function syncComposeDraftIntoPrep() {
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || typeof Prep.setDraftBody !== 'function') return '';
+    var draft = String(draftTextNow() || '');
+    try {
+      Prep.setDraftBody(draft, { skipSync: true, force: true });
+    } catch (_) {}
+    return draft.trim();
+  }
+
   function runOrganizeTask() {
     var S = store();
     var Assist = global.OneToneHomeAssistClient;
+    var Prep = global.OneToneHomePromptPrep;
+    if (Prep && typeof Prep.ensureMounted === 'function') {
+      try {
+        Prep.ensureMounted();
+      } catch (_) {}
+    }
+    var draft = syncComposeDraftIntoPrep();
+    var mats =
+      Prep && typeof Prep.getMaterialSummary === 'function'
+        ? Prep.getMaterialSummary()
+        : { count: 0 };
+    if (!draft && !(Number(mats.count) > 0)) {
+      toast(t('ha2OrganizeNeedDraft', '先写一句或加入材料，再点整理'));
+      return;
+    }
     if (!Assist || typeof Assist.runOrganize !== 'function') {
+      var miss = t('ha2AssistMissing', '整理模块未加载；可直接发送原稿');
+      toast(miss);
       if (S) {
-        S.setValidationNotice({
-          kind: 'assist_missing',
-          message: t('ha2AssistMissing', '整理模块未加载；可直接发送原稿')
-        });
+        S.setValidationNotice({ kind: 'assist_missing', message: miss });
       }
       return;
     }
     if (organizeBusy) return;
     organizeBusy = true;
     syncOrganizeChrome();
+    var runningMsg = t('ha2OrganizingHint', '正在整理任务…本地取消不保证停止计费');
+    toast(runningMsg);
     if (S) {
       S.setValidationNotice({
         kind: 'assist_running',
-        message: t('ha2OrganizingHint', '正在整理任务…本地取消不保证停止计费')
+        message: runningMsg
       });
     }
     Assist.fetchReady()
@@ -11174,28 +11738,41 @@
               : false;
           } catch (_) {}
           if (allow) Assist.setAllowMetered(true);
+          else {
+            organizeBusy = false;
+            syncOrganizeChrome();
+            toast(t('ha2OrganizeNeedFree', '未允许计量额度，已取消整理'));
+            return { ok: false, reason: 'metered_declined' };
+          }
         }
+        // Re-sync in case user kept typing during confirm.
+        syncComposeDraftIntoPrep();
         return Assist.runOrganize({});
       })
       .then(function (res) {
         organizeBusy = false;
         syncOrganizeChrome();
-        if (!S) return;
-        if (!res || !res.ok) {
+        if (!res) return;
+        if (!res.ok) {
+          if (res.reason === 'metered_declined') return;
           var failMsg =
             (Assist.formatFailureNotice &&
               Assist.formatFailureNotice(res && res.reason)) ||
             (Assist.reasonMessage && Assist.reasonMessage(res && res.reason)) ||
             t('ha2OrganizeFailed', '整理未完成 · 可直接发送原稿');
-          S.setValidationNotice({
-            kind: 'assist_failed',
-            reason: (res && res.reason) || 'internal',
-            message: failMsg
-          });
+          toast(failMsg);
+          if (S) {
+            S.setValidationNotice({
+              kind: 'assist_failed',
+              reason: (res && res.reason) || 'internal',
+              message: failMsg
+            });
+          }
           refreshAssistReady();
           return;
         }
         if (res.adopted === false && res.reason === 'stale') {
+          toast(t('ha2OrganizeStale', '整理结果已过期，请再试一次'));
           return;
         }
         // Phase2.5: organize output is suggested ProblemBrief only — never auto user_confirmed.
@@ -11209,36 +11786,43 @@
             Conc.adoptOrganizeSuggested(structured, {});
           }
         } catch (_) {}
-        S.setValidationNotice({
-          kind: 'assist_done',
-          message: t(
-            'ha2OrganizeDone',
-            '已生成整理稿（建议稿，请在会诊记录确认理解）；可编辑后发送'
-          )
-        });
-        var Prep = global.OneToneHomePromptPrep;
-        if (Prep && Prep.setActiveDraft) Prep.setActiveDraft('organized');
+        var doneMsg = t(
+          'ha2OrganizeDone',
+          '已生成整理稿；可编辑后发送'
+        );
+        toast(doneMsg);
+        if (S) {
+          S.setValidationNotice({
+            kind: 'assist_done',
+            message: doneMsg
+          });
+        }
+        var PrepDone = global.OneToneHomePromptPrep;
+        if (PrepDone && PrepDone.setActiveDraft) PrepDone.setActiveDraft('organized');
         var org =
-          Prep && Prep._model && Prep._model().organizedDraft
-            ? Prep._model().organizedDraft.body
+          PrepDone && PrepDone._model && PrepDone._model().organizedDraft
+            ? PrepDone._model().organizedDraft.body
             : '';
-        if (org) {
+        if (org && S) {
           syncDraftMirrors(org);
           S.setDraft(org, { silent: true });
         }
-        paint(S.getSnapshot());
+        if (S) paint(S.getSnapshot());
       })
-      .catch(function (err) {
+      .catch(function () {
         organizeBusy = false;
         syncOrganizeChrome();
-        if (!S) return;
-        S.setValidationNotice({
-          kind: 'assist_failed',
-          reason: 'offline',
-          message:
-            (Assist.formatFailureNotice && Assist.formatFailureNotice('offline')) ||
-            t('ha2OrganizeOffline', '网络或后端不可用 · 可直接发送原稿')
-        });
+        var offline =
+          (Assist.formatFailureNotice && Assist.formatFailureNotice('offline')) ||
+          t('ha2OrganizeOffline', '网络或后端不可用 · 可直接发送原稿');
+        toast(offline);
+        if (S) {
+          S.setValidationNotice({
+            kind: 'assist_failed',
+            reason: 'offline',
+            message: offline
+          });
+        }
       });
   }
 
@@ -11951,7 +12535,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -12596,7 +13180,17 @@
       openPickerSurface('menu', tEl);
       return;
     }
+    if (tEl.hasAttribute('data-ha2-agent-toggle')) {
+      var pickHost = tEl.closest('[data-ha2-agent-pick]');
+      if (pickHost && pickHost.classList.contains('is-open')) closeAgentFlyout();
+      else openAgentFlyout();
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-picker')) {
+      if (root && root.querySelector('[data-ha2-agent-pick]')) {
+        openAgentFlyout();
+        return;
+      }
       openPickerSurface('dock', tEl);
       return;
     }
@@ -12612,6 +13206,7 @@
     if (tEl.hasAttribute('data-ha2-pick')) {
       S.setSelected(tEl.getAttribute('data-ha2-pick'), { closePicker: true });
       refreshAimForSelected();
+      closeAgentFlyout();
       return;
     }
     if (tEl.hasAttribute('data-ha2-detail')) {
@@ -12817,7 +13412,9 @@
     if (tEl.hasAttribute('data-ha2-atr-wb-login-dismiss')) {
       atrWbLoginForced = false;
       atrWbLoginStatus = '';
-      syncAtrWbLoginHost(S && S.getSnapshot ? S.getSnapshot() : null);
+      var snapDismiss = S && S.getSnapshot ? S.getSnapshot() : null;
+      if (!atrEditPathOn(snapDismiss)) atrWbLoginChatDismissed = true;
+      syncAtrWbLoginHost(snapDismiss);
       return;
     }
     if (tEl.hasAttribute('data-ha2-enable-metered')) {
@@ -12866,10 +13463,7 @@
       var aimKind = S.getSnapshot().selectedKind;
       if (!aimKind) {
         toast(t('ha2AimNeedTarget', '先选发送目标，再点「现在定位」'));
-        openPickerSurface(
-          'dock',
-          root.querySelector('.ha2-chip.target[data-ha2-picker]') || tEl
-        );
+        openAgentFlyout();
         return;
       }
       if (!D || !D.calibrateAim) return;
@@ -12895,6 +13489,16 @@
       if (cap === 'softPad' && D) D.toggleSoftPad();
       else if (cap === 'voice' && D) D.toggleVoice();
       else if (cap === 'camera' && D) D.toggleCamera();
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-compose-more')) {
+      var ov = root && root.querySelector('[data-ha2-compose-overflow]');
+      if (ov) {
+        var open = ov.hasAttribute('hidden');
+        if (open) ov.removeAttribute('hidden');
+        else ov.setAttribute('hidden', '');
+        tEl.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
       return;
     }
     if (tEl.hasAttribute('data-ha2-add')) {
@@ -12925,29 +13529,24 @@
     }
   }
 
-  function onPickerReposition() {
-    if (!mounted || !store()) return;
-    if (store().getSnapshot().pickerOpen) positionPickerPanel();
+  function onPickerReposition(e) {
+    if (!mounted || !store() || pickerPositioning) return;
+    if (!store().getSnapshot().pickerOpen) return;
+    // Picker itself is overflow:auto — its scroll must not re-run placement.
+    var t = e && e.target;
+    if (
+      t &&
+      t.closest &&
+      t.closest('[data-ha2-picker-panel], .ha2-picker')
+    ) {
+      return;
+    }
+    positionPickerPanel();
   }
 
-  function mount(el) {
-    if (mounted) return;
-    root = el;
-    var S = store();
-    if (!S) return;
-    S.mount();
-    // Restore saved custom providers before the first model selector interaction.
-    var routeGateway = global.OneToneModelGateway;
-    if (routeGateway && routeGateway.refreshCustomProviders) {
-      routeGateway.refreshCustomProviders().then(function () {
-        // Rebuild mixed picker (WB models + API) once custom providers land.
-        if (!mounted || !root) return;
-        var host = root.querySelector('[data-ha2-model-route-host]');
-        if (host) host.removeAttribute('data-sig');
-        syncModeChrome(S.getSnapshot());
-      }).catch(function () {});
-    }
-    // workMode already restored from localStorage in store — do not force edit.
+  function bindHa2RootEvents(S) {
+    if (!root || root.__ha2EventsBound) return;
+    root.__ha2EventsBound = true;
     ensureWbStreamListen();
     root.addEventListener('click', onClick);
     root.addEventListener('pointerdown', onMatTogglePointerDown, true);
@@ -12956,10 +13555,13 @@
     root.addEventListener('input', onInput);
     root.addEventListener('compositionstart', onCompositionStart);
     root.addEventListener('compositionend', onCompositionEnd);
-    // Capture so WebView image paste is handled before textarea swallows it.
     root.addEventListener('paste', onPaste, true);
     document.addEventListener('pointerdown', onDocPointerDown, true);
     document.addEventListener('keydown', onDocKeyDown, true);
+    if (!global.__ha2PortaledClickBound) {
+      global.__ha2PortaledClickBound = true;
+      document.addEventListener('click', onPortaledDocClick, true);
+    }
     if (!global.__ha2PickerPosBound) {
       global.__ha2PickerPosBound = true;
       global.addEventListener('resize', onPickerReposition);
@@ -12983,31 +13585,93 @@
       var D = dock();
       if (D && D.addFiles) D.addFiles(e.dataTransfer && e.dataTransfer.files);
     });
-    unsubStore = S.subscribe(function (snap) {
-      if (!mounted) return;
-      paint(snap);
-    });
+    if (!unsubStore && S && S.subscribe) {
+      unsubStore = S.subscribe(function (snap) {
+        if (!mounted) return;
+        paint(snap);
+      });
+    }
+    if (!unsubMaterials) {
+      var PrepMat = global.OneToneHomePromptPrep;
+      if (PrepMat && typeof PrepMat.subscribeMaterials === 'function') {
+        unsubMaterials = PrepMat.subscribeMaterials(function () {
+          if (!mounted) return;
+          syncOrganizeChrome();
+        });
+      } else {
+        syncOrganizeChrome();
+      }
+    }
     try {
       var Rsub = global.OneToneHomeResearch;
-      if (Rsub && typeof Rsub.subscribe === 'function') {
+      if (Rsub && typeof Rsub.subscribe === 'function' && !global.__ha2ResearchSub) {
+        global.__ha2ResearchSub = true;
         Rsub.subscribe(function () {
           if (!mounted) return;
           paintResearchLive();
         });
       }
     } catch (_) {}
-    mounted = true;
-    paint(S.getSnapshot());
-    refreshAllAgentAims();
+  }
+
+  function refreshHa2ModelChrome(S) {
+    var routeGateway = global.OneToneModelGateway;
+    if (routeGateway && routeGateway.refreshCustomProviders) {
+      routeGateway.refreshCustomProviders().then(function () {
+        if (!mounted || !root) return;
+        var host = root.querySelector('[data-ha2-model-route-host]');
+        if (host) host.removeAttribute('data-sig');
+        syncModeChrome(S.getSnapshot());
+      }).catch(function () {});
+    }
     Promise.all([refreshWbLocal(true), refreshSoftPadFreemodelKeys()]).then(function () {
       if (!mounted) return;
       var snap = S.getSnapshot();
       syncWbModelHost((snap && snap.selectedKind) || '');
-      // Login/import may have added WB / Soft Pad models — refresh mixed picker.
       var host = root.querySelector('[data-ha2-model-route-host]');
       if (host) host.removeAttribute('data-sig');
       syncModeChrome(snap);
     });
+  }
+
+  function mount(el) {
+    if (mounted) return;
+    root = el;
+    embedMode = false;
+    var S = store();
+    if (!S) return;
+    S.mount();
+    bindHa2RootEvents(S);
+    mounted = true;
+    paint(S.getSnapshot());
+    refreshAllAgentAims();
+    refreshHa2ModelChrome(S);
+  }
+
+  /**
+   * Focus home: paint ha2 compose into [data-hf-ha2-compose-host] without
+   * replacing Focus chrome. Reuses the same click/send/model handlers.
+   */
+  function embedCompose(homeRoot) {
+    if (!homeRoot) return;
+    root = homeRoot;
+    embedMode = true;
+    root.classList.add('is-hf-ha2-compose');
+    var S = store();
+    if (!S) return;
+    if (!mounted) {
+      S.mount();
+      bindHa2RootEvents(S);
+      mounted = true;
+      refreshAllAgentAims();
+      refreshHa2ModelChrome(S);
+    }
+    var snap = S.getSnapshot();
+    ensureShell(snap);
+    // Do not maybeOpenAtrWbPage here — auto ATR/wb full-page was covering Focus
+    // and eating clicks. sendWbLocal may still open the page on purpose.
+    // Never skip patch while Agent picker / + menu open — that was the "no reaction" bug.
+    if (!modelRouteMenuOpen) patchDockMeta(snap);
   }
 
   function show() {
@@ -13023,6 +13687,7 @@
     // Soft Pad / WB login may have changed models while this view was hidden.
     Promise.all([refreshWbLocal(true), refreshSoftPadFreemodelKeys()]).then(function () {
       if (!mounted) return;
+      consumeFocusAskHandoff();
       var snap = S && S.getSnapshot();
       syncWbModelHost((snap && snap.selectedKind) || '');
       var host = root.querySelector('[data-ha2-model-route-host]');
@@ -13047,11 +13712,100 @@
     return S ? S.refresh('external') : Promise.resolve();
   }
 
+  /** At least one freemodel / WorkBuddy route can answer 问模型. */
+  function accountReadySync() {
+    var ids = freemodelReadyIds();
+    for (var k in ids) {
+      if (ids[k]) return true;
+    }
+    return false;
+  }
+
+  function probeAccountReady() {
+    return Promise.all([refreshWbLocal(true), refreshSoftPadFreemodelKeys()])
+      .then(function () {
+        return accountReadySync();
+      })
+      .catch(function () {
+        return accountReadySync();
+      });
+  }
+
+  var FOCUS_ASK_KEY = 'onetone.focusAskDraft';
+
+  function consumeFocusAskHandoff() {
+    var text = '';
+    try {
+      text = String(sessionStorage.getItem(FOCUS_ASK_KEY) || '').trim();
+      if (text) sessionStorage.removeItem(FOCUS_ASK_KEY);
+    } catch (_) {}
+    if (!text) return;
+    var S = store();
+    if (S && S.setDraft) S.setDraft(text, { silent: true });
+    global.setTimeout(function () {
+      try {
+        sendWbLocal(text, {
+          id: 'workbuddy',
+          name: 'WorkBuddy',
+          appId: '',
+          icon: WB_CHAT_ICON
+        });
+      } catch (_) {}
+    }, 120);
+  }
+
+  /**
+   * Focus / other surfaces: real freemodel ask in-place.
+   * Not ready → connect sheet. Ready → send on current surface (no reload / no surface flip).
+   */
+  function askFromDraft(text, opts) {
+    opts = opts || {};
+    text = String(text || '').trim();
+    if (!text) return Promise.resolve({ ok: false, reason: 'empty' });
+    return probeAccountReady().then(function (ready) {
+      if (!ready) {
+        openModelProviderModal(opts);
+        return { ok: false, reason: 'need_account' };
+      }
+      var S = store();
+      if (S && S.setDraft) S.setDraft(text, { silent: true });
+      try {
+        // Keep FOCUS_ASK_KEY for tests / resume paths — never flip homeSurface or reload.
+        sessionStorage.setItem(FOCUS_ASK_KEY, text);
+      } catch (_) {}
+      try {
+        sendWbLocal(text, {
+          id: 'workbuddy',
+          name: 'WorkBuddy',
+          appId: '',
+          icon: WB_CHAT_ICON
+        });
+      } catch (_) {
+        try {
+          sessionStorage.removeItem(FOCUS_ASK_KEY);
+        } catch (_) {}
+        return { ok: false, reason: 'send_failed' };
+      }
+      try {
+        sessionStorage.removeItem(FOCUS_ASK_KEY);
+      } catch (_) {}
+      return { ok: true, inPlace: true };
+    });
+  }
+
   global.OneToneHomeAgentV2 = {
     mount: mount,
+    embedCompose: embedCompose,
     show: show,
     hide: hide,
     refresh: refresh,
+    /** Shared entry for Focus / other surfaces — opens freemodel connect sheet. */
+    openModelProviders: function (opts) {
+      openModelProviderModal(opts || {});
+    },
+    accountReadySync: accountReadySync,
+    probeAccountReady: probeAccountReady,
+    askFromDraft: askFromDraft,
     _state: function () {
       var S = store();
       var snap = S ? S.getSnapshot() : {};

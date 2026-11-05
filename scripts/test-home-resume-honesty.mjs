@@ -28,9 +28,9 @@ assert.ok(adapterSrc.includes('resumeAssistance'), 'FE precise resume stats');
 assert.ok(adapterSrc.includes('再做一件相关的事'), 'filters known false step');
 assert.ok(rust.includes('RESUME_MAX_AGE_MS'), 'Rust age gate');
 assert.ok(rust.includes('is_resume_cta_label'), 'Rust CTA filter');
-assert.ok(viewSrc.includes('Nav already says'), 'chrome drops 现在 · prefix');
+assert.ok(viewSrc.includes('hn-intent') || viewSrc.includes('set_intent'), 'chrome has intent switch');
 assert.ok(!/var where = project \? '现在 · ' \+ project/.test(viewSrc), 'no 现在 · prefix');
-assert.ok(css.includes('min-width: 6rem'), 'where keeps readable min width');
+assert.ok(css.includes('hn-chrome--proto') || css.includes('hn-intent'), 'proto chrome styles');
 
 var sandbox = { window: {}, console: console };
 sandbox.window = sandbox;
@@ -100,12 +100,16 @@ assert.ok(
   'headline uses real step'
 );
 assert.ok(
-  String(realVm.assistance).includes('上次活动'),
-  'assistance has precise age stats'
+  /有进度|可恢复进度/.test(String(realVm.assistance)),
+  'assistance has human age fact'
 );
 assert.ok(
-  String(realVm.assistance).includes('checkpoint'),
-  'assistance names checkpoint source'
+  String(realVm.assistance).includes('继续'),
+  'assistance invites continue'
+);
+assert.ok(
+  !/\bcheckpoint\b|probe\s*=/i.test(String(realVm.assistance)),
+  'card assistance must not show checkpoint/probe jargon'
 );
 
 var staleHome = {

@@ -1335,42 +1335,44 @@
             </div>
           </div>
           <div class="keys-page-body keys-page-body--two-col" id="keysSeqPageBody">
-            <aside class="keys-page-rail" id="keysSeqRail" aria-label="触发与已存动作">
-              <div class="keys-page-rail__trigger habit-flow-step home-key-map-step is-clickable is-active-step" id="keysSeqTriggerRow" data-edit-step="trigger" role="region" aria-labelledby="keysSeqTriggerTitle">
-                <div class="keys-page-rail__start">
-                  <span class="keys-page-rail__badge" data-i18n="keysRailStartBadge">起点</span>
-                  <span class="keys-page-rail__title home-key-map-step-label" id="keysSeqTriggerTitle" data-i18n="keysSeqRecordTrigger">触发键</span>
-                  <div class="keys-page-rail__keycap">
-                    <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysSeqTriggerCap" role="button" tabindex="0" aria-label="录制触发键">
-                      <div class="habit-basic-key-display display empty" id="keysSeqTriggerDisplay">
-                        <span class="habit-key-icon-host" aria-hidden="true"></span>
-                        <span class="display-value" id="keysSeqTriggerView">未设置</span>
-                      </div>
-                    </div>
-                    <div class="habit-flow-step-act keys-step-record-act">
-                      <button type="button" class="habit-rerecord-link record-btn" id="keysSeqRecordTrigger">
-                        <span class="habit-rerecord-text" data-i18n="keysSeqRecordTrigger">录制触发键</span>
-                      </button>
-                    </div>
-                  </div>
-                  <p class="keys-page-rail__hint" id="keysSeqTriggerSub" data-i18n="keysSeqTriggerUnset">先录制触发键，再配置动作链</p>
-                </div>
-              </div>
+            <aside class="keys-page-rail keys-seq-catalog-rail" id="keysSeqRail" aria-label="本通道动作目录">
               <div class="keys-seq-rail-tools" id="keysSeqRailTools">
-                <button type="button" class="keys-seq-rail-new" id="keysSeqNewAction" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
+                <span class="keys-seq-rail-role" data-i18n="keysSeqRailRole">左 · 改什么</span>
                 <div class="keys-seq-saved" id="keysSeqSaved">
-                  <button type="button" class="keys-seq-saved-toggle" id="keysSeqSavedToggle" aria-expanded="false">
-                    <span class="keys-seq-saved-toggle-lab" data-i18n="keysSeqSavedTitle">已存动作</span>
+                  <div class="keys-seq-rail-group">
+                    <span class="keys-seq-rail-group-lab" data-i18n="keysSeqRailGroup">本通道 · 动作</span>
                     <span class="keys-seq-saved-count" id="keysSeqSavedCount">0</span>
-                    <span class="keys-seq-saved-chev" aria-hidden="true">▸</span>
-                  </button>
-                  <div class="keys-seq-saved-list" id="keysSeqSavedList" role="list" hidden></div>
+                  </div>
+                  <div class="keys-seq-saved-list" id="keysSeqSavedList" role="list"></div>
                 </div>
+                <button type="button" class="keys-seq-rail-new" id="keysSeqNewAction" data-i18n="keysSceneActionsAdd">＋ 新建</button>
               </div>
             </aside>
             <div class="keys-page-main" id="keysSeqMain">
               <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel is-custom-key-seq">
-                <div class="keys-custom-key-detail">
+                <div class="keys-custom-key-detail keys-seq-mid-editor">
+                  <p class="keys-seq-mid-label" id="keysSeqMidLabel" data-i18n="keysSeqMidLabel">中栏 · 触发 + 步骤同一页</p>
+                  <p class="keys-seq-mid-summary" id="keysSeqMidSummary">—</p>
+                  <div class="keys-seq-mid-trigger habit-flow-step home-key-map-step is-clickable is-active-step" id="keysSeqTriggerRow" data-edit-step="trigger" role="region" aria-labelledby="keysSeqTriggerTitle">
+                    <div class="keys-seq-mid-trigger-hd">
+                      <span class="keys-page-rail__badge" data-i18n="keysRailStartBadge">起点</span>
+                      <span class="keys-page-rail__title home-key-map-step-label" id="keysSeqTriggerTitle" data-i18n="keysSeqRecordTrigger">触发键</span>
+                    </div>
+                    <div class="keys-seq-mid-trigger-body">
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysSeqTriggerCap" role="button" tabindex="0" aria-label="录制触发键">
+                        <div class="habit-basic-key-display display empty" id="keysSeqTriggerDisplay">
+                          <span class="habit-key-icon-host" aria-hidden="true"></span>
+                          <span class="display-value" id="keysSeqTriggerView">未设置</span>
+                        </div>
+                      </div>
+                      <div class="habit-flow-step-act keys-step-record-act">
+                        <button type="button" class="habit-rerecord-link record-btn" id="keysSeqRecordTrigger">
+                          <span class="habit-rerecord-text" data-i18n="keysSeqRecordTrigger">录制触发键</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="keys-seq-mid-trigger-hint" id="keysSeqTriggerSub" data-i18n="keysSeqTriggerUnset">先录制触发键，再配置动作链</p>
+                  </div>
                   <p class="keys-channel-group-label" data-i18n="keysCaptureSeqTitle">动作序列</p>
                   <p class="keys-capture-target-actions-hint" data-i18n="keysSeqBodyHint">点中间 ＋ 添加步骤；「语音输入法」会先对准输入框再发送激活键。</p>
                   <div class="home-key-map-actions is-keys-variant keys-seq-actions-host" id="keysSeqActions"></div>

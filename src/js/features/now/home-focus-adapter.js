@@ -120,24 +120,19 @@
   function returnHeadline(provider, task) {
     var prov = providerLabelHome(provider);
     var step = usableResumeStep(task, prov);
-    if (!step) return '你上次停在 ' + prov + '。';
-    // ATR is not an external Agent window — don't say「停在 X 的」like Cursor/Claude.
-    if (prov === '本机工作') {
-      return '你上次停在「' + step + '」。';
-    }
-    return '你上次停在 ' + prov + ' 的「' + step + '」。';
+    // Agent name lives on the card header — keep H1 short for beginners.
+    if (!step) return '上次停在 ' + prov + '。';
+    return '上次停在「' + step + '」。';
   }
 
-  /** Precise resume stats — age / source / project gate. Never invent %. */
+  /** Human resume fact — age + continue; no probe / checkpoint jargon on the card. */
   function resumeAssistance(projectName, when, opts) {
     opts = opts || {};
-    var parts = [];
-    if (when) parts.push('上次活动 · ' + when);
-    else parts.push('上次活动 · ' + WHEN_UNKNOWN);
-    parts.push('来源 · checkpoint');
-    if (opts.projUnconfirmed) parts.push('项目未确认');
-    else if (projectName && projectName !== '未知项目') parts.push('项目 · ' + projectName);
-    return parts.join(' · ') + '。可以从停下的地方继续。';
+    var age = when ? String(when) + '有进度' : '有可恢复进度';
+    if (opts.projUnconfirmed) {
+      return age + '，确认项目后可继续。';
+    }
+    return age + '，可以从停下的地方继续。';
   }
 
   /**

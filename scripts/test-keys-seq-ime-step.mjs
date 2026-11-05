@@ -14,8 +14,17 @@ const html = readFileSync(path.join(root, 'src/index.html'), 'utf8');
 assert.match(html, /id="settingsPanelKeys"/, 'legacy keys panel must remain');
 assert.match(html, /id="settingsPanelKeysSeq"/, 'new keysSeq panel present');
 assert.match(html, /id="keysSeqTriggerCap"/, 'keysSeq trigger keycap');
-assert.match(html, /id="keysSeqNewAction"/, '新建动作 on left with trigger');
-assert.match(html, /id="keysSeqSavedList"/, 'left collapsed saved actions');
+assert.match(html, /id="keysSeqNewAction"/, '新建 on left catalog');
+assert.match(html, /id="keysSeqSavedList"/, 'left catalog list always present');
+{
+  const railStart = html.indexOf('id="keysSeqRail"');
+  const mainStart = html.indexOf('id="keysSeqMain"');
+  const railChunk = railStart >= 0 && mainStart > railStart ? html.slice(railStart, mainStart) : '';
+  const mainChunk = mainStart >= 0 ? html.slice(mainStart, mainStart + 2500) : '';
+  assert.ok(!/id="keysSeqTriggerRow"/.test(railChunk), 'trigger not in left rail');
+  assert.match(mainChunk, /id="keysSeqTriggerRow"/, 'trigger row in mid');
+  assert.match(mainChunk, /id="keysSeqMidSummary"/, 'mid summary present');
+}
 assert.match(html, /keys-page-body--two-col/, 'keysSeq two-col body');
 assert.match(html, /data-wb-nav="keysSeq"/, 'nav entry for keysSeq');
 assert.match(html, /keys-seq-panel\.js/, 'keys-seq-panel.js loaded');
@@ -65,8 +74,9 @@ assert.match(seqCss, /grid-column:\s*1\/-1/, 'step body full-bleed under header'
 
 const seqJs = readFileSync(path.join(root, 'src/js/features/mapping/keys-seq-panel.js'), 'utf8');
 assert.match(seqJs, /hideAdd:\s*false/, 'middle shows ＋ add menu');
-assert.match(seqJs, /keysSeqSavedToggle|paintSavedList/, 'saved list painted on left');
+assert.match(seqJs, /paintSavedList/, 'catalog list painted on left');
 assert.match(seqJs, /keysSeqNewAction/, '新建动作 wired on left');
+assert.doesNotMatch(seqJs, /savedExpanded|keysSeqSavedToggle/, 'catalog always open (no accordion)');
 assert.match(seqJs, /OneToneHomeRecordChord/, 'trigger record shows popup');
 assert.match(seqJs, /homeKeyMapActionRecordHint|Esc/, 'trigger popup mentions Esc cancel');
 assert.match(
@@ -100,7 +110,13 @@ assert.match(
   /mappingOwnsActionChainKeys/,
   'normalizeKeyFieldsForSave skips action-chain peers'
 );
-assert.match(seqJs, /data-seq-flow|stepFlowHtml/, 'saved list workflow expand');
+assert.doesNotMatch(seqJs, /data-seq-flow|stepFlowHtml/, 'steps live in mid only (no left flow expand)');
+assert.match(seqJs, /keysSeqMidSummary/, 'mid summary shows trigger · steps');
+assert.match(
+  readFileSync(path.join(root, 'src/index.html'), 'utf8'),
+  /id="keysSeqMain"[\s\S]*?id="keysSeqTriggerRow"/,
+  'trigger row lives in mid column'
+);
 
 assert.match(html, /keysRailStartBadge|keysColTriggerLbl/, 'trigger badge uses translated i18n key');
 assert.match(seqCss, /align-items:\s*center/, 'add ＋ row is centered');

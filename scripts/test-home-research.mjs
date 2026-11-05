@@ -426,13 +426,13 @@ assert.equal(Caps.normalizeWorkMode('readonly'), 'readonly');
     limitations: []
   });
   const sourcesA = [
-    {
-      id: 'S1',
-      title: 'A',
-      url: 'https://a.test',
-      text: 'long enough body text here!!!!',
-      fetchedAt: '2026-01-01T00:00:00.000Z'
-    }
+      {
+        id: 'S1',
+        title: 'A',
+        url: 'https://a.test',
+        text: 'long enough body text here!!!!',
+        fetchedAt: '2026-01-01T00:00:00.000Z'
+      }
   ];
   const rich = R.buildResultFromSynthesis({
     markdown: '```json\n' + json + '\n```',

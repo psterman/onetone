@@ -17,7 +17,7 @@
   var CATALOG = [
     { id: 'codex', name: 'Codex', appId: 'codex-chat', icon: 'icons/app-target/codex.png' },
     { id: 'claude', name: 'Claude', appId: 'claude-code', icon: 'icons/app-target/claude.png' },
-    { id: 'cursor', name: 'Cursor', appId: 'cursor-chat', icon: 'icons/app-target/cursor.png' },
+    { id: 'cursor', name: 'Cursor', appId: 'cursor-chat', icon: 'icons/app-target/cursor.svg' },
     { id: 'minimax', name: 'MiniMax', appId: 'minimax-chat', icon: 'icons/app-target/minimaxcode.png' },
     { id: 'kimi', name: 'Kimi', appId: 'kimi-chat', icon: 'icons/app-target/kimi.png' },
     { id: 'pi', name: 'Pi', appId: 'pi-chat', icon: 'icons/app-target/pi.png' },
@@ -1036,13 +1036,9 @@
           /上次进度\s*$/.test(step) ||
           step === '可恢复' ||
           step === (String(ck.badge || '') + ' 上次进度');
-        // Closed / not-running agents must not occupy the workspace as fake monitoring.
-        var inv = inventoryDiscovery(invRowForKind(ckKind));
-        var center = centerAgentByKind(ckKind);
-        var present =
-          !!inv.running ||
-          (center && (isWorkingStatus(center.status) || isNeedsStatus(center.status)));
-        if (step && !weakContinue && present) {
+        // Strong step + resumable is honest resume for closed agents — not fake monitoring.
+        // Weak「X 上次进度」still blocked so ghosts cannot steal the dock.
+        if (step && !weakContinue) {
           pushSynth({
             kind: ckKind,
             name: ck.badge,

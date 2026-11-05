@@ -14,8 +14,7 @@
   }
 
   function navHtml(active) {
-    // Settings lives in the workbench sidebar — not duplicated here.
-    // 「我的习惯」opens the real habit hub (drawer), not a hard-coded stub page.
+    // Kept for secondary pages / tests; Focus canvas uses chromeHtml intent row.
     var items = [
       { id: 'focus', label: '现在' },
       { id: 'habits', label: '我的习惯' }
@@ -42,24 +41,181 @@
     );
   }
 
-  /** PRODUCT: 顶栏「历史」+ Agent 总览 — acts, not hn-nav data-hf-view. */
-  function chromeHtml(vm) {
+  /** Prefer on-disk SVG under icons/app-target (presets may still say .png). */
+  function chromeAppIconHtml(vm) {
+    var fg = (vm && vm.dto && vm.dto.foreground) || {};
+    var appId = String(fg.appId || fg.appTargetId || '').trim();
+    var appName = String(
+      (vm && vm.appName) || fg.appName || ''
+    ).trim();
+    var src = '';
+    var P = global.OneToneAppTargetPresets;
+    if (P && P.presetById && appId) {
+      var preset = P.presetById(appId);
+      if (preset && preset.icon) src = String(preset.icon);
+    }
+    if (!src && P && Array.isArray(P.presets) && appName) {
+      var list = P.presets;
+      var low = appName.toLowerCase();
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        if (!row || !row.icon) continue;
+        var nm = String(row.id || '').toLowerCase();
+        var leaf = nm.split('-')[0];
+        if (leaf && low.indexOf(leaf) >= 0) {
+          src = String(row.icon);
+          break;
+        }
+      }
+    }
+    if (src) {
+      src = src.replace(/\.png$/i, '.svg');
+      return (
+        '<img class="hn-ctx-app-ico" src="' +
+        esc(src) +
+        '" alt="" width="16" height="16" decoding="async" />'
+      );
+    }
+    return '<span class="hn-ctx-dot" aria-hidden="true"></span>';
+  }
+
+  /**
+   * Top: app + project (left) | 对话/工作 intent | habits + history.
+   * Project lives here — not in the compose Agent chip.
+   */
+  function chromeHtml(vm, opts) {
     vm = vm || {};
-    // Nav already says「现在」— do not prefix it here (was ellipsed to「现在 · v…」).
+    opts = opts || {};
+    var intent = opts.intent === 'work' ? 'work' : 'chat';
     var project = String(vm.projectName || '').trim();
-    var where = project || '';
+    var app =
+      String((vm.appName || (vm.dto && vm.dto.foreground && vm.dto.foreground.appName) || '').trim()) ||
+      '';
+    var projectConfirmed = !!vm.confirmed;
+    var projAct = projectConfirmed ? 'pick_project' : 'confirm_project';
+    var appBit = app
+      ? '<span class="hn-ctx-app">' + esc(app) + '</span>'
+      : '<span class="hn-ctx-app is-empty">前台应用</span>';
+    var projBit =
+      '<button type="button" class="hn-ctx-proj' +
+      (project && projectConfirmed ? '' : ' is-empty') +
+      '" data-hf-act="' +
+      esc(projAct) +
+      '" title="项目" data-voice-phrases="项目|选择项目">' +
+      esc(project || '未选项目') +
+      '</button>';
     return (
-      '<header class="hn-chrome">' +
-      '<div class="hn-chrome-left">' +
-      '<p class="hn-brand">OneTone</p>' +
-      (where
-        ? '<span class="hn-where" title="' + esc(where) + '">' + esc(where) + '</span>'
-        : '') +
+      '<header class="hn-chrome hn-chrome--proto">' +
+      '<div class="hn-chrome-start">' +
+      '<div class="hn-ctx-pair" aria-label="当前应用与项目">' +
+      chromeAppIconHtml(vm) +
+      appBit +
+      '<span class="hn-ctx-sep" aria-hidden="true">·</span>' +
+      projBit +
+      '</div></div>' +
+      '<div class="hn-intent" role="group" aria-label="下一步意图">' +
+      '<button type="button" class="hn-intent-btn" data-hf-act="set_intent" data-hf-intent="chat" aria-pressed="' +
+      (intent === 'chat' ? 'true' : 'false') +
+      '">对话<small>讨论 · 不改文件</small></button>' +
+      '<button type="button" class="hn-intent-btn" data-hf-act="set_intent" data-hf-intent="work" aria-pressed="' +
+      (intent === 'work' ? 'true' : 'false') +
+      '">工作<small>可改项目文件</small></button>' +
       '</div>' +
       '<div class="hn-chrome-actions">' +
-      '<button type="button" class="hn-top-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="近期对话，用于恢复工作">' +
-      '历史<small>近期对话</small></button>' +
+      '<button type="button" class="hn-hist-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="历史 · 查找与恢复" aria-label="历史">' +
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<path d="M4.5 12a7.5 7.5 0 1 0 1.7-4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<path d="M4 5.5V9h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg></button>' +
       '</div></header>'
+    );
+  }
+
+  function agentDisplayName(vm) {
+    var provider =
+      (vm && vm.dto && vm.dto.provider && (vm.dto.provider.id || vm.dto.provider.name)) ||
+      (vm && vm.desk && vm.desk.continueCard && (vm.desk.continueCard.badge || vm.desk.continueCard.provider)) ||
+      '';
+    var p = String(provider).toLowerCase();
+    if (p.indexOf('codex') >= 0) return 'Codex';
+    if (p.indexOf('claude') >= 0) return 'Claude';
+    if (p.indexOf('cursor') >= 0) return 'Cursor';
+    if (p.indexOf('workbuddy') >= 0 || p.indexOf('wb') >= 0) return 'WorkBuddy';
+    return String(provider || '').trim() || 'Agent';
+  }
+
+  function agentIcoLetters(name) {
+    var n = String(name || 'Ag');
+    if (n === 'WorkBuddy') return 'WB';
+    if (n === 'Cursor') return 'Cu';
+    if (n === 'Claude') return 'Cl';
+    if (n === 'Codex') return 'Cx';
+    return n.slice(0, 2);
+  }
+
+  function agentIcoTone(name) {
+    if (name === 'Cursor') return ' is-cursor';
+    if (name === 'WorkBuddy') return ' is-wb';
+    return '';
+  }
+
+  /** Prefer catalog brand icon over letter tile (Cursor 「Cu」 looked wrong). */
+  function agentIcoInnerHtml(name) {
+    var S = global.OneToneHomeAgentV2Store;
+    var list = S && S.catalogList ? S.catalogList() : [];
+    var n = String(name || '').trim();
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var cat = list[i];
+      if (!cat || !cat.icon) continue;
+      if (String(cat.name || '') === n || String(cat.id || '').toLowerCase() === n.toLowerCase()) {
+        return (
+          '<img class="hn-task-card__ico-img" src="' +
+          esc(cat.icon) +
+          '" alt="" decoding="async" />'
+        );
+      }
+    }
+    return esc(agentIcoLetters(name));
+  }
+
+  function statusPillForMode(mode) {
+    if (mode === 'attention') return { label: '等你决定', tone: 'wait' };
+    if (mode === 'return') return { label: '可恢复', tone: 'resume' };
+    if (mode === 'running') return { label: '执行中', tone: 'run' };
+    if (mode === 'degraded') return { label: '失败', tone: 'fail' };
+    return { label: '当前', tone: 'idle' };
+  }
+
+  /**
+   * Task card: no technical evidence pills (probe= / 来源码).
+   * Full evidence stays in drawer「判断依据」via evidenceHtml.
+   */
+  function evidencePillsHtml(_vm) {
+    return '';
+  }
+
+  /** Idle invite — one headline, one fact; compose owns the action surface. */
+  function idleInviteHtml(opts) {
+    opts = opts || {};
+    var intent = opts.intent === 'work' ? 'work' : 'chat';
+    var hasTask = !!opts.hasTask;
+    var title = intent === 'work' ? '写一句，开始改' : '写一句，开始';
+    var fact = hasTask
+      ? '先写新的，或继续下面的任务。'
+      : intent === 'work'
+        ? '没有正在推进的任务。描述要改的文件或功能，再送到桌面 Agent。'
+        : '没有正在推进的任务。问模型或送到桌面都可以。';
+    return (
+      '<section class="hn-invite" aria-labelledby="hnInviteTitle">' +
+      '<p class="hn-kicker"><button type="button" data-hf-act="open_prep">整理并交接</button></p>' +
+      '<h1 id="hnInviteTitle">' +
+      esc(title) +
+      '</h1>' +
+      '<p class="hn-invite-fact">' +
+      esc(fact) +
+      '</p></section>'
     );
   }
 
@@ -275,16 +431,95 @@
     );
   }
 
-  function heroHtml(vm) {
+  /**
+   * Task status card — one current state + one next action.
+   * Used when mode is attention / return / running / degraded (not idle quiet).
+   */
+  function taskCardHtml(vm) {
     vm = vm || {};
     var mode = vm.mode || 'quiet';
+    var primary = vm.primary;
+    var secondary = vm.secondary;
+    var agent = agentDisplayName(vm);
+    var pill = statusPillForMode(mode);
+    var project = String(vm.projectName || '').trim();
+    var actions = '';
+    if (primary && primary.id && primary.label) {
+      actions +=
+        '<button type="button" class="hn-cta' +
+        ctaToneClass(mode, primary.id) +
+        '" data-hf-act="' +
+        esc(primary.id) +
+        '">' +
+        esc(primary.label) +
+        '</button>';
+    }
+    if (secondary && secondary.id && secondary.label) {
+      actions +=
+        '<button type="button" class="hn-text-btn" data-hf-act="' +
+        esc(secondary.id) +
+        '">' +
+        esc(secondary.label) +
+        '</button>';
+    }
+    var sub =
+      (project ? project + ' · ' : '') +
+      (mode === 'attention'
+        ? '等你决定'
+        : mode === 'return'
+          ? '可恢复'
+          : mode === 'running'
+            ? '执行中'
+            : mode === 'degraded'
+              ? '执行失败'
+              : '当前');
+    return (
+      '<section class="hn-task-card" data-hn-task-card data-mode="' +
+      esc(mode) +
+      '" aria-live="polite">' +
+      '<div class="hn-task-card__hd">' +
+      '<span class="hn-task-card__ico' +
+      agentIcoTone(agent) +
+      '" aria-hidden="true">' +
+      agentIcoInnerHtml(agent) +
+      '</span>' +
+      '<div class="hn-task-card__who">' +
+      '<b>' +
+      esc(agent) +
+      '</b>' +
+      '<span>' +
+      esc(sub) +
+      '</span></div>' +
+      '<span class="hn-status-pill hn-status-pill--' +
+      esc(pill.tone || 'idle') +
+      '">' +
+      esc(pill.label) +
+      '</span></div>' +
+      '<h1 class="hn-task-card__title">' +
+      esc(vm.headline || '') +
+      '</h1>' +
+      '<p class="hn-task-card__fact">' +
+      esc(vm.assistance || '') +
+      '</p>' +
+      evidencePillsHtml(vm) +
+      (actions ? '<div class="hn-actions hn-task-card__acts">' + actions + '</div>' : '') +
+      '</section>'
+    );
+  }
+
+  /** @deprecated thin wrapper — prefer taskCardHtml for non-quiet */
+  function heroHtml(vm) {
+    vm = vm || {};
+    if ((vm.mode || 'quiet') !== 'quiet' || (vm.primary && vm.primary.id)) {
+      return taskCardHtml(vm);
+    }
     var primary = vm.primary;
     var secondary = vm.secondary;
     var actions = '';
     if (primary && primary.id && primary.label) {
       actions +=
         '<button type="button" class="hn-cta' +
-        ctaToneClass(mode, primary.id) +
+        ctaToneClass(vm.mode, primary.id) +
         '" data-hf-act="' +
         esc(primary.id) +
         '">' +
@@ -348,21 +583,30 @@
    */
   function quietComposerHtml(vm, opts) {
     opts = opts || {};
-    var T = triad();
-    if (!T || !T.composerHtml) {
-      return '<section class="hn-quiet-composer" data-hn-quiet-composer><p>Triad unavailable</p></section>';
-    }
-    return T.composerHtml(vm, {
-      draftText: opts.draftText,
-      materialSummary: opts.materialSummary,
-      handoffDisabled: opts.handoffDisabled,
-      probeTargets: opts.probeTargets,
-      aimMemory: opts.aimMemory,
-      probePending: opts.probePending,
-      resumeAvailable: opts.resumeAvailable,
-      contextHtml: quietContextLine(vm || {}),
-      actPrefix: 'hf'
-    });
+    var secondary = !!opts.secondaryCompose;
+    var matSummary =
+      global.OneToneHomeFocusTriad && global.OneToneHomeFocusTriad.materialSummaryHtml
+        ? global.OneToneHomeFocusTriad.materialSummaryHtml(opts.materialSummary)
+        : '';
+    // After dismiss-return: one link to bring the task card back.
+    var restore =
+      !secondary && opts.resumeAvailable
+        ? '<div class="hn-actions hn-quiet-actions"><button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button></div>'
+        : '';
+    // ha2 compose dock embeds here — real model rail / + materials / ↑ send.
+    return (
+      '<section class="hn-quiet-composer hn-quiet-composer--ha2' +
+      (secondary ? ' is-secondary' : '') +
+      '" data-hn-quiet-composer aria-label="' +
+      esc(secondary ? '发起另一项任务' : '写一句开始') +
+      '">' +
+      (secondary ? '<p class="hn-other-task-label">发起另一项任务</p>' : '') +
+      '<div class="hn-ha2-compose-host is-home-agent-v2" data-hf-ha2-compose-host data-ha2-dock-host></div>' +
+      '<div data-ha2-picker-host></div>' +
+      restore +
+      matSummary +
+      '</section>'
+    );
   }
 
   function quietGateKeepHtml(opts) {
@@ -395,30 +639,45 @@
     var mode = vm.mode || 'quiet';
     var desk = deskZonesHtml(vm);
     var voice = opts.voiceHtml || '';
-    // Return keeps resume CTA but mounts Quiet Composer so collect/draft can start immediately.
-    var showComposer = (mode === 'quiet' && !vm.primary) || mode === 'return';
+    var intent = opts.intent === 'work' ? 'work' : 'chat';
+    // Proto step1: invite → compose → task card (card below input, not above).
+    var idleQuiet = mode === 'quiet' && !vm.primary;
     var showGateKeep = mode === 'quiet' && !!vm.primary;
-    var mainStage = showComposer
-      ? quietComposerHtml(vm, opts)
-      : heroHtml(vm) + (showGateKeep ? quietGateKeepHtml(opts) : '');
+    var showTaskCard = !idleQuiet;
+    var composeOpts = Object.assign({}, opts, {
+      secondaryCompose: false,
+      intent: intent
+    });
+    var mainStage =
+      idleInviteHtml({ intent: intent, hasTask: showTaskCard }) +
+      quietComposerHtml(vm, composeOpts) +
+      (showGateKeep ? quietGateKeepHtml(opts) : '') +
+      (showTaskCard ? taskCardHtml(vm) : '');
 
     return (
-      '<main class="hn-canvas" data-mode="' +
+      '<main class="hn-canvas hn-canvas--proto" data-mode="' +
       esc(mode) +
       '" data-hf-mode="' +
       esc(mode) +
+      '" data-hf-intent="' +
+      esc(intent) +
       '" data-hf-primary="' +
       esc((vm.primary && vm.primary.id) || '') +
       '"' +
-      (showComposer ? ' data-hn-quiet-composer="1"' : '') +
+      (showTaskCard ? ' data-hn-task-card="1" data-hn-has-task="1"' : '') +
+      ' data-hn-quiet-composer="1"' +
       '>' +
-      chromeHtml(vm) +
-      navHtml('focus') +
+      chromeHtml(vm, { intent: intent }) +
+      '<div class="hn-stage' +
+      (showTaskCard ? ' has-task' : '') +
+      '">' +
       mainStage +
       agentStatusHostHtml() +
       desk +
+      '</div>' +
       '<hr class="hn-divider" />' +
       promptPrepHostHtml() +
+      '<div class="ha2-wb-page-host" data-ha2-wb-page-host hidden></div>' +
       '<aside class="hn-drawer" id="hnRecallDrawer" hidden>' +
       '<header><h2 id="hnRecallTitle">详情</h2>' +
       '<button type="button" class="hn-icon" data-hf-act="close_drawer" aria-label="关闭">×</button></header>' +
@@ -476,15 +735,23 @@
       .join('');
   }
 
-  /** History drawer body — sessions + home/Soft Pad material journal. */
-  function historyDrawerBodyHtml(entries) {
-    entries = Array.isArray(entries) ? entries : [];
-    var rows = entries
+  function histBucket(e) {
+    var k = String((e && e.kind) || '');
+    if (k === 'draft' || k === 'materials') return 'open';
+    if (k === 'session') return 'resume';
+    if (k === 'handoff') return 'open';
+    return 'recent';
+  }
+
+  function histRowsHtml(entries) {
+    return entries
       .map(function (e) {
         var sub = [e.when, e.badge, e.detail].filter(Boolean).join(' · ');
         return (
           '<div class="hn-hist-row" data-hn-hist-kind="' +
           esc(e.kind || 'session') +
+          '" data-hn-hist-bucket="' +
+          esc(histBucket(e)) +
           '">' +
           '<b>' +
           esc(e.title || '') +
@@ -494,9 +761,44 @@
         );
       })
       .join('');
+  }
+
+  /** History drawer — tabs: 最近 / 未完成 / 可恢复. */
+  function historyDrawerBodyHtml(entries, activeTab) {
+    entries = Array.isArray(entries) ? entries : [];
+    var tab = activeTab === 'open' || activeTab === 'resume' ? activeTab : 'recent';
+    var filtered =
+      tab === 'recent'
+        ? entries
+        : entries.filter(function (e) {
+            return histBucket(e) === tab;
+          });
+    var rows = histRowsHtml(filtered);
+    var empty =
+      tab === 'open'
+        ? '没有未完成的草稿或素材。'
+        : tab === 'resume'
+          ? '没有可恢复的对话。'
+          : '暂时没有近期记录。';
     return (
-      '<p class="hn-drawer-lead">近期对话与素材记录 · 用于恢复工作（不是方案台「历史方案」）</p>' +
-      (rows || '<p class="hn-muted">暂时没有近期记录。</p>')
+      '<div class="hn-hist-tabs" role="tablist" aria-label="历史分类">' +
+      '<button type="button" role="tab" class="hn-hist-tab' +
+      (tab === 'recent' ? ' is-on' : '') +
+      '" data-hf-hist-tab="recent" aria-selected="' +
+      (tab === 'recent' ? 'true' : 'false') +
+      '">最近</button>' +
+      '<button type="button" role="tab" class="hn-hist-tab' +
+      (tab === 'open' ? ' is-on' : '') +
+      '" data-hf-hist-tab="open" aria-selected="' +
+      (tab === 'open' ? 'true' : 'false') +
+      '">未完成</button>' +
+      '<button type="button" role="tab" class="hn-hist-tab' +
+      (tab === 'resume' ? ' is-on' : '') +
+      '" data-hf-hist-tab="resume" aria-selected="' +
+      (tab === 'resume' ? 'true' : 'false') +
+      '">可恢复</button></div>' +
+      '<p class="hn-drawer-lead">查找与恢复 · 不是方案台「历史方案」</p>' +
+      (rows || '<p class="hn-muted">' + empty + '</p>')
     );
   }
 
@@ -509,6 +811,7 @@
     chromeHtml: chromeHtml,
     evidenceHtml: evidenceHtml,
     heroHtml: heroHtml,
+    taskCardHtml: taskCardHtml,
     quietComposerHtml: quietComposerHtml
   };
 })(typeof window !== 'undefined' ? window : globalThis);

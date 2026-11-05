@@ -9,7 +9,9 @@ use crate::agent_memory::model::{
     CheckpointDto, HomeSessionDto, ProbeStatus, ProjectMatch, PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
 };
 use crate::agent_memory::project::{project_id_from_path, validate_workspace_path};
-use crate::agent_memory::project_confirm::{is_project_confirmed, KnownProjectDto};
+use crate::agent_memory::project_confirm::{
+    is_project_confirmed, latest_confirmed_project, KnownProjectDto,
+};
 use crate::agent_memory::store::{now_ms, with_read_path};
 use crate::agent_memory::worker;
 use crate::agent_memory::workspace_evidence::{
@@ -243,6 +245,26 @@ fn read_foreground() -> HomeFocusForeground {
     }
 }
 
+/// Restore a previously user-confirmed project (exact match). Never invents a path.
+fn project_from_confirmed(known: &KnownProjectDto) -> Option<HomeFocusProject> {
+    let root = known.root.as_deref().map(str::trim).filter(|s| !s.is_empty())?;
+    let path = PathBuf::from(root);
+    let canon = validate_workspace_path(&path)?;
+    let id = project_id_from_path(&canon);
+    if id != known.id {
+        return None;
+    }
+    Some(HomeFocusProject {
+        id,
+        name: known.name.clone(),
+        root: Some(canon.to_string_lossy().to_string()),
+        // User already confirmed this root — not a FG guess.
+        match_kind: ProjectMatch::Exact.as_str().into(),
+        confirmed: false,
+        candidates: None,
+    })
+}
+
 fn resolve_focus_project(fg: &HomeFocusForeground, now: u64) -> (HomeFocusProject, bool) {
     let title = fg.window_title.as_deref();
     let selection = select_workspace_evidence(title, now);
@@ -264,6 +286,18 @@ fn resolve_focus_project(fg: &HomeFocusForeground, now: u64) -> (HomeFocusProjec
             )
         }
         EvidenceSelection::Ambiguous(cands) => {
+            // Fastest honest path: if the last confirmed project is among FG candidates,
+            // restore it so checkpoint / resume hero can load (no fake running).
+            if let Some(known) = latest_confirmed_project() {
+                if let Some(proj) = project_from_confirmed(&known) {
+                    if cands
+                        .iter()
+                        .any(|c| project_id_from_path(&c.path) == proj.id)
+                    {
+                        return (proj, false);
+                    }
+                }
+            }
             let candidates: Vec<_> = cands.iter().map(candidate_dto).collect();
             let title_name =
                 title_project_token(title.unwrap_or("")).unwrap_or_else(|| "未知项目".into());
@@ -280,6 +314,12 @@ fn resolve_focus_project(fg: &HomeFocusForeground, now: u64) -> (HomeFocusProjec
             )
         }
         EvidenceSelection::None => {
+            // No Cursor workspace evidence (common on OneTone FG) — restore last confirm.
+            if let Some(known) = latest_confirmed_project() {
+                if let Some(proj) = project_from_confirmed(&known) {
+                    return (proj, false);
+                }
+            }
             // Title display candidate only — never PathBuf / Exact.
             if let Some(name) = title_project_token(title.unwrap_or("")) {
                 (
@@ -909,5 +949,28 @@ mod tests {
             usable_resume_step(Some("修首页顶栏截断")).as_deref(),
             Some("修首页顶栏截断")
         );
+    }
+
+    #[test]
+    fn project_from_confirmed_rejects_missing_root() {
+        let known = KnownProjectDto {
+            id: "proj_x".into(),
+            name: "voice-pilot".into(),
+            root: None,
+            confirmed: true,
+        };
+        assert!(project_from_confirmed(&known).is_none());
+    }
+
+    #[test]
+    fn project_from_confirmed_rejects_id_drift() {
+        let known = KnownProjectDto {
+            id: "proj_wrong".into(),
+            name: "voice-pilot".into(),
+            root: Some(std::env::temp_dir().to_string_lossy().to_string()),
+            confirmed: true,
+        };
+        // Missing path → None; valid path with wrong id → also None.
+        assert!(project_from_confirmed(&known).is_none());
     }
 }

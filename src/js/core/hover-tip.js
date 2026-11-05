@@ -66,12 +66,12 @@
     var gap=10;
     var tw=tip.offsetWidth;
     var th=tip.offsetHeight;
-    var candidates=[
-      {left:target.left+(target.width-tw)/2,top:target.bottom+gap},
-      {left:target.left+(target.width-tw)/2,top:target.top-th-gap},
-      {left:target.right+gap,top:target.top+(target.height-th)/2},
-      {left:target.left-tw-gap,top:target.top+(target.height-th)/2}
-    ];
+    var preferAbove=anchor.getAttribute&&anchor.getAttribute('data-ot-tip-prefer')==='above';
+    var below={left:target.left+(target.width-tw)/2,top:target.bottom+gap};
+    var above={left:target.left+(target.width-tw)/2,top:target.top-th-gap};
+    var candidates=preferAbove
+      ?[above,below,{left:target.right+gap,top:target.top+(target.height-th)/2},{left:target.left-tw-gap,top:target.top+(target.height-th)/2}]
+      :[below,above,{left:target.right+gap,top:target.top+(target.height-th)/2},{left:target.left-tw-gap,top:target.top+(target.height-th)/2}];
     var best=candidates[0];
     for(var i=0;i<candidates.length;i++){
       var c=candidates[i];

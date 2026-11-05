@@ -43,7 +43,9 @@ assert.match(now, /onetone\.homeSurface/);
 assert.match(now, /OneToneHomeAgentV2\.mount/);
 assert.match(now, /detectHomeAgentV2\(\)[\s\S]*dashboardStack\(\)[\s\S]*OneToneHomeAgentV2\.show/);
 assert.match(now, /ls === 'focus' \|\| ls === 'classic'/);
-assert.match(now, /return true/);
+assert.match(now, /ls === 'agentV2'/);
+assert.match(now, /return false/);
+assert.match(now, /embedCompose/);
 assert.match(workbench, /onetone\.homeSurface/);
 assert.match(workbench, /action==='homeV2'/);
 assert.match(workbench, /homeSurface','focus'/);
@@ -78,6 +80,11 @@ assert.match(storeSrc, /must not gate first paint|Fast path/);
 assert.match(storeSrc, /refreshGen/);
 assert.match(shell, /function presenceBits/);
 assert.match(shell, /ha2TaskEmptyTitle[\s\S]*没有正在推进的事/);
+// Honest resume hero: archive / strong continue before empty boilerplate; never fake running.
+assert.match(shell, /interruptedWorkRuns[\s\S]*ha2TaskReturn[\s\S]*没有正在推进的事/);
+assert.match(shell, /\/resumable\|interrupted\//);
+assert.match(storeSrc, /Strong step \+ resumable is honest resume/);
+assert.doesNotMatch(storeSrc, /Closed \/ not-running agents must not occupy the workspace as fake monitoring/);
 assert.match(storeSrc, /function quietHintLines/);
 assert.match(shell, /quietHintLines/);
 assert.match(shell, /ha2-quiet-hint|ha2-empty--hints/);
@@ -108,7 +115,7 @@ assert.match(shell, /data-ha2-wb-account-host/);
 assert.match(shell, /data-ha2-open-model-providers/);
 assert.match(
   shell,
-  /data-ha2-model-route-host[\s\S]{0,1200}data-ha2-open-model-providers/
+  /data-ha2-model-route-host[\s\S]*?data-ha2-open-model-providers/
 );
 assert.match(shell, /ha2WorkspaceChanges|项改动/);
 assert.match(shell, /ha2TmClean|工作区干净/);
@@ -117,6 +124,12 @@ assert.match(shell, /resolveHomeTimelineWorkspace|targetContext\.projectPath/);
 assert.doesNotMatch(shell, /data-ha2-workspace-review|审查工作区改动/);
 // Picker anchors to trigger; aim must not treat slot index as locked.
 assert.match(shell, /positionPickerPanel/);
+assert.match(shell, /visibility\s*=\s*'hidden'/);
+assert.match(shell, /var pickerSide = null/);
+assert.match(shell, /never rewrite innerHTML/);
+assert.match(shell, /pickerPositioning/);
+assert.match(shell, /function onPickerReposition\(e\)/);
+assert.match(read('src/css/now-home.css'), /Pin from top|justify-content:\s*flex-start/);
 assert.match(css, /\.ha2-picker\{[^}]*position:\s*fixed/);
 assert.match(dockSrc, /aimPointActive/);
 assert.doesNotMatch(dockSrc, /hasActive \|\| s\.active \|\| s\.confirmed/);
@@ -147,9 +160,14 @@ assert.ok(fs.existsSync('src/icons/app-target/hermes.png'));
 assert.match(dockSrc, /function clearAim[\s\S]*cmd_input_aim_calibrate_clear[\s\S]*appTargetId/);
 assert.doesNotMatch(dockSrc, /slot:\s*['"]active['"]/);
 assert.match(dockSrc, /setAim\(appId,\s*\{\s*hasActive:\s*false/);
-// Dock: compose + fused agent chip; send history lives in left-nav panel.
+// Dock: compose + inline agent strip; send history lives in left-nav panel.
 assert.match(shell, /aimChipHtml|ha2-aim-ico/);
 assert.match(shell, /syncAimChip/);
+assert.match(shell, /agentStripHtml|data-ha2-agent-strip|data-ha2-agent-pick/);
+assert.match(shell, /ha2-agent-flyout|data-ha2-agent-flyout/);
+assert.match(shell, /data-ha2-agent-toggle|openAgentFlyout|closeAgentFlyout/);
+assert.match(shell, /ha2-agent-ico/);
+assert.match(shell, /data-ot-tip/);
 assert.doesNotMatch(shell, /data-ha2-hist|histMenuHtml|histMenuOpen/);
 assert.match(shell, /ha2-agent-fuse|data-ha2-agent-fuse/);
 assert.match(shell, /ha2-channel-caps/);
@@ -233,11 +251,17 @@ assert.match(
 assert.match(read('src/js/features/now/workbuddy-local-chat-window.js'), /wb_local_chat_delta/);
 assert.match(css, /\.ha2-wb-transcript\b/);
 assert.match(css, /\.ha2-wb-mode-btn\b/);
-// Caps left of spacer; aim lives inside agent fuse (not with channel caps).
+// Compose rail: Agent+model inside card; caps in overflow; aim in agent fuse.
 assert.match(
   shell,
-  /ha2-channel-caps[\s\S]*ha2-spacer[\s\S]*ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-send/
+  /ha2-compose-rail[\s\S]*ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-send/
 );
+assert.match(shell, /ha2-compose-overflow[\s\S]*ha2-channel-caps/);
+assert.match(shell, /function lucide\(|data-lucide=/);
+assert.match(shell, /plus|paperclip|arrow-up|ellipsis|infinity/);
+assert.match(shell, /data-ha2-mat="url"/);
+assert.match(shell, /data-ha2-mat="folder"/);
+assert.match(shell, /lucide\('plus'/);
 assert.doesNotMatch(shell, /ha2-agent-caps/);
 assert.match(shell, /draftRemember/);
 assert.match(dockSrc, /listComposerHistory/);
@@ -247,8 +271,18 @@ assert.doesNotMatch(shell, /data-ha2-soft-chip|data-ha2-saved-chip/);
 assert.doesNotMatch(shell, /data-ha2-quick/);
 assert.match(css, /\.ha2-aim-chip\.is-off|\.ha2-aim-chip\.is-ok/);
 assert.match(css, /\.ha2-agent-fuse/);
-assert.match(shell, /ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-aim-clear/);
-// Top-right menu = vertical list; dock grid is separate (not shared markup).
+assert.match(css, /\.ha2-agent-pick/);
+assert.match(css, /\.ha2-agent-fused/);
+assert.match(css, /\.ha2-agent-flyout/);
+assert.match(css, /\.ha2-agent-ico/);
+assert.match(css, /\.ha2-compose > \.ha2-agent-flyout/);
+assert.doesNotMatch(css, /\.ha2-agent-strip\{[^}]*overflow-x:\s*auto/);
+assert.match(shell, /ha2-agent-fused|agentStripHtml\(snap/);
+assert.match(shell, /agentFlyoutHtml|data-ha2-agent-flyout/);
+assert.match(shell, /data-ot-tip-prefer/);
+assert.match(read('src/js/core/hover-tip.js'), /data-ot-tip-prefer.*above|preferAbove/);
+assert.match(read('src/js/features/now/home-agent-v2-store.js'), /cursor\.svg/);
+// Top-right menu = vertical list; compose uses inline strip (no dock popup).
 assert.match(shell, /data-ha2-menu-picker/);
 assert.match(shell, /ha2-picker-list|is-menu/);
 assert.match(shell, /pickerSurface === 'menu'|pickerSurface = 'menu'|openPickerSurface\('menu'/);
@@ -259,7 +293,7 @@ assert.match(css, /\.ha2-picker\.is-menu/);
 assert.match(css, /backdrop-filter:\s*blur/);
 assert.match(css, /html\[data-theme="dark"\]\s*\.ha2-picker\.is-menu/);
 assert.match(css, /\.ha2-picker-row-ico img[^}]*object-fit:\s*contain/);
-// Picker / mat menu dismiss: outside click + Escape.
+// Mat menu dismiss: outside click + Escape. Dock agent strip needs no popup dismiss.
 assert.match(shell, /onDocPointerDown|onDocKeyDown/);
 assert.match(shell, /closePickerSurface/);
 assert.match(shell, /closeMatMenu/);
@@ -353,6 +387,9 @@ assert.match(shell, /ha2OpenProjectTimeline|打开项目时间线/);
 assert.match(shell, /resolveHomeTimelineWorkspace|targetContext\.projectPath/);
 assert.match(shell, /整理并交接任务|data-ha2-handoff/);
 assert.match(shell, /data-ha2-organize|整理任务/);
+// 「整理」only after + materials (not idle empty compose).
+assert.match(shell, /orgBtn\.hidden\s*=\s*atrEdit\s*\|\|\s*\(!running\s*&&\s*!hasMats\)/);
+assert.match(shell, /subscribeMaterials/);
 // Dock no longer keeps permanent 工程材料 / 密钥 / 计量额度 — need-driven notice CTAs only.
 assert.doesNotMatch(shell, /ha2-metered-toggle|ha2AddProjectMaterialsManual/);
 assert.doesNotMatch(
@@ -363,6 +400,8 @@ assert.doesNotMatch(shell, /<input[^>]*data-ha2-allow-metered/);
 assert.match(shell, /data-ha2-assist-keys|data-ha2-enable-metered/);
 assert.match(shell, /允许计量/);
 assert.match(shell, /formatFailureNotice|runOrganizeTask|OneToneHomeAssistClient/);
+assert.match(shell, /syncComposeDraftIntoPrep|setDraftBody[\s\S]{0,80}force:\s*true/);
+assert.match(shell, /ha2OrganizeNeedDraft|先写一句或加入材料/);
 assert.match(shell, /snapshotId/);
 assert.doesNotMatch(shell, /t\('ha2OrganizeFailed',\s*'整理失败'\)/);
 assert.match(shell, /已填入草稿/);
@@ -395,7 +434,18 @@ assert.match(css, /\.ha2-model-dd-trigger|\.ha2-model-dd-menu/);
 assert.match(css, /\.ha2-model-dd-search|\.ha2-model-dd-list|scrollbar-width:\s*thin/);
 assert.match(css, /\.ha2-model-dd-tag|\.ha2-model-dd-rate|\.ha2-model-dd-speed/);
 assert.match(shell, /modelRouteOfferMeta|data-ha2-model-route-search|filterModelRouteMenu/);
+assert.match(shell, /modelRouteApiLaneKey|modelRouteApiPreferScore|paidByLane/);
+assert.match(shell, /minimax-cn-openai[\s\S]*无余额|Chat API Key 无平台余额接口/);
 assert.match(shell, /限时免费|夜间折扣|订阅优先|0\.00x/);
+{
+  // Lane collapse: legacy MiniMax CN + minimax-cn-openai share one CN bucket.
+  const laneFn = shell.match(
+    /function modelRouteApiLaneKey\(id, label\) \{([\s\S]*?)\n  \}/
+  );
+  assert.ok(laneFn, 'modelRouteApiLaneKey present');
+  assert.match(laneFn[0], /minimax-cn/);
+  assert.match(laneFn[0], /minimax-io/);
+}
 assert.doesNotMatch(shell, /ha2-fm-wb-models|freemodelEliminatedHtml|ha2FmElimTitle/);
 assert.match(shell, /ha2ModelTagSoftPad|data-fm-subtabs|data-fm-tab|ha2-fm-connect|开通免费模型/);
 assert.match(shell, /ha2-fm-ico|ha2FmTabFree|data-fm-paid-keys|data-fm-pane/);
@@ -547,6 +597,9 @@ assert.match(css, /\.ha2-fm-card|\.ha2-fm-connect/);
 // Home freemodel login: chat-mode strip + dock 登录/换号 (not ATR-only).
 assert.match(shell, /function atrWbLoginShouldShow/);
 assert.match(shell, /wbRouteIsActive\(\) && !wbLocalReady\(\)/);
+assert.match(shell, /wbLocalCache == null\) return false/);
+assert.match(shell, /atrWbLoginChatDismissed/);
+assert.match(shell, /needs_setup[\s\S]{0,80}return \{ html: '', kind: null \}/);
 assert.doesNotMatch(
   shell,
   /function atrWbLoginShouldShow[\s\S]{0,120}if \(!atrEditPathOn\(snap\)\) return false/
@@ -558,10 +611,11 @@ assert.match(css, /\.ha2-wb-account-cta|\.ha2-wb-account-host/);
 // No top-left「首页」on home; plan/doc titles go on agent cards.
 assert.match(shell, /top\.hidden = true/);
 assert.match(shell, /fgDocHintForKind|ha2-ctx-app/);
-assert.match(shell, /currentHabitMatchedApps|ha2-ctx-matched/);
+assert.match(shell, /currentHabitMatchedApps/);
+assert.doesNotMatch(shell, /ha2-ctx-matched/);
 assert.doesNotMatch(shell, /data-ha2-send-scope-hint/);
 assert.doesNotMatch(shell, /ha2-ctx-fg|ha2HabitChip/);
-assert.match(css, /\.ha2-ctx-app|\.ha2-matched-list|\.ha2-top\[hidden\]/);
+assert.match(css, /\.ha2-ctx-app|\.ha2-top\[hidden\]/);
 assert.match(shell, /ha2-mode-row--tabs/);
 assert.match(shell, /workspaceResumeRowHtml|data-ha2-resume-row/);
 assert.match(shell, /atrProvHost\.hidden = !atrEdit/);
@@ -1109,6 +1163,48 @@ assert.equal(rows[0].line, 'refactor home dock');
   assert.ok(noGhost.some((r) => r.kind === 'cursor' && /live cursor/.test(r.line)));
   assert.notEqual(Store.__testOnly.getState().selectedKind, 'codex');
   assert.equal(Store.__testOnly.getState().selectedKind, 'cursor');
+
+  // Strong continue + closed Codex → honest resumable row (not fake working / monitoring).
+  st2.inventory = {
+    agents: [{ kind: 'codex', presence: 'cli', confidence: 'high', running: false }]
+  };
+  st2.focusVm = {
+    mode: 'return',
+    desk: {
+      needsYouRows: [],
+      livingRows: [],
+      continueCard: {
+        title: '拆分首页布局',
+        badge: 'Codex',
+        sessionId: 'old-codex-strong'
+      }
+    }
+  };
+  Store.__testOnly.applyAgentSnap(
+    {
+      agents: [
+        {
+          agentId: 'kind:codex',
+          runtimeKind: 'codex',
+          recentPrompt: '',
+          observedStatus: { value: 'idle', source: 'inferred' },
+          actions: [
+            { id: 'agent.focus', enabled: true },
+            { id: 'session.resume', enabled: true }
+          ]
+        }
+      ]
+    },
+    {}
+  );
+  const strongContinue = Store.__testOnly.workRows(5);
+  const codexResume = strongContinue.find(
+    (r) => r.kind === 'codex' && r.deskSource === 'continue'
+  );
+  assert.ok(codexResume, 'strong continue should surface for closed agent');
+  assert.equal(codexResume.status, 'resumable');
+  assert.equal(codexResume.line, '拆分首页布局');
+  assert.doesNotMatch(codexResume.line || '', /执行中|正在活动/);
 
   // Discovered-only (nothing running) → no invented default send target.
   st2.inventory = {

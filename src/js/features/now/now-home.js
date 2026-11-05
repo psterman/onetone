@@ -31,6 +31,21 @@
   var historyBound = false;
   // User armed listen from Now dock; show strip until pause/stop even if status is still ready.
   var voiceArmed = false;
+  var HOME_INTENT_KEY = 'onetone.homeIntent';
+
+  function readHomeIntent() {
+    try {
+      return localStorage.getItem(HOME_INTENT_KEY) === 'work' ? 'work' : 'chat';
+    } catch (_) {
+      return 'chat';
+    }
+  }
+
+  function writeHomeIntent(next) {
+    try {
+      localStorage.setItem(HOME_INTENT_KEY, next === 'work' ? 'work' : 'chat');
+    } catch (_) {}
+  }
   var contextOpen = false;
   var contextRows = [];
   var contextFetchGen = 0;
@@ -139,6 +154,59 @@
   var homeAimKind = 'cursor';
   var homeAimHasActive = false;
   var homeAimFetchToken = 0;
+  var HOME_DELIVER_KEY = 'onetone.homeDeliverKind';
+  var homeDeliverKind = '';
+  /** Freemodel / WorkBuddy ready for 问模型 — probed async; start gated. */
+  var homeAccountReady = false;
+  var homeAccountProbeGen = 0;
+
+  function readHomeDeliverKind() {
+    try {
+      return String(sessionStorage.getItem(HOME_DELIVER_KEY) || '').trim();
+    } catch (_) {
+      return homeDeliverKind || '';
+    }
+  }
+
+  function writeHomeDeliverKind(kind) {
+    homeDeliverKind = String(kind || '').trim();
+    try {
+      if (homeDeliverKind) sessionStorage.setItem(HOME_DELIVER_KEY, homeDeliverKind);
+      else sessionStorage.removeItem(HOME_DELIVER_KEY);
+    } catch (_) {}
+  }
+
+  function probeHomeAccountReady() {
+    var HA2 = global.OneToneHomeAgentV2;
+    if (!HA2 || typeof HA2.probeAccountReady !== 'function') {
+      homeAccountReady = false;
+      return;
+    }
+    var gen = ++homeAccountProbeGen;
+    HA2.probeAccountReady()
+      .then(function (ok) {
+        if (gen !== homeAccountProbeGen) return;
+        var next = !!ok;
+        if (next === homeAccountReady) return;
+        homeAccountReady = next;
+        lastPaintHtml = '';
+        if (mounted && visible) paint();
+      })
+      .catch(function () {
+        if (gen !== homeAccountProbeGen) return;
+        if (homeAccountReady) {
+          homeAccountReady = false;
+          lastPaintHtml = '';
+          if (mounted && visible) paint();
+        }
+      });
+  }
+
+  try {
+    homeDeliverKind = readHomeDeliverKind();
+  } catch (_) {
+    homeDeliverKind = '';
+  }
 
   function quietDraftStorageKey(vm) {
     if (!vm || !vm.confirmed) return 'onetone.quickDraft:unconfirmed';
@@ -1180,17 +1248,17 @@
       if (queryValue === '0') return false;
       var ls =
         global.localStorage && global.localStorage.getItem('onetone.homeSurface');
-      // Rollback: focus | classic → Home Focus. Default after P2 gate: agentV2.
-      if (ls === 'focus' || ls === 'classic') return false;
+      // Focus is the default home (ha2 compose embeds). Opt into pure ha2 via agentV2.
       if (ls === 'agentV2') return true;
-      return true;
+      if (ls === 'focus' || ls === 'classic') return false;
+      return false;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
-  // Default home surface is home-agent-v2 (see detectHomeAgentV2).
-  // Rollback: ?homeAgentV2=0 or localStorage onetone.homeSurface=focus|classic.
+  // Default home surface is Home Focus (see detectHomeAgentV2).
+  // Pure ha2: ?homeAgentV2=1 or localStorage onetone.homeSurface=agentV2.
   // Opt out of Now host entirely with ?now=0 / onetone.nowHome=0.
   function isEnabled() {
     try {
@@ -1394,6 +1462,10 @@
             probePending: !inventoryLoaded,
             aimMemory: homeAimMemoryOpts(),
             resumeAvailable: !!vm._returnDismissed,
+            intent: readHomeIntent(),
+            deliverKind: homeDeliverKind || readHomeDeliverKind(),
+            accountGated: true,
+            accountReady: homeAccountReady === true,
             handoffAct:
               Policy && Policy.handoffActForCap
                 ? Policy.handoffActForCap(cap)
@@ -1709,6 +1781,50 @@
       openSettings();
       return;
     }
+    if (kind === 'set_intent') {
+      var nextIntent =
+        (el && el.getAttribute && el.getAttribute('data-hf-intent')) || 'chat';
+      writeHomeIntent(nextIntent);
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    if (kind === 'open_soft_pad') {
+      var DockPad = global.OneToneHomeDockBridge;
+      if (DockPad && typeof DockPad.toggleSoftPad === 'function') {
+        try {
+          DockPad.toggleSoftPad();
+        } catch (_) {}
+        return;
+      }
+      openNeedSurface();
+      return;
+    }
+    if (kind === 'open_voice') {
+      var DockVoice = global.OneToneHomeDockBridge;
+      if (DockVoice && typeof DockVoice.toggleVoice === 'function') {
+        try {
+          DockVoice.toggleVoice();
+        } catch (_) {}
+        return;
+      }
+      try {
+        triggerVoice();
+      } catch (_) {
+        var voiceBtn = root && root.querySelector('[data-now-voice]');
+        if (voiceBtn) voiceBtn.click();
+      }
+      return;
+    }
+    if (kind === 'open_camera') {
+      var DockCam = global.OneToneHomeDockBridge;
+      if (DockCam && typeof DockCam.toggleCamera === 'function') {
+        try {
+          DockCam.toggleCamera();
+        } catch (_) {}
+      }
+      return;
+    }
     if (kind === 'open_prep') {
       var Prep = global.OneToneHomePromptPrep;
       if (Prep && Prep.expand) Prep.expand();
@@ -1718,6 +1834,62 @@
       var PrepClose = global.OneToneHomePromptPrep;
       if (PrepClose && PrepClose.collapse) PrepClose.collapse();
       return;
+    }
+    if (kind === 'pick_deliver') {
+      var delKind =
+        (el && el.getAttribute && el.getAttribute('data-hf-deliver-kind')) || '';
+      writeHomeDeliverKind(delKind);
+      if (delKind) {
+        homeAimKind = delKind;
+        refreshHomeAimMemory(delKind, { repaint: true });
+      } else {
+        lastPaintHtml = '';
+        paint();
+      }
+      return;
+    }
+    if (kind === 'clear_deliver') {
+      writeHomeDeliverKind('');
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    if (kind === 'open_providers') {
+      var HA2 = global.OneToneHomeAgentV2;
+      if (HA2 && typeof HA2.openModelProviders === 'function') {
+        try {
+          HA2.openModelProviders({});
+        } catch (_) {}
+      } else {
+        openSettings();
+      }
+      return;
+    }
+    if (kind === 'ask_model') {
+      // Chat ask — no project gate (gateway freemodel does not need a repo).
+      var askDraft = String(readQuietDraft(vm) || '').trim();
+      if (!askDraft) {
+        try {
+          var taAsk = root && root.querySelector('#hnQuietDraft');
+          if (taAsk) taAsk.focus();
+        } catch (_) {}
+        return;
+      }
+      var HA2Ask = global.OneToneHomeAgentV2;
+      if (HA2Ask && typeof HA2Ask.askFromDraft === 'function') {
+        try {
+          HA2Ask.askFromDraft(askDraft, {});
+        } catch (_) {}
+        return;
+      }
+      if (HA2Ask && typeof HA2Ask.openModelProviders === 'function') {
+        try {
+          HA2Ask.openModelProviders({});
+        } catch (_) {}
+        return;
+      }
+      kind = 'quick_handoff';
+      if (el && el.setAttribute) el.setAttribute('data-hf-handoff-kind', 'workbuddy');
     }
     if (kind === 'open_history') {
       openHistoryDrawer();
@@ -2009,7 +2181,10 @@
   function bindQuietComposer() {
     if (!root) return;
     bindHomeMaterialDrop();
-    var ta = root.querySelector('#hnQuietDraft');
+    // Prefer ha2 draft (embedded compose). Fallback: legacy #hnQuietDraft.
+    var ta =
+      root.querySelector('.ha2-compose [data-ha2-draft]') ||
+      root.querySelector('#hnQuietDraft');
     if (!ta) return;
     var vm = buildHomeFocusVm() || {};
     ta.oninput = function () {
@@ -2115,7 +2290,7 @@
     return out.slice(0, 24);
   }
 
-  function openHistoryDrawer() {
+  function openHistoryDrawer(tab) {
     if (!agentHomeCache) scheduleAgentHomeRefresh();
     var V = global.OneToneHomeFocusView;
     var drawer = root && root.querySelector('#hnRecallDrawer');
@@ -2123,10 +2298,10 @@
     var bodyEl = root && root.querySelector('#hnRecallBody');
     var entries = buildHistoryEntries();
     if (drawer && titleEl && bodyEl && V) {
-      titleEl.textContent = '近期对话';
+      titleEl.textContent = '历史';
       bodyEl.innerHTML =
         V.historyDrawerBodyHtml
-          ? V.historyDrawerBodyHtml(entries)
+          ? V.historyDrawerBodyHtml(entries, tab)
           : V.drawerHtml
             ? V.drawerHtml('history', { historyEntries: entries })
             : '';
@@ -2147,7 +2322,7 @@
       heroMode: vm.mode || '',
       primaryId: (vm.primary && vm.primary.id) || '',
       provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || '',
-      projectId: vm.projectName || vm.projectId || '',
+      projectId: vm.projectId || vm.projectName || '',
       sessionId:
         (vm.dto && vm.dto.work && (vm.dto.work.sessionId || vm.dto.work.session_id)) || ''
     };
@@ -2159,6 +2334,22 @@
     if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
       try {
         global.OneToneHomePromptPrep.ensureMounted();
+      } catch (_) {}
+    }
+    // Embed ha2 compose once per mount. Re-calling on every Focus paint rebuilt
+    // the dock under open menus → flicker + dead clicks.
+    var HA2 = global.OneToneHomeAgentV2;
+    var composeHost =
+      root && root.querySelector('[data-hf-ha2-compose-host],[data-ha2-dock-host]');
+    if (
+      HA2 &&
+      typeof HA2.embedCompose === 'function' &&
+      root &&
+      composeHost &&
+      !composeHost.querySelector('[data-ha2-compose]')
+    ) {
+      try {
+        HA2.embedCompose(root);
       } catch (_) {}
     }
   }
@@ -2706,6 +2897,13 @@
     var t = e.target;
     if (!t || !t.closest) return;
 
+    // History drawer tabs: 最近 / 未完成 / 可恢复
+    var histTab = t.closest && t.closest('[data-hf-hist-tab]');
+    if (histTab) {
+      openHistoryDrawer(histTab.getAttribute('data-hf-hist-tab') || 'recent');
+      return;
+    }
+
     // History side drawer: click dimmed mask (not the panel) to close.
     var histDrawer = t.closest && t.closest('#hnRecallDrawer.is-history');
     if (histDrawer && (t === histDrawer || (!t.closest('header') && !t.closest('.hn-drawer-body')))) {
@@ -3122,6 +3320,7 @@
       } catch (_) {}
       scheduleAgentHomeRefresh();
       fetchAgentCenter();
+      probeHomeAccountReady();
     }
     paint();
     syncVoiceStrip();

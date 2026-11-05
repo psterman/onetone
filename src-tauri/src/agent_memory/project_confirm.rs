@@ -143,6 +143,30 @@ pub fn list_known_projects(limit: usize) -> Vec<KnownProjectDto> {
     .unwrap_or_default()
 }
 
+/// Most recently confirmed project with a still-valid workspace root.
+/// Used when FG evidence is empty/ambiguous so Home can restore resume context
+/// without inventing a running session.
+pub fn latest_confirmed_project() -> Option<KnownProjectDto> {
+    for p in list_known_projects(20) {
+        if !p.confirmed {
+            continue;
+        }
+        let Some(root) = p.root.as_deref().map(str::trim).filter(|s| !s.is_empty()) else {
+            continue;
+        };
+        let path = Path::new(root);
+        if validate_workspace_path(path).is_none() {
+            continue;
+        }
+        let derived = project_id_from_path(path);
+        if derived != p.id {
+            continue;
+        }
+        return Some(p);
+    }
+    None
+}
+
 /// Title-only candidate display (never used as PathBuf / project_id).
 pub fn probable_name_from_title(title: Option<&str>) -> Option<String> {
     crate::agent_memory::workspace_evidence::title_project_token(title.unwrap_or(""))

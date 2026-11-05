@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 首页原型 · 一状态一动作</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8eef3;
+      --bg-deep: #dce6ee;
+      --surface: #f7fafc;
+      --ink: #152238;
+      --muted: #5a7086;
+      --line: rgba(26, 45, 74, 0.1);
+      --accent: #2a9cc4;
+      --accent-soft: color-mix(in srgb, var(--accent) 14%, white);
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --err: #c44;
+      --idle: #7a8fa3;
+      --compose-max: 640px;
+      --drawer-w: min(400px, 94vw);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 520px at 50% -10%, #f4f8fb 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: 14px 18px 28px;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 2px 10px;
+    }
+    .ctx { display: flex; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 28px; padding: 0 10px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+
+    /* 意图：对话/工作 — 不是任务状态，也不是「此刻/材料」 */
+    .intent {
+      display: inline-flex; padding: 3px; border-radius: 12px;
+      background: color-mix(in srgb, white 55%, transparent);
+      border: 1px solid var(--line); gap: 2px;
+    }
+    .intent button {
+      border: 0; background: transparent; color: var(--muted);
+      font: inherit; font-weight: 650; font-size: 13px;
+      padding: 7px 14px; border-radius: 9px; cursor: pointer;
+    }
+    .intent button[aria-pressed="true"] {
+      background: var(--surface); color: var(--ink);
+      box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
+    }
+    .intent button small {
+      display: block; font-size: 10px; font-weight: 600; color: var(--muted);
+      margin-top: 1px; line-height: 1;
+    }
+    .intent button[aria-pressed="true"] small { color: color-mix(in srgb, var(--ink) 55%, var(--muted)); }
+    .top-end { justify-self: end; display: flex; justify-content: flex-end; }
+    .history-btn {
+      position: relative; box-sizing: border-box;
+      width: 32px; min-width: 32px; max-width: 32px; height: 32px;
+      padding: 0; display: grid; place-items: center;
+      border-radius: 9px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      color: var(--ink); cursor: pointer; flex: 0 0 32px;
+    }
+    .history-btn svg { width: 14px; height: 14px; opacity: 0.85; }
+    .history-btn .badge {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px;
+      background: var(--ink); color: white; font-size: 9px; font-weight: 700;
+      line-height: 14px; text-align: center; font-family: Sora, sans-serif;
+    }
+
+    .stage {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px;
+      padding: 8px 12px; max-width: 860px; width: 100%; margin: 0 auto;
+    }
+    .stage.has-task { justify-content: flex-start; padding-top: 20px; }
+
+    /* —— 主舞台：空闲=邀请；有任务=状态卡 —— */
+    .main {
+      width: min(100%, var(--compose-max));
+      text-align: center;
+    }
+    .main.is-card {
+      text-align: left;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 80%, transparent) inset,
+        0 14px 32px -20px color-mix(in srgb, var(--ink) 22%, transparent);
+      padding: 14px 16px 14px;
+    }
+    .main .card-hd {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .main.is-card .card-hd { display: flex; }
+    .main .agent-ico {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: grid; place-items: center;
+      font-family: Sora, sans-serif; font-size: 11px; font-weight: 700; color: white;
+      background: linear-gradient(145deg, #5b8def, #3a5fbf);
+      flex: 0 0 auto;
+    }
+    .main .agent-ico.is-cursor { background: linear-gradient(145deg, #3d3d3d, #111); }
+    .main .agent-ico.is-wb { background: linear-gradient(145deg, #3ecf8e, #1f9d63); }
+    .main .card-hd .who { flex: 1; min-width: 0; }
+    .main .card-hd .who b {
+      display: block; font-size: 13px; font-weight: 700;
+    }
+    .main .card-hd .who span {
+      display: block; font-size: 11px; color: var(--muted); margin-top: 1px;
+    }
+    .status-pill {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 50%, white);
+      color: var(--muted); white-space: nowrap;
+    }
+    .status-pill.is-run {
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+      background: var(--accent-soft); color: var(--accent);
+    }
+    .status-pill.is-wait {
+      border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
+      background: color-mix(in srgb, var(--warn) 10%, white); color: var(--warn);
+    }
+    .status-pill.is-fail {
+      border-color: color-mix(in srgb, var(--err) 35%, var(--line));
+      background: color-mix(in srgb, var(--err) 8%, white); color: var(--err);
+    }
+    .status-pill.is-resume {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white); color: var(--ok);
+    }
+    .main .kicker {
+      margin: 0 0 8px; color: var(--accent); font-size: 12px; font-weight: 650;
+    }
+    .main.is-card .kicker { display: none; }
+    .main .kicker button {
+      border: 0; background: none; color: inherit; font: inherit; font-weight: inherit;
+      padding: 0; cursor: pointer;
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .main h1 {
+      margin: 0;
+      font-family: Sora, "Noto Sans SC", sans-serif;
+      font-size: clamp(22px, 3.2vw, 28px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.25;
+    }
+    .main.is-card h1 { font-size: 18px; letter-spacing: -0.01em; }
+    .main .fact {
+      margin: 8px 0 0;
+      color: var(--muted); font-size: 13.5px; line-height: 1.55;
+    }
+    .main.is-card .fact { font-size: 13px; }
+    .main .evidence {
+      margin: 12px 0 0;
+      display: none; flex-wrap: wrap; justify-content: center; gap: 6px;
+    }
+    .main.is-card .evidence { justify-content: flex-start; }
+    .main .evidence.is-on { display: flex; }
+    .main .evidence span {
+      font-size: 11px; font-weight: 650; padding: 4px 8px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 45%, white);
+      color: var(--muted);
+    }
+    .main .primary-row {
+      margin-top: 16px;
+      display: none; justify-content: center; gap: 8px; flex-wrap: wrap;
+    }
+    .main.is-card .primary-row { justify-content: flex-start; margin-top: 14px; }
+    .main .primary-row.is-on { display: flex; }
+    .btn {
+      height: 36px; padding: 0 16px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface);
+      font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer;
+    }
+    .btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
+    .btn.ghost { background: transparent; color: var(--muted); border-color: transparent; }
+    .btn.warn { background: var(--warn); color: white; border-color: var(--warn); }
+
+    /* 附属提醒：仅非主决定时出现；需要立即决定时已升主舞台 */
+    .side-notice {
+      width: min(100%, var(--compose-max));
+      display: none; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      font-size: 12.5px; text-align: left;
+    }
+    .side-notice.is-on { display: flex; }
+    .side-notice b { font-weight: 700; white-space: nowrap; }
+    .side-notice span { color: var(--muted); flex: 1; }
+    .side-notice button {
+      border: 1px solid var(--line); background: var(--surface);
+      border-radius: 999px; padding: 5px 10px;
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+
+    /* —— 输入：空闲展开 / 有任务时收为次级 —— */
+    .compose-wrap {
+      width: min(100%, var(--compose-max));
+      transition: opacity 160ms ease;
+    }
+    .compose-wrap.is-secondary {
+      order: 3;
+      opacity: 0.92;
+    }
+    .compose-wrap.is-secondary .compose {
+      border-radius: 16px;
+      box-shadow: none;
+      border-color: var(--line);
+      padding: 10px 12px 8px;
+    }
+    .compose-wrap.is-secondary textarea { min-height: 44px; font-size: 13.5px; }
+    .compose-wrap.is-secondary .ask-nudge { display: none !important; }
+    .other-task-label {
+      display: none;
+      margin: 0 0 6px;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-align: left; padding: 0 2px;
+    }
+    .compose-wrap.is-secondary .other-task-label { display: block; }
+
+    .compose {
+      border-radius: 22px;
+      border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+      background: var(--surface);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 80%, transparent) inset,
+        0 18px 40px -24px color-mix(in srgb, var(--ink) 28%, transparent),
+        0 0 0 4px color-mix(in srgb, var(--accent) 7%, transparent);
+      padding: 12px 14px 10px;
+    }
+    .compose.is-gated {
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+    }
+    .ask-nudge {
+      display: none; align-items: flex-start; gap: 10px;
+      margin: 0 0 8px; padding: 8px 10px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+      background: var(--accent-soft); font-size: 12px; line-height: 1.45;
+    }
+    .compose.is-gated .ask-nudge { display: flex; }
+    .ask-nudge .pulse {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto;
+      background: var(--accent);
+      animation: nudge-pulse 1.6s ease-out infinite;
+    }
+    @keyframes nudge-pulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+      70% { box-shadow: 0 0 0 8px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    .ask-nudge b { font-weight: 700; }
+    .ask-nudge span { color: var(--muted); }
+    .ask-nudge .acts { margin-left: auto; display: inline-flex; gap: 6px; }
+    .ask-nudge .acts button {
+      height: 26px; padding: 0 10px; border-radius: 999px; border: 0;
+      font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    }
+    .ask-nudge .go { background: var(--accent); color: white; }
+    .ask-nudge .more {
+      background: transparent; color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)) !important;
+    }
+    .compose textarea {
+      width: 100%; border: 0; outline: none; resize: none;
+      background: transparent; color: var(--ink); font: inherit;
+      font-size: 15px; line-height: 1.5; min-height: 68px; padding: 2px 4px 8px;
+    }
+    .compose textarea::placeholder { color: color-mix(in srgb, var(--muted) 82%, white); }
+    .compose-bar {
+      display: flex; align-items: center; gap: 6px; padding-top: 8px; flex-wrap: wrap;
+    }
+    .compose-tools {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      width: 100%;
+      padding-top: 8px; margin-top: 2px;
+      border-top: 1px dashed var(--line);
+    }
+    .cap-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 28px; padding: 0 9px; border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+    }
+    .cap-btn:hover, .cap-btn.is-on {
+      background: color-mix(in srgb, var(--accent) 8%, white);
+      color: var(--ink);
+      border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+    }
+    .cap-btn svg { opacity: 0.75; }
+    .prov-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 0; background: none; color: var(--accent);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; padding: 0 4px;
+      position: relative;
+    }
+    .prov-link .due {
+      min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
+      background: #e11; color: white; font-size: 9px; font-weight: 700;
+      line-height: 15px; text-align: center;
+    }
+    .org-btn {
+      height: 30px; padding: 0 12px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface);
+      font: inherit; font-size: 12px; font-weight: 650; color: var(--ink); cursor: pointer;
+      margin-left: auto;
+    }
+    .agent-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 30px; padding: 0 8px 0 4px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 55%, white);
+      color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .agent-chip .ai {
+      width: 20px; height: 20px; border-radius: 6px;
+      display: grid; place-items: center; color: white;
+      font-family: Sora, sans-serif; font-size: 8px; font-weight: 700;
+      background: linear-gradient(145deg, #5b8def, #3a5fbf);
+    }
+    .agent-chip .proj {
+      color: var(--muted); font-weight: 600; font-size: 11px;
+      max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ctrl {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 30px; padding: 0 10px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 55%, white);
+      color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .ctrl.is-empty { color: var(--muted); border-style: dashed; }
+    .ctrl.ghost { color: var(--muted); background: transparent; }
+    .compose-bar .spacer { flex: 1; min-width: 8px; }
+    .acct-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 30px; padding: 0 10px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 55%, white);
+      color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .acct-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .acct-chip.is-off {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      color: var(--accent); background: var(--accent-soft);
+      animation: acct-breathe 1.8s ease-in-out infinite;
+    }
+    .acct-chip.is-off .dot {
+      background: var(--accent);
+      animation: acct-dot 1.8s ease-out infinite;
+    }
+    @keyframes acct-breathe {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; }
+      50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent); }
+    }
+    @keyframes acct-dot {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+      70% { box-shadow: 0 0 0 7px transparent; }
+    }
+    .app-icons {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px; border-radius: 999px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 50%, white);
+    }
+    .app-icons .lab { font-size: 10px; font-weight: 700; color: var(--muted); padding: 0 4px 0 6px; }
+    .app-ico-btn {
+      width: 26px; height: 26px; border-radius: 50%; border: 1px solid transparent;
+      padding: 0; display: grid; place-items: center; cursor: pointer; background: transparent;
+      font-family: Sora, sans-serif; font-size: 8px; font-weight: 700; color: white;
+    }
+    .app-ico-btn span {
+      width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
+    }
+    .app-ico-btn.c span { background: linear-gradient(145deg, #3d3d3d, #111); }
+    .app-ico-btn.cl span { background: linear-gradient(145deg, #d4a27f, #b07a52); }
+    .app-ico-btn.cx span { background: linear-gradient(145deg, #5b8def, #3a5fbf); }
+    .app-ico-btn.wb span { background: linear-gradient(145deg, #3ecf8e, #1f9d63); }
+    .app-ico-btn.is-on {
+      border-color: color-mix(in srgb, var(--ink) 28%, var(--line));
+      background: color-mix(in srgb, var(--ink) 6%, white);
+    }
+    .aim-chip {
+      display: none; align-items: center; gap: 5px; height: 30px; padding: 0 10px;
+      border-radius: 999px; border: 1px dashed color-mix(in srgb, var(--warn) 45%, var(--line));
+      background: color-mix(in srgb, var(--warn) 8%, white);
+      color: var(--ink); font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer;
+    }
+    .compose.is-deliver .aim-chip { display: inline-flex; }
+    .aim-chip.is-ok {
+      border-style: solid;
+      border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white); color: var(--ok);
+    }
+    .ask-model {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 34px; padding: 0 14px; border-radius: 999px; border: 0;
+      background: var(--accent); color: white;
+      font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    }
+    .compose.is-deliver .ask-model { background: var(--ink); }
+    .dest-hint {
+      display: none; align-items: center; gap: 8px;
+      margin: 0 0 8px; padding: 6px 8px; border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--ink) 12%, var(--line));
+      background: color-mix(in srgb, var(--ink) 4%, white); font-size: 12px;
+    }
+    .dest-hint.is-on { display: flex; }
+    .dest-hint .aim-state { margin-left: auto; font-size: 11px; font-weight: 650; color: var(--muted); }
+    .dest-hint .aim-state.is-ok { color: var(--ok); }
+    .dest-hint .aim-state.is-need { color: var(--warn); }
+    .dest-hint .clear {
+      border: 0; background: none; color: var(--muted);
+      font: inherit; font-size: 11px; font-weight: 650; cursor: pointer;
+    }
+    .gate-panel {
+      display: none; margin-top: 8px; border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 35%, white); padding: 10px;
+    }
+    .gate-panel.is-open { display: block; }
+    .gate-panel .lead { margin: 0 0 8px; font-size: 11.5px; color: var(--muted); }
+    .gate-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+    .gate-list button {
+      width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px;
+      align-items: center; padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface);
+      text-align: left; font: inherit; cursor: pointer; color: inherit;
+    }
+    .gate-list button.is-rec {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      background: var(--accent-soft);
+    }
+    .gate-list .ico {
+      width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+      font-family: Sora, sans-serif; font-size: 9px; font-weight: 700; color: white; grid-row: span 2;
+    }
+    .gate-list .ico.k { background: linear-gradient(145deg, #6d5efc, #3d35c8); }
+    .gate-list .ico.wb { background: linear-gradient(145deg, #3ecf8e, #1f9d63); }
+    .gate-list .ico.z { background: linear-gradient(145deg, #334155, #0f172a); }
+    .gate-list .t { font-size: 12.5px; font-weight: 700; }
+    .gate-list .s { grid-column: 2; font-size: 10.5px; color: var(--muted); }
+    .gate-list .cta { grid-row: span 2; font-size: 11px; font-weight: 700; color: var(--accent); }
+
+    .auth-strip {
+      display: none; align-items: center; gap: 10px; margin-top: 8px;
+      padding: 8px 10px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+      background: var(--accent-soft); font-size: 12px;
+    }
+    .auth-strip.is-on { display: flex; }
+    .auth-strip span { color: var(--muted); flex: 1; }
+    .auth-strip button {
+      border: 0; background: var(--accent); color: white;
+      height: 28px; padding: 0 10px; border-radius: 999px;
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .auth-strip .link { background: none; color: var(--accent); }
+
+    .map {
+      width: min(100%, var(--compose-max));
+      padding: 10px 12px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--line));
+      background: color-mix(in srgb, var(--accent) 4%, transparent);
+      font-size: 11px; color: var(--muted); line-height: 1.55; text-align: left;
+    }
+    .map b { color: var(--ink); }
+    .map code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px; color: var(--accent);
+    }
+
+    .demo-bar {
+      position: fixed; left: 12px; bottom: 12px; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 6px; max-width: min(440px, calc(100% - 24px));
+      padding: 8px; border-radius: 12px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 10%, transparent);
+    }
+    .demo-bar span {
+      width: 100%; font-size: 10px; font-weight: 700; color: var(--muted);
+    }
+    .demo-bar button {
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+      font: inherit; font-size: 11px; font-weight: 650; padding: 5px 8px;
+      border-radius: 8px; cursor: pointer;
+    }
+    .demo-bar button.is-on {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      background: var(--accent-soft);
+    }
+
+    .scrim {
+      position: fixed; inset: 0;
+      background: color-mix(in srgb, var(--ink) 28%, transparent);
+      opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 50;
+    }
+    .scrim.is-open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: var(--drawer-w);
+      background: var(--surface); border-left: 1px solid var(--line);
+      box-shadow: -16px 0 40px color-mix(in srgb, var(--ink) 12%, transparent);
+      transform: translateX(104%); transition: transform 220ms cubic-bezier(.2,.8,.2,1);
+      z-index: 60; display: flex; flex-direction: column; padding: 14px;
+    }
+    .drawer.is-open { transform: none; }
+    .drawer-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    }
+    .drawer-hd h2 { margin: 0; font-size: 16px; font-weight: 700; font-family: Sora, sans-serif; }
+    .drawer-hd button {
+      border: 0; background: color-mix(in srgb, var(--bg) 70%, white);
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 16px;
+    }
+    .drawer-tabs {
+      display: flex; gap: 4px; margin: 12px 0 10px; padding: 3px;
+      border-radius: 10px; background: color-mix(in srgb, var(--bg) 70%, white);
+      border: 1px solid var(--line);
+    }
+    .drawer-tabs button {
+      flex: 1; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--muted);
+      padding: 7px 6px; border-radius: 8px; cursor: pointer;
+    }
+    .drawer-tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); }
+    .drawer-pane { flex: 1; overflow: auto; display: none; flex-direction: column; gap: 8px; }
+    .drawer-pane.is-on { display: flex; }
+    .drawer-rule {
+      margin: 0 0 10px; padding: 10px 11px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+      background: color-mix(in srgb, var(--accent) 6%, white);
+      font-size: 11.5px; color: var(--muted); line-height: 1.5;
+    }
+    .drawer-rule b { color: var(--ink); }
+    .drawer-rule code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10.5px; color: var(--accent);
+    }
+    /* 复用 ha2 listHtml 行形态 — 抽屉宿主，不是第二套 desk */
+    .ws-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px 12px;
+      align-items: center; padding: 12px 12px; border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 35%, white);
+      text-align: left; font: inherit; color: inherit;
+    }
+    .ws-row.is-live {
+      background: color-mix(in srgb, var(--accent) 8%, white);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+    }
+    .ws-row.is-resume {
+      background: color-mix(in srgb, var(--warn) 8%, white);
+      border-color: color-mix(in srgb, var(--warn) 28%, var(--line));
+    }
+    .ws-row.is-done {
+      background: color-mix(in srgb, var(--bg) 55%, white);
+    }
+    .ws-row-hd {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      grid-column: 1 / -1;
+    }
+    .ws-row-hd .ai {
+      width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+      font-size: 9px; font-weight: 800; color: white; background: #1a1d24; flex: 0 0 auto;
+    }
+    .ws-row-hd .ai.cu { background: #111; }
+    .ws-row-hd b { font-size: 13px; font-weight: 700; }
+    .ws-tag {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted);
+    }
+    .ws-tag.is-ok {
+      color: var(--ok);
+      border-color: color-mix(in srgb, var(--ok) 30%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white);
+    }
+    .ws-tag.is-wait {
+      color: var(--warn);
+      border-color: color-mix(in srgb, var(--warn) 35%, var(--line));
+      background: color-mix(in srgb, var(--warn) 10%, white);
+    }
+    .ws-note {
+      grid-column: 1 / -1; margin: 0;
+      font-size: 12px; color: var(--muted); line-height: 1.45;
+    }
+    .ws-note .dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      margin-right: 6px; vertical-align: 1px; background: var(--idle);
+    }
+    .ws-note .dot.wait { background: var(--warn); }
+    .ws-note .dot.ok { background: var(--ok); }
+    .ws-acts {
+      grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;
+    }
+    .ws-acts button {
+      height: 30px; padding: 0 11px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface);
+      font: inherit; font-size: 12px; font-weight: 650; color: var(--ink); cursor: pointer;
+    }
+    .ws-acts button.primary { background: var(--ink); color: white; border-color: var(--ink); }
+    .ws-empty {
+      margin: 18px 8px; text-align: center; font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    }
+    /* 主舞台不堆工作区卡：一条入口打开同一份 listHtml */
+    .ws-teaser {
+      width: min(100%, var(--compose-max));
+      display: none; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 12px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      font-size: 12.5px; color: var(--muted); cursor: pointer; text-align: left;
+    }
+    .ws-teaser.is-on { display: flex; }
+    .ws-teaser b { color: var(--ink); font-weight: 700; }
+    .ws-teaser .go {
+      margin-left: auto; border: 0; background: none; color: var(--accent);
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .drawer-item {
+      display: grid; grid-template-columns: auto 1fr; gap: 4px 10px;
+      padding: 10px 11px; border-radius: 12px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 40%, white);
+      cursor: pointer; text-align: left; font: inherit; color: inherit;
+    }
+    .drawer-item .mark {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 5px;
+      background: var(--idle); grid-row: span 2;
+    }
+    .drawer-item.is-resume .mark { background: var(--accent); }
+    .drawer-item.is-wait .mark { background: var(--warn); }
+    .drawer-item.is-fail .mark { background: var(--err); }
+    .drawer-item .t { font-size: 13px; font-weight: 650; }
+    .drawer-item .s { font-size: 11px; color: var(--muted); }
+
+    .proj-modal {
+      position: fixed; inset: 0; z-index: 70;
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .proj-modal.is-on { display: flex; }
+    .proj-modal .veil {
+      position: absolute; inset: 0;
+      background: color-mix(in srgb, var(--ink) 32%, transparent);
+    }
+    .proj-card {
+      position: relative; z-index: 1; width: min(100%, 360px);
+      border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
+      box-shadow: 0 20px 48px color-mix(in srgb, var(--ink) 18%, transparent);
+      padding: 16px;
+    }
+    .proj-card h2 { margin: 0; font-size: 16px; font-weight: 700; font-family: Sora, sans-serif; }
+    .proj-card .lead { margin: 6px 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .proj-opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .proj-opts button {
+      width: 100%; text-align: left; padding: 10px 12px; border-radius: 11px;
+      border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 40%, white);
+      font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; color: inherit;
+    }
+    .proj-opts button small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+    .proj-acts { display: flex; justify-content: space-between; align-items: center; }
+    .proj-acts .skip {
+      border: 0; background: none; color: var(--muted);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+
+    .aim-overlay {
+      position: fixed; inset: 0; z-index: 80;
+      background: color-mix(in srgb, var(--ink) 35%, transparent);
+      cursor: crosshair; display: none;
+    }
+    .aim-overlay.is-on { display: block; }
+    .aim-overlay .frame {
+      position: absolute; border: 2px solid #5ee0a0;
+      background: color-mix(in srgb, #5ee0a0 12%, transparent);
+      border-radius: 6px; pointer-events: none;
+    }
+    .aim-overlay .tip {
+      position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+      padding: 8px 12px; border-radius: 999px; background: var(--surface);
+      font-size: 12px; font-weight: 650; white-space: nowrap;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);
+    }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      .ask-nudge .pulse, .acct-chip.is-off, .acct-chip.is-off .dot { animation: none; }
+    }
+    @media (max-width: 640px) {
+      .top { grid-template-columns: 1fr auto; }
+      .ctx { display: none; }
+      .demo-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="ctx" aria-label="环境">
+        <button type="button" class="chip" title="习惯中心"><span class="dot"></span>前台 · Cursor</button>
+      </div>
+      <!-- 意图：对话/工作 = 下一步怎么用 Agent；主舞台状态仍由任务事实决定 -->
+      <div class="intent" role="group" aria-label="下一步意图">
+        <button type="button" aria-pressed="true" data-intent="chat">对话<small>讨论 · 不改文件</small></button>
+        <button type="button" aria-pressed="false" data-intent="work">工作<small>可改项目文件</small></button>
+      </div>
+      <div class="top-end">
+        <button type="button" class="history-btn" id="openHistory" aria-label="工作区" title="工作区 · 复用 ha2 列表，不另建 desk">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4.5 12a7.5 7.5 0 1 0 1.7-4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 5.5V9h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="badge" id="wsBadge">3</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage" data-task="idle">
+      <!-- 主舞台：空闲邀请 / 有任务时 Agent 状态卡 -->
+      <section class="main" id="mainStage" aria-labelledby="mainTitle">
+        <div class="card-hd">
+          <span class="agent-ico" id="cardAgentIco">Cx</span>
+          <div class="who">
+            <b id="cardAgentName">Codex</b>
+            <span id="cardAgentSub">桌面 Agent · 工作意图</span>
+          </div>
+          <span class="status-pill" id="cardStatus">状态</span>
+        </div>
+        <p class="kicker"><button type="button" id="openHandoff">整理并交接</button></p>
+        <h1 id="mainTitle">写一句，开始</h1>
+        <p class="fact" id="mainFact">没有正在推进的任务。问模型或送到桌面都可以。</p>
+        <div class="evidence" id="mainEvidence" aria-label="有证据的进度"></div>
+        <div class="primary-row" id="mainActions"></div>
+      </section>
+
+      <!-- 附属提醒：不与主决定抢位 -->
+      <div class="side-notice" id="sideNotice" role="status">
+        <b id="sideTitle">提醒</b>
+        <span id="sideText"></span>
+        <button type="button" id="sideAct" hidden>处理</button>
+      </div>
+
+      <div class="compose-wrap" id="composeWrap">
+        <p class="other-task-label">发起另一项任务</p>
+        <form class="compose is-gated" id="composeForm" onsubmit="return false;">
+          <div class="ask-nudge" id="askNudge">
+            <span class="pulse" aria-hidden="true"></span>
+            <div>
+              <b>问模型前先开通免费通道</b><br />
+              <span>浏览器完成后自动回来 · 快捷键仍可用</span>
+            </div>
+            <div class="acts">
+              <button type="button" class="go" id="expandGate">开通</button>
+              <button type="button" class="more" id="openAllChannels">更多</button>
+            </div>
+          </div>
+          <div class="dest-hint" id="destHint">
+            <span>将送到 <strong id="destName">Cursor</strong></span>
+            <span>·</span>
+            <span id="destCopy">框选目标窗口后发出</span>
+            <span class="aim-state is-need" id="aimState">未框选</span>
+            <button type="button" class="clear" id="clearDest">取消</button>
+          </div>
+          <label class="sr-only" for="q">草稿</label>
+          <textarea id="q" rows="3" placeholder="聊思路、读代码，或写给桌面应用的话…"></textarea>
+          <div class="compose-bar">
+            <button type="button" class="agent-chip" id="agentChip" title="选择 Agent">
+              <span class="ai" id="agentChipIco">Cx</span>
+              <span id="agentChipName">Codex</span>
+              <span class="proj" id="agentChipProj">未选项目</span>
+            </button>
+            <button type="button" class="acct-chip is-off" id="acctChip" title="账号 / 未开通">
+              <span class="dot"></span><span id="acctLabel">未开通</span>
+            </button>
+            <button type="button" class="ctrl is-empty" id="projectChip">项目</button>
+            <div class="app-icons" aria-label="送到桌面">
+              <span class="lab">送</span>
+              <button type="button" class="app-ico-btn c" data-agent="Cursor"><span>Cu</span></button>
+              <button type="button" class="app-ico-btn cl" data-agent="Claude"><span>Cl</span></button>
+              <button type="button" class="app-ico-btn cx" data-agent="Codex"><span>Cx</span></button>
+              <button type="button" class="app-ico-btn wb" data-agent="WorkBuddy"><span>WB</span></button>
+            </div>
+            <button type="button" class="aim-chip" id="aimChip"><span id="aimChipLabel">框选窗口</span></button>
+            <button type="button" class="ctrl ghost" id="toggleMats" title="加入材料">附件</button>
+            <span class="spacer"></span>
+            <button type="button" class="ask-model" id="askModel"><span id="primaryLabel">问模型</span></button>
+          </div>
+          <!-- 对照现网 dock overflow：Soft Pad / 语音 / 摄像头 / 账号 / 提供方 / 整理任务 -->
+          <div class="compose-tools" aria-label="通道与整理">
+            <button type="button" class="cap-btn" data-cap="softPad" title="Soft Pad 软键盘">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 10h2M11 10h2M15 10h2M7 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              软键盘
+            </button>
+            <button type="button" class="cap-btn" data-cap="voice" title="语音">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              语音
+            </button>
+            <button type="button" class="cap-btn" data-cap="camera" title="摄像头">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="13" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 10l5-2v8l-5-2V10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              摄像头
+            </button>
+            <button type="button" class="prov-link" id="openProviders" title="模型提供方">
+              提供方<span class="due" id="provDue">1</span>
+            </button>
+            <button type="button" class="org-btn" id="organizeBtn" title="整理任务">整理任务</button>
+          </div>
+          <div class="gate-panel" id="gatePanel">
+            <p class="lead">选一条 · 浏览器完成 · 不是装软件</p>
+            <ul class="gate-list">
+              <li><button type="button" class="is-rec" data-connect="kilo"><span class="ico k">Ki</span><span class="t">Kilo</span><span class="cta">一键启用</span><span class="s">推荐</span></button></li>
+              <li><button type="button" data-connect="workbuddy"><span class="ico wb">WB</span><span class="t">WorkBuddy</span><span class="cta">浏览器登录</span><span class="s">账号额度</span></button></li>
+              <li><button type="button" data-connect="opencode"><span class="ico z">OZ</span><span class="t">OpenCode Zen</span><span class="cta">设备登录</span><span class="s">授权后可用</span></button></li>
+            </ul>
+          </div>
+        </form>
+        <div class="auth-strip" id="authSlot">
+          <b id="authTitle">浏览器登录中</b>
+          <span id="authText">完成后自动回来</span>
+          <button type="button" id="authRetry">打开网页</button>
+          <button type="button" class="link" id="dismissAuth">取消</button>
+        </div>
+      </div>
+
+      <!-- 工作区在输入框下方：不抢 Hero / compose 主位 -->
+      <button type="button" class="ws-teaser is-on" id="wsTeaser" aria-controls="historyDrawer">
+        <span><b>工作区</b> · 3 条记录（Cursor 可恢复 · 档案冲突 · cancelled）</span>
+        <span class="go">打开 →</span>
+      </button>
+
+      <aside class="map">
+        <b>不重复建设：</b>主舞台只保留「一状态一动作」；
+        ha2 的 <code>listHtml</code> / <code>workspaceResumeRowHtml</code> / <code>workRows</code>
+        原样挂进右抽屉（宿主 <code>#history</code>），不在 Focus desk 再画一套工作区卡。
+        紧急项升主舞台 primary；其余从输入框下方「工作区」打开同一份列表。
+      </aside>
+    </main>
+  </div>
+
+  <div class="demo-bar" aria-label="稿态 · 产品不带">
+    <span>验证四态 · 标题 / 事实 / 主按钮 / 次级入口</span>
+    <button type="button" class="is-on" data-task="idle">空闲</button>
+    <button type="button" data-task="resume">可恢复</button>
+    <button type="button" data-task="decide">等待决定</button>
+    <button type="button" data-task="failed">执行失败</button>
+    <button type="button" data-extra="gated">未开通叠加</button>
+    <button type="button" data-extra="ready">已开通</button>
+    <button type="button" data-extra="history">打开工作区</button>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="historyDrawer" role="dialog" aria-modal="true" aria-labelledby="historyTitle" hidden>
+    <div class="drawer-hd">
+      <h2 id="historyTitle">工作区</h2>
+      <button type="button" id="closeHistory" aria-label="关闭">×</button>
+    </div>
+    <p class="drawer-rule">
+      <b>复用，不重写。</b>
+      落地时把 ha2 <code>paint</code> 的列表段挂到这里
+      （<code>data-ha2-list</code> 宿主），点击仍走
+      <code>data-ha2-atr-resume</code> / <code>abandon</code> / <code>detail</code>。
+      Focus 只提供抽屉壳 + 角标，不另建 row 模型。
+    </p>
+    <div class="drawer-tabs" role="tablist" aria-label="工作区分类">
+      <button type="button" role="tab" aria-selected="true" data-hist="now">此刻</button>
+      <button type="button" role="tab" aria-selected="false" data-hist="resume">可恢复</button>
+      <button type="button" role="tab" aria-selected="false" data-hist="recent">最近</button>
+    </div>
+
+    <!-- 此刻 = ha2 listHtml 主段：Agent 行 + resume 行 + 最新 OneTone 任务 -->
+    <div class="drawer-pane is-on" id="pane-now">
+      <article class="ws-row is-live" data-ws="cursor-live">
+        <div class="ws-row-hd">
+          <span class="ai cu" aria-hidden="true">Cu</span>
+          <b>Cursor</b>
+          <span class="ws-tag is-ok">可恢复</span>
+          <span class="ws-tag">checkpoint</span>
+        </div>
+        <p class="ws-note"><span class="dot ok"></span>刚刚 · 已保存上次进度 ·「最近修改了什么代码？」</p>
+        <div class="ws-acts">
+          <button type="button" data-restore="resume">查看</button>
+        </div>
+      </article>
+      <article class="ws-row is-resume" data-ws="archive">
+        <div class="ws-row-hd">
+          <b>最近修改了什么代码？</b>
+          <span class="ws-tag is-wait">可恢复</span>
+        </div>
+        <p class="ws-note"><span class="dot wait"></span>有 3 个可恢复档案 — 恢复或放弃（同 <code>workspaceResumeRowHtml</code>）</p>
+        <div class="ws-acts">
+          <button type="button" data-restore="resume">恢复当前任务</button>
+          <button type="button" data-ws-act="abandon">放弃</button>
+          <button type="button" class="primary" data-ws-act="abandon-send">放弃并发送</button>
+        </div>
+      </article>
+      <article class="ws-row is-done" data-ws="cancelled">
+        <div class="ws-row-hd">
+          <b>最近修改了什么代码？</b>
+          <span class="ws-tag">cancelled</span>
+        </div>
+        <p class="ws-note"><span class="dot"></span>工作任务 · 点击查看步骤</p>
+        <div class="ws-acts">
+          <button type="button" data-restore="failed">查看进度</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="drawer-pane" id="pane-resume" hidden>
+      <article class="ws-row is-resume" data-ws="archive-only">
+        <div class="ws-row-hd">
+          <b>最近修改了什么代码？</b>
+          <span class="ws-tag is-wait">可恢复</span>
+        </div>
+        <p class="ws-note"><span class="dot wait"></span>有 3 个可恢复档案 — 恢复或放弃</p>
+        <div class="ws-acts">
+          <button type="button" data-restore="resume">恢复当前任务</button>
+          <button type="button" data-ws-act="abandon">放弃</button>
+          <button type="button" class="primary" data-ws-act="abandon-send">放弃并发送</button>
+        </div>
+      </article>
+      <button type="button" class="drawer-item is-resume" data-restore="resume">
+        <span class="mark"></span>
+        <span class="t">Codex · 鉴权中间件</span>
+        <span class="s">升主舞台「可恢复」· 同一 resume 动作</span>
+      </button>
+      <button type="button" class="drawer-item is-fail" data-restore="failed">
+        <span class="mark"></span>
+        <span class="t">写入失败 · 权限被拒</span>
+        <span class="s">升主舞台「执行失败」</span>
+      </button>
+    </div>
+
+    <div class="drawer-pane" id="pane-recent" hidden>
+      <button type="button" class="drawer-item" data-restore="idle">
+        <span class="mark"></span>
+        <span class="t">最近修改了什么代码？</span>
+        <span class="s">已取消 · 查找 / 不恢复</span>
+      </button>
+      <button type="button" class="drawer-item is-wait" data-restore="decide">
+        <span class="mark"></span>
+        <span class="t">登录页文案还差一处确认</span>
+        <span class="s">升主舞台「等待决定」</span>
+      </button>
+      <p class="ws-empty">落地：<code>workHistoryRowsHtml</code> + session 合并进同一列表，仍用 ha2 行点击。</p>
+    </div>
+  </aside>
+
+  <div class="proj-modal" id="projModal" aria-hidden="true">
+    <div class="veil" id="projVeil"></div>
+    <div class="proj-card" role="dialog" aria-modal="true" aria-labelledby="projTitle">
+      <h2 id="projTitle">选一个项目再问</h2>
+      <p class="lead">带上项目后，回答能对着代码路径。可跳过；跳过一次后不再提醒。</p>
+      <div class="proj-opts">
+        <button type="button" data-proj="voice-pilot">voice-pilot<small>E:/voice-pilot</small></button>
+        <button type="button" data-proj="onetone-docs">onetone-docs<small>最近用过</small></button>
+      </div>
+      <div class="proj-acts">
+        <button type="button" class="skip" id="projSkip">跳过，不再提醒</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="aim-overlay" id="aimOverlay">
+    <div class="tip">拖拽框选 <span id="aimOverlayApp">Cursor</span> · Esc 取消</div>
+    <div class="frame" id="aimFrame" hidden></div>
+  </div>
+
+  <script>
+    (function () {
+      var stage = document.getElementById('stage');
+      var composeWrap = document.getElementById('composeWrap');
+      var form = document.getElementById('composeForm');
+      var q = document.getElementById('q');
+      var modelReady = false;
+      var gateOpen = false;
+      var projectId = '';
+      var picked = '';
+      var aimed = false;
+      var drag = null;
+      var pendingAsk = null;
+      var SKIP_KEY = 'ha2.mock.skipProjectPrompt';
+      var overlay = document.getElementById('aimOverlay');
+      var aimFrame = document.getElementById('aimFrame');
+
+      var TASKS = {
+        idle: {
+          title: '写一句，开始',
+          fact: '没有正在推进的任务。问模型或送到桌面都可以。',
+          evidence: [],
+          actions: [],
+          side: null,
+          compose: 'primary',
+          card: false
+        },
+        resume: {
+          title: '停在鉴权中间件',
+          fact: '上次改到 JWT 校验，有检查点可接着做。',
+          evidence: ['检查点 · 2 小时前', 'voice-pilot'],
+          actions: [
+            { label: '继续上次工作', primary: true, act: 'continue' },
+            { label: '查看步骤', act: 'steps' }
+          ],
+          side: null,
+          compose: 'secondary',
+          card: true,
+          agent: { name: 'Codex', sub: '桌面 Agent · 可恢复', ico: 'Cx', tone: '' },
+          status: { label: '可恢复', tone: 'is-resume' }
+        },
+        decide: {
+          title: '改登录页文案',
+          fact: '等你批准写入。通过后才会改文件。',
+          evidence: ['已隔离验证', '将改 2 个文件'],
+          actions: [
+            { label: '批准并执行', primary: true, act: 'approve' },
+            { label: '查看改动', act: 'diff' },
+            { label: '放弃', act: 'abort' }
+          ],
+          side: null,
+          compose: 'secondary',
+          card: true,
+          agent: { name: 'WorkBuddy', sub: '编辑引擎 · 工作意图', ico: 'WB', tone: 'is-wb' },
+          status: { label: '等你决定', tone: 'is-wait' }
+        },
+        failed: {
+          title: '写入被拒绝',
+          fact: '没有权限改 src/login.tsx。可换目录重试，或查看失败详情。',
+          evidence: ['错误 · EACCES', '目标 · src/login.tsx'],
+          actions: [
+            { label: '查看失败详情', primary: true, warn: true, act: 'failDetail' },
+            { label: '换方式重试', act: 'retry' },
+            { label: '关闭', act: 'dismiss' }
+          ],
+          side: {
+            title: '相关',
+            text: '同一次任务回执已进历史，不在此抢主位。',
+            act: null
+          },
+          compose: 'secondary',
+          card: true,
+          agent: { name: 'Codex', sub: '桌面 Agent · 执行失败', ico: 'Cx', tone: '' },
+          status: { label: '失败', tone: 'is-fail' }
+        }
+      };
+
+      function projectSkipStored() {
+        try { return localStorage.getItem(SKIP_KEY) === '1'; } catch (_) { return false; }
+      }
+      function setProjectSkip() {
+        try { localStorage.setItem(SKIP_KEY, '1'); } catch (_) {}
+      }
+
+      function setTask(id) {
+        var t = TASKS[id] || TASKS.idle;
+        var main = document.getElementById('mainStage');
+        stage.dataset.task = id;
+        stage.classList.toggle('has-task', id !== 'idle');
+        main.classList.toggle('is-card', !!t.card);
+        document.getElementById('mainTitle').textContent = t.title;
+        document.getElementById('mainFact').textContent = t.fact;
+
+        if (t.card && t.agent) {
+          var ico = document.getElementById('cardAgentIco');
+          ico.textContent = t.agent.ico;
+          ico.className = 'agent-ico' + (t.agent.tone ? ' ' + t.agent.tone : '');
+          document.getElementById('cardAgentName').textContent = t.agent.name;
+          document.getElementById('cardAgentSub').textContent = t.agent.sub;
+          var pill = document.getElementById('cardStatus');
+          pill.textContent = t.status.label;
+          pill.className = 'status-pill ' + (t.status.tone || '');
+          document.getElementById('agentChipName').textContent = t.agent.name;
+          document.getElementById('agentChipIco').textContent = t.agent.ico;
+        }
+
+        var ev = document.getElementById('mainEvidence');
+        ev.innerHTML = '';
+        if (t.evidence && t.evidence.length) {
+          ev.classList.add('is-on');
+          t.evidence.forEach(function (x) {
+            var s = document.createElement('span');
+            s.textContent = x;
+            ev.appendChild(s);
+          });
+        } else {
+          ev.classList.remove('is-on');
+        }
+
+        var acts = document.getElementById('mainActions');
+        acts.innerHTML = '';
+        if (t.actions && t.actions.length) {
+          acts.classList.add('is-on');
+          t.actions.forEach(function (a) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn' + (a.primary ? ' primary' : '') + (a.warn ? ' warn' : '');
+            b.textContent = a.label;
+            b.onclick = function () { onMainAct(a.act); };
+            acts.appendChild(b);
+          });
+        } else {
+          acts.classList.remove('is-on');
+        }
+
+        var side = document.getElementById('sideNotice');
+        if (t.side) {
+          side.classList.add('is-on');
+          document.getElementById('sideTitle').textContent = t.side.title;
+          document.getElementById('sideText').textContent = t.side.text;
+          document.getElementById('sideAct').hidden = !t.side.act;
+        } else {
+          side.classList.remove('is-on');
+        }
+
+        composeWrap.classList.toggle('is-secondary', t.compose === 'secondary');
+        document.querySelectorAll('.demo-bar [data-task]').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-task') === id);
+        });
+      }
+
+      function onMainAct(act) {
+        if (act === 'continue' || act === 'approve') {
+          setTask('decide');
+          if (act === 'approve') {
+            document.getElementById('mainFact').textContent = '（稿）已批准 · 落地接 atrActs 执行';
+          }
+          return;
+        }
+        if (act === 'dismiss') {
+          setTask('idle');
+          return;
+        }
+        if (act === 'failDetail' || act === 'steps' || act === 'diff') {
+          openDrawer(act === 'failDetail' ? 'resume' : 'now');
+          return;
+        }
+        if (act === 'retry') setTask('decide');
+        if (act === 'abort') setTask('idle');
+      }
+
+      function setModelReady(on) {
+        modelReady = !!on;
+        form.classList.toggle('is-gated', !modelReady);
+        setGateOpen(false);
+        var chip = document.getElementById('acctChip');
+        var lab = document.getElementById('acctLabel');
+        if (modelReady) {
+          chip.classList.remove('is-off');
+          lab.textContent = 'WB · 账号';
+        } else {
+          chip.classList.add('is-off');
+          lab.textContent = '未开通';
+        }
+      }
+
+      function setGateOpen(on) {
+        gateOpen = !!on && !modelReady;
+        document.getElementById('gatePanel').classList.toggle('is-open', gateOpen);
+      }
+
+      function setProject(id) {
+        projectId = id || '';
+        var chip = document.getElementById('projectChip');
+        var ap = document.getElementById('agentChipProj');
+        if (projectId) {
+          chip.classList.remove('is-empty');
+          chip.textContent = projectId;
+          ap.textContent = projectId;
+        } else {
+          chip.classList.add('is-empty');
+          chip.textContent = '项目';
+          ap.textContent = '未选项目';
+        }
+      }
+
+      function openProjModal() {
+        document.getElementById('projModal').classList.add('is-on');
+      }
+      function closeProjModal() {
+        document.getElementById('projModal').classList.remove('is-on');
+      }
+
+      function tryAskModel() {
+        if (!modelReady) {
+          setGateOpen(true);
+          return;
+        }
+        if (!projectId && !projectSkipStored()) {
+          pendingAsk = true;
+          openProjModal();
+          return;
+        }
+        pendingAsk = null;
+        // 空闲问模型：不伪造「执行中」主状态；仅短暂附属反馈
+        if (stage.dataset.task === 'idle') {
+          var side = document.getElementById('sideNotice');
+          side.classList.add('is-on');
+          document.getElementById('sideTitle').textContent = '问模型';
+          document.getElementById('sideText').textContent = projectId
+            ? '针对「' + projectId + '」回复中…（落地接 gateway chat）'
+            : '模型回复中…（落地接 gateway chat）';
+          document.getElementById('sideAct').hidden = true;
+        }
+      }
+
+      function startConnect(id) {
+        var map = {
+          kilo: { title: '启用 Kilo', text: '一键通道' },
+          workbuddy: { title: '浏览器登录 WorkBuddy', text: '登录后自动回来' },
+          opencode: { title: '设备登录 Zen', text: '授权后进下拉' }
+        };
+        var m = map[id] || map.workbuddy;
+        document.getElementById('authTitle').textContent = m.title;
+        document.getElementById('authText').textContent = m.text;
+        document.getElementById('authSlot').classList.add('is-on');
+        setGateOpen(true);
+      }
+
+      /* deliver */
+      function syncDeliver() {
+        var on = !!picked;
+        form.classList.toggle('is-deliver', on);
+        document.getElementById('destHint').classList.toggle('is-on', on);
+        document.querySelectorAll('.app-ico-btn').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-agent') === picked);
+        });
+        if (!on) {
+          aimed = false;
+          document.getElementById('primaryLabel').textContent = '问模型';
+          return;
+        }
+        document.getElementById('destName').textContent = picked;
+        document.getElementById('aimOverlayApp').textContent = picked;
+        document.getElementById('destCopy').textContent = aimed
+          ? '窗口已锁定，点右侧送到应用'
+          : '框选目标窗口后发出';
+        document.getElementById('aimState').textContent = aimed ? '已框选' : '未框选';
+        document.getElementById('aimState').className = 'aim-state ' + (aimed ? 'is-ok' : 'is-need');
+        document.getElementById('aimChip').classList.toggle('is-ok', aimed);
+        document.getElementById('aimChipLabel').textContent = aimed ? '已框选' : '框选窗口';
+        document.getElementById('primaryLabel').textContent = aimed ? '送到 ' + picked : '先框选';
+      }
+      function clearDest() { picked = ''; aimed = false; stopAim(); syncDeliver(); }
+      function stopAim() {
+        overlay.classList.remove('is-on');
+        aimFrame.hidden = true;
+        drag = null;
+      }
+      function startAim() {
+        if (!picked) return;
+        overlay.classList.add('is-on');
+      }
+
+      /* drawer = ha2 workspace host (#history) — not a second desk */
+      var drawer = document.getElementById('historyDrawer');
+      var scrim = document.getElementById('scrim');
+      function openDrawer(tab) {
+        if (tab) setHistTab(tab);
+        drawer.hidden = false; scrim.hidden = false;
+        try {
+          if (location.hash !== '#history') {
+            history.replaceState(null, '', '#history');
+          }
+        } catch (_) {}
+        requestAnimationFrame(function () {
+          drawer.classList.add('is-open'); scrim.classList.add('is-open');
+        });
+      }
+      function closeDrawer() {
+        drawer.classList.remove('is-open'); scrim.classList.remove('is-open');
+        try {
+          if (location.hash === '#history') {
+            history.replaceState(null, '', location.pathname + location.search);
+          }
+        } catch (_) {}
+        setTimeout(function () { drawer.hidden = true; scrim.hidden = true; }, 200);
+      }
+      function setHistTab(id) {
+        if (id !== 'now' && id !== 'resume' && id !== 'recent') id = 'now';
+        document.querySelectorAll('[data-hist]').forEach(function (b) {
+          b.setAttribute('aria-selected', b.getAttribute('data-hist') === id ? 'true' : 'false');
+        });
+        ['now', 'resume', 'recent'].forEach(function (k) {
+          var pane = document.getElementById('pane-' + k);
+          if (!pane) return;
+          var on = k === id;
+          pane.classList.toggle('is-on', on);
+          pane.hidden = !on;
+        });
+      }
+
+      document.getElementById('openHistory').onclick = function () { openDrawer('now'); };
+      document.getElementById('wsTeaser').onclick = function () { openDrawer('now'); };
+      document.getElementById('closeHistory').onclick = closeDrawer;
+      scrim.onclick = closeDrawer;
+      document.querySelectorAll('[data-hist]').forEach(function (b) {
+        b.onclick = function () { setHistTab(b.getAttribute('data-hist')); };
+      });
+      document.querySelectorAll('[data-restore]').forEach(function (b) {
+        b.onclick = function () {
+          closeDrawer();
+          setTask(b.getAttribute('data-restore'));
+        };
+      });
+      document.querySelectorAll('[data-ws-act]').forEach(function (b) {
+        b.onclick = function () {
+          var act = b.getAttribute('data-ws-act');
+          var side = document.getElementById('sideNotice');
+          side.classList.add('is-on');
+          document.getElementById('sideTitle').textContent = '工作区';
+          document.getElementById('sideText').textContent =
+            act === 'abandon-send'
+              ? '（稿）落地 data-ha2-atr-abandon-send · 同一套 ha2 动作'
+              : '（稿）落地 data-ha2-atr-abandon · 不另写 Focus 放弃逻辑';
+          document.getElementById('sideAct').hidden = true;
+          closeDrawer();
+          setTask('idle');
+        };
+      });
+
+      var intent = 'chat';
+      function setIntent(next) {
+        intent = next === 'work' ? 'work' : 'chat';
+        document.querySelectorAll('[data-intent]').forEach(function (b) {
+          b.setAttribute('aria-pressed', b.getAttribute('data-intent') === intent ? 'true' : 'false');
+        });
+        // 意图只改边界文案与主按钮语义；不假装切换了任务状态
+        if (stage.dataset.task === 'idle') {
+          document.getElementById('mainFact').textContent = intent === 'work'
+            ? '工作意图：发送后可能改项目文件，开始前会再确认。'
+            : '对话意图：只讨论与出方案，不改文件。也可送到桌面 Agent。';
+          document.getElementById('primaryLabel').textContent = intent === 'work' ? '开始工作' : '问模型';
+        }
+      }
+      document.querySelectorAll('[data-intent]').forEach(function (b) {
+        b.onclick = function () { setIntent(b.getAttribute('data-intent')); };
+      });
+
+      document.getElementById('acctChip').onclick = function () {
+        if (!modelReady) setGateOpen(true);
+        else startConnect('workbuddy');
+      };
+      document.getElementById('expandGate').onclick = function () { setGateOpen(!gateOpen); };
+      document.getElementById('openAllChannels').onclick = function () {
+        alert('落地：开通免费模型完整弹窗');
+      };
+      document.getElementById('authRetry').onclick = function () {
+        document.getElementById('authSlot').classList.remove('is-on');
+        setModelReady(true);
+      };
+      document.getElementById('dismissAuth').onclick = function () {
+        document.getElementById('authSlot').classList.remove('is-on');
+      };
+      document.querySelectorAll('[data-connect]').forEach(function (btn) {
+        btn.onclick = function () { startConnect(btn.getAttribute('data-connect')); };
+      });
+
+      document.getElementById('projectChip').onclick = openProjModal;
+      document.getElementById('projVeil').onclick = function () {
+        closeProjModal(); pendingAsk = null;
+      };
+      document.getElementById('projSkip').onclick = function () {
+        setProjectSkip(); closeProjModal();
+        if (pendingAsk) tryAskModel();
+      };
+      document.querySelectorAll('[data-proj]').forEach(function (btn) {
+        btn.onclick = function () {
+          setProject(btn.getAttribute('data-proj'));
+          closeProjModal();
+          if (pendingAsk) tryAskModel();
+        };
+      });
+
+      document.querySelectorAll('.app-ico-btn').forEach(function (btn) {
+        btn.onclick = function () {
+          var name = btn.getAttribute('data-agent');
+          if (picked === name) clearDest();
+          else { picked = name; aimed = false; stopAim(); syncDeliver(); }
+        };
+      });
+      document.getElementById('clearDest').onclick = clearDest;
+      document.getElementById('aimChip').onclick = startAim;
+      overlay.addEventListener('mousedown', function (e) {
+        drag = { x0: e.clientX, y0: e.clientY };
+        aimFrame.hidden = false;
+        aimFrame.style.cssText = 'left:' + drag.x0 + 'px;top:' + drag.y0 + 'px;width:0;height:0';
+      });
+      overlay.addEventListener('mousemove', function (e) {
+        if (!drag) return;
+        var x = Math.min(drag.x0, e.clientX), y = Math.min(drag.y0, e.clientY);
+        aimFrame.style.left = x + 'px'; aimFrame.style.top = y + 'px';
+        aimFrame.style.width = Math.abs(e.clientX - drag.x0) + 'px';
+        aimFrame.style.height = Math.abs(e.clientY - drag.y0) + 'px';
+      });
+      overlay.addEventListener('mouseup', function (e) {
+        if (!drag) return;
+        var w = Math.abs(e.clientX - drag.x0), h = Math.abs(e.clientY - drag.y0);
+        drag = null;
+        if (w < 24 || h < 24) return;
+        aimed = true; stopAim(); syncDeliver();
+      });
+
+      document.getElementById('askModel').onclick = function () {
+        if (picked && !aimed) { startAim(); return; }
+        if (picked && aimed) {
+          var side = document.getElementById('sideNotice');
+          side.classList.add('is-on');
+          document.getElementById('sideTitle').textContent = '送到桌面';
+          document.getElementById('sideText').textContent = '正在送到 ' + picked + '…';
+          document.getElementById('sideAct').hidden = true;
+          return;
+        }
+        tryAskModel();
+      };
+
+      document.getElementById('openHandoff').onclick = function () {
+        if (stage.dataset.task !== 'idle') return;
+        var side = document.getElementById('sideNotice');
+        side.classList.add('is-on');
+        document.getElementById('sideTitle').textContent = '交接';
+        document.getElementById('sideText').textContent = '整理草稿不会自动发送；确认后从输入框送出。';
+        document.getElementById('sideAct').hidden = true;
+      };
+
+      document.getElementById('organizeBtn').onclick = function () {
+        var side = document.getElementById('sideNotice');
+        side.classList.add('is-on');
+        document.getElementById('sideTitle').textContent = '整理任务';
+        document.getElementById('sideText').textContent = '（稿）落地接 data-ha2-organize · 本地整理方案';
+        document.getElementById('sideAct').hidden = true;
+      };
+      document.getElementById('openProviders').onclick = function () {
+        setGateOpen(true);
+        alert('落地：打开模型提供方 / 开通免费模型弹窗');
+      };
+      document.getElementById('agentChip').onclick = function () {
+        alert('落地：Agent picker（Codex / Cursor / …）');
+      };
+      document.querySelectorAll('[data-cap]').forEach(function (btn) {
+        btn.onclick = function () {
+          btn.classList.toggle('is-on');
+          var cap = btn.getAttribute('data-cap');
+          var side = document.getElementById('sideNotice');
+          side.classList.add('is-on');
+          document.getElementById('sideTitle').textContent =
+            cap === 'softPad' ? '软键盘' : cap === 'voice' ? '语音' : '摄像头';
+          document.getElementById('sideText').textContent =
+            '（稿）落地接 Soft Pad / 语音 / 摄像头通道能力开关';
+          document.getElementById('sideAct').hidden = true;
+        };
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('projModal').classList.contains('is-on')) {
+          closeProjModal(); pendingAsk = null; return;
+        }
+        if (overlay.classList.contains('is-on')) { stopAim(); return; }
+        if (drawer.classList.contains('is-open')) closeDrawer();
+      });
+
+      document.querySelectorAll('.demo-bar [data-task]').forEach(function (btn) {
+        btn.onclick = function () {
+          document.querySelectorAll('.demo-bar [data-task]').forEach(function (b) {
+            b.classList.remove('is-on');
+          });
+          btn.classList.add('is-on');
+          setTask(btn.getAttribute('data-task'));
+        };
+      });
+      document.querySelectorAll('.demo-bar [data-extra]').forEach(function (btn) {
+        btn.onclick = function () {
+          var x = btn.getAttribute('data-extra');
+          if (x === 'gated') setModelReady(false);
+          if (x === 'ready') setModelReady(true);
+          if (x === 'history') openDrawer('now');
+        };
+      });
+
+      setModelReady(false);
+      setTask('idle');
+      if (location.hash === '#history') {
+        openDrawer('now');
+      }
+    })();
+  </script>
+</body>
+</html>

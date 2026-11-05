@@ -72,8 +72,8 @@ pub use model::{
 };
 pub use project::{project_id_from_path, validate_workspace_path};
 pub use project_confirm::{
-    confirm_project, confirmed_workspace_root, is_project_confirmed, list_known_projects,
-    KnownProjectDto,
+    confirm_project, confirmed_workspace_root, is_project_confirmed, latest_confirmed_project,
+    list_known_projects, KnownProjectDto,
 };
 pub use prompt_journal::{
     maybe_note_from_hook_payload, note_inbound_prompt, note_onetone_dispatch_prompt,

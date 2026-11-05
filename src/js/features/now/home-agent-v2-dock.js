@@ -419,7 +419,16 @@
       });
     }
     var Prep = began.Prep;
-    var collectKind = kind === 'image' ? 'image' : kind === 'file' ? 'file' : 'attach';
+    var collectKind =
+      kind === 'image'
+        ? 'image'
+        : kind === 'url'
+          ? 'url'
+          : kind === 'folder'
+            ? 'folder'
+            : kind === 'file'
+              ? 'file'
+              : 'attach';
     return Prep.collectMaterial(collectKind).then(function (res) {
       if (store() && store().syncMaterialsFromPrep) store().syncMaterialsFromPrep();
       return res;

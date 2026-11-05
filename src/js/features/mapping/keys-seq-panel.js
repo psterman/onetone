@@ -1,11 +1,10 @@
 /**
- * Keys sequence desk — parallel to legacy #settingsPanelKeys.
- * Two-col: left trigger + saved actions; middle sequence + ＋ add menu.
+ * Keys sequence desk — Mac Keys shell: left catalog / mid trigger+steps.
+ * Parallel to legacy #settingsPanelKeys (听写仍归原按键页).
  */
 (function (global) {
   'use strict';
 
-  var savedExpanded = false;
   var triggerRecordArming = false;
 
   function t(key, fallback) {
@@ -304,7 +303,9 @@
     var disp = document.getElementById('keysSeqTriggerDisplay');
     var sub = document.getElementById('keysSeqTriggerSub');
     var pill = document.getElementById('keysSeqHabitPill');
+    var summary = document.getElementById('keysSeqMidSummary');
     var trig = m ? String(m.triggerKey || '').trim() : '';
+    var steps = m && Array.isArray(m.targetActions) ? m.targetActions.length : 0;
     var label = '';
     if (trig && global.OneToneKeyLabels && typeof global.OneToneKeyLabels.triggerBaseLabel === 'function') {
       try {
@@ -339,6 +340,19 @@
         ? t('keysSeqTriggerHint', '按下后按顺序执行下方动作')
         : t('keysSeqTriggerUnset', '先录制触发键，再配置动作链');
     }
+    if (summary) {
+      if (!m) {
+        summary.textContent = '—';
+      } else {
+        var trigLab = trig ? label : t('badgeNotRecorded', '未设置');
+        summary.textContent =
+          trigLab +
+          ' · ' +
+          (steps
+            ? steps + t('keysCustomKeyMatchSteps', '步')
+            : t('keysCustomKeyMatchNoActions', '尚无动作'));
+      }
+    }
     var row = document.getElementById('keysSeqTriggerRow');
     if (row) {
       var rec = global.OneToneMappingRecording;
@@ -364,60 +378,13 @@
     }
   }
 
-  var flowOpenId = '';
-
-  function stepFlowHtml(m) {
-    var acts = Array.isArray(m && m.targetActions) ? m.targetActions : [];
-    if (!acts.length) {
-      return (
-        '<div class="keys-seq-saved-flow is-empty">' +
-        esc(t('keysCustomKeyMatchNoActions', '尚无动作')) +
-        '</div>'
-      );
-    }
-    var parts = acts.map(function (a, i) {
-      var typ = a && a.type ? String(a.type) : '';
-      var lab =
-        typ === 'key'
-          ? friendlyKey(a.value || '') || t('keysCaptureSeqAddKey', '按键')
-          : typ === 'text'
-            ? String(a.value || '').slice(0, 24) || t('keysCaptureSeqAddText', '文本')
-            : typ === 'delay'
-              ? (Number(a.ms) || 0) + 'ms'
-              : typ === 'open'
-                ? String(a.value || a.kind || '').slice(0, 28) || t('keysCaptureSeqAddOpenFile', '文件')
-                : typ === 'ime'
-                  ? t('keysCaptureSeqAddIme', '语音输入法') +
-                    (a.value ? ' · ' + friendlyKey(a.value) : '')
-                  : typ || '?';
-      return (
-        '<span class="keys-seq-saved-flow-step"><b>' +
-        (i + 1) +
-        '</b> ' +
-        esc(lab) +
-        '</span>'
-      );
-    });
-    return '<div class="keys-seq-saved-flow">' + parts.join('<span class="keys-seq-saved-flow-arr" aria-hidden="true">→</span>') + '</div>';
-  }
-
   function paintSavedList(m) {
     var list = document.getElementById('keysSeqSavedList');
     var countEl = document.getElementById('keysSeqSavedCount');
-    var toggle = document.getElementById('keysSeqSavedToggle');
     if (!list) return;
     var rows = listSavedActions(m);
     var curId = m && m.id ? String(m.id) : '';
     if (countEl) countEl.textContent = String(rows.length);
-    if (toggle) {
-      toggle.setAttribute('aria-expanded', savedExpanded ? 'true' : 'false');
-      toggle.classList.toggle('is-open', !!savedExpanded);
-    }
-    if (!savedExpanded) {
-      list.hidden = true;
-      list.innerHTML = '';
-      return;
-    }
     list.hidden = false;
     if (!rows.length) {
       list.innerHTML =
@@ -432,12 +399,16 @@
         var trigLab = trig ? friendlyKey(trig) : t('badgeNotRecorded', '未设置');
         var name = actionDisplayName(row);
         var steps = Array.isArray(row.targetActions) ? row.targetActions.length : 0;
+        var sub =
+          trigLab +
+          ' · ' +
+          (steps
+            ? steps + t('keysCustomKeyMatchSteps', '步')
+            : t('keysCustomKeyMatchNoActions', '尚无动作'));
         var on = String(row.id) === curId;
-        var flowOn = String(row.id) === String(flowOpenId);
         return (
           '<div class="keys-seq-saved-card' +
           (on ? ' is-active' : '') +
-          (flowOn ? ' is-flow-open' : '') +
           '" data-seq-card="' +
           esc(row.id) +
           '" role="listitem">' +
@@ -445,33 +416,19 @@
           '<button type="button" class="keys-seq-saved-item" data-seq-select="' +
           esc(row.id) +
           '">' +
-          '<span class="keys-seq-saved-key">' +
-          esc(trigLab) +
-          '</span>' +
           '<span class="keys-seq-saved-name">' +
           esc(name) +
           '</span>' +
           '<span class="keys-seq-saved-steps">' +
-          esc(steps ? steps + t('keysCustomKeyMatchSteps', '步') : t('keysCustomKeyMatchNoActions', '尚无动作')) +
+          esc(sub) +
           '</span></button>' +
-          '<button type="button" class="keys-seq-saved-flow-tog" data-seq-flow="' +
-          esc(row.id) +
-          '" aria-expanded="' +
-          (flowOn ? 'true' : 'false') +
-          '" title="' +
-          esc(t('keysSeqSavedShowFlow', '查看动作序列')) +
-          '">' +
-          (flowOn ? '▾' : '▸') +
-          '</button>' +
           '<button type="button" class="keys-seq-saved-del" data-seq-del="' +
           esc(row.id) +
           '" title="' +
           esc(t('homeKeyMapActionDelete', '删除')) +
           '" aria-label="' +
           esc(t('homeKeyMapActionDelete', '删除')) +
-          '">×</button></div>' +
-          (flowOn ? stepFlowHtml(row) : '') +
-          '</div>'
+          '">×</button></div></div>'
         );
       })
       .join('');
@@ -507,7 +464,6 @@
         m.enabled = true;
       }
     }
-    savedExpanded = true;
     syncDeskClass();
     bindOnce();
     paintTrigger(m);
@@ -551,7 +507,6 @@
       ok = true;
     }
     if (!ok) return;
-    if (flowOpenId === mid) flowOpenId = '';
     if (isCur) {
       var other = rows.find(function (r) {
         return r && String(r.id) !== mid;
@@ -648,7 +603,6 @@
       } catch (_) {}
       return;
     }
-    savedExpanded = true;
     render();
   }
 
@@ -808,26 +762,11 @@
           startNewAction();
           return;
         }
-        if (el && el.closest && el.closest('#keysSeqSavedToggle')) {
-          e.preventDefault();
-          savedExpanded = !savedExpanded;
-          paintSavedList(selectedHabit());
-          return;
-        }
         var del = el && el.closest ? el.closest('[data-seq-del]') : null;
         if (del && rail.contains(del)) {
           e.preventDefault();
           e.stopPropagation();
           deleteSaved(del.getAttribute('data-seq-del'));
-          return;
-        }
-        var flow = el && el.closest ? el.closest('[data-seq-flow]') : null;
-        if (flow && rail.contains(flow)) {
-          e.preventDefault();
-          e.stopPropagation();
-          var fid = String(flow.getAttribute('data-seq-flow') || '');
-          flowOpenId = flowOpenId === fid ? '' : fid;
-          paintSavedList(selectedHabit());
           return;
         }
         var item = el && el.closest ? el.closest('[data-seq-select]') : null;
