@@ -713,7 +713,7 @@ assert.match(css, /\.ha2-section-head|\.ha2-row-tag|\.ha2-when/);
 assert.match(css, /\.ha2-row-main:focus-visible/);
 assert.match(css, /\.ha2-atr-history-row \.ha2-row-main/);
 assert.match(shell, /ha2-atr-history-row|workHistoryRowsHtml/);
-assert.match(css, /--ha2-ok:\s*#1a9b5f/);
+assert.match(css, /--ha2-ok:\s*var\(--ot-success/);
 const agentCenter = read('src/js/features/agent/agent-center.js');
 assert.match(agentCenter, /OneToneAgentClientEffects|applyClientEffect:\s*applyClientEffect/);
 
