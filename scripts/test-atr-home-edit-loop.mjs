@@ -131,6 +131,16 @@ await Task.runGoal({ goal: 'test greeting', workspaceRoot: 'E:/proj' }).then(
 );
 
 let driveCount = 0;
+const fakeController = {
+  bindAtrTask() {},
+  isPlanConfirmed() { return true; },
+  driveAtrUntilIdle({ taskId }) {
+    return sandbox.OneToneIpc.invoke('cmd_agent_task_drive', {
+      taskId,
+      maxSteps: 1
+    }).then((dto) => ({ ok: true, result: dto }));
+  }
+};
 sandbox.OneToneIpc = {
   invoke(cmd) {
     calls.push(cmd);
@@ -173,7 +183,11 @@ sandbox.OneToneIpc = {
     return Promise.reject(new Error('unexpected:' + cmd));
   }
 };
-const dto = await Task.runGoal({ goal: 'fix greeting', workspaceRoot: 'E:/proj' });
+const dto = await Task.runGoal({
+  goal: 'fix greeting',
+  workspaceRoot: 'E:/proj',
+  controller: fakeController
+});
 assert.equal(dto.taskId, 't_edit_1');
 assert.equal(dto.checkpointId, 'ckpt_1');
 assert.equal(dto.status, 'waiting');
@@ -202,7 +216,7 @@ assert.match(uiSrc, /budget_exhausted/);
 // Edit send must not require desktop Agent chip before ATR.
 assert.match(
   uiSrc,
-  /Edit mode → ATR only[\s\S]*?if \(!c\.id\)/
+  /function sendBlockReason[\s\S]*?workMode[\s\S]*?=== ['"]edit['"][\s\S]*?atrTaskBusy/
 );
 assert.match(uiSrc, /function sendBlockReason[\s\S]*?=== 'edit'[\s\S]*?ha2PickAgent/);
 

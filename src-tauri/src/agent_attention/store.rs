@@ -396,6 +396,11 @@ pub fn raise(mut signal: AgentAttentionSignal) -> RaiseOutcome {
                 emit_snapshot.sequence,
             );
         }
+        // Waiting-set changes already schedule via recompute hook; lifecycle /
+        // new NeedsInput still need a Home push when waiting set is stable.
+        if outcome.state_changed || outcome.signal_inserted {
+            crate::home_status_notify::schedule("attention");
+        }
     }
     outcome
 }

@@ -362,6 +362,11 @@ fn tick_once() {
         agent_type: primary_title,
         ts: now,
         prompt: String::new(),
+        stop_status: String::new(),
+        agent_message: String::new(),
+        workspace: String::new(),
+        file_path: String::new(),
+        composer_mode: String::new(),
     });
 }
 

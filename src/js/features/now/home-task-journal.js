@@ -78,6 +78,40 @@
     return null;
   }
 
+  function findTask(state, taskId) {
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (String(state.tasks[i].id) === String(taskId)) return state.tasks[i];
+    }
+    return null;
+  }
+
+  /** Task carries a delivery marker → lives under 工作, not 对话. */
+  function taskHasDelivery(state, taskId) {
+    var id = String(taskId || '');
+    if (!id) return false;
+    for (var i = 0; i < state.events.length; i++) {
+      var ev = state.events[i];
+      if (!ev || String(ev.taskId) !== id) continue;
+      var k = String(ev.kind || '');
+      if (k === 'handoff' || k === 'receipt') return true;
+    }
+    return false;
+  }
+
+  function isChatLaneTask(state, taskId) {
+    var t = findTask(state, taskId);
+    if (!t || t.archived) return false;
+    if (String(t.lane || '') === 'work') return false;
+    return !taskHasDelivery(state, taskId);
+  }
+
+  function isWorkLaneTask(state, taskId) {
+    var t = findTask(state, taskId);
+    if (!t || t.archived) return false;
+    if (String(t.lane || '') === 'work') return true;
+    return taskHasDelivery(state, taskId);
+  }
+
   function ensureActive(state) {
     if (state.activeTaskId) {
       for (var i = 0; i < state.tasks.length; i++) {
@@ -92,13 +126,44 @@
         return state.activeTaskId;
       }
     }
-    var t = createTaskInternal(state, { title: '本机对话' });
+    var t = createTaskInternal(state, { title: '本机对话', lane: 'chat' });
+    return t.id;
+  }
+
+  /** Prefer a delivery-free chat task — never append 对话 turns onto 投递 threads. */
+  function ensureChatTask(state) {
+    if (state.activeTaskId && isChatLaneTask(state, state.activeTaskId)) {
+      return state.activeTaskId;
+    }
+    for (var j = state.tasks.length - 1; j >= 0; j--) {
+      if (isChatLaneTask(state, state.tasks[j].id)) {
+        state.activeTaskId = state.tasks[j].id;
+        return state.activeTaskId;
+      }
+    }
+    var t = createTaskInternal(state, { title: '本机对话', lane: 'chat' });
+    return t.id;
+  }
+
+  /** Handoffs/receipts land on a work task — never convert the active chat thread. */
+  function ensureWorkTask(state) {
+    if (state.activeTaskId && isWorkLaneTask(state, state.activeTaskId)) {
+      return state.activeTaskId;
+    }
+    for (var j = state.tasks.length - 1; j >= 0; j--) {
+      if (isWorkLaneTask(state, state.tasks[j].id)) {
+        state.activeTaskId = state.tasks[j].id;
+        return state.activeTaskId;
+      }
+    }
+    var t = createTaskInternal(state, { title: '投递记录', lane: 'work' });
     return t.id;
   }
 
   function createTaskInternal(state, opts) {
     opts = opts || {};
     var at = now();
+    var lane = opts.lane === 'work' ? 'work' : opts.lane === 'chat' ? 'chat' : '';
     var task = {
       id: nid('task'),
       title: String(opts.title || '新任务').trim() || '新任务',
@@ -106,7 +171,8 @@
       updatedAt: at,
       projectPath: opts.projectPath ? String(opts.projectPath) : '',
       pinned: !!opts.pinned,
-      archived: !!opts.archived
+      archived: !!opts.archived,
+      lane: lane
     };
     state.tasks.push(task);
     if (opts.activate !== false) state.activeTaskId = task.id;
@@ -143,7 +209,7 @@
     }
 
     if (!wbTurns.length && !handoffs.length) {
-      createTaskInternal(state, { title: '本机对话' });
+      createTaskInternal(state, { title: '本机对话', lane: 'chat' });
       save(state);
       try {
         if (global.localStorage) global.localStorage.setItem(MIGRATE_FLAG, '1');
@@ -152,7 +218,7 @@
     }
 
     if (wbTurns.length) {
-      var chatTask = createTaskInternal(state, { title: '本机对话' });
+      var chatTask = createTaskInternal(state, { title: '本机对话', lane: 'chat' });
       wbTurns.forEach(function (turn) {
         state.events.push({
           id: turn.id || nid('ev'),
@@ -171,6 +237,7 @@
     if (handoffs.length) {
       var sendTask = createTaskInternal(state, {
         title: '投递记录',
+        lane: 'work',
         activate: !wbTurns.length
       });
       // listHandoffs is newest-first; store chronological
@@ -381,85 +448,220 @@
   }
 
   function appendEvent(ev) {
-    ev = ev || {};
     return withState(function (state) {
-      var taskId = String(ev.taskId || '') || ensureActive(state);
-      var at = ev.at || now();
-      var row = {
-        id: ev.id || nid('ev'),
-        taskId: taskId,
-        at: at,
-        kind: ev.kind || 'chat_turn',
-        agentKind: String(ev.agentKind || 'workbuddy'),
-        role: ev.role === 'assistant' ? 'assistant' : ev.role === 'system' ? 'system' : 'user',
-        text: String(ev.text || ''),
-        meta: ev.meta && typeof ev.meta === 'object' ? ev.meta : {}
-      };
-      if (!row.text && row.kind === 'chat_turn') return null;
-      for (var i = 0; i < state.events.length; i++) {
-        if (String(state.events[i].id) === String(row.id)) {
-          state.events[i] = row;
-          touchTask(state, taskId, at);
-          return row;
-        }
-      }
-      state.events.push(row);
-      touchTask(state, taskId, at);
-      return row;
+      return appendEventInState(state, ev);
     });
   }
 
   function appendChatTurn(turn) {
     turn = turn || {};
-    return appendEvent({
-      id: turn.id,
-      taskId: turn.taskId,
-      at: turn.at,
-      kind: 'chat_turn',
-      agentKind: turn.agentKind || 'workbuddy',
-      role: turn.role,
-      text: turn.text,
-      meta: {
-        model: turn.model || '',
-        accountId: turn.accountId || ''
+    return withState(function (state) {
+      var taskId = String(turn.taskId || '');
+      if (!taskId || !isChatLaneTask(state, taskId)) {
+        taskId = ensureChatTask(state);
+      } else {
+        state.activeTaskId = taskId;
       }
+      // First user line becomes the list title when still the default.
+      var text = String(turn.text || '').trim();
+      if (turn.role !== 'assistant' && text) {
+        var task = findTask(state, taskId);
+        if (task && (!task.title || task.title === '本机对话' || task.title === '新任务')) {
+          task.title = text.length > 28 ? text.slice(0, 27) + '…' : text;
+        }
+      }
+      return appendEventInState(state, {
+        id: turn.id,
+        taskId: taskId,
+        at: turn.at,
+        kind: 'chat_turn',
+        agentKind: turn.agentKind || 'workbuddy',
+        role: turn.role,
+        text: turn.text,
+        meta: {
+          model: turn.model || '',
+          accountId: turn.accountId || '',
+          providerId: turn.providerId || '',
+          toolName: turn.toolName || '',
+          toolOk: turn.toolOk,
+          collapsed: turn.collapsed
+        }
+      });
+    });
+  }
+
+  /** Persist a collapsible tool step (search / fetch / deliver / …) on the chat task. */
+  function appendToolEvent(ev) {
+    ev = ev || {};
+    return withState(function (state) {
+      var taskId = String(ev.taskId || '');
+      if (!taskId || !isChatLaneTask(state, taskId)) {
+        taskId = ensureChatTask(state);
+      } else {
+        state.activeTaskId = taskId;
+      }
+      return appendEventInState(state, {
+        id: ev.id,
+        taskId: taskId,
+        at: ev.at,
+        kind: ev.kind || 'tool_step',
+        agentKind: ev.agentKind || 'atr',
+        role: 'assistant',
+        text: String(ev.text || ev.summary || ev.toolName || ''),
+        meta: {
+          toolName: ev.toolName || '',
+          toolOk: ev.toolOk !== false,
+          detail: ev.detail || '',
+          atrTaskId: ev.atrTaskId || '',
+          collapsed: ev.collapsed !== false,
+          approvalToken: ev.approvalToken || ''
+        }
+      });
+    });
+  }
+
+  function eventToChatTurn(ev) {
+    if (!ev) return null;
+    var kind = String(ev.kind || '');
+    if (
+      kind !== 'chat_turn' &&
+      kind !== 'tool_step' &&
+      kind !== 'needs_input' &&
+      kind !== 'deliver_approval' &&
+      kind !== 'finish'
+    ) {
+      return null;
+    }
+    var meta = ev.meta || {};
+    return {
+      id: ev.id,
+      at: ev.at,
+      role: ev.role === 'user' ? 'user' : 'assistant',
+      text: String(ev.text || ''),
+      model: meta.model || '',
+      providerId: meta.providerId || '',
+      accountId: meta.accountId || '',
+      kind: kind === 'chat_turn' ? undefined : kind,
+      toolName: meta.toolName || '',
+      toolOk: meta.toolOk,
+      detail: meta.detail || '',
+      collapsed: meta.collapsed !== false,
+      approvalToken: meta.approvalToken || ''
+    };
+  }
+
+  function listChatTurns(taskId) {
+    migrateOnce();
+    var id = String(taskId || getActiveTaskId() || '');
+    if (!id) return [];
+    return listEvents(id)
+      .map(eventToChatTurn)
+      .filter(Boolean);
+  }
+
+  function clearChatTurns(taskId) {
+    return withState(function (state) {
+      var id = String(taskId || state.activeTaskId || '');
+      if (!id) return 0;
+      var before = state.events.length;
+      state.events = state.events.filter(function (ev) {
+        if (String(ev.taskId) !== id) return true;
+        var k = String(ev.kind || '');
+        return (
+          k !== 'chat_turn' &&
+          k !== 'tool_step' &&
+          k !== 'needs_input' &&
+          k !== 'deliver_approval' &&
+          k !== 'finish'
+        );
+      });
+      touchTask(state, id, now());
+      return before - state.events.length;
     });
   }
 
   function appendHandoff(h) {
     h = h || {};
-    return appendEvent({
-      id: h.id,
-      taskId: h.taskId,
-      at: h.at || (h.handedOffAt ? Date.parse(String(h.handedOffAt)) : now()),
-      kind: 'handoff',
-      agentKind: String(h.targetKind || h.agentKind || 'agent'),
-      role: 'user',
-      text: String(h.body || h.preview || h.title || ''),
-      meta: {
-        title: h.title || '',
-        outcome: h.outcome || '',
-        chars: h.chars || 0,
-        source: h.source || ''
+    return withState(function (state) {
+      var taskId = String(h.taskId || '');
+      // Explicit work task id ok; never pin a handoff onto a clean chat thread.
+      if (!taskId || isChatLaneTask(state, taskId)) {
+        taskId = ensureWorkTask(state);
+      } else {
+        state.activeTaskId = taskId;
+        var wt = findTask(state, taskId);
+        if (wt) wt.lane = 'work';
       }
+      return appendEventInState(state, {
+        id: h.id,
+        taskId: taskId,
+        at: h.at || (h.handedOffAt ? Date.parse(String(h.handedOffAt)) : now()),
+        kind: 'handoff',
+        agentKind: String(h.targetKind || h.agentKind || 'agent'),
+        role: 'user',
+        text: String(h.body || h.preview || h.title || ''),
+        meta: {
+          title: h.title || '',
+          outcome: h.outcome || '',
+          chars: h.chars || 0,
+          source: h.source || ''
+        }
+      });
     });
   }
 
   function appendReceipt(r) {
     r = r || {};
-    return appendEvent({
-      id: r.id,
-      taskId: r.taskId,
-      at: r.at,
-      kind: 'receipt',
-      agentKind: String(r.agentKind || r.targetKind || 'agent'),
-      role: 'assistant',
-      text: String(r.text || r.message || ''),
-      meta: {
-        outcome: r.outcome || '',
-        verified: !!r.verified
+    return withState(function (state) {
+      var taskId = String(r.taskId || '');
+      if (!taskId || isChatLaneTask(state, taskId)) {
+        taskId = ensureWorkTask(state);
+      } else {
+        state.activeTaskId = taskId;
+        var wt = findTask(state, taskId);
+        if (wt) wt.lane = 'work';
       }
+      return appendEventInState(state, {
+        id: r.id,
+        taskId: taskId,
+        at: r.at,
+        kind: 'receipt',
+        agentKind: String(r.agentKind || r.targetKind || 'agent'),
+        role: 'assistant',
+        text: String(r.text || r.message || ''),
+        meta: {
+          outcome: r.outcome || '',
+          verified: !!r.verified
+        }
+      });
     });
+  }
+
+  function appendEventInState(state, ev) {
+    ev = ev || {};
+    var taskId = String(ev.taskId || '') || ensureActive(state);
+    var at = ev.at || now();
+    var row = {
+      id: ev.id || nid('ev'),
+      taskId: taskId,
+      at: at,
+      kind: ev.kind || 'chat_turn',
+      agentKind: String(ev.agentKind || 'workbuddy'),
+      role: ev.role === 'assistant' ? 'assistant' : ev.role === 'system' ? 'system' : 'user',
+      text: String(ev.text || ''),
+      meta: ev.meta && typeof ev.meta === 'object' ? ev.meta : {}
+    };
+    if (!row.text && (row.kind === 'chat_turn' || row.kind === 'finish')) return null;
+    for (var i = 0; i < state.events.length; i++) {
+      if (String(state.events[i].id) === String(row.id)) {
+        state.events[i] = row;
+        touchTask(state, taskId, at);
+        return row;
+      }
+    }
+    state.events.push(row);
+    touchTask(state, taskId, at);
+    return row;
   }
 
   function latestUserText(taskId) {
@@ -503,9 +705,21 @@
     eventCount: eventCount,
     agentKindsForTask: agentKindsForTask,
     appendChatTurn: appendChatTurn,
+    appendToolEvent: appendToolEvent,
+    listChatTurns: listChatTurns,
+    clearChatTurns: clearChatTurns,
     appendHandoff: appendHandoff,
     appendReceipt: appendReceipt,
     latestUserText: latestUserText,
-    iconForAgent: iconForAgent
+    iconForAgent: iconForAgent,
+    // Test / directory helpers
+    isChatLaneTaskId: function (taskId) {
+      migrateOnce();
+      return isChatLaneTask(loadRaw(), taskId);
+    },
+    isWorkLaneTaskId: function (taskId) {
+      migrateOnce();
+      return isWorkLaneTask(loadRaw(), taskId);
+    }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

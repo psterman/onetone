@@ -39,10 +39,18 @@ assert.doesNotMatch(acJs, /har-stat--confirmable/);
 assert.doesNotMatch(acJs, /har-stat--best/);
 assert.match(acJs, /function projectAgentControl/);
 assert.doesNotMatch(acJs, /real-provider\/NOT_EXECUTED/);
-// Home no longer mounts full Agent Center roster
+// Home no longer mounts full Agent Center roster — compact status chips only.
 assert.doesNotMatch(hfView, /homeAgentRoster/);
 assert.match(hfView, /homeAgentStatusHost/);
 assert.match(hfView, /homePromptPrepHost/);
+assert.match(hfView, /agentStatusRowHtml|hn-agent-status-row/);
+assert.match(hfView, /hn-agent-watch|data-hn-watch/);
+assert.match(hfView, /data-hf-act="toggle_watch"/);
+assert.match(hfView, /data-hf-act="select_agent"/);
+assert.match(nowHome, /select_agent/);
+assert.match(nowHome, /toggle_watch/);
+assert.match(nowHome, /pickMode === 'send'|data-hf-agent-mode/);
+assert.match(nowHome, /openWatchPop/);
 assert.doesNotMatch(hfView, /Living Now/);
 assert.doesNotMatch(hfView, /computeHomeOverview|classifyInterrupt|har-badge/);
 assert.doesNotMatch(hfView, /har-overview|har-filter/);
@@ -55,6 +63,11 @@ assert.match(acJs, /__test/);
 assert.match(acJs, /cmd_agent_center_action/);
 assert.match(acJs, /resolveActionOutcome/);
 assert.doesNotMatch(acJs, /res\.outcome \|\| \(res\.ok === false \? 'failed' : 'verified'\)/);
+// Provider deep-link must not clobber section filter; detail shows this agent's work history.
+assert.match(acJs, /homeProvider/);
+assert.doesNotMatch(acJs, /if \(opts\.provider\) state\.homeFilter = String\(opts\.provider\)/);
+assert.match(acJs, /har-work-list/);
+assert.match(acJs, /unscopedRecentWork/);
 assert.match(centerRs, /"agent\.interrupt"/);
 assert.match(ipcRs, /cmd_agent_center_action/);
 assert.match(rosterCss, /@media \(max-width:\s*680px\)/);
@@ -65,12 +78,14 @@ assert.match(rosterCss, /\.har-badge/);
 assert.match(rosterCss, /\.har-evidence/);
 assert.match(rosterCss, /\.har-row-main/);
 assert.match(rosterCss, /\.har-row-actions/);
+assert.match(rosterCss, /\.har-work-list/);
 assert.match(rosterCss, /flex:\s*0\s+0\s+auto/);
 assert.match(rosterCss, /overflow-y:\s*visible/);
 assert.match(acJs, /detailWhere|当前所在项目/);
 assert.match(acJs, /actionAttemptedUnverified.*请自行确认|请自行确认/);
 assert.match(page, /data-sub="overview"/);
 assert.match(page, /ensureOverviewMounted/);
+assert.match(page, /function applyNavProvider/);
 
 // --- MiniDOM (jsdom-free) ---
 function matches(el, sel) {

@@ -58,6 +58,7 @@ mod habit_profile;
 mod capture;
 #[cfg(windows)]
 mod clipboard_image;
+mod home_status_notify;
 mod home_tray_snapshot;
 mod input_aim_calibrate;
 mod input_ext;
@@ -500,11 +501,13 @@ pub fn run() {
                 crate::agent_attention::mark_initialized();
             });
 
+            crate::home_status_notify::bind_app(app.handle().clone());
             {
                 let state_for_attention = app_state.clone();
                 crate::agent_attention::set_recompute_hook(move || {
                     let cfg = state_for_attention.cfg.lock().clone();
                     crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
+                    crate::home_status_notify::schedule("attention");
                 });
             }
             {
@@ -1397,6 +1400,9 @@ pub fn run() {
             ipc::cmd_agent_task_drive,
             ipc::cmd_agent_task_ready,
             ipc::cmd_agent_task_ensure_verify_sandbox,
+            ipc::cmd_agent_task_ensure_chat_scratch,
+            ipc::cmd_agent_task_approve_deliver,
+            ipc::cmd_agent_task_reject_deliver,
             ipc::cmd_agent_task_evaluate_verify,
             ipc::cmd_agent_task_probe_workbuddy,
             ipc::cmd_project_context_open,

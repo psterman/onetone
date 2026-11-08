@@ -71,6 +71,15 @@ fn new_sandbox_id() -> String {
     format!("vs_{}_{suffix}", store::now_ms())
 }
 
+/// Lightweight chat root when no project is confirmed — no git/verify binding.
+pub fn ensure_chat_scratch() -> Result<Value, String> {
+    let root = crate::data_root::effective_data_root().join("atr-chat-scratch");
+    fs::create_dir_all(&root).map_err(|e| format!("mkdir chat scratch: {e}"))?;
+    let abs = canonicalize_path(&root);
+    let abs_s = abs.to_string_lossy().to_string();
+    Ok(json!({ "workspaceRoot": abs_s }))
+}
+
 /// Create an isolated verify sandbox and register expected content (backend authority).
 pub fn ensure_verify_sandbox() -> Result<Value, String> {
     let sandbox_id = new_sandbox_id();
@@ -141,11 +150,19 @@ pub fn claim_sandbox_for_task(
 }
 
 /// Gate real drives: verify sandbox task OR matching acceptance. Else edit_not_admitted.
+/// Chat / read_only lane only needs a configured provider — not edit acceptance.
 pub fn assert_drive_admitted(
     conn: &Connection,
     task: &TaskRow,
     provider: &str,
 ) -> Result<(), String> {
+    use super::contracts::PermissionMode;
+    if PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly) {
+        let want =
+            providers::parse_provider_id(provider).ok_or_else(|| "unknown_provider".to_string())?;
+        let _ = config_fingerprint(&want).ok_or_else(|| format!("{want}_unconfigured"))?;
+        return Ok(());
+    }
     if task.verify_intent {
         let sid = task
             .sandbox_id
@@ -401,6 +418,16 @@ mod tests {
     use crate::agent_task_runtime::contracts::TaskEventDto;
 
     #[test]
+    fn chat_scratch_is_stable_dir() {
+        let a = ensure_chat_scratch().unwrap();
+        let b = ensure_chat_scratch().unwrap();
+        assert_eq!(a["workspaceRoot"], b["workspaceRoot"]);
+        let root = a["workspaceRoot"].as_str().unwrap();
+        assert!(root.contains("atr-chat-scratch"), "{root}");
+        assert!(Path::new(root).is_dir());
+    }
+
+    #[test]
     fn isolated_sandboxes_differ() {
         let a = ensure_verify_sandbox().unwrap();
         let b = ensure_verify_sandbox().unwrap();
@@ -556,6 +583,26 @@ mod tests {
             store::insert_task(conn, &task)?;
             let err = assert_drive_admitted(conn, &task, "deepseek").unwrap_err();
             assert_eq!(err, "edit_not_admitted");
+            Ok(())
+        })
+        .unwrap();
+        set_test_db_path(None);
+        let _ = fs::remove_file(&db);
+    }
+
+    #[test]
+    fn drive_admit_chat_read_only_skips_edit_acceptance() {
+        let db = tmp_db("chatacc");
+        set_test_db_path(Some(db.clone()));
+        let _ = crate::soft_pad_quota::set_stored_key(
+            crate::soft_pad_quota::SoftPadQuotaProvider::DeepSeek,
+            "sk-testkey123456",
+        );
+        with_write(|conn| {
+            let mut task = sample_task("t_chat", false, None, "/tmp/proj");
+            task.permission_mode = "read_only".into();
+            store::insert_task(conn, &task)?;
+            assert_drive_admitted(conn, &task, "deepseek")?;
             Ok(())
         })
         .unwrap();

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design System Inspired by Meta (from DESIGN.md tokens)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--meta-blue:#0064E0;--meta-hover:#0143B5;--meta-pressed:#004BB9;--meta-light:#47A5FA;--fb:#1877F2;--bg:#fff;--wash:#F0F2F5;--soft:#F1F4F7;--text:#050505;--sec:#65676B;--div:#CED0D4;--radius-pill:999px;--radius-card:12px;--font:Inter,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--wash);color:var(--text)}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid var(--div)}
+.nav b{font-size:15px}.nav a{color:var(--sec);text-decoration:none;font-size:14px;margin-left:16px}
+.hero{background:#fff;padding:48px 24px;text-align:center}
+.hero h1{font-size:40px;letter-spacing:-.02em;margin-bottom:12px}.hero p{color:var(--sec);margin-bottom:20px}
+.btn{display:inline-block;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:15px;padding:12px 22px;border-radius:var(--radius-pill)}
+.btn-primary{background:var(--meta-blue);color:#fff}.btn-primary:hover{background:var(--meta-hover)}
+.btn-secondary{background:var(--soft);color:var(--text)}.btn-outline{background:#fff;border:1px solid var(--div);color:var(--text)}
+.section{max-width:960px;margin:0 auto;padding:28px 20px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--sec);margin-bottom:10px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.swatch{background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--div)}.swatch i{display:block;height:52px}.swatch span{display:block;padding:8px;font-size:11px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.card{background:#fff;border-radius:var(--radius-card);padding:18px;border:1px solid var(--div)}
+.note{margin-top:16px;font-size:12px;color:var(--sec)}
+</style></head><body>
+<nav class="nav"><b>Meta Store · DESIGN.md tokens</b><div><a href="#">Shop</a><a href="#">Support</a></div></nav>
+<section class="hero">
+  <h1>Built for connection</h1>
+  <p>CTAs are pill-shaped and always Meta Blue.</p>
+  <div class="row" style="justify-content:center">
+    <button class="btn btn-primary">Shop now</button>
+    <button class="btn btn-secondary">Learn more</button>
+    <button class="btn btn-outline">Outline</button>
+  </div>
+</section>
+<section class="section">
+  <div class="label">Native palette from DESIGN.md</div>
+  <div class="swatches">
+    <div class="swatch"><i style="background:#0064E0"></i><span>Meta Blue<br>#0064E0</span></div>
+    <div class="swatch"><i style="background:#0143B5"></i><span>Hover<br>#0143B5</span></div>
+    <div class="swatch"><i style="background:#47A5FA"></i><span>Light<br>#47A5FA</span></div>
+    <div class="swatch"><i style="background:#1877F2"></i><span>Facebook<br>#1877F2</span></div>
+    <div class="swatch"><i style="background:#F0F2F5"></i><span>Web Wash<br>#F0F2F5</span></div>
+    <div class="swatch"><i style="background:#050505"></i><span>Text<br>#050505</span></div>
+  </div>
+  <div class="row" style="margin-top:20px">
+    <div class="card" style="flex:1;min-width:220px"><b>Pill CTA</b><p style="color:var(--sec);font-size:13px;margin-top:6px">radius 999 · #0064E0</p></div>
+    <div class="card" style="flex:1;min-width:220px"><b>Soft surface</b><p style="color:var(--sec);font-size:13px;margin-top:6px">#F1F4F7 / #F0F2F5</p></div>
+  </div>
+  <p class="note">No official preview.html in mirror for Meta — this page is assembled only from DESIGN.md token/component rules.</p>
+</section>
+</body></html>

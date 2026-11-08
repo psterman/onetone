@@ -1,4 +1,7 @@
-//! Cursor state.vscdb session discovery — headers + user-turn observed (no message body).
+//! Cursor state.vscdb session discovery — headers + user-turn observed.
+//! With user consent (`cursor_local_activity::consent_enabled`), also reads the newest
+//! user-bubble text snippet to improve session/checkpoint titles for Home resume.
+//! Never reads `cursorAuth/*`, cookies, or unrelated KV keys.
 
 use crate::agent_memory::events::{
     append_observed_event, source_ref_for_turn, upsert_project, upsert_session_candidate,
@@ -9,12 +12,12 @@ use crate::agent_memory::model::{
 use crate::agent_memory::project::{mark_active_sessions, resolve_project};
 use crate::agent_memory::store::{now_ms, with_write};
 use crate::cursor_local_activity;
-use rusqlite::{params, Connection, OpenFlags};
+use rusqlite::{params, Connection};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 
 #[derive(Debug, Clone)]
 struct FileMarks {
@@ -67,17 +70,8 @@ fn marks_changed(prev: &FileMarks, next: &FileMarks) -> bool {
 }
 
 fn open_ro(path: &Path) -> Result<Connection, String> {
-    let uri = format!(
-        "file:///{}?mode=ro",
-        path.to_string_lossy().replace('\\', "/")
-    );
-    let conn = Connection::open_with_flags(
-        &uri,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
-    )
-    .map_err(|e| format!("open vscdb: {e}"))?;
-    let _ = conn.busy_timeout(Duration::from_secs(3));
-    Ok(conn)
+    // Same live RO → WAL-trio → VACUUM INTO ladder as Activity Provider.
+    cursor_local_activity::open_vscdb_ro(path)
 }
 
 fn kv_get(conn: &Connection, table: &str, key: &str) -> Option<Value> {
@@ -204,7 +198,72 @@ fn list_headers(conn: &Connection) -> Result<(Vec<HeaderHit>, String), ProbeStat
         );
         return Ok((out, schema_hash));
     }
-    Err(ProbeStatus::SchemaUnknown)
+    // Newer Cursor: ItemTable index gone — list from composerData:* rows.
+    list_headers_from_composer_data(conn)
+}
+
+fn list_headers_from_composer_data(
+    conn: &Connection,
+) -> Result<(Vec<HeaderHit>, String), ProbeStatus> {
+    let sql = "SELECT key,
+            json_extract(value, '$.composerId'),
+            json_extract(value, '$.name'),
+            json_extract(value, '$.createdAt'),
+            json_extract(value, '$.lastUpdatedAt'),
+            json_extract(value, '$.conversationCheckpointLastUpdatedAt')
+         FROM cursorDiskKV WHERE key LIKE 'composerData:%'";
+    let mut stmt = conn.prepare(sql).map_err(|_| ProbeStatus::SchemaUnknown)?;
+    let rows = stmt
+        .query_map([], |row| {
+            let key: String = row.get(0)?;
+            let cid: Option<String> = row.get(1)?;
+            let name: Option<String> = row.get(2)?;
+            let created: Option<f64> = row.get(3)?;
+            let updated: Option<f64> = row.get(4)?;
+            let checkpoint: Option<f64> = row.get(5)?;
+            Ok((key, cid, name, created, updated, checkpoint))
+        })
+        .map_err(|_| ProbeStatus::SchemaUnknown)?;
+    let mut out = Vec::new();
+    for row in rows.flatten() {
+        let (key, cid, name, created, updated, checkpoint) = row;
+        let id = cid
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                key.strip_prefix("composerData:")
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty())
+            })
+            .unwrap_or_default();
+        if id.is_empty() {
+            continue;
+        }
+        let created_at = created.and_then(|n| if n > 0.0 { Some(n as u64) } else { None });
+        let updated_at = updated
+            .and_then(|n| if n > 0.0 { Some(n as u64) } else { None })
+            .or_else(|| {
+                checkpoint.and_then(|n| if n > 0.0 { Some(n as u64) } else { None })
+            })
+            .or(created_at);
+        let title = name
+            .as_deref()
+            .map(|s| truncate_title(s, 120))
+            .filter(|s| !s.is_empty());
+        out.push(HeaderHit {
+            composer_id: id,
+            title,
+            created_at,
+            updated_at,
+        });
+    }
+    if out.is_empty() {
+        return Err(ProbeStatus::SchemaUnknown);
+    }
+    let schema_hash = format!(
+        "{:x}",
+        Sha256::digest(format!("composerData_scan|{}", out.len()).as_bytes())
+    );
+    Ok((out, schema_hash))
 }
 
 fn load_cursor_row(db_path: &str) -> Option<(FileMarks, String, Option<u64>, Value)> {
@@ -241,7 +300,97 @@ fn load_cursor_row(db_path: &str) -> Option<(FileMarks, String, Option<u64>, Val
     .flatten()
 }
 
-/// Conversation-header user turns only — never loads bubble message body.
+/// Newest user-bubble text snippet (consent path only). Returns None when missing/unreadable.
+fn bubble_text_snippet(conn: &Connection, composer_id: &str, bubble_id: &str) -> Option<String> {
+    let key = format!("bubbleId:{composer_id}:{bubble_id}");
+    let v = kv_get(conn, "cursorDiskKV", &key)?;
+    for f in [
+        "text",
+        "rawText",
+        "plainText",
+        "content",
+        "message",
+        "richText",
+    ] {
+        let Some(x) = v.get(f) else { continue };
+        let raw = if let Some(s) = x.as_str() {
+            s.to_string()
+        } else if let Some(arr) = x.as_array() {
+            let mut out = String::new();
+            for p in arr {
+                if let Some(t) = p.get("text").and_then(|y| y.as_str()) {
+                    out.push_str(t);
+                } else if let Some(t) = p.as_str() {
+                    out.push_str(t);
+                }
+            }
+            out
+        } else {
+            continue;
+        };
+        let t = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+        if !t.is_empty() {
+            return Some(truncate_title(&t, 120));
+        }
+    }
+    None
+}
+
+fn title_is_placeholder(title: &str) -> bool {
+    let t = title.trim();
+    t.is_empty()
+        || matches!(
+            t,
+            "当前工作"
+                | "上次进度"
+                | "当前任务"
+                | "当前 Agent 任务"
+                | "已保存上次进度"
+                | "从上次进度继续"
+                | "继续上次工作"
+        )
+}
+
+/// Upgrade empty/placeholder session + checkpoint titles from a real user step.
+fn improve_session_step_title(session_id: &str, snippet: &str) {
+    let snip = snippet.trim();
+    if snip.is_empty() || title_is_placeholder(snip) {
+        return;
+    }
+    let now = now_ms() as i64;
+    let _ = with_write(|conn| {
+        let current: String = conn
+            .query_row(
+                "SELECT COALESCE(title, '') FROM agent_sessions WHERE session_id = ?1",
+                params![session_id],
+                |r| r.get(0),
+            )
+            .unwrap_or_default();
+        if !title_is_placeholder(&current) && current.trim() != snip {
+            // Keep a better existing title.
+            return Ok(());
+        }
+        let _ = conn.execute(
+            "UPDATE agent_sessions SET title = ?1, updated_at_ms = ?2 WHERE session_id = ?3",
+            params![snip, now, session_id],
+        );
+        let _ = conn.execute(
+            "UPDATE agent_checkpoints SET current_task = ?1, updated_at_ms = ?2
+             WHERE session_id = ?3
+               AND (
+                 current_task IS NULL OR TRIM(current_task) = ''
+                 OR current_task IN (
+                   '当前工作','上次进度','当前任务','当前 Agent 任务',
+                   '已保存上次进度','从上次进度继续','继续上次工作'
+                 )
+               )",
+            params![snip, now, session_id],
+        );
+        Ok(())
+    });
+}
+
+/// Conversation-header user turns. With consent, also lifts newest bubble text for resume.
 fn emit_user_turns_for_composer(
     conn: &Connection,
     session_id: &str,
@@ -260,6 +409,8 @@ fn emit_user_turns_for_composer(
     .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
     let hdrs = obj.get(headers_field)?.as_array()?;
     let mut newest_ref = String::new();
+    let mut newest_bid = String::new();
+    let mut newest_ts = 0u64;
     let mut emitted = 0usize;
     const MAX_TURNS: usize = 48;
     for h in hdrs {
@@ -299,14 +450,21 @@ fn emit_user_turns_for_composer(
             ts,
             "User turn observed",
         );
-        newest_ref = sref;
+        if ts >= newest_ts || newest_ref.is_empty() {
+            newest_ts = ts;
+            newest_ref = sref;
+            newest_bid = bid.to_string();
+        }
         emitted += 1;
     }
     if newest_ref.is_empty() {
-        None
-    } else {
-        Some(newest_ref)
+        return None;
     }
+    // Consent already required to enter discover — lift one user snippet for Home「停在」.
+    if let Some(snip) = bubble_text_snippet(conn, composer_id, &newest_bid) {
+        improve_session_step_title(session_id, &snip);
+    }
+    Some(newest_ref)
 }
 
 fn save_cursor_row(
@@ -543,7 +701,7 @@ pub fn discover_cursor_sessions(
             "Cursor session discovered",
         );
 
-        // User turns: newest composers only. Bodies never read. UNIQUE ignores dupes.
+        // User turns: newest composers only. Consent path may lift one bubble snippet.
         let should_scan_turns = turn_scan_set.contains(&h.composer_id)
             && (prev_last_composer_updated == 0
                 || ts >= prev_last_composer_updated.saturating_sub(1));

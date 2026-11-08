@@ -115,6 +115,13 @@
     });
   }
 
+  /** Data-dir scratch for chat lane when no project is confirmed. */
+  function ensureChatScratch() {
+    return invoke('cmd_agent_task_ensure_chat_scratch', {}).then(function (info) {
+      return info;
+    });
+  }
+
   function evaluateVerify(taskId) {
     return invoke('cmd_agent_task_evaluate_verify', {
       taskId: String(taskId || '')
@@ -144,6 +151,20 @@
 
   function rejectPatch(taskId, approvalToken) {
     return invoke('cmd_agent_task_reject_patch', {
+      taskId: String(taskId || ''),
+      approvalToken: String(approvalToken || '')
+    });
+  }
+
+  function approveDeliver(taskId, approvalToken) {
+    return invoke('cmd_agent_task_approve_deliver', {
+      taskId: String(taskId || ''),
+      approvalToken: String(approvalToken || '')
+    });
+  }
+
+  function rejectDeliver(taskId, approvalToken) {
+    return invoke('cmd_agent_task_reject_deliver', {
       taskId: String(taskId || ''),
       approvalToken: String(approvalToken || '')
     });
@@ -441,12 +462,52 @@
    * start → drive(provider). Distinct codes — never crush "no model" into not_ready.
    * @param {{ goal: string, workspaceRoot: string, materialsSummary?: string, permissionMode?: string, useFakeDriver?: boolean, driveFakeSteps?: string[], provider?: string, allowTryEdit?: boolean }} opts
    */
+  function isChatLaneOpts(opts) {
+    opts = opts || {};
+    var pm = String(opts.permissionMode || '').toLowerCase();
+    return pm === 'read_only' || pm === 'readonly' || opts.lane === 'chat';
+  }
+
+  function anyChatProviderReady(info) {
+    var list = (info && Array.isArray(info.providers) && info.providers) || [];
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      if (row && (row.chatReady || row.ready)) return true;
+    }
+    return !!(info && (info.workbuddyReady || info.deepseekReady));
+  }
+
+  function resolveChatProvider(info, preferred) {
+    var want = String(preferred || readProvider() || '')
+      .trim()
+      .toLowerCase();
+    var list = (info && Array.isArray(info.providers) && info.providers) || [];
+    function chatOk(row) {
+      return !!(row && (row.chatReady || row.ready));
+    }
+    if (want) {
+      for (var i = 0; i < list.length; i++) {
+        if (String((list[i] && list[i].id) || '').toLowerCase() === want && chatOk(list[i])) {
+          return String(list[i].id);
+        }
+      }
+      return want;
+    }
+    for (var j = 0; j < list.length; j++) {
+      if (chatOk(list[j])) return String(list[j].id);
+    }
+    if (info && info.selectedDefault) return String(info.selectedDefault);
+    if (info && info.recommendedProvider) return String(info.recommendedProvider);
+    return null;
+  }
+
   function runGoal(opts) {
     opts = opts || {};
     if (!featureEnabled()) {
       return Promise.reject(codedError('not_ready', 'agent_task_runtime_off'));
     }
     var resolvedProvider = null;
+    var chatLane = isChatLaneOpts(opts);
     var allowTry =
       !!opts.allowTryEdit || pathLooksLikeVerifySandbox(opts.workspaceRoot);
     return ready()
@@ -461,6 +522,35 @@
         }
         var useFake = !!opts.useFakeDriver || (Array.isArray(opts.driveFakeSteps) && opts.driveFakeSteps.length);
         if (!useFake) {
+          if (chatLane) {
+            resolvedProvider = resolveChatProvider(info, opts.provider);
+            var chatList = info.providers || [];
+            var chatRow = null;
+            for (var ci = 0; ci < chatList.length; ci++) {
+              if (
+                String((chatList[ci] && chatList[ci].id) || '').toLowerCase() ===
+                String(resolvedProvider || '').toLowerCase()
+              ) {
+                chatRow = chatList[ci];
+                break;
+              }
+            }
+            if (chatRow && !chatRow.chatReady && !chatRow.ready) {
+              return Promise.reject(
+                codedError(
+                  resolvedProvider + '_unconfigured',
+                  resolvedProvider + '_unconfigured'
+                )
+              );
+            }
+            if (!resolvedProvider || !anyChatProviderReady(info)) {
+              return Promise.reject(
+                codedError('provider_unconfigured', 'provider_unconfigured')
+              );
+            }
+            if (opts.provider || readProvider()) writeProvider(resolvedProvider);
+            else if (!readProvider()) writeProvider(resolvedProvider);
+          } else {
           resolvedProvider = resolveProvider(info, opts.provider, {
             allowTryEdit: allowTry
           });
@@ -504,6 +594,7 @@
           // Only persist explicit user/provider choice — not recommendedDefault.
           if (opts.provider || readProvider()) writeProvider(resolvedProvider);
           else if (!readProvider()) writeProvider(resolvedProvider);
+          }
         }
         return start(opts).catch(function (e) {
           return Promise.reject(
@@ -599,6 +690,7 @@
     clearEditVerified: clearEditVerified,
     pathLooksLikeVerifySandbox: pathLooksLikeVerifySandbox,
     ensureVerifySandbox: ensureVerifySandbox,
+    ensureChatScratch: ensureChatScratch,
     evaluateVerify: evaluateVerify,
     verifyThroughController: verifyThroughController,
     enrichReadySnapshot: enrichReadySnapshot,
@@ -608,6 +700,8 @@
     cancel: cancel,
     approvePatch: approvePatch,
     rejectPatch: rejectPatch,
+    approveDeliver: approveDeliver,
+    rejectDeliver: rejectDeliver,
     submitUserInput: submitUserInput,
     resume: resume,
     abandon: abandon,

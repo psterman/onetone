@@ -80,7 +80,8 @@
   }
 
   /**
-   * Top: app + project (left) | 对话/工作 intent | habits + history.
+   * Top: app + project (left) | 提问/投递 intent | habits + history.
+   * chat = ask local LLM; work = forward/deliver to desktop agents.
    * Project lives here — not in the compose Agent chip.
    */
   function chromeHtml(vm, opts) {
@@ -116,10 +117,10 @@
       '<div class="hn-intent" role="group" aria-label="下一步意图">' +
       '<button type="button" class="hn-intent-btn" data-hf-act="set_intent" data-hf-intent="chat" aria-pressed="' +
       (intent === 'chat' ? 'true' : 'false') +
-      '">对话<small>讨论 · 不改文件</small></button>' +
+      '">提问<small>向大模型提问</small></button>' +
       '<button type="button" class="hn-intent-btn" data-hf-act="set_intent" data-hf-intent="work" aria-pressed="' +
       (intent === 'work' ? 'true' : 'false') +
-      '">工作<small>可改项目文件</small></button>' +
+      '">投递<small>向各 Agent 转发</small></button>' +
       '</div>' +
       '<div class="hn-chrome-actions">' +
       '<button type="button" class="hn-hist-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="历史 · 查找与恢复" aria-label="历史">' +
@@ -138,10 +139,15 @@
       (vm && vm.desk && vm.desk.continueCard && (vm.desk.continueCard.badge || vm.desk.continueCard.provider)) ||
       '';
     var p = String(provider).toLowerCase();
+    if (p.indexOf('onetone_atr') >= 0 || p === 'atr') return '本机工作';
     if (p.indexOf('codex') >= 0) return 'Codex';
     if (p.indexOf('claude') >= 0) return 'Claude';
     if (p.indexOf('cursor') >= 0) return 'Cursor';
     if (p.indexOf('workbuddy') >= 0 || p.indexOf('wb') >= 0) return 'WorkBuddy';
+    // Prefer adapter label when FG Soft Pad would steal ATR / other Agent names.
+    if (vm && vm.desk && vm.desk.continueCard && vm.desk.continueCard.badge) {
+      return String(vm.desk.continueCard.badge);
+    }
     return String(provider || '').trim() || 'Agent';
   }
 
@@ -184,6 +190,7 @@
     if (mode === 'attention') return { label: '等你决定', tone: 'wait' };
     if (mode === 'return') return { label: '可恢复', tone: 'resume' };
     if (mode === 'running') return { label: '执行中', tone: 'run' };
+    if (mode === 'completed') return { label: '刚刚完成', tone: 'resume' };
     if (mode === 'degraded') return { label: '失败', tone: 'fail' };
     return { label: '当前', tone: 'idle' };
   }
@@ -196,20 +203,48 @@
     return '';
   }
 
+  /**
+   * Cursor local-activity strip — only on Cursor task card (not under-compose all-agent strip).
+   * Soft Pad keeps the full stats surface.
+   */
+  function cursorLocalHtml(vm) {
+    var local = vm && vm.cursorLocal;
+    if (!local || !local.line) return '';
+    var primaryIsEnable =
+      vm.primary && vm.primary.id === 'enable_cursor_activity';
+    var enableBtn =
+      local.enableCta && !primaryIsEnable
+        ? '<button type="button" class="hn-text-btn hn-task-card__local-act" data-hf-act="enable_cursor_activity">开启</button>'
+        : '';
+    return (
+      '<div class="hn-task-card__local' +
+      (local.ready ? ' is-ready' : ' is-off') +
+      '" data-hn-cursor-local="' +
+      esc(local.state || '') +
+      '">' +
+      '<span class="hn-task-card__local-k">本机</span>' +
+      '<span class="hn-task-card__local-line">' +
+      esc(local.line) +
+      '</span>' +
+      enableBtn +
+      '</div>'
+    );
+  }
+
   /** Idle invite — one headline, one fact; compose owns the action surface. */
   function idleInviteHtml(opts) {
     opts = opts || {};
     var intent = opts.intent === 'work' ? 'work' : 'chat';
     var hasTask = !!opts.hasTask;
-    var title = intent === 'work' ? '写一句，开始改' : '写一句，开始';
+    var title = intent === 'work' ? '写一句，投递给 Agent' : '写一句，向大模型提问';
     var fact = hasTask
-      ? '先写新的，或继续下面的任务。'
+      ? '先写新的，或继续下面这件事。'
       : intent === 'work'
-        ? '没有正在推进的任务。描述要改的文件或功能，再送到桌面 Agent。'
-        : '没有正在推进的任务。问模型或送到桌面都可以。';
+        ? '没有正在推进的任务。写清要做什么，转发到 Cursor / Claude 等。'
+        : '没有正在推进的任务。问一句，本机大模型直接答。';
     return (
       '<section class="hn-invite" aria-labelledby="hnInviteTitle">' +
-      '<p class="hn-kicker"><button type="button" data-hf-act="open_prep">整理并交接</button></p>' +
+      '<p class="hn-kicker"><button type="button" data-hf-act="open_prep">帮我理一理再说</button></p>' +
       '<h1 id="hnInviteTitle">' +
       esc(title) +
       '</h1>' +
@@ -385,6 +420,9 @@
     if (vm.mode === 'running') {
       return { text: '运行中', kind: '' };
     }
+    if (vm.mode === 'completed') {
+      return { text: '刚刚完成', kind: '' };
+    }
     if (vm.mode === 'quiet' && !vm.primary) {
       return { text: '无需处理', kind: '' };
     }
@@ -431,6 +469,159 @@
     );
   }
 
+  /** Map ledgerAgents title/provider → catalog kind for ha2 select. */
+  function agentKindFromLabel(label) {
+    var S = global.OneToneHomeAgentV2Store;
+    var raw = String(label || '').trim();
+    if (!raw) return '';
+    if (S && S.resolveKind) {
+      var k = S.resolveKind(raw);
+      if (k) return k;
+    }
+    var low = raw.toLowerCase();
+    if (low.indexOf('cursor') >= 0) return 'cursor';
+    if (low.indexOf('claude') >= 0) return 'claude';
+    if (low.indexOf('codex') >= 0 || low.indexOf('chatgpt') >= 0) return 'codex';
+    if (low.indexOf('workbuddy') >= 0 || low.indexOf('codebuddy') >= 0) return 'workbuddy';
+    if (low.indexOf('minimax') >= 0) return 'minimax';
+    if (low.indexOf('trae') >= 0) return 'traework';
+    if (low.indexOf('qoder') >= 0) return 'qoder';
+    return low.replace(/\s+/g, '');
+  }
+
+  function statusToneFromAgentKind(agentKind) {
+    if (agentKind === 'needsYou') return 'wait';
+    if (agentKind === 'living') return 'run';
+    if (agentKind === 'error') return 'fail';
+    if (agentKind === 'untracked') return 'idle';
+    return 'idle';
+  }
+
+  function shortStatusLine(row) {
+    var detail = String((row && row.detail) || '').trim();
+    if (!detail) return '空着';
+    // First segment before · keeps the chip one line.
+    var bit = detail.split('·')[0].trim();
+    return bit || detail;
+  }
+
+  function watchStatusLabel(row) {
+    var k = row && row.agentKind;
+    if (k === 'needsYou') return '等你拍板';
+    if (k === 'living') return '在忙';
+    if (k === 'error') return '出问题了';
+    if (k === 'untracked') return '暂时接不上';
+    return shortStatusLine(row);
+  }
+
+  function watchSummaryLine(rows) {
+    var c = { wait: 0, run: 0, fail: 0, idle: 0 };
+    (rows || []).forEach(function (row) {
+      var t = statusToneFromAgentKind(row && row.agentKind);
+      if (c[t] != null) c[t]++;
+      else c.idle++;
+    });
+    var parts = [];
+    if (c.wait) parts.push(c.wait + ' 等你');
+    if (c.run) parts.push(c.run + ' 在忙');
+    if (c.fail) parts.push(c.fail + ' 出错');
+    if (!parts.length) return '此刻都安静';
+    return parts.join(' · ');
+  }
+
+  /**
+   * Watch strip under compose — collapsed by default (merged.html).
+   * Peek only: chips do not change send target (select_agent without mode=send).
+   */
+  function agentStatusRowHtml(vm) {
+    vm = vm || {};
+    var rows = (vm.desk && vm.desk.ledgerAgents) || [];
+    if (!rows.length) return '';
+    var parsed = rows
+      .slice(0, 8)
+      .map(function (row) {
+        if (!row) return null;
+        var name = String(row.title || row.provider || row.badge || 'Agent').trim();
+        var kind = agentKindFromLabel(row.provider || row.badge || name);
+        if (!kind) return null;
+        return {
+          row: row,
+          name: name,
+          kind: kind,
+          tone: statusToneFromAgentKind(row.agentKind),
+          line: watchStatusLabel(row)
+        };
+      })
+      .filter(Boolean);
+    if (!parsed.length) return '';
+
+    var hot = parsed.filter(function (p) {
+      return p.tone === 'wait' || p.tone === 'run' || p.tone === 'fail';
+    });
+    var faceSrc = (hot.length ? hot : parsed).slice(0, 4);
+    var faces = faceSrc
+      .map(function (p) {
+        return (
+          '<span class="hn-watch-face' +
+          agentIcoTone(p.name) +
+          '" aria-hidden="true">' +
+          agentIcoInnerHtml(p.name) +
+          '</span>'
+        );
+      })
+      .join('');
+    var sum = watchSummaryLine(parsed.map(function (p) { return p.row; }));
+    var chips = parsed
+      .map(function (p) {
+        return (
+          '<button type="button" class="hn-agent-chip is-' +
+          esc(p.tone) +
+          '" data-hf-act="select_agent" data-hf-agent-kind="' +
+          esc(p.kind) +
+          '" data-hf-agent-name="' +
+          esc(p.name) +
+          '" data-ot-tip-prefer="above" data-ot-tip="' +
+          esc(p.name + ' · ' + p.line + ' · 点开看详情') +
+          '" aria-label="' +
+          esc(p.name + '，' + p.line) +
+          '">' +
+          '<span class="hn-agent-chip__ico' +
+          agentIcoTone(p.name) +
+          '" aria-hidden="true">' +
+          agentIcoInnerHtml(p.name) +
+          '</span>' +
+          '<span class="hn-agent-chip__body"><b>' +
+          esc(p.name) +
+          '</b><span>' +
+          esc(p.line) +
+          '</span></span>' +
+          '<i class="hn-agent-chip__dot" aria-hidden="true"></i></button>'
+        );
+      })
+      .join('');
+
+    return (
+      '<div class="hn-agent-watch" data-hn-watch data-hn-agent-status-row>' +
+      '<button type="button" class="hn-watch-sum" data-hf-act="toggle_watch" aria-expanded="false">' +
+      '<span class="hn-watch-faces" aria-hidden="true">' +
+      faces +
+      '</span>' +
+      '<span class="hn-watch-sum__txt">' +
+      esc(sum) +
+      '<small>点开看各家 · 不改发送目标</small></span>' +
+      '<span class="hn-watch-sum__chev">展开</span></button>' +
+      '<div class="hn-watch-panel" hidden>' +
+      '<div class="hn-watch-tools">' +
+      '<span class="hn-watch-tools__sum">' +
+      esc(sum + ' · 共 ' + parsed.length + ' 家') +
+      '</span>' +
+      '<button type="button" data-hf-act="open_history">工作区</button></div>' +
+      '<div class="hn-agent-status-row" role="list" aria-label="各 Agent 状态">' +
+      chips +
+      '</div></div></div>'
+    );
+  }
+
   /**
    * Task status card — one current state + one next action.
    * Used when mode is attention / return / running / degraded (not idle quiet).
@@ -470,9 +661,11 @@
           ? '可恢复'
           : mode === 'running'
             ? '执行中'
-            : mode === 'degraded'
-              ? '执行失败'
-              : '当前');
+            : mode === 'completed'
+              ? '刚刚完成'
+              : mode === 'degraded'
+                ? '执行失败'
+                : '当前');
     return (
       '<section class="hn-task-card" data-hn-task-card data-mode="' +
       esc(mode) +
@@ -501,6 +694,7 @@
       '<p class="hn-task-card__fact">' +
       esc(vm.assistance || '') +
       '</p>' +
+      (agent === 'Cursor' ? cursorLocalHtml(vm) : '') +
       evidencePillsHtml(vm) +
       (actions ? '<div class="hn-actions hn-task-card__acts">' + actions + '</div>' : '') +
       '</section>'
@@ -594,6 +788,8 @@
         ? '<div class="hn-actions hn-quiet-actions"><button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button></div>'
         : '';
     // ha2 compose dock embeds here — real model rail / + materials / ↑ send.
+    // Watch strip sits under the dock host (merged.html: one surface, collapsed by default).
+    var watch = !secondary ? agentStatusRowHtml(vm) : '';
     return (
       '<section class="hn-quiet-composer hn-quiet-composer--ha2' +
       (secondary ? ' is-secondary' : '') +
@@ -601,7 +797,11 @@
       esc(secondary ? '发起另一项任务' : '写一句开始') +
       '">' +
       (secondary ? '<p class="hn-other-task-label">发起另一项任务</p>' : '') +
+      '<div class="hn-compose-stack">' +
       '<div class="hn-ha2-compose-host is-home-agent-v2" data-hf-ha2-compose-host data-ha2-dock-host></div>' +
+      watch +
+      '</div>' +
+      '<div class="hn-home-notice" data-hf-home-notice role="status" aria-live="polite" aria-atomic="true"></div>' +
       '<div data-ha2-picker-host></div>' +
       restore +
       matSummary +
@@ -682,6 +882,14 @@
       '<header><h2 id="hnRecallTitle">详情</h2>' +
       '<button type="button" class="hn-icon" data-hf-act="close_drawer" aria-label="关闭">×</button></header>' +
       '<div class="hn-drawer-body" id="hnRecallBody"></div></aside>' +
+      '<div class="hn-watch-pop" id="hnWatchPop" hidden role="dialog" aria-label="Agent 状态">' +
+      '<h3 id="hnWatchPopTitle">—</h3>' +
+      '<p class="hn-watch-pop__state" id="hnWatchPopState">—</p>' +
+      '<div class="hn-watch-pop__acts">' +
+      '<button type="button" data-hf-act="open_history">看详情</button>' +
+      '<button type="button" class="is-write" id="hnWatchPopSend" data-hf-act="select_agent" data-hf-agent-mode="send">发给它</button>' +
+      '</div>' +
+      '<p class="hn-watch-pop__hint">「看详情」只读；只有「发给它」改发送目标。</p></div>' +
       voice +
       '</main>'
     );
@@ -812,6 +1020,8 @@
     evidenceHtml: evidenceHtml,
     heroHtml: heroHtml,
     taskCardHtml: taskCardHtml,
+    cursorLocalHtml: cursorLocalHtml,
+    agentStatusRowHtml: agentStatusRowHtml,
     quietComposerHtml: quietComposerHtml
   };
 })(typeof window !== 'undefined' ? window : globalThis);

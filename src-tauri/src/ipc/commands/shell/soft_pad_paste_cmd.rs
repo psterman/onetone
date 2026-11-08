@@ -36,6 +36,11 @@ pub fn cmd_soft_pad_paste_only(hold_ms: Option<u32>) -> SoftPadPasteOnlyResult {
     result
 }
 
+/// ATR `deliver_to_agent` — same Ctrl+V path without going through the IPC command.
+pub fn paste_only_external(hold_ms: u32) -> SoftPadPasteOnlyResult {
+    paste_only_inner(hold_ms)
+}
+
 fn paste_only_inner(hold_ms: u32) -> SoftPadPasteOnlyResult {
     if app_identity::foreground_is_self() {
         app_log::cursor_send_oplog(

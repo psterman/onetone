@@ -5,11 +5,12 @@ use std::path::PathBuf;
 
 use rusqlite::Connection;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 
 use super::cancel::{self, TaskCancel};
 use super::contracts::{
-    PermissionMode, TaskStatus, MAX_FORMAT_RETRIES, MAX_IDENTICAL_TOOL, MAX_REPAIR,
-    MAX_TOOL_JSON_DEPTH, MAX_TURNS,
+    PermissionMode, TaskStatus, CHAT_WEB_SEARCH_CAP, CHAT_WEB_SEARCH_FAIL_CAP,
+    MAX_FORMAT_RETRIES, MAX_IDENTICAL_TOOL, MAX_REPAIR, MAX_TOOL_JSON_DEPTH, MAX_TURNS,
 };
 use super::parse::{self, ParseError, ToolCall};
 use super::prompts;
@@ -240,7 +241,8 @@ pub fn prep_turn(conn: &Connection, task_id: &str, recent: &str) -> Result<Optio
     }
     let events = list_events(conn, task_id)?;
     let tool_trace = prompts::tool_trace_from_events(&events);
-    let messages = prompts::build_messages(&task, recent, &tool_trace);
+    let mats = prompts::materials_summary_from_events(&events);
+    let messages = prompts::build_messages_with_materials(&task, recent, &tool_trace, &mats);
     Ok(Some(TurnPrep {
         task,
         messages,
@@ -248,13 +250,25 @@ pub fn prep_turn(conn: &Connection, task_id: &str, recent: &str) -> Result<Optio
     }))
 }
 
-/// Apply one model raw tool-call JSON (write lock held by caller).
-pub fn apply_raw_tool_turn(
+/// Outcome of starting a tool turn under the write lock.
+/// Network tools must finish OUTSIDE the lock (see `drive_releasing`) so search/fetch
+/// cannot freeze ATR poll + FE atr_turn for minutes.
+pub enum RawTurnOutcome {
+    Applied(TaskRow),
+    PendingNetwork { call: ToolCall, streak: u32 },
+}
+
+fn is_network_tool(name: &str) -> bool {
+    matches!(name, "web_search" | "fetch_url")
+}
+
+/// Parse + gate + tool_call event. Network tools return `PendingNetwork` without executing.
+pub fn begin_raw_tool_turn(
     conn: &mut Connection,
     task_id: &str,
     raw: &str,
     recent: &mut String,
-) -> Result<TaskRow, String> {
+) -> Result<RawTurnOutcome, String> {
     let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
     if task.status == TaskStatus::Waiting.as_str()
         || task.status == TaskStatus::Done.as_str()
@@ -262,10 +276,10 @@ pub fn apply_raw_tool_turn(
         || task.status == TaskStatus::Cancelled.as_str()
         || task.status == TaskStatus::Interrupted.as_str()
     {
-        return Ok(task);
+        return Ok(RawTurnOutcome::Applied(task));
     }
     if task.current_turn >= MAX_TURNS {
-        return fail_task(conn, task_id, "max_turns");
+        return fail_task(conn, task_id, "max_turns").map(RawTurnOutcome::Applied);
     }
     task.current_turn = task.current_turn.saturating_add(1);
     let calls = match parse::parse_tool_calls(raw, MAX_TOOL_JSON_DEPTH) {
@@ -283,7 +297,7 @@ pub fn apply_raw_tool_turn(
                 json!({"error": e.as_str(), "raw": raw.chars().take(500).collect::<String>()}),
             )?;
             *recent = format!("format_error:{}", e.as_str());
-            return Ok(updated);
+            return Ok(RawTurnOutcome::Applied(updated));
         }
         Err(e) => {
             // Don't dump model monologue into lastError (FE would show it as the failure text).
@@ -296,7 +310,7 @@ pub fn apply_raw_tool_turn(
                     raw.chars().take(120).collect::<String>()
                 )
             };
-            return fail_task(conn, task_id, &reason);
+            return fail_task(conn, task_id, &reason).map(RawTurnOutcome::Applied);
         }
     };
     if calls.is_empty() {
@@ -311,7 +325,33 @@ pub fn apply_raw_tool_turn(
     let next_n = next_identical_count(recent, &sig)
         .max(identical_tool_streak_from_events(conn, task_id, &call)?);
     if next_n >= MAX_IDENTICAL_TOOL {
-        return fail_task(conn, task_id, "stuck_loop");
+        return fail_task(conn, task_id, "stuck_loop").map(RawTurnOutcome::Applied);
+    }
+    // Chat: soft-cap search (force-finish nudge). Work: hard stuck after 5 consecutive.
+    if call.name == "web_search" {
+        let chat = PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly);
+        if chat {
+            let prior = count_tool_calls_named(conn, task_id, "web_search")?;
+            let fails = count_web_search_fails(conn, task_id)?;
+            if chat_web_search_blocked(prior, fails) {
+                let nudge = CHAT_SEARCH_FORCE_FINISH_NUDGE;
+                let updated = commit_event(
+                    conn,
+                    &task,
+                    "format_retry",
+                    Some("web_search"),
+                    json!({"error": nudge, "code": "chat_search_cap"}),
+                )?;
+                *recent = nudge.into();
+                return Ok(RawTurnOutcome::Applied(updated));
+            }
+        } else {
+            let name_n = consecutive_tool_name_streak(conn, task_id, "web_search")?;
+            if name_n >= 5 {
+                return fail_task(conn, task_id, "stuck_loop:web_search")
+                    .map(RawTurnOutcome::Applied);
+            }
+        }
     }
     let _ = commit_event(
         conn,
@@ -323,15 +363,21 @@ pub fn apply_raw_tool_turn(
             "modelExcerpt": excerpt,
         }),
     )?;
-    let out = match dispatch_tool(conn, &mut task, &call, recent) {
+    if is_network_tool(&call.name) {
+        return Ok(RawTurnOutcome::PendingNetwork {
+            call,
+            streak: next_n,
+        });
+    }
+    let out: Result<TaskRow, String> = match dispatch_tool(conn, &mut task, &call, recent) {
         Ok(Some(updated)) => Ok(updated),
-        Ok(None) => get_task(conn, task_id)?.ok_or_else(|| "task_not_found".into()),
+        Ok(None) => get_task(conn, task_id)?.ok_or_else(|| "task_not_found".to_string()),
         Err(e) => {
             if is_fatal_tool_error(&e) {
-                return fail_task(conn, task_id, &e);
+                return fail_task(conn, task_id, &e).map(RawTurnOutcome::Applied);
             }
             let msg = map_tool_error_for_call(&call, &e);
-            let mut t = get_task(conn, task_id)?.ok_or("task_not_found")?;
+            let mut t = get_task(conn, task_id)?.ok_or_else(|| "task_not_found".to_string())?;
             t.last_error = Some(msg.clone());
             let updated = commit_event(
                 conn,
@@ -344,8 +390,114 @@ pub fn apply_raw_tool_turn(
             Ok(updated)
         }
     };
+    let updated = out?;
     stamp_identical(recent, next_n, &sig);
-    out
+    Ok(RawTurnOutcome::Applied(updated))
+}
+
+/// Run web_search / fetch_url off the DB write lock. Returns tool_result payload or Err code.
+pub fn network_tool_payload(call: &ToolCall) -> Result<Value, String> {
+    let args = &call.arguments;
+    match call.name.as_str() {
+        "web_search" => {
+            let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+            let limit = args
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as u32);
+            let provider = args.get("provider").and_then(|v| v.as_str());
+            Ok(json!({ "result": tools::web_search(q, limit, provider) }))
+        }
+        "fetch_url" => {
+            let url = args
+                .get("url")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "missing_url".to_string())?;
+            let provider = args.get("provider").and_then(|v| v.as_str());
+            let max_chars = args
+                .get("max_chars")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as u32);
+            Ok(json!({ "result": tools::fetch_url(url, provider, max_chars) }))
+        }
+        _ => Err("not_network_tool".into()),
+    }
+}
+
+/// Persist network tool_result / tool_error after off-lock execution.
+pub fn finish_network_tool(
+    conn: &mut Connection,
+    task_id: &str,
+    call: &ToolCall,
+    payload: Result<Value, String>,
+    recent: &mut String,
+    streak: u32,
+) -> Result<TaskRow, String> {
+    let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
+    let chat = PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly);
+    match payload {
+        Ok(payload) => {
+            let search_fail = call.name == "web_search" && web_search_payload_failed(&payload);
+            note_tool_result(recent, &call.name, &payload);
+            persist_tool(conn, &task, &call.name, payload)?;
+            stamp_identical(recent, streak, &tool_call_sig(call));
+            if chat && search_fail {
+                let fails = count_web_search_fails(conn, task_id)?;
+                if fails >= CHAT_WEB_SEARCH_FAIL_CAP {
+                    *recent = format!(
+                        "repeat:{streak}###{}###{}",
+                        tool_call_sig(call),
+                        CHAT_SEARCH_FORCE_FINISH_NUDGE
+                    );
+                }
+            }
+            get_task(conn, task_id)?.ok_or_else(|| "task_not_found".into())
+        }
+        Err(e) => {
+            if is_fatal_tool_error(&e) {
+                return fail_task(conn, task_id, &e);
+            }
+            let msg = map_tool_error_for_call(call, &e);
+            task.last_error = Some(msg.clone());
+            let updated = commit_event(
+                conn,
+                &task,
+                "tool_error",
+                Some(&call.name),
+                json!({ "error": msg }),
+            )?;
+            *recent = format!("tool_error:{msg}");
+            stamp_identical(recent, streak, &tool_call_sig(call));
+            if chat && call.name == "web_search" {
+                let fails = count_web_search_fails(conn, task_id)?;
+                if fails >= CHAT_WEB_SEARCH_FAIL_CAP {
+                    *recent = format!(
+                        "repeat:{streak}###{}###{}",
+                        tool_call_sig(call),
+                        CHAT_SEARCH_FORCE_FINISH_NUDGE
+                    );
+                }
+            }
+            Ok(updated)
+        }
+    }
+}
+
+/// Apply one model raw tool-call JSON (write lock held by caller).
+/// Network tools still run inline here (tests / run_until_idle); product drive uses begin+finish.
+pub fn apply_raw_tool_turn(
+    conn: &mut Connection,
+    task_id: &str,
+    raw: &str,
+    recent: &mut String,
+) -> Result<TaskRow, String> {
+    match begin_raw_tool_turn(conn, task_id, raw, recent)? {
+        RawTurnOutcome::Applied(row) => Ok(row),
+        RawTurnOutcome::PendingNetwork { call, streak } => {
+            let payload = network_tool_payload(&call);
+            finish_network_tool(conn, task_id, &call, payload, recent, streak)
+        }
+    }
 }
 
 pub fn mark_cancelled_public(conn: &mut Connection, task_id: &str) -> Result<TaskRow, String> {
@@ -599,6 +751,72 @@ fn dispatch_tool(
             *recent = "inspect_diff ok".into();
             persist_tool(conn, task, &call.name, json!({"result": result}))?;
         }
+        "web_search" => {
+            let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+            let limit = args
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as u32);
+            let provider = args.get("provider").and_then(|v| v.as_str());
+            let result = tools::web_search(q, limit, provider);
+            let payload = json!({"result": result});
+            note_tool_result(recent, "web_search", &payload);
+            persist_tool(conn, task, &call.name, payload)?;
+        }
+        "fetch_url" => {
+            let url = args.get("url").and_then(|v| v.as_str()).ok_or("missing_url")?;
+            let provider = args.get("provider").and_then(|v| v.as_str());
+            let max_chars = args
+                .get("max_chars")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as u32);
+            let result = tools::fetch_url(url, provider, max_chars);
+            let payload = json!({"result": result});
+            note_tool_result(recent, "fetch_url", &payload);
+            persist_tool(conn, task, &call.name, payload)?;
+        }
+        "deliver_to_agent" => {
+            let text = args.get("text").and_then(|v| v.as_str()).unwrap_or("").trim();
+            let kind = args.get("kind").and_then(|v| v.as_str()).unwrap_or("soft_pad");
+            if text.is_empty() {
+                let result = tools::deliver_to_agent(text, kind);
+                let payload = json!({"result": result});
+                note_tool_result(recent, "deliver_to_agent", &payload);
+                persist_tool(conn, task, &call.name, payload)?;
+            } else {
+                let preview: String = text.chars().take(240).collect();
+                let token = format!(
+                    "{:x}",
+                    Sha256::digest(format!("{}|deliver|{}|{}", task.task_id, kind, text).as_bytes())
+                );
+                let pending = json!({
+                    "kind": "deliver",
+                    "text": text,
+                    "deliverKind": kind,
+                    "preview": preview,
+                    "approvalToken": token,
+                });
+                task.status = TaskStatus::Waiting.as_str().into();
+                task.waiting_reason = Some("deliver_approval".into());
+                task.pending_approval_token = Some(token.clone());
+                task.pending_patch_json =
+                    Some(serde_json::to_string(&pending).unwrap_or_else(|_| "{}".into()));
+                *recent = "waiting_deliver".into();
+                let updated = commit_event(
+                    conn,
+                    task,
+                    "waiting_deliver",
+                    Some("deliver_to_agent"),
+                    json!({
+                        "text": text,
+                        "kind": kind,
+                        "preview": preview,
+                        "approvalToken": token,
+                    }),
+                )?;
+                return Ok(Some(updated));
+            }
+        }
         "request_user_input" => {
             let q = args
                 .get("question")
@@ -656,23 +874,61 @@ fn is_fatal_tool_error(e: &str) -> bool {
     )
 }
 
+/// LangGraph should_continue: any evidence/action tool beats terminal close.
+fn is_terminal_tool(name: &str) -> bool {
+    matches!(
+        name,
+        "finish" | "deliver_to_agent" | "request_user_input"
+    )
+}
+
+const CHAT_SEARCH_FORCE_FINISH_NUDGE: &str = "chat_search_cap: 搜索次数或空结果已达上限。请基于 tool_trace 立刻 finish{summary}；或 request_user_input 澄清；若已有 URL 可用 fetch_url。";
+
+fn chat_web_search_blocked(prior_calls: u32, fail_count: u32) -> bool {
+    prior_calls >= CHAT_WEB_SEARCH_CAP || fail_count >= CHAT_WEB_SEARCH_FAIL_CAP
+}
+
+fn web_search_payload_failed(payload: &Value) -> bool {
+    let result = payload.get("result").unwrap_or(payload);
+    match result.get("ok").and_then(|v| v.as_bool()) {
+        Some(false) => true,
+        Some(true) => false,
+        None => result
+            .get("results")
+            .and_then(|r| r.as_array())
+            .map(|a| a.is_empty())
+            .unwrap_or(false),
+    }
+}
+
 fn prefer_tool_call(calls: Vec<parse::ToolCall>) -> parse::ToolCall {
-    const RANK: &[&str] = &[
-        "finish",
+    // Non-terminals first (write beats explore). Terminals: finish > deliver > ask.
+    const ACTION_RANK: &[&str] = &[
         "export_to_desktop",
         "apply_patch",
         "propose_changes",
-        "request_user_input",
         "run_check",
         "inspect_diff",
+        "fetch_url",
+        "web_search",
         "read_file",
         "search_code",
         "inspect_workspace",
     ];
+    const TERMINAL_RANK: &[&str] = &["finish", "deliver_to_agent", "request_user_input"];
+    let has_action = calls.iter().any(|c| !is_terminal_tool(&c.name));
+    let rank = if has_action {
+        ACTION_RANK
+    } else {
+        TERMINAL_RANK
+    };
     let mut best_i = 0usize;
     let mut best_rank = usize::MAX;
     for (i, c) in calls.iter().enumerate() {
-        let r = RANK.iter().position(|n| *n == c.name).unwrap_or(90);
+        if has_action && is_terminal_tool(&c.name) {
+            continue;
+        }
+        let r = rank.iter().position(|n| *n == c.name).unwrap_or(90);
         if r < best_rank {
             best_rank = r;
             best_i = i;
@@ -824,9 +1080,111 @@ pub fn submit_user_input(
     if task.status != TaskStatus::Waiting.as_str() {
         return Err("not_waiting".into());
     }
+    if task.waiting_reason.as_deref() == Some("deliver_approval") {
+        return Err("waiting_deliver_approval".into());
+    }
     task.status = TaskStatus::Running.as_str().into();
     task.waiting_reason = None;
     commit_event(conn, &task, "user_input", None, json!({"text": text}))
+}
+
+fn pending_deliver_payload(task: &TaskRow) -> Result<Value, String> {
+    let raw = task
+        .pending_patch_json
+        .as_deref()
+        .ok_or("no_pending_deliver")?;
+    let v: Value = serde_json::from_str(raw).map_err(|e| format!("pending_deliver_json: {e}"))?;
+    if v.get("kind").and_then(|k| k.as_str()) != Some("deliver") {
+        return Err("not_deliver_pending".into());
+    }
+    Ok(v)
+}
+
+/// User approved Soft Pad / Agent paste — clipboard+paste only after this gate.
+pub fn approve_deliver(
+    conn: &mut Connection,
+    task_id: &str,
+    token: &str,
+) -> Result<TaskRow, String> {
+    let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
+    if task.status != TaskStatus::Waiting.as_str() {
+        return Err("not_waiting".into());
+    }
+    if task.waiting_reason.as_deref() != Some("deliver_approval") {
+        return Err("not_deliver_waiting".into());
+    }
+    let expected = task
+        .pending_approval_token
+        .clone()
+        .ok_or("no_pending_token")?;
+    if expected != token {
+        return Err("token_mismatch".into());
+    }
+    let pending = pending_deliver_payload(&task)?;
+    if pending.get("approvalToken").and_then(|t| t.as_str()) != Some(token) {
+        return Err("token_stale".into());
+    }
+    let text = pending.get("text").and_then(|v| v.as_str()).unwrap_or("");
+    let kind = pending
+        .get("deliverKind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("soft_pad");
+    let result = tools::deliver_to_agent(text, kind);
+    task.pending_approval_token = None;
+    task.pending_patch_json = None;
+    task.status = TaskStatus::Running.as_str().into();
+    task.waiting_reason = None;
+    let payload = json!({"result": result, "approved": true});
+    commit_event(
+        conn,
+        &task,
+        "tool_result",
+        Some("deliver_to_agent"),
+        payload,
+    )
+}
+
+/// User rejected deliver — resume loop with rejected tool_result (no paste).
+pub fn reject_deliver(
+    conn: &mut Connection,
+    task_id: &str,
+    token: &str,
+) -> Result<TaskRow, String> {
+    let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
+    if task.status != TaskStatus::Waiting.as_str() {
+        return Err("not_waiting".into());
+    }
+    if task.waiting_reason.as_deref() != Some("deliver_approval") {
+        return Err("not_deliver_waiting".into());
+    }
+    let expected = task
+        .pending_approval_token
+        .clone()
+        .ok_or("no_pending_token")?;
+    if expected != token {
+        return Err("token_mismatch".into());
+    }
+    task.pending_approval_token = None;
+    task.pending_patch_json = None;
+    task.status = TaskStatus::Running.as_str().into();
+    task.waiting_reason = None;
+    let payload = json!({
+        "result": {
+            "ok": false,
+            "code": "rejected",
+            "message": "user rejected deliver_to_agent",
+            "clipboard": false,
+            "paste": false,
+        },
+        "approved": false,
+    });
+    commit_event(
+        conn,
+        &task,
+        "tool_result",
+        Some("deliver_to_agent"),
+        payload,
+    )
 }
 
 fn mark_cancelled(conn: &mut Connection, task_id: &str) -> Result<TaskRow, String> {
@@ -873,6 +1231,58 @@ fn identical_tool_streak_from_events(
         n = n.saturating_add(1);
         if n >= MAX_IDENTICAL_TOOL {
             break;
+        }
+    }
+    Ok(n)
+}
+
+/// Trailing tool_call count for a tool name (args ignored) — work-lane web_search spin guard.
+fn consecutive_tool_name_streak(
+    conn: &Connection,
+    task_id: &str,
+    tool_name: &str,
+) -> Result<u32, String> {
+    let events = list_events(conn, task_id)?;
+    let mut n = 0u32;
+    for e in events.iter().rev() {
+        if e.kind != "tool_call" {
+            continue;
+        }
+        if e.tool_name.as_deref() != Some(tool_name) {
+            break;
+        }
+        n = n.saturating_add(1);
+        if n >= 8 {
+            break;
+        }
+    }
+    Ok(n)
+}
+
+fn count_tool_calls_named(
+    conn: &Connection,
+    task_id: &str,
+    tool_name: &str,
+) -> Result<u32, String> {
+    let events = list_events(conn, task_id)?;
+    Ok(events
+        .iter()
+        .filter(|e| e.kind == "tool_call" && e.tool_name.as_deref() == Some(tool_name))
+        .count() as u32)
+}
+
+/// Empty/failed web_search results + web_search tool_errors (chat soft-cap).
+fn count_web_search_fails(conn: &Connection, task_id: &str) -> Result<u32, String> {
+    let events = list_events(conn, task_id)?;
+    let mut n = 0u32;
+    for e in events.iter() {
+        if e.tool_name.as_deref() != Some("web_search") {
+            continue;
+        }
+        match e.kind.as_str() {
+            "tool_error" => n = n.saturating_add(1),
+            "tool_result" if web_search_payload_failed(&e.payload) => n = n.saturating_add(1),
+            _ => {}
         }
     }
     Ok(n)
@@ -1130,6 +1540,48 @@ mod classify_tests {
             },
         ]);
         assert_eq!(export.name, "export_to_desktop");
+    }
+
+    #[test]
+    fn prefer_evidence_tools_over_finish() {
+        use super::{
+            chat_web_search_blocked, prefer_tool_call, web_search_payload_failed, ToolCall,
+            CHAT_SEARCH_FORCE_FINISH_NUDGE, CHAT_WEB_SEARCH_CAP, CHAT_WEB_SEARCH_FAIL_CAP,
+        };
+        use serde_json::json;
+
+        let picked = prefer_tool_call(vec![
+            ToolCall {
+                name: "finish".into(),
+                arguments: json!({"summary": "done"}),
+            },
+            ToolCall {
+                name: "web_search".into(),
+                arguments: json!({"query": "戴佳伟"}),
+            },
+        ]);
+        assert_eq!(picked.name, "web_search");
+
+        let only_term = prefer_tool_call(vec![
+            ToolCall {
+                name: "request_user_input".into(),
+                arguments: json!({"question": "?"}),
+            },
+            ToolCall {
+                name: "finish".into(),
+                arguments: json!({"summary": "x"}),
+            },
+        ]);
+        assert_eq!(only_term.name, "finish");
+
+        assert!(!chat_web_search_blocked(0, 0));
+        assert!(!chat_web_search_blocked(CHAT_WEB_SEARCH_CAP - 1, 0));
+        assert!(chat_web_search_blocked(CHAT_WEB_SEARCH_CAP, 0));
+        assert!(chat_web_search_blocked(0, CHAT_WEB_SEARCH_FAIL_CAP));
+        assert!(CHAT_SEARCH_FORCE_FINISH_NUDGE.contains("finish"));
+
+        assert!(web_search_payload_failed(&json!({"result":{"ok":false,"code":"empty"}})));
+        assert!(!web_search_payload_failed(&json!({"result":{"ok":true,"results":[{"title":"a"}]}})));
     }
 
     #[test]

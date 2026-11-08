@@ -66,7 +66,7 @@ assert.ok(send);
 assert.equal(J.eventCount(chat.id), 2);
 assert.equal(J.listEvents(send.id).length, 1);
 
-const created = J.createTask({ title: '修复分层' });
+const created = J.createTask({ title: '修复分层', lane: 'chat' });
 assert.equal(created.title, '修复分层');
 J.appendChatTurn({
   taskId: created.id,
@@ -80,12 +80,31 @@ J.appendHandoff({
   body: 'handoff body',
   handedOffAt: new Date().toISOString()
 });
-const evs = J.listEvents(created.id);
-assert.equal(evs.length, 2);
-assert.equal(evs[0].kind, 'chat_turn');
-assert.equal(evs[1].kind, 'handoff');
+// Handoff must not pollute the chat thread — 对话 stays chat-only.
+const chatEvs = J.listEvents(created.id);
+assert.equal(chatEvs.length, 1);
+assert.equal(chatEvs[0].kind, 'chat_turn');
+assert.ok(J.isChatLaneTaskId(created.id), 'chat task stays chat lane');
 assert.ok(J.agentKindsForTask(created.id).includes('workbuddy'));
-assert.ok(J.agentKindsForTask(created.id).includes('codex'));
+const workTasks = J.listTasks({ archived: false }).filter((t) => J.isWorkLaneTaskId(t.id));
+assert.ok(workTasks.length >= 1, 'handoff created/used a work task');
+const handoffEv = workTasks
+  .flatMap((t) => J.listEvents(t.id))
+  .find((e) => e && e.kind === 'handoff' && String(e.text || '').includes('handoff body'));
+assert.ok(handoffEv, 'handoff event lives on work lane');
+
+// Active work task must not swallow new 对话 turns.
+J.setArchived(created.id, true);
+const workOnly = J.createTask({ title: '新工作', lane: 'work', activate: true });
+J.appendChatTurn({ role: 'user', text: '今天天气怎么样', agentKind: 'workbuddy' });
+assert.ok(J.isChatLaneTaskId(J.getActiveTaskId()), 'chat send activates chat task');
+assert.notEqual(J.getActiveTaskId(), workOnly.id, 'chat send leaves work task');
+assert.equal(J.listEvents(workOnly.id).length, 0, 'work task stays empty of chat turns');
+const weatherTask = J.getTask(J.getActiveTaskId());
+assert.ok(
+  weatherTask && (weatherTask.title === '本机对话' || /天气/.test(weatherTask.title)),
+  'chat lands on a chat-lane task'
+);
 
 J.setPinned(created.id, true);
 assert.equal(J.getTask(created.id).pinned, true);
@@ -94,6 +113,31 @@ assert.equal(J.getTask(created.id).title, '修复对话分层');
 J.setArchived(created.id, true);
 assert.equal(J.listTasks({ archived: false }).some((t) => t.id === created.id), false);
 assert.equal(J.listTasks({ archived: true }).some((t) => t.id === created.id), true);
+
+// Session-owns: tool events + list/clear chat turns
+const toolChat = J.createTask({ title: '工具循环', lane: 'chat', activate: true });
+J.appendChatTurn({ taskId: toolChat.id, role: 'user', text: '戴佳伟是谁' });
+J.appendToolEvent({
+  taskId: toolChat.id,
+  kind: 'tool_step',
+  toolName: 'web_search',
+  text: '联网搜索',
+  detail: '{"ok":true}',
+  toolOk: true
+});
+J.appendToolEvent({
+  taskId: toolChat.id,
+  kind: 'finish',
+  text: '戴佳伟是…',
+  toolName: 'finish'
+});
+const listed = J.listChatTurns(toolChat.id);
+assert.ok(listed.length >= 3, 'listChatTurns includes turns + tools');
+assert.ok(listed.some((r) => r.kind === 'tool_step' && r.toolName === 'web_search'));
+assert.ok(listed.some((r) => r.kind === 'finish'));
+const cleared = J.clearChatTurns(toolChat.id);
+assert.ok(cleared >= 3, 'clearChatTurns removes session transcript');
+assert.equal(J.listChatTurns(toolChat.id).length, 0);
 
 assert.match(fs.readFileSync('src/index.html', 'utf8'), /home-task-journal\.js/);
 assert.match(fs.readFileSync('src/js/features/now/composer-history-panel.js', 'utf8'), /contextmenu/);

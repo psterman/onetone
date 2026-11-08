@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Agent 状态栏 × 输入框融合</title>
+  <style>
+    :root {
+      --ink: #152238;
+      --muted: #5a7086;
+      --line: rgba(26, 45, 74, 0.12);
+      --teal: #2a9cc4;
+      --teal-soft: color-mix(in srgb, #2a9cc4 12%, white);
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --paper: #eef3f6;
+      --surface: #ffffff;
+      --radius: 16px;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #d9eef6 0%, transparent 55%),
+        linear-gradient(180deg, #f4f7f9 0%, var(--paper) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 64px;
+    }
+    .note {
+      width: min(720px, 100%);
+      margin: 0 0 18px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .note b { color: var(--ink); font-weight: 650; }
+
+    /* ── One fused shell: chips + status + compose ── */
+    .fuse {
+      width: min(720px, 100%);
+      border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 80%, transparent) inset,
+        0 18px 44px -22px rgba(21, 34, 56, 0.28);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fuse:focus-within {
+      border-color: color-mix(in srgb, var(--teal) 55%, var(--line));
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--teal) 14%, transparent),
+        0 18px 44px -22px rgba(21, 34, 56, 0.28);
+    }
+
+    /* Agent chip strip — top of the same card */
+    .chips {
+      display: flex;
+      gap: 6px;
+      padding: 10px 10px 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 55%, white);
+    }
+    .chip {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 108px;
+      padding: 6px 9px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+    }
+    .chip:hover { background: color-mix(in srgb, white 70%, transparent); }
+    .chip.is-on {
+      background: var(--surface);
+      border-color: color-mix(in srgb, var(--teal) 45%, var(--line));
+      box-shadow: 0 1px 0 color-mix(in srgb, white 70%, transparent) inset,
+        0 4px 12px -6px rgba(42, 156, 196, 0.35);
+    }
+    .chip__ico {
+      width: 22px; height: 22px; border-radius: 6px;
+      display: grid; place-items: center;
+      flex: 0 0 auto; overflow: hidden;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+    .chip__ico.is-cursor { background: #1a1a1a; }
+    .chip__ico.is-mm { background: linear-gradient(145deg, #5b8def, #3a5fbf); }
+    .chip__ico.is-cx { background: #10a37f; }
+    .chip__ico.is-cl { background: #d97757; }
+    .chip__ico.is-wb { background: linear-gradient(145deg, #3ecf8e, #1f9d63); }
+    .chip__ico.is-qd { background: #6366f1; }
+    .chip__ico svg { width: 14px; height: 14px; display: block; }
+    .chip__body { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+    .chip__body b {
+      font-size: 12px; font-weight: 700; line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chip__body span {
+      font-size: 11px; color: var(--muted); line-height: 1.2;
+      white-space: nowrap;
+    }
+    .chip__dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      margin-left: 2px; flex: 0 0 auto;
+      background: color-mix(in srgb, var(--muted) 45%, transparent);
+    }
+    .chip.is-run .chip__dot { background: var(--teal); }
+    .chip.is-wait .chip__dot { background: var(--warn); }
+    .chip.is-idle .chip__dot { background: color-mix(in srgb, var(--muted) 40%, transparent); }
+
+    /* Selected agent status — fused under chips, same card */
+    .status {
+      padding: 12px 14px 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px 12px;
+      align-items: start;
+      border-bottom: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+    }
+    .status__ico {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: #1a1a1a; display: grid; place-items: center;
+      grid-row: 1 / 3;
+    }
+    .status__ico svg { width: 20px; height: 20px; }
+    .status__who { min-width: 0; }
+    .status__who b { font-size: 14px; font-weight: 750; }
+    .status__who span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .status__pill {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white);
+      color: var(--ok); white-space: nowrap; align-self: start;
+    }
+    .status__title {
+      grid-column: 2 / 4;
+      margin: 0;
+      font-size: 15px; font-weight: 700; line-height: 1.35;
+    }
+    .status__fact {
+      grid-column: 2 / 4;
+      margin: 0;
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+    }
+    .status__acts {
+      grid-column: 2 / 4;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .btn {
+      height: 30px; padding: 0 12px; border-radius: 9px;
+      border: 0; font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--teal); color: #fff;
+      box-shadow: 0 1px 0 color-mix(in srgb, white 25%, transparent) inset;
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-link {
+      background: transparent; color: var(--teal); padding: 0 4px;
+    }
+    .btn-link:hover { text-decoration: underline; }
+
+    /* Compose — bottom of same shell */
+    .compose {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .compose textarea {
+      width: 100%; min-height: 56px; max-height: 120px;
+      border: 0; resize: vertical; outline: 0;
+      font: inherit; font-size: 13.5px; line-height: 1.45;
+      color: var(--ink); background: transparent;
+      padding: 4px 2px;
+    }
+    .compose textarea::placeholder { color: var(--muted); }
+    .rail {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .rail-left {
+      flex: 1 1 auto; min-width: 0;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .rail-right {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .aim-agent {
+      display: inline-flex; align-items: center; gap: 1px;
+      height: 30px; padding: 2px;
+      border: 1px solid var(--line); border-radius: 10px;
+      background: color-mix(in srgb, var(--paper) 40%, white);
+    }
+    .aim-agent button {
+      width: 26px; height: 26px; border: 0; border-radius: 8px;
+      background: transparent; cursor: pointer;
+      display: grid; place-items: center; color: var(--teal);
+    }
+    .aim-agent .agent-mini {
+      width: 26px; height: 26px; padding: 3px; border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--line));
+      background: color-mix(in srgb, var(--teal) 10%, white);
+      display: grid; place-items: center;
+    }
+    .aim-agent .agent-mini .chip__ico { width: 18px; height: 18px; border-radius: 5px; }
+    .model {
+      height: 28px; padding: 0 8px; border: 0; border-radius: 999px;
+      background: transparent; color: var(--muted);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .model:hover { color: var(--ink); background: color-mix(in srgb, var(--paper) 60%, transparent); }
+    .round {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid var(--line); background: white;
+      display: grid; place-items: center; cursor: pointer; color: var(--ink);
+    }
+    .round:hover { border-color: var(--teal); color: var(--teal); }
+    .send {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 0; background: var(--teal); color: #fff;
+      display: grid; place-items: center; cursor: pointer;
+    }
+    .send:hover { filter: brightness(1.06); }
+
+    .alts {
+      width: min(720px, 100%);
+      margin-top: 28px;
+      display: grid;
+      gap: 10px;
+    }
+    .alts h2 {
+      margin: 0; font-size: 13px; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .alt {
+      border: 1px dashed var(--line); border-radius: 12px;
+      padding: 12px 14px; background: color-mix(in srgb, white 60%, transparent);
+      font-size: 13px; color: var(--muted); line-height: 1.5;
+    }
+    .alt strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <p class="note">
+    <b>融合原型</b>：上方 agent 标签、中间选中态详情、下方输入框，同属一块外壳。
+    点标签切换选中；状态条跟着变，输入始终在同一栏里。
+  </p>
+
+  <section class="fuse" aria-label="Agent 状态与输入">
+    <div class="chips" role="listbox" aria-label="Agent 列表">
+      <button type="button" class="chip is-on is-run" data-agent="cursor" role="option" aria-selected="true">
+        <span class="chip__ico is-cursor" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path fill="#EDECEC" d="M20.7 6.4 12.8 1.8a1.6 1.6 0 0 0-1.6 0L3.3 6.4A1.6 1.6 0 0 0 2.5 7.8v9.4c0 .6.3 1.1.8 1.4l7.9 4.6c.5.3 1.1.3 1.6 0l7.9-4.6c.5-.3.8-.8.8-1.4V7.8c0-.6-.3-1.1-.8-1.4Zm-1 1.4L12 19.8V11L4.8 7.2h14.9c.3 0 .5.3.4.6Z"/></svg>
+        </span>
+        <span class="chip__body"><b>Cursor</b><span>在跑</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="chip is-run" data-agent="minimax" role="option" aria-selected="false">
+        <span class="chip__ico is-mm" aria-hidden="true">M</span>
+        <span class="chip__body"><b>MiniMax</b><span>在跑</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="chip is-idle" data-agent="codex" role="option" aria-selected="false">
+        <span class="chip__ico is-cx" aria-hidden="true">Cx</span>
+        <span class="chip__body"><b>Codex</b><span>空闲</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="chip is-idle" data-agent="claude" role="option" aria-selected="false">
+        <span class="chip__ico is-cl" aria-hidden="true">Cl</span>
+        <span class="chip__body"><b>Claude</b><span>空闲</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="chip is-idle" data-agent="workbuddy" role="option" aria-selected="false">
+        <span class="chip__ico is-wb" aria-hidden="true">WB</span>
+        <span class="chip__body"><b>WorkBuddy</b><span>空闲</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="chip is-idle" data-agent="qoder" role="option" aria-selected="false">
+        <span class="chip__ico is-qd" aria-hidden="true">Q</span>
+        <span class="chip__body"><b>Qoder</b><span>空闲</span></span>
+        <i class="chip__dot" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="status" data-status>
+      <div class="status__ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path fill="#EDECEC" d="M20.7 6.4 12.8 1.8a1.6 1.6 0 0 0-1.6 0L3.3 6.4A1.6 1.6 0 0 0 2.5 7.8v9.4c0 .6.3 1.1.8 1.4l7.9 4.6c.5.3 1.1.3 1.6 0l7.9-4.6c.5-.3.8-.8.8-1.4V7.8c0-.6-.3-1.1-.8-1.4Zm-1 1.4L12 19.8V11L4.8 7.2h14.9c.3 0 .5.3.4.6Z"/></svg>
+      </div>
+      <div class="status__who">
+        <b data-name>Cursor</b>
+        <span data-sub>voice-pilot · 可恢复</span>
+      </div>
+      <span class="status__pill" data-pill>可恢复</span>
+      <p class="status__title" data-title>上次停在「最近修改了什么代码？：」。</p>
+      <p class="status__fact" data-fact>3 天前有进度，可以从停下的地方继续。</p>
+      <div class="status__acts">
+        <button type="button" class="btn btn-primary" data-cta>继续上次工作</button>
+        <button type="button" class="btn btn-link">开始新任务</button>
+      </div>
+    </div>
+
+    <div class="compose">
+      <textarea rows="2" placeholder="聊思路、读代码疑问，或生成给其他模型的步骤…" aria-label="输入"></textarea>
+      <div class="rail">
+        <div class="rail-left">
+          <div class="aim-agent" title="瞄准 + 当前 Agent">
+            <button type="button" aria-label="瞄准">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            </button>
+            <span class="agent-mini" aria-hidden="true">
+              <span class="chip__ico is-cursor" data-mini-ico>
+                <svg viewBox="0 0 24 24" fill="none"><path fill="#EDECEC" d="M20.7 6.4 12.8 1.8a1.6 1.6 0 0 0-1.6 0L3.3 6.4A1.6 1.6 0 0 0 2.5 7.8v9.4c0 .6.3 1.1.8 1.4l7.9 4.6c.5.3 1.1.3 1.6 0l7.9-4.6c.5-.3.8-.8.8-1.4V7.8c0-.6-.3-1.1-.8-1.4Zm-1 1.4L12 19.8V11L4.8 7.2h14.9c.3 0 .5.3.4.6Z"/></svg>
+              </span>
+            </span>
+          </div>
+          <button type="button" class="model">混元 Hy4 preview ▾</button>
+        </div>
+        <div class="rail-right">
+          <button type="button" class="round" aria-label="加入材料">+</button>
+          <button type="button" class="send" aria-label="发送">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="alts">
+    <h2>结构说明</h2>
+    <div class="alt">
+      <strong>一块框</strong>：chips（多 agent 扫一眼）→ status（选中详情 + CTA）→ compose（输入 + 工具栏）。
+      不再「上面一排标签 + 下面一张孤立大卡 + 再一套输入框」。
+    </div>
+  </div>
+
+  <script>
+    var AGENTS = {
+      cursor: {
+        name: "Cursor",
+        sub: "voice-pilot · 可恢复",
+        pill: "可恢复",
+        pillOk: true,
+        title: "上次停在「最近修改了什么代码？：」。",
+        fact: "3 天前有进度，可以从停下的地方继续。",
+        cta: "继续上次工作",
+        icoClass: "is-cursor",
+        icoHtml: '<svg viewBox="0 0 24 24" fill="none"><path fill="#EDECEC" d="M20.7 6.4 12.8 1.8a1.6 1.6 0 0 0-1.6 0L3.3 6.4A1.6 1.6 0 0 0 2.5 7.8v9.4c0 .6.3 1.1.8 1.4l7.9 4.6c.5.3 1.1.3 1.6 0l7.9-4.6c.5-.3.8-.8.8-1.4V7.8c0-.6-.3-1.1-.8-1.4Zm-1 1.4L12 19.8V11L4.8 7.2h14.9c.3 0 .5.3.4.6Z"/></svg>'
+      },
+      minimax: {
+        name: "MiniMax",
+        sub: "demo-repo · 执行中",
+        pill: "执行中",
+        pillOk: false,
+        title: "正在改登录页错误提示。",
+        fact: "刚推送了一轮补丁，可盯进度或插一句。",
+        cta: "查看进度",
+        icoClass: "is-mm",
+        icoHtml: "M"
+      },
+      codex: {
+        name: "Codex",
+        sub: "空闲",
+        pill: "空闲",
+        pillOk: false,
+        title: "暂无进行中的任务。",
+        fact: "写一句可以直接发给 Codex。",
+        cta: "打开 Codex",
+        icoClass: "is-cx",
+        icoHtml: "Cx"
+      },
+      claude: {
+        name: "Claude",
+        sub: "空闲",
+        pill: "空闲",
+        pillOk: false,
+        title: "暂无进行中的任务。",
+        fact: "写一句可以直接发给 Claude。",
+        cta: "打开 Claude",
+        icoClass: "is-cl",
+        icoHtml: "Cl"
+      },
+      workbuddy: {
+        name: "WorkBuddy",
+        sub: "空闲",
+        pill: "空闲",
+        pillOk: false,
+        title: "本机对话待命。",
+        fact: "适合快速问答与整理步骤。",
+        cta: "开始对话",
+        icoClass: "is-wb",
+        icoHtml: "WB"
+      },
+      qoder: {
+        name: "Qoder",
+        sub: "空闲",
+        pill: "空闲",
+        pillOk: false,
+        title: "暂无进行中的任务。",
+        fact: "选中后输入即可发送。",
+        cta: "打开 Qoder",
+        icoClass: "is-qd",
+        icoHtml: "Q"
+      }
+    };
+
+    var root = document.querySelector(".fuse");
+    var chips = root.querySelectorAll(".chip");
+    var status = root.querySelector("[data-status]");
+    var mini = root.querySelector("[data-mini-ico]");
+
+    function paint(id) {
+      var a = AGENTS[id];
+      if (!a) return;
+      chips.forEach(function (c) {
+        var on = c.getAttribute("data-agent") === id;
+        c.classList.toggle("is-on", on);
+        c.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      status.querySelector("[data-name]").textContent = a.name;
+      status.querySelector("[data-sub]").textContent = a.sub;
+      var pill = status.querySelector("[data-pill]");
+      pill.textContent = a.pill;
+      pill.style.color = a.pillOk ? "var(--ok)" : "var(--muted)";
+      pill.style.borderColor = a.pillOk
+        ? "color-mix(in srgb, var(--ok) 35%, var(--line))"
+        : "var(--line)";
+      pill.style.background = a.pillOk
+        ? "color-mix(in srgb, var(--ok) 8%, white)"
+        : "color-mix(in srgb, var(--paper) 40%, white)";
+      status.querySelector("[data-title]").textContent = a.title;
+      status.querySelector("[data-fact]").textContent = a.fact;
+      status.querySelector("[data-cta]").textContent = a.cta;
+      var ico = status.querySelector(".status__ico");
+      ico.className = "status__ico";
+      ico.innerHTML = a.icoHtml.indexOf("<svg") === 0
+        ? a.icoHtml
+        : '<span style="color:#fff;font-size:12px;font-weight:700">' + a.icoHtml + "</span>";
+      if (a.icoClass === "is-cursor") ico.style.background = "#1a1a1a";
+      else if (a.icoClass === "is-mm") ico.style.background = "linear-gradient(145deg,#5b8def,#3a5fbf)";
+      else if (a.icoClass === "is-cx") ico.style.background = "#10a37f";
+      else if (a.icoClass === "is-cl") ico.style.background = "#d97757";
+      else if (a.icoClass === "is-wb") ico.style.background = "linear-gradient(145deg,#3ecf8e,#1f9d63)";
+      else ico.style.background = "#6366f1";
+      mini.className = "chip__ico " + a.icoClass;
+      mini.innerHTML = a.icoHtml.indexOf("<svg") === 0
+        ? a.icoHtml
+        : a.icoHtml;
+    }
+
+    chips.forEach(function (c) {
+      c.addEventListener("click", function () {
+        paint(c.getAttribute("data-agent"));
+      });
+    });
+  </script>
+</body>
+</html>

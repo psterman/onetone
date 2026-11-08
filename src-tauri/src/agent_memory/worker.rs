@@ -29,6 +29,7 @@ pub fn ensure_started() {
                             let hint = project_hint.as_deref();
                             let _ = discover_cursor_sessions(hint);
                             REFRESHING.store(false, Ordering::SeqCst);
+                            crate::home_status_notify::schedule("discover");
                         }
                     }
                 }

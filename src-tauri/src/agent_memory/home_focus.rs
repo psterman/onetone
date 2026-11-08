@@ -2,7 +2,7 @@
 
 use crate::agent_attention::{self, AttentionState};
 use crate::agent_memory::checkpoint::{
-    latest_atr_checkpoint_for_project, latest_checkpoint_for_project,
+    latest_atr_checkpoint_for_project, latest_non_atr_checkpoint_for_project,
     latest_checkpoint_for_session, PROVIDER_ONETONE_ATR,
 };
 use crate::agent_memory::model::{
@@ -45,15 +45,44 @@ fn is_resume_cta_label(s: &str) -> bool {
             | "可以继续"
             | "我记得你上次停在这里"
             | "刚刚完成"
+            // Empty shells — never quote as the step the user stopped at.
+            | "当前工作"
+            | "上次进度"
+            | "当前 Agent 任务"
+            | "当前任务"
+            | "已保存上次进度"
+            // Meta / self-referential resume shells (loop titles).
+            | "从上次进度继续排查"
+            | "从上次进度继续"
+            | "继续排查"
     )
 }
 
 fn usable_resume_step(raw: Option<&str>) -> Option<String> {
-    let s = raw.map(str::trim).filter(|t| !t.is_empty())?;
-    if is_resume_cta_label(s) {
+    let mut s = raw.map(str::trim).filter(|t| !t.is_empty())?.to_string();
+    // Unwrap「继续：『…』」shell so next_action boilerplate cannot become the step.
+    if let Some(inner) = s
+        .strip_prefix("继续：")
+        .or_else(|| s.strip_prefix("继续:"))
+    {
+        let t = inner
+            .trim()
+            .trim_start_matches(['「', '"', '\'', '“'])
+            .trim_end_matches(['」', '"', '\'', '”', '。', '：', ':'])
+            .trim();
+        if !t.is_empty() {
+            s = t.to_string();
+        }
+    }
+    let s = s
+        .trim()
+        .trim_end_matches(['。', '：', ':'])
+        .trim()
+        .to_string();
+    if s.is_empty() || is_resume_cta_label(&s) {
         return None;
     }
-    Some(s.to_string())
+    Some(s)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -144,41 +173,44 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
     let (project, selection_ambiguous) = resolve_focus_project(&fg, now);
     let confirmed = project.id != UNKNOWN_PROJECT_ID && is_project_confirmed(&project.id);
 
-    let session = read_best_session(&project.id);
+    // Home Focus Cursor lane — never pick ATR as "best session" (that hid Cursor titles).
+    let session = read_best_cursor_session(&project.id);
     let atr_checkpoint = if project.id != UNKNOWN_PROJECT_ID {
         latest_atr_checkpoint_for_project(&project.id)
     } else {
         None
     };
-    let checkpoint = atr_checkpoint.clone().or_else(|| {
-        session
-            .as_ref()
-            .and_then(|s| latest_checkpoint_for_session(&s.session_id))
-            .or_else(|| {
-                if project.id != UNKNOWN_PROJECT_ID {
-                    latest_checkpoint_for_project(&project.id)
-                } else {
-                    None
-                }
-            })
-    });
+    // Cursor checkpoint only. Do not use ATR session_id → ATR current_task as Cursor resume.
+    let cursor_checkpoint = session
+        .as_ref()
+        .filter(|s| {
+            !s.provider.eq_ignore_ascii_case(PROVIDER_ONETONE_ATR)
+                && !s.provider.eq_ignore_ascii_case("atr")
+        })
+        .and_then(|s| latest_checkpoint_for_session(&s.session_id))
+        .or_else(|| {
+            if project.id != UNKNOWN_PROJECT_ID {
+                latest_non_atr_checkpoint_for_project(&project.id)
+            } else {
+                None
+            }
+        });
 
     let provider_status = provider_status(refreshing, &probe_status, consent);
     let (work, source) = if let Some(ref atr) = atr_checkpoint {
-        derive_work_from_atr(now, atr, &probe_status, refreshing)
-            .unwrap_or_else(|| {
-                derive_work(
-                    now,
-                    &probe_status,
-                    last_probe_ms,
-                    has_sessions,
-                    refreshing,
-                    session.as_ref(),
-                    checkpoint.as_ref(),
-                    &project,
-                    confirmed,
-                )
-            })
+        derive_work_from_atr(now, atr, &probe_status, refreshing).unwrap_or_else(|| {
+            derive_work(
+                now,
+                &probe_status,
+                last_probe_ms,
+                has_sessions,
+                refreshing,
+                session.as_ref(),
+                cursor_checkpoint.as_ref(),
+                &project,
+                confirmed,
+            )
+        })
     } else {
         derive_work(
             now,
@@ -187,22 +219,25 @@ pub fn build_home_focus_snapshot() -> HomeFocusSnapshot {
             has_sessions,
             refreshing,
             session.as_ref(),
-            checkpoint.as_ref(),
+            cursor_checkpoint.as_ref(),
             &project,
             confirmed,
         )
     };
 
+    // ATR-owned work must not inherit Cursor Soft Pad provider — resume H1 was lying.
+    let atr_owns = source.reason.contains("atr_checkpoint");
     let next_action = derive_next_action(
         &work.status,
         &project,
         confirmed,
         selection_ambiguous,
-        checkpoint.as_ref(),
+        if atr_owns {
+            atr_checkpoint.as_ref()
+        } else {
+            cursor_checkpoint.as_ref()
+        },
     );
-
-    // ATR-owned work must not inherit Cursor Soft Pad provider — resume H1 was lying.
-    let atr_owns = source.reason.contains("atr_checkpoint");
     HomeFocusSnapshot {
         foreground: fg,
         project: HomeFocusProject {
@@ -387,7 +422,9 @@ fn read_probe_meta() -> (String, Option<u64>, bool) {
     .unwrap_or_else(|_| (ProbeStatus::ReadError.as_str().into(), None, false))
 }
 
-fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
+/// Best Cursor session for this project (Home Focus is Cursor Soft Pad surface).
+/// Must not return ATR / other providers — that stole title + checkpoint from Cursor.
+fn read_best_cursor_session(project_id: &str) -> Option<HomeSessionDto> {
     with_read_path(|conn| {
         let mut stmt = conn
             .prepare(
@@ -395,18 +432,18 @@ fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
                         project_id, project_match, match_reason, match_confidence, is_active,
                         activity_source, active_confidence
                  FROM agent_sessions
-                 WHERE project_id = ?1
+                 WHERE project_id = ?1 AND provider = ?2
                  ORDER BY is_active DESC, updated_at_ms DESC
                  LIMIT 1",
             )
             .map_err(|e| e.to_string())?;
         let row = stmt
-            .query_row(params![project_id], map_home_session_dto)
+            .query_row(params![project_id, PROVIDER_CURSOR], map_home_session_dto)
             .ok();
         if row.is_some() {
             return Ok(row);
         }
-        // Fallback: any recent cursor session (unknown project).
+        // Fallback: any recent Cursor session (unknown / other project).
         let mut stmt2 = conn
             .prepare(
                 "SELECT session_id, provider, external_session_id, title, updated_at_ms, status,
@@ -478,14 +515,13 @@ fn derive_work_from_atr(
         "stale"
     }
     .to_string();
-    let title = usable_resume_step(atr.current_task.as_deref())
-        .unwrap_or_else(|| "当前 Agent 任务".into());
+    let title = usable_resume_step(atr.current_task.as_deref())?;
     let reason = format!("probe={probe};atr_checkpoint");
     match atr.status.as_str() {
         "waiting" => Some((
             HomeFocusWork {
                 status: "waiting".into(),
-                title,
+                title: title.clone(),
                 description: atr
                     .pending_questions
                     .first()
@@ -585,10 +621,29 @@ fn derive_work(
     let sess_status = session.map(|s| s.status.as_str()).unwrap_or("");
     let sess_updated = session.and_then(|s| s.updated_at).unwrap_or(0);
     let sess_age = now.saturating_sub(sess_updated);
-    let title_default = session
-        .and_then(|s| s.title.clone())
-        .filter(|t| !t.trim().is_empty())
-        .unwrap_or_else(|| "当前工作".into());
+    // Session title only when it is a real step — never invent「当前工作」/ project name.
+    let session_step = session
+        .and_then(|s| usable_resume_step(s.title.as_deref()))
+        .filter(|t| {
+            let name = project.name.trim();
+            name.is_empty() || name == "未知项目" || t != name
+        })
+        .unwrap_or_default();
+    // Running subject may fall back to project name (not used for「停在」).
+    let running_subject = if !session_step.is_empty() {
+        session_step.clone()
+    } else {
+        let name = project.name.trim();
+        if !name.is_empty()
+            && name != "未知项目"
+            && project.id != UNKNOWN_PROJECT_ID
+            && (confirmed || project.match_kind == "exact")
+        {
+            name.to_string()
+        } else {
+            String::new()
+        }
+    };
 
     // Priority: error > running > waiting > resumable > completed > idle
     let hard_error = matches!(probe, "read_error" | "schema_unknown") && !has_sessions;
@@ -615,7 +670,7 @@ fn derive_work(
         return (
             HomeFocusWork {
                 status: "error".into(),
-                title: title_default,
+                title: running_subject.clone(),
                 description: "上次任务遇到问题。".into(),
                 updated_at: sess_updated,
             },
@@ -632,7 +687,7 @@ fn derive_work(
         return (
             HomeFocusWork {
                 status: "running".into(),
-                title: title_default,
+                title: running_subject.clone(),
                 description: "正在处理中。".into(),
                 updated_at: if life_running {
                     sess_updated
@@ -647,13 +702,45 @@ fn derive_work(
         );
     }
 
+    // Soft Pad just finished — prefer「刚刚完成」over snapping back to an old checkpoint.
+    let attn_complete = attn == Some(AttentionState::Complete) && attn_age <= COMPLETED_DISPLAY_MS;
+    let attn_error = attn == Some(AttentionState::Error) && attn_age <= COMPLETED_DISPLAY_MS;
+    if attn_error {
+        return (
+            HomeFocusWork {
+                status: "error".into(),
+                title: running_subject.clone(),
+                description: "上次任务遇到问题。".into(),
+                updated_at: now.saturating_sub(attn_age),
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};attn_error"),
+            },
+        );
+    }
+    if attn_complete {
+        return (
+            HomeFocusWork {
+                status: "completed".into(),
+                title: running_subject.clone(),
+                description: "刚刚完成。".into(),
+                updated_at: now.saturating_sub(attn_age),
+            },
+            HomeFocusSource {
+                freshness,
+                reason: format!("{reason};attn_complete"),
+            },
+        );
+    }
+
     let attn_waiting = attn == Some(AttentionState::NeedsInput) && attn_age <= LIFECYCLE_TTL_MS;
     let life_waiting = sess_status == "waiting_approval" && sess_age <= LIFECYCLE_TTL_MS;
     if attn_waiting || life_waiting {
         return (
             HomeFocusWork {
                 status: "waiting".into(),
-                title: title_default,
+                title: running_subject.clone(),
                 description: "需要你确认一下。".into(),
                 updated_at: if life_waiting {
                     sess_updated
@@ -677,32 +764,61 @@ fn derive_work(
             .is_some_and(|ck| now.saturating_sub(ck.updated_at) <= RESUME_MAX_AGE_MS);
     if can_resume {
         let ck = checkpoint.unwrap();
+        let proj_name = project.name.trim();
+        // Real step only — never project name /「当前工作」as「停在」.
         let title = usable_resume_step(ck.current_task.as_deref())
             .or_else(|| usable_resume_step(ck.next_action.as_deref()))
-            .or_else(|| usable_resume_step(Some(title_default.as_str())))
-            .unwrap_or_else(|| "上次进度".into());
-        let description = usable_resume_step(ck.next_action.as_deref())
-            .filter(|s| s != &title)
-            .unwrap_or_else(|| "已保存上次进度。".into());
-        return (
-            HomeFocusWork {
-                status: "resumable".into(),
-                title,
-                description,
-                updated_at: ck.updated_at,
-            },
-            HomeFocusSource {
-                freshness,
-                reason: format!("{reason};resumable"),
-            },
-        );
+            .or_else(|| {
+                if session_step.is_empty() {
+                    None
+                } else {
+                    Some(session_step.clone())
+                }
+            })
+            .filter(|t| proj_name.is_empty() || proj_name == "未知项目" || t != proj_name);
+        if let Some(title) = title {
+            let description = usable_resume_step(ck.next_action.as_deref())
+                .filter(|s| s != &title)
+                .unwrap_or_else(|| "已保存上次进度。".into());
+            return (
+                HomeFocusWork {
+                    status: "resumable".into(),
+                    title,
+                    description,
+                    updated_at: ck.updated_at,
+                },
+                HomeFocusSource {
+                    freshness,
+                    reason: format!("{reason};resumable"),
+                },
+            );
+        }
+        // Checkpoint exists but no readable step.
+        // consent=off → FE enable-activity CTA. consent=on → do not Hero-spam「等你决定」;
+        // fall through to idle/completed (Soft Pad Working can still lift running).
+        let consent = crate::cursor_local_activity::consent_enabled();
+        if !consent {
+            return (
+                HomeFocusWork {
+                    status: "resumable".into(),
+                    title: String::new(),
+                    description: "开启 Cursor 活动后，可读到具体停在哪一步。".into(),
+                    updated_at: ck.updated_at,
+                },
+                HomeFocusSource {
+                    freshness,
+                    reason: format!("{reason};resumable_no_step;consent=off"),
+                },
+            );
+        }
+        reason.push_str(";resumable_no_step_quiet;consent=on");
     }
 
     if sess_status == "completed" && sess_age <= COMPLETED_DISPLAY_MS {
         return (
             HomeFocusWork {
                 status: "completed".into(),
-                title: title_default,
+                title: running_subject.clone(),
                 description: "刚刚完成。".into(),
                 updated_at: sess_updated,
             },
@@ -718,7 +834,7 @@ fn derive_work(
     } else if session.is_none() {
         "还没有找到可以继续的工作".into()
     } else {
-        title_default
+        running_subject
     };
     let idle_desc = if project.match_kind == "probable" && !confirmed {
         "我检测到了应用，但还不能确定当前项目。".into()
@@ -949,6 +1065,16 @@ mod tests {
             usable_resume_step(Some("修首页顶栏截断")).as_deref(),
             Some("修首页顶栏截断")
         );
+        assert_eq!(
+            usable_resume_step(Some("继续：「最近修改了什么代码？」")).as_deref(),
+            Some("最近修改了什么代码？")
+        );
+        assert_eq!(
+            usable_resume_step(Some("最近修改了什么代码？：")).as_deref(),
+            Some("最近修改了什么代码？")
+        );
+        assert!(usable_resume_step(Some("当前工作")).is_none());
+        assert!(usable_resume_step(Some("上次进度")).is_none());
     }
 
     #[test]

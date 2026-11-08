@@ -39,7 +39,13 @@
     '我记得你上次停在这里。': 1,
     '我记得你上次停在这里': 1,
     '刚刚完成。': 1,
-    '刚刚完成': 1
+    '刚刚完成': 1,
+    // Empty shells — quoting these as「停在」is nonsense.
+    '当前工作': 1,
+    '上次进度': 1,
+    '当前 Agent 任务': 1,
+    '当前任务': 1,
+    '已保存上次进度': 1
   };
 
   function relativeWhen(ts) {
@@ -73,14 +79,18 @@
     return false;
   }
 
-  /** Real step text only — strip CTA / session-title noise. */
-  function usableResumeStep(raw, provider) {
-    var step = String(raw || '')
-      .replace(/。$/, '')
-      .trim();
+  /** Real step text only — strip CTA / session-title noise / project-name masquerade. */
+  function usableResumeStep(raw, provider, projectName) {
+    var step = String(raw || '').trim();
+    // Unwrap「继续：『…』」so next_action shell never becomes the step.
+    var wrap = /^继续[：:]\s*[「"“']?([^」"”']+)[」"”']?\s*[。：:]?$/.exec(step);
+    if (wrap) step = String(wrap[1] || '').trim();
+    step = step.replace(/[。：:]+$/, '').trim();
     if (!step || isResumeCtaLabel(step)) return '';
     var prov = providerLabelHome(provider);
     if (/session/i.test(step) && new RegExp(prov, 'i').test(step)) return '';
+    var proj = String(projectName || '').trim();
+    if (proj && proj !== '未知项目' && step === proj) return '';
     return step;
   }
 
@@ -232,10 +242,18 @@
     var secondary = null;
     var restoreLabel = '确认当前项目';
 
-    // Priority: error → degraded; waiting → attention; running → running Hero;
+    // Priority: error/retry → degraded; waiting → attention; running → running Hero;
     // resumable → return; else quiet. Attention enrichment may still lift running.
+    // provider.status unavailable/disabled is a probe footnote — never Hero「失败」.
     // Unconfirmed project is resolved onto a single Hero primary (see applyProjectConfirmGate).
-    if (ws === 'error' || (action && action.kind === 'retry') || provider.status === 'unavailable') {
+    var provSt = String(provider.status || '').toLowerCase();
+    var providerProbeNote =
+      provSt === 'unavailable'
+        ? '探针暂时连不上 · 不据此标失败'
+        : provSt === 'disabled'
+          ? 'Cursor 本地活动未开启'
+          : '';
+    if (ws === 'error' || (action && action.kind === 'retry')) {
       mode = 'degraded';
       headline = workTitle || '我暂时无法确认当前工作状态。';
       assistance =
@@ -243,7 +261,7 @@
         '读取依据不足。可以重试，或到「设置」检查数据源。';
       presence = {
         line: appName + ' · ' + (needsProject ? '项目未确认' : projectName) + ' · ' + when,
-        note: '不会用猜测填充首页'
+        note: providerProbeNote || '不会用猜测填充首页'
       };
       restoreLabel = (action && action.title) || '重试';
       primary = { id: 'retry', label: restoreLabel };
@@ -271,30 +289,76 @@
       action.kind === 'resume' &&
       resumeAgeFresh(work.updatedAt)
     ) {
-      mode = 'return';
       var resumeProv = providerLabelHome(resumeProviderOf(provider, appName, source));
-      var resumeStep =
-        usableResumeStep(workTitle, resumeProv) ||
-        usableResumeStep(workDesc, resumeProv);
-      headline = returnHeadline(resumeProv, resumeStep);
-      assistance = resumeAssistance(projectName, when, {
-        projUnconfirmed: needsProject
-      });
-      continuation = {
-        title: RESUME_LABEL,
-        detail: resumeStep || workDesc || '已保存上次进度'
-      };
-      primary = { id: 'resume', label: RESUME_LABEL };
-      // Leaves return → Quiet Composer (homepage jump). Does not delete checkpoint.
-      secondary = { id: 'start_new_task', label: '开始新任务' };
-      progress = null;
+      // Title only — workDesc is assistance / consent copy, never the「停在」step.
+      var resumeStep = usableResumeStep(workTitle, resumeProv, projectName);
+      var consentOff =
+        /consent=off/.test(String((source && source.reason) || '')) ||
+        /consent_off/.test(String((source && source.reason) || ''));
+      // Real step → return Hero. Empty step → never「停在 project」; offer consent or honesty.
+      if (resumeStep) {
+        mode = 'return';
+        headline = returnHeadline(resumeProv, resumeStep);
+        assistance = resumeAssistance(projectName, when, {
+          projUnconfirmed: needsProject
+        });
+        continuation = {
+          title: RESUME_LABEL,
+          detail: resumeStep
+        };
+        primary = { id: 'resume', label: RESUME_LABEL };
+        // Leaves return → Quiet Composer (homepage jump). Does not delete checkpoint.
+        secondary = { id: 'start_new_task', label: '开始新任务' };
+        progress = null;
+      } else if (consentOff) {
+        // Only actionable empty-step Hero: ask to enable Cursor activity.
+        mode = 'attention';
+        headline = '有可恢复进度，但还没读到具体步骤';
+        assistance =
+          (when ? when + '有进度。' : '检测到进度。') +
+          '开启 Cursor 活动后，可用本机会话读出停在哪一步（你可随时关闭）。';
+        presence = {
+          line: resumeProv + ' · ' + projectName + (when ? ' · ' + when : ''),
+          note: '需要授权'
+        };
+        primary = { id: 'enable_cursor_activity', label: '开启 Cursor 活动' };
+        secondary = { id: 'resume', label: RESUME_LABEL };
+        progress = null;
+      } else {
+        // Consent on / probe flaky / no step → Quiet Composer. No「等你决定」废话卡.
+        mode = 'quiet';
+        headline = '';
+        assistance = '';
+        presence = {
+          line: resumeProv + ' · ' + projectName + (when ? ' · ' + when : ''),
+          note: providerProbeNote || '步骤待读'
+        };
+        primary = null;
+        secondary = null;
+        progress = null;
+      }
     } else if (ws === 'running') {
       mode = 'running';
       var runningAgent = providerLabelHome(resumeProviderOf(provider, appName, source));
-      headline =
-        runningAgent === '本机工作'
-          ? '正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务')
-          : runningAgent + ' 正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务');
+      var runningStep = usableResumeStep(workTitle, runningAgent, projectName);
+      var knownRunProj =
+        projectName &&
+        projectName !== '未知项目' &&
+        (confirmed || match === 'exact');
+      if (runningStep) {
+        headline =
+          runningAgent === '本机工作'
+            ? '正在处理「' + runningStep + '」'
+            : runningAgent + ' 正在处理「' + runningStep + '」';
+      } else if (knownRunProj) {
+        headline =
+          runningAgent === '本机工作'
+            ? '正在处理 ' + projectName
+            : runningAgent + ' 正在处理 ' + projectName;
+      } else {
+        headline =
+          runningAgent === '本机工作' ? '正在处理中' : runningAgent + ' 正在处理中';
+      }
       assistance = Number(work.updatedAt) > 0 ? '最近活动：' + when : '';
       presence = {
         line: runningAgent + ' · ' + projectName + (Number(work.updatedAt) > 0 ? ' · ' + when : ''),
@@ -303,6 +367,25 @@
       // No step fraction / ETA — progress object unused for coarse running.
       progress = null;
       primary = { id: 'view_progress', label: '查看 Agent' };
+    } else if (ws === 'completed') {
+      // Soft Pad stop/Complete → brief honest card (Rust COMPLETED_DISPLAY_MS).
+      // Was falling through to quiet — home looked empty right after real work.
+      mode = 'completed';
+      var doneAgent = providerLabelHome(resumeProviderOf(provider, appName, source));
+      var doneStep = usableResumeStep(workTitle, doneAgent, projectName);
+      headline = doneStep
+        ? doneAgent + ' 刚完成「' + doneStep + '」'
+        : doneAgent === '本机工作'
+          ? '刚刚完成'
+          : doneAgent + ' 刚刚完成';
+      assistance = Number(work.updatedAt) > 0 ? '最近活动：' + when : '';
+      presence = {
+        line: doneAgent + ' · ' + projectName + (Number(work.updatedAt) > 0 ? ' · ' + when : ''),
+        note: '刚刚完成'
+      };
+      progress = null;
+      primary = { id: 'view_progress', label: '查看 Agent' };
+      secondary = { id: 'start_new_task', label: '开始新任务' };
     } else {
       // Quiet: reliable context, nothing to do.
       mode = 'quiet';
@@ -329,6 +412,18 @@
         note: '没有需要你处理的事'
       };
       primary = null;
+    }
+
+    // Probe soft-fail: presence footnote only — never append into Hero assistance (废话).
+    if (providerProbeNote && mode !== 'degraded') {
+      if (!presence) {
+        presence = {
+          line: appName + ' · ' + projectName + (when ? ' · ' + when : ''),
+          note: providerProbeNote
+        };
+      } else if (!presence.note || presence.note === '运行中' || presence.note === '步骤待读') {
+        presence.note = providerProbeNote;
+      }
     }
 
     var evidence = [
@@ -404,17 +499,20 @@
       var deskStep =
         usableResumeStep(workTitle, agentLabel) ||
         usableResumeStep(workDesc, agentLabel);
-      desk.continueCard = {
-        title: deskStep || agentLabel + ' 上次进度',
-        detail:
-          agentLabel +
-          (confirmed || match === 'exact' ? ' · ' + projectName : '') +
-          (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
-        note: '已保存上次进度',
-        badge: agentLabel,
-        when: when || '',
-        sourceBadge: { label: 'checkpoint', tone: 'auth' }
-      };
+      // No real step → no continue card (same honesty as return Hero).
+      if (deskStep) {
+        desk.continueCard = {
+          title: deskStep,
+          detail:
+            agentLabel +
+            (confirmed || match === 'exact' ? ' · ' + projectName : '') +
+            (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
+          note: '已保存上次进度',
+          badge: agentLabel,
+          when: when || '',
+          sourceBadge: { label: 'checkpoint', tone: 'auth' }
+        };
+      }
     }
 
     return applyProjectConfirmGate({
@@ -668,27 +766,35 @@
     function mapWait(r) {
       var agent = rowAgentLabel(r);
       var cause = rowCause(r).toLowerCase();
-      var title = /permission/i.test(cause)
+      var isPerm = /permission/i.test(cause);
+      var title = isPerm
         ? '批准 ' + agent + ' 的操作？'
         : agent + ' 需要你确认';
       var when = relativeWhenRow(r);
       var conf = rowConfidence(r);
       var src = rowSource(r);
       var stale = isExpiredRow(r);
+      var rawAgent = String((r && (r.agent || r.Agent)) || '')
+        .trim()
+        .toLowerCase();
       return {
         title: title,
         detail: agent + (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
         note: stale ? '信号已过期 · 需重新确认' : '明确等待 · 需你确认',
         provider: agent,
         badge: agent,
+        agentKind: rawAgent || null,
+        agentId:
+          String((r && (r.agentId || r.agent_id || r.sessionId || r.session_id)) || '').trim() ||
+          null,
         confidence: conf,
         source: src,
         stale: stale,
         sourceBadge: sourceBadge(src),
         confBadge: confidenceBadge(conf),
         cause: cause || 'needsInput',
-        actId: 'view_progress',
-        actLabel: stale ? '查看' : '查看'
+        actId: isPerm && !stale ? 'go_handle' : 'view_progress',
+        actLabel: stale ? '查看' : isPerm ? '前往处理' : '查看'
       };
     }
 
@@ -730,19 +836,28 @@
       // attention > running/return/quiet (PRODUCT Hero arbitration)
       if (vm.mode === 'quiet' || vm.mode === 'return' || vm.mode === 'running') {
         vm.mode = 'attention';
-        vm.headline =
-          mapped.length === 1
-            ? pick.provider + ' 等待你确认'
-            : mapped.length + ' 个会话等待你确认';
-        vm.assistance =
-          mapped.length === 1
-            ? '当前没有足够信息在首页展示具体问题。请到 Agent 查看并决定。'
-            : '按优先级列出可处理项；主按钮处理第一条。';
-        vm.primary = { id: 'view_progress', label: '查看并决定' };
+        var pickPerm = /permission/i.test(pick.cause || '');
+        if (pickPerm && mapped.length === 1) {
+          vm.headline = '批准 ' + pick.provider + ' 的操作？';
+          vm.assistance = '打开 Agent 完成批准或拒绝。';
+          vm.primary = { id: 'go_handle', label: '前往处理' };
+        } else {
+          vm.headline =
+            mapped.length === 1
+              ? pick.provider + ' 等待你确认'
+              : mapped.length + ' 个会话等待你确认';
+          vm.assistance =
+            mapped.length === 1
+              ? '打开 Agent 查看并决定。'
+              : '按优先级列出可处理项；主按钮处理第一条。';
+          vm.primary = pickPerm
+            ? { id: 'go_handle', label: '前往处理' }
+            : { id: 'view_progress', label: '查看并决定' };
+        }
         vm.attention = {
           title: pick.title,
           detail: pick.detail,
-          primaryLabel: '查看并决定',
+          primaryLabel: vm.primary.label,
           moreCount: more
         };
         vm.continuation = null;
@@ -769,6 +884,34 @@
       var livingMapped = workRows.slice(0, 3).map(mapWork);
       vm.desk.livingRows = livingMapped;
       vm.desk.living = livingMapped[0];
+      // Soft Pad Working → Hero running when nothing needs the user (aligns derive_work attn_running).
+      // Do not invent running without a working row; do not override fresh needsInput.
+      if (!freshWait.length) {
+        var canLiftRunning =
+          vm.mode === 'quiet' ||
+          vm.mode === 'return' ||
+          vm.mode === 'degraded' ||
+          (vm.mode === 'attention' &&
+            vm.primary &&
+            (vm.primary.id === 'enable_cursor_activity' || vm.primary.id === 'resume'));
+        if (canLiftRunning) {
+          var live = livingMapped[0];
+          var liveAgent = String((live && live.provider) || 'Agent');
+          vm.mode = 'running';
+          vm.headline =
+            liveAgent === '本机工作' ? '正在处理中' : liveAgent + ' 正在处理中';
+          var liveWhen = live && live.detail ? String(live.detail).split('·').slice(1).join('·').trim() : '';
+          vm.assistance = liveWhen ? '最近活动：' + liveWhen : '';
+          vm.presence = {
+            line: (live && live.detail) || liveAgent,
+            note: '运行中'
+          };
+          vm.attention = null;
+          vm.continuation = null;
+          vm.primary = { id: 'view_progress', label: '查看 Agent' };
+          vm.secondary = null;
+        }
+      }
     }
 
     return applyProjectConfirmGate(vm);
@@ -893,13 +1036,13 @@
           : providerLabelHome((active && active.provider) || 'Agent');
       }
       // Prefer real task title; never promote UI CTA / next_action boilerplate into H1.
-      var ckTask =
-        usableResumeStep(ckpt.currentTask || ckpt.current_task, ckProv) ||
-        usableResumeStep(ckpt.nextAction || ckpt.next_action, ckProv) ||
-        '';
       var projName =
         (home.project && (home.project.displayName || home.project.display_name)) ||
         vm.projectName ||
+        '';
+      var ckTask =
+        usableResumeStep(ckpt.currentTask || ckpt.current_task, ckProv, projName) ||
+        usableResumeStep(ckpt.nextAction || ckpt.next_action, ckProv, projName) ||
         '';
       var projUnconfirmed =
         !vm.confirmed && (vm.match === 'probable' || vm.match === 'unknown' || !vm.match);
@@ -1129,12 +1272,171 @@
     return vm;
   }
 
+  function usageVal(usage, camel, snake) {
+    if (!usage) return null;
+    if (usage[camel] != null && usage[camel] !== '') return usage[camel];
+    if (usage[snake] != null && usage[snake] !== '') return usage[snake];
+    return null;
+  }
+
+  function formatActiveDuration(ms) {
+    var totalMin = Math.max(0, Math.round(Number(ms) / 60000));
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    if (h > 0) return h + '小时' + m + '分';
+    return m + '分';
+  }
+
+  /** True when the Focus task card is Cursor (not ATR / other agents). */
+  function isCursorFocusVm(vm) {
+    if (!vm) return false;
+    var provider =
+      (vm.dto && vm.dto.provider && (vm.dto.provider.id || vm.dto.provider.name)) ||
+      vm.providerId ||
+      '';
+    if (/cursor/i.test(String(provider))) return true;
+    if (/cursor/i.test(String(vm.appName || ''))) return true;
+    var badge =
+      (vm.desk && vm.desk.continueCard && (vm.desk.continueCard.badge || vm.desk.continueCard.provider)) ||
+      '';
+    return /cursor/i.test(String(badge));
+  }
+
+  /**
+   * Compact strip for Cursor task card (Soft Pad keeps the full live card).
+   * @returns {{ state: string, line: string, ready: boolean, enableCta: boolean, turns: number|null, sessions: number|null, activeLabel: string }|null}
+   */
+  function cursorLocalFromUsage(usage) {
+    if (!usage || typeof usage !== 'object') return null;
+    var status = String(usage.status || '').trim();
+    var conf = String(usage.confidence || '').trim();
+    var src = String(usage.source || '').trim();
+    var msg = String(usage.message || '').trim();
+    var turns = usageVal(usage, 'localTodayRequests', 'local_today_requests');
+    var sess = usageVal(usage, 'localTodaySessions', 'local_today_sessions');
+    var activeMs = usageVal(usage, 'localTodayActiveMs', 'local_today_active_ms');
+    var yest = usageVal(usage, 'localYesterdayRequests', 'local_yesterday_requests');
+    var ready =
+      status === 'ready' &&
+      turns != null &&
+      (src === 'cursor_local_activity' || conf === 'local_only');
+    if (ready) {
+      var bits = ['今日 ' + Math.round(Number(turns)) + ' 次'];
+      if (sess != null) bits.push(Math.round(Number(sess)) + ' 会话');
+      var activeLabel = '';
+      if (activeMs != null && Number(activeMs) > 0) {
+        activeLabel = formatActiveDuration(Number(activeMs));
+        bits.push('活跃 ' + activeLabel);
+      }
+      if (yest != null && Number(yest) > 0) {
+        var delta = Math.round(((Number(turns) - Number(yest)) / Number(yest)) * 100);
+        var arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '';
+        bits.push('较昨 ' + arrow + Math.abs(delta) + '%');
+      }
+      return {
+        state: 'ready',
+        line: bits.join(' · '),
+        ready: true,
+        enableCta: false,
+        turns: Math.round(Number(turns)),
+        sessions: sess != null ? Math.round(Number(sess)) : null,
+        activeLabel: activeLabel
+      };
+    }
+    var consentOff =
+      status === 'consent_off' ||
+      /consent[_ ]?off|未启用|不会读取/i.test(msg) ||
+      /consent=off/i.test(msg);
+    // Only true opt-out shows 开启. busy/unavailable means already on (or no DB) —
+    // 开启 would no-op and feel broken while Cursor holds the WAL.
+    if (consentOff) {
+      return {
+        state: 'consent_off',
+        line: msg || '未启用 Cursor 本机活动',
+        ready: false,
+        enableCta: true,
+        turns: null,
+        sessions: null,
+        activeLabel: ''
+      };
+    }
+    if (status === 'busy' || /库正忙|刷新暂缓/i.test(msg)) {
+      // Prefer last ready totals over a pure busy sentence.
+      if (turns != null) {
+        var busyBits = ['今日 ' + Math.round(Number(turns)) + ' 次'];
+        if (sess != null) busyBits.push(Math.round(Number(sess)) + ' 会话');
+        busyBits.push('刷新暂缓');
+        return {
+          state: 'busy',
+          line: busyBits.join(' · '),
+          ready: false,
+          enableCta: false,
+          turns: Math.round(Number(turns)),
+          sessions: sess != null ? Math.round(Number(sess)) : null,
+          activeLabel: ''
+        };
+      }
+      return {
+        state: 'busy',
+        line: msg || '本机 Cursor 本地统计暂时读不到（库正忙），稍后自动重试',
+        ready: false,
+        enableCta: false,
+        turns: null,
+        sessions: null,
+        activeLabel: ''
+      };
+    }
+    if (status === 'schema_unknown' || /结构暂时无法识别/i.test(msg)) {
+      if (turns != null) {
+        return {
+          state: 'schema_unknown',
+          line: '今日 ' + Math.round(Number(turns)) + ' 次 · 结构待确认',
+          ready: false,
+          enableCta: false,
+          turns: Math.round(Number(turns)),
+          sessions: sess != null ? Math.round(Number(sess)) : null,
+          activeLabel: ''
+        };
+      }
+      return {
+        state: 'schema_unknown',
+        line: msg || 'Cursor 本地库结构暂时无法识别，稍后重试',
+        ready: false,
+        enableCta: false,
+        turns: null,
+        sessions: null,
+        activeLabel: ''
+      };
+    }
+    return {
+      state: status || 'pending',
+      line: msg || '本机活动读取中…',
+      ready: false,
+      enableCta: false,
+      turns: turns != null ? Math.round(Number(turns)) : null,
+      sessions: sess != null ? Math.round(Number(sess)) : null,
+      activeLabel: ''
+    };
+  }
+
+  /** Attach cursorLocal only when the task card is Cursor. */
+  function enrichWithCursorLocal(vm, usage) {
+    if (!vm || !isCursorFocusVm(vm)) return vm;
+    var local = cursorLocalFromUsage(usage);
+    if (!local) return vm;
+    vm.cursorLocal = local;
+    return vm;
+  }
+
   global.OneToneHomeFocusAdapter = {
     toViewModel: toViewModel,
     enrichFromAttention: enrichFromAttention,
     enrichFromHomeSnapshot: enrichFromHomeSnapshot,
     enrichFromInventory: enrichFromInventory,
     applyProjectConfirmGate: applyProjectConfirmGate,
+    cursorLocalFromUsage: cursorLocalFromUsage,
+    enrichWithCursorLocal: enrichWithCursorLocal,
+    isCursorFocusVm: isCursorFocusVm,
     esc: esc
   };
 })(typeof window !== 'undefined' ? window : globalThis);

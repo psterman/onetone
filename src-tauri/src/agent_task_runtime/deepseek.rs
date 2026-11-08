@@ -3,8 +3,9 @@
 
 use serde_json::{json, Value};
 
+use super::contracts::PermissionMode;
 use super::engine::ModelDriver;
-use super::parse::TOOL_NAMES;
+use super::parse::{CHAT_TOOL_NAMES, TOOL_NAMES};
 use super::store::TaskRow;
 use crate::assist_runtime::{self, extract_assistant_text};
 use crate::soft_pad_quota::{self, SoftPadQuotaProvider};
@@ -37,8 +38,22 @@ impl Default for OpenAiCompatDriver {
 pub type DeepSeekDriver = OpenAiCompatDriver;
 
 pub fn openai_tools() -> Value {
+    openai_tools_named(TOOL_NAMES)
+}
+
+/// Tool catalog for the active lane (chat = read_only subset).
+pub fn openai_tools_for_task(task: &TaskRow) -> Value {
+    let mode = PermissionMode::parse(&task.permission_mode).unwrap_or(PermissionMode::WriteWithApproval);
+    if mode == PermissionMode::ReadOnly {
+        openai_tools_named(CHAT_TOOL_NAMES)
+    } else {
+        openai_tools()
+    }
+}
+
+fn openai_tools_named(names: &[&str]) -> Value {
     let mut tools = Vec::new();
-    for name in TOOL_NAMES {
+    for name in names {
         let (desc, props, required) = tool_schema(name);
         tools.push(json!({
             "type": "function",
@@ -104,10 +119,36 @@ fn tool_schema(name: &str) -> (&'static str, Value, Vec<&'static str>) {
             vec!["check_id"],
         ),
         "inspect_diff" => ("Inspect diffs of changed files", json!({}), vec![]),
+        "web_search" => (
+            "Search the public web for a query",
+            json!({
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+                "provider": {"type": "string"}
+            }),
+            vec!["query"],
+        ),
+        "fetch_url" => (
+            "Fetch a public http(s) URL as text (SSRF-safe)",
+            json!({
+                "url": {"type": "string"},
+                "provider": {"type": "string"},
+                "max_chars": {"type": "integer"}
+            }),
+            vec!["url"],
+        ),
         "request_user_input" => (
             "Ask the user a question and wait",
             json!({"question": {"type": "string"}}),
             vec!["question"],
+        ),
+        "deliver_to_agent" => (
+            "Copy text to clipboard and paste into the focused external Agent (Soft Pad)",
+            json!({
+                "text": {"type": "string"},
+                "kind": {"type": "string"}
+            }),
+            vec!["text"],
         ),
         "finish" => (
             "Finish the task",
@@ -196,12 +237,17 @@ fn finish_from_http(
     }
 }
 
+fn is_read_only_task(task: &TaskRow) -> bool {
+    PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly)
+}
+
 impl ModelDriver for OpenAiCompatDriver {
     fn next_tool_json(&mut self, task: &TaskRow, messages: &[Value]) -> Result<String, String> {
-        // Model-first (no README hijack). Cold-start inspect is process chrome only.
+        // Model-first (no README hijack). Work lane cold-starts with inspect chrome;
+        // chat/read_only lets the model pick web_search / read_file first.
         let trace = super::prompts::user_tool_trace_section(messages);
         let _ = super::workbuddy::scripted_readme_step(task, &trace);
-        if !super::prompts::trace_ran(&trace, "inspect_workspace") {
+        if !is_read_only_task(task) && !super::prompts::trace_ran(&trace, "inspect_workspace") {
             return Ok(r#"{"tool":"inspect_workspace","arguments":{}}"#.into());
         }
 
@@ -221,7 +267,7 @@ impl ModelDriver for OpenAiCompatDriver {
         let body = json!({
             "model": entry.model_id,
             "messages": msgs,
-            "tools": openai_tools(),
+            "tools": openai_tools_for_task(task),
             "tool_choice": "auto",
             "max_tokens": self.max_tokens.min(entry.max_out_tokens),
             "temperature": 0.2,
@@ -302,7 +348,7 @@ impl ModelDriver for GenericOpenAiDriver {
     fn next_tool_json(&mut self, task: &TaskRow, messages: &[Value]) -> Result<String, String> {
         let trace = super::prompts::user_tool_trace_section(messages);
         let _ = super::workbuddy::scripted_readme_step(task, &trace);
-        if !super::prompts::trace_ran(&trace, "inspect_workspace") {
+        if !is_read_only_task(task) && !super::prompts::trace_ran(&trace, "inspect_workspace") {
             return Ok(r#"{"tool":"inspect_workspace","arguments":{}}"#.into());
         }
         let mut msgs = messages.to_vec();
@@ -315,7 +361,7 @@ impl ModelDriver for GenericOpenAiDriver {
         let body = json!({
             "model": self.model,
             "messages": msgs,
-            "tools": openai_tools(),
+            "tools": openai_tools_for_task(task),
             "tool_choice": "auto",
             "max_tokens": self.max_tokens,
             "temperature": 0.2,
@@ -422,5 +468,68 @@ mod tests {
                 .and_then(|n| n.as_str())
                 == Some("export_to_desktop")
         }));
+        assert!(arr.iter().any(|t| {
+            t.pointer("/function/name")
+                .and_then(|n| n.as_str())
+                == Some("web_search")
+        }));
+        assert!(arr.iter().any(|t| {
+            t.pointer("/function/name")
+                .and_then(|n| n.as_str())
+                == Some("deliver_to_agent")
+        }));
+    }
+
+    #[test]
+    fn chat_tools_exclude_write() {
+        let mut task = crate::agent_task_runtime::store::TaskRow {
+            task_id: "t".into(),
+            goal: "q".into(),
+            workspace_root: "/tmp".into(),
+            permission_mode: "read_only".into(),
+            status: "running".into(),
+            waiting_reason: None,
+            current_turn: 0,
+            tool_call_count: 0,
+            changed_files_json: "[]".into(),
+            baseline_dirty_json: "[]".into(),
+            pending_approval_token: None,
+            pending_patch_json: None,
+            fingerprints_json: "{}".into(),
+            checkpoint_id: None,
+            last_error: None,
+            repair_count: 0,
+            format_retry_count: 0,
+            applied_tokens_json: "[]".into(),
+            created_at: 0,
+            updated_at: 0,
+            provider_id: None,
+            model_id: None,
+            config_fp: None,
+            driver_kind: "unknown".into(),
+            verify_intent: false,
+            sandbox_id: None,
+            expected_rel_path: None,
+            expected_content: None,
+        };
+        let tools = openai_tools_for_task(&task);
+        let names: Vec<&str> = tools
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|t| t.pointer("/function/name").and_then(|n| n.as_str()))
+            .collect();
+        assert!(names.contains(&"web_search"));
+        assert!(names.contains(&"finish"));
+        assert!(!names.contains(&"apply_patch"));
+        task.permission_mode = "write_with_approval".into();
+        let work = openai_tools_for_task(&task);
+        let work_names: Vec<&str> = work
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|t| t.pointer("/function/name").and_then(|n| n.as_str()))
+            .collect();
+        assert!(work_names.contains(&"apply_patch"));
     }
 }

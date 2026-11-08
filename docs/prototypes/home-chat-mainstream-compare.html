@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Agentic Loop 对话</title>
+  <style>
+    :root {
+      --ink: #14233a;
+      --muted: #556576;
+      --line: rgba(20, 35, 58, 0.12);
+      --teal: #2a9cc4;
+      --teal-soft: #e8f4fa;
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --bad: #c44;
+      --card: #fff;
+      --bg: #eef3f6;
+      --user: #dceef6;
+      --rail: #f7f9fb;
+      --chip: #f0f4f7;
+      --loop: #6b4fd8;
+      --loop-soft: #f0ecff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 360px at 50% 0%, #f8fbfd 0%, transparent 55%),
+        linear-gradient(180deg, #e9eef3 0%, var(--bg) 100%);
+      padding: 28px 18px 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { width: min(1180px, 100%); margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--loop); text-transform: uppercase;
+    }
+    h1 { margin: 6px 0 8px; font-size: 26px; letter-spacing: -0.02em; }
+    .lead {
+      margin: 0 0 16px; color: var(--muted); font-size: 14px;
+      line-height: 1.55; max-width: 78ch;
+    }
+
+    .mode {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+    }
+    .mode button {
+      appearance: none; border: 1px solid var(--line); background: var(--card);
+      color: var(--muted); font: inherit; font-size: 13px; font-weight: 700;
+      height: 34px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+    }
+    .mode button.is-on {
+      color: var(--ink);
+      border-color: color-mix(in srgb, var(--loop) 40%, var(--line));
+      background: color-mix(in srgb, var(--loop) 10%, white);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--loop) 12%, transparent);
+    }
+
+    .callout {
+      border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+      padding: 12px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.5;
+      color: var(--muted);
+    }
+    .callout b { color: var(--ink); }
+    .tag {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px; margin-right: 6px; vertical-align: 1px;
+    }
+    .tag-bad { background: #fde8e8; color: #a33; }
+    .tag-ok { background: #e5f6ee; color: var(--ok); }
+    .tag-loop { background: var(--loop-soft); color: var(--loop); }
+
+    /* Loop diagram */
+    .loop-board {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 820px) {
+      .loop-board { grid-template-columns: 1fr; }
+    }
+    .orbit {
+      border: 1px solid var(--line); border-radius: 16px; background: var(--card);
+      padding: 14px; display: grid; place-items: center; min-height: 200px;
+    }
+    .ring {
+      width: 168px; height: 168px; border-radius: 50%;
+      border: 2px dashed color-mix(in srgb, var(--loop) 45%, transparent);
+      position: relative;
+      display: grid; place-items: center;
+    }
+    .ring::before {
+      content: "";
+      position: absolute; inset: 18px; border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--loop) 25%, transparent);
+    }
+    .hub {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(145deg, #7a5ce8, #4f3ab8);
+      color: #fff; display: grid; place-items: center;
+      font-size: 13px; font-weight: 800; letter-spacing: 0.04em;
+      box-shadow: 0 8px 20px rgba(107, 79, 216, 0.35);
+      z-index: 1;
+    }
+    .spoke {
+      position: absolute; font-size: 10px; font-weight: 800;
+      padding: 3px 7px; border-radius: 999px; background: #fff;
+      border: 1px solid var(--line); color: var(--muted);
+      white-space: nowrap;
+    }
+    .spoke.is-on {
+      border-color: color-mix(in srgb, var(--loop) 50%, var(--line));
+      background: var(--loop-soft); color: var(--loop);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--loop) 15%, transparent);
+    }
+    .spoke.s1 { top: -6px; left: 50%; transform: translateX(-50%); }
+    .spoke.s2 { right: -18px; top: 50%; transform: translateY(-50%); }
+    .spoke.s3 { bottom: -6px; left: 50%; transform: translateX(-50%); }
+    .spoke.s4 { left: -28px; top: 50%; transform: translateY(-50%); }
+
+    .loop-copy {
+      border: 1px solid var(--line); border-radius: 16px; background: var(--card);
+      padding: 14px 16px; font-size: 13px; line-height: 1.55; color: var(--muted);
+    }
+    .loop-copy h2 {
+      margin: 0 0 8px; font-size: 15px; color: var(--ink);
+    }
+    .loop-copy ol { margin: 0; padding-left: 1.2em; }
+    .loop-copy li { margin: 4px 0; }
+    .loop-copy code {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+      background: #f1f4f7; padding: 1px 5px; border-radius: 4px;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .actions button {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      font: inherit; font-size: 12px; font-weight: 700; height: 32px;
+      padding: 0 12px; border-radius: 999px; cursor: pointer; color: var(--ink);
+    }
+    .actions button.primary {
+      background: var(--loop); border-color: var(--loop); color: #fff;
+    }
+    .actions button:disabled { opacity: 0.4; cursor: default; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 560px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--card);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.7) inset,
+        0 18px 40px rgba(20, 35, 58, 0.08);
+    }
+
+    .topbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 700;
+    }
+    .logo {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, #7a5ce8, #3aa0d6);
+      box-shadow: 0 0 0 2px #fff, 0 0 0 3px #ddd6ff;
+    }
+    .topbar .meta { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+    .goal {
+      margin: 12px 16px 0;
+      border: 1px solid color-mix(in srgb, var(--loop) 30%, var(--line));
+      background: linear-gradient(180deg, #faf8ff, #fff);
+      border-radius: 12px; padding: 10px 12px;
+    }
+    .goal .k {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      color: var(--loop); text-transform: uppercase;
+    }
+    .goal .v { margin-top: 4px; font-size: 14px; font-weight: 700; }
+    .goal .p {
+      margin-top: 6px; font-size: 12px; color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .pill {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--chip); color: var(--muted);
+    }
+    .pill.on { background: var(--loop-soft); color: var(--loop); }
+    .pill.ok { background: #e5f6ee; color: var(--ok); }
+
+    .thread {
+      flex: 1; overflow: auto; padding: 14px 16px 10px;
+      display: flex; flex-direction: column; gap: 12px;
+      min-height: 380px;
+      background: linear-gradient(180deg, #fbfcfd 0%, #fff 50%);
+    }
+    .main-col { display: flex; flex-direction: column; min-height: 560px; }
+
+    .bubble-user {
+      align-self: flex-end; max-width: 78%;
+      background: var(--user); border-radius: 14px 14px 4px 14px;
+      padding: 10px 14px; font-size: 14px; line-height: 1.5;
+    }
+    .bubble-asst {
+      align-self: stretch;
+      border: 1px solid var(--line); border-radius: 14px;
+      background: #fff; padding: 12px 14px 14px;
+    }
+    .asst-head {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .asst-body { font-size: 14px; line-height: 1.6; }
+    .asst-body p { margin: 0 0 10px; }
+    .asst-body p:last-child { margin-bottom: 0; }
+    .asst-body code {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+      background: #f1f4f7; padding: 1px 5px; border-radius: 4px;
+    }
+
+    .md-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      border: 1px solid #dde3ea;
+    }
+    .md-table th, .md-table td {
+      border: 1px solid #dde3ea; padding: 8px 10px; text-align: left; vertical-align: top;
+    }
+    .md-table th { background: #f3f5f7; font-weight: 700; width: 28%; }
+
+    .loop-log {
+      border: 1px solid color-mix(in srgb, var(--loop) 22%, var(--line));
+      background: #fbfaff; border-radius: 12px; overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .loop-log-h {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 800; color: var(--loop);
+      background: var(--loop-soft);
+    }
+    .loop-log-h .spin {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--loop) 30%, transparent);
+      border-top-color: var(--loop);
+      animation: spin 0.8s linear infinite;
+    }
+    .loop-log-h.done .spin { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .step {
+      display: grid; grid-template-columns: 64px minmax(0, 1fr);
+      gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--muted);
+    }
+    .step:last-child { border-bottom: 0; }
+    .step.pending { opacity: 0.35; }
+    .step.active {
+      background: color-mix(in srgb, var(--loop) 6%, white);
+    }
+    .step.done .badge { background: #e5f6ee; color: var(--ok); }
+    .step.active .badge { background: var(--loop-soft); color: var(--loop); }
+    .badge {
+      font-size: 10px; font-weight: 800; height: 22px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0 8px; border-radius: 999px; background: var(--chip);
+      color: var(--muted); white-space: nowrap;
+    }
+    .step strong { color: var(--ink); }
+    .step .path {
+      font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+    }
+    .step details { margin-top: 4px; }
+    .step summary { cursor: pointer; color: var(--loop); font-weight: 700; }
+    .step pre {
+      margin: 6px 0 0; white-space: pre-wrap; word-break: break-word;
+      font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+      background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px;
+    }
+
+    .sources {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+    }
+    .src {
+      font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 8px;
+      background: var(--chip); color: var(--ink); border: 1px solid var(--line);
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .compose {
+      border-top: 1px solid var(--line); padding: 12px 14px 14px;
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .compose textarea {
+      flex: 1; resize: none; height: 44px; border: 1px solid var(--line);
+      border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 13px;
+      outline: none; background: #fafbfc;
+    }
+    .send {
+      appearance: none; border: 0; background: var(--loop); color: #fff;
+      font: inherit; font-size: 13px; font-weight: 700;
+      height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+    }
+
+    .foot {
+      margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="eyebrow">Prototype · agentic loop</div>
+    <h1>以 Loop 为圆心：主动搜网，直到把问题解完</h1>
+    <p class="lead">
+      不是「一次 search_code 就收工」，也不是「请点顶部工作」。圆心是持续运转的
+      <b>goal → 选工具 → 观察 → 再行动</b>；证据不够就主动 <code>web_search</code> / <code>fetch_url</code>，够了才 <code>finish</code>。
+    </p>
+
+    <div class="mode" role="tablist">
+      <button type="button" data-mode="passive">① 现状 · 无能动性</button>
+      <button type="button" class="is-on" data-mode="loop">② 目标 · Loop 解问题</button>
+    </div>
+
+    <div class="callout" id="callout"></div>
+
+    <div class="loop-board" id="loopBoard">
+      <div class="orbit" aria-hidden="true">
+        <div class="ring">
+          <div class="hub">LOOP</div>
+          <span class="spoke s1" data-spoke="0">Goal</span>
+          <span class="spoke s2" data-spoke="1">Act</span>
+          <span class="spoke s3" data-spoke="2">Observe</span>
+          <span class="spoke s4" data-spoke="3">Decide</span>
+        </div>
+      </div>
+      <div class="loop-copy">
+        <h2>一轮里模型自己决定下一步</h2>
+        <ol>
+          <li><b>Goal</b>：锁定用户要什么（不是填表推诿）</li>
+          <li><b>Act</b>：仓库不够 → <code>web_search</code>；摘要不够 → <code>fetch_url</code>；本地相关再 <code>search_code</code></li>
+          <li><b>Observe</b>：看命中是否够回答；缺口写进下一圈</li>
+          <li><b>Decide</b>：证据够 → 自然语言结案；不够 → 继续 loop，禁止叫用户「去点 Tab」</li>
+        </ol>
+        <div class="actions">
+          <button type="button" class="primary" id="replay">▶ 重放这一圈</button>
+          <button type="button" id="jumpEnd">跳到结案</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="shell">
+      <div class="main-col">
+        <div class="topbar">
+          <div class="brand">
+            <span class="logo"></span>
+            <span id="brandLabel">OneTone · Agentic Loop</span>
+          </div>
+          <div class="meta" id="topMeta">主动网络搜索开启 · 直到 finish</div>
+        </div>
+
+        <div class="goal" id="goalBox">
+          <div class="k">Active goal</div>
+          <div class="v" id="goalText">弄清「戴佳伟」是谁，优先项目内证据，不足则上网核实</div>
+          <div class="p" id="goalPills">
+            <span class="pill on">looping</span>
+            <span class="pill">web_search</span>
+            <span class="pill">fetch_url</span>
+            <span class="pill">search_code</span>
+          </div>
+        </div>
+
+        <div class="thread" id="thread"></div>
+
+        <div class="compose">
+          <textarea id="draft" placeholder="继续追问，或改 goal…"></textarea>
+          <button type="button" class="send" id="send">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">
+      后端可复用：<code>cmd_research_web_search</code> / <code>cmd_research_fetch_url</code> + ATR 文件工具，挂进同一 chat tool loop。
+      文件：<code>docs/prototypes/home-chat-mainstream-compare.html</code>
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      var mode = 'loop';
+      var timer = null;
+      var stepIdx = -1;
+
+      var callout = document.getElementById('callout');
+      var thread = document.getElementById('thread');
+      var brandLabel = document.getElementById('brandLabel');
+      var topMeta = document.getElementById('topMeta');
+      var loopBoard = document.getElementById('loopBoard');
+      var goalBox = document.getElementById('goalBox');
+      var goalPills = document.getElementById('goalPills');
+      var spokes = Array.prototype.slice.call(document.querySelectorAll('.spoke'));
+
+      var NOTES = {
+        passive:
+          '<span class="tag tag-bad">现状</span><b>零能动性</b>：不搜网、不读盘，用「项/说明」表把锅甩回用户（去点「工作」）。没有 loop，只有一次 completion。',
+        loop:
+          '<span class="tag tag-loop">目标</span><b>Loop 为圆心</b>：同一 goal 下多圈 Act→Observe→Decide；仓库没命中就主动 <b>web_search</b>，摘要不够就 <b>fetch_url</b>，直到能结案——不是问用户要框架。'
+      };
+
+      var STEPS = [
+        {
+          spoke: 0,
+          badge: 'Goal',
+          title: '锁定目标',
+          detail: '用户问「戴佳伟是谁？」→ 目标：身份结论 + 证据；禁止推诿切 Tab。',
+          open: false
+        },
+        {
+          spoke: 1,
+          badge: 'Act 1',
+          title: 'search_code · 戴佳伟',
+          detail: '本地先探：0 强命中（示意：团队文档未索引 / 仅有模糊注释）。',
+          pre: 'hits: 0\nreason: no strong identity match',
+          open: true
+        },
+        {
+          spoke: 2,
+          badge: 'Observe',
+          title: '证据不足 → 继续 loop',
+          detail: 'Decide：不能结案。下一圈主动上网，不反问「请补简介」。',
+          open: false
+        },
+        {
+          spoke: 1,
+          badge: 'Act 2',
+          title: 'web_search · 戴佳伟 voice-pilot / OneTone',
+          detail: '主动网络搜索（DDG/Bing/Wiki auto）。',
+          pre:
+            '1. 某技术社区帖：戴佳伟 · Soft Pad / 客户端\n' +
+            '2. 公司内页片段：客户端同学\n' +
+            '3. 无关同名结果 ×4（降权）',
+          open: true
+        },
+        {
+          spoke: 1,
+          badge: 'Act 3',
+          title: 'fetch_url · 打开高相关链接',
+          detail: '摘要不够，抓正文核实。',
+          pre: 'title: 团队介绍\n> 戴佳伟负责 OneTone Soft Pad 与客户端交互…',
+          open: true
+        },
+        {
+          spoke: 1,
+          badge: 'Act 4',
+          title: 'search_code · Soft Pad 戴佳伟（回灌）',
+          detail: '用网上线索回仓库再搜，补本地旁证。',
+          pre: 'docs/team.md:4  戴佳伟 · 客户端\nREADME.md:12   贡献者',
+          open: true
+        },
+        {
+          spoke: 3,
+          badge: 'Decide',
+          title: '证据够 → finish',
+          detail: '本地 + 网络交叉验证通过，输出自然语言结案。',
+          open: false
+        }
+      ];
+
+      function userBubble(text) {
+        return '<div class="bubble-user">' + text + '</div>';
+      }
+
+      function asst(inner, head) {
+        return (
+          '<div class="bubble-asst"><div class="asst-head">' +
+          '<span class="logo" style="width:18px;height:18px"></span>' +
+          (head || '助手') +
+          '</div><div class="asst-body">' +
+          inner +
+          '</div></div>'
+        );
+      }
+
+      function setSpokes(active) {
+        spokes.forEach(function (el) {
+          el.classList.toggle('is-on', Number(el.getAttribute('data-spoke')) === active);
+        });
+      }
+
+      function renderPassive() {
+        var table =
+          '<table class="md-table"><thead><tr><th>项</th><th>说明</th></tr></thead><tbody>' +
+          '<tr><td>项目内身份</td><td><b>本模式不读磁盘</b>，无法确认是否含此人</td></tr>' +
+          '<tr><td>若指项目成员</td><td>点顶部「工作」后再发</td></tr>' +
+          '<tr><td>若指特定人物</td><td>补简介，我再答</td></tr>' +
+          '</tbody></table>';
+        thread.innerHTML = userBubble('戴佳伟是谁？') + asst(table, 'WorkBuddy · 旁路');
+      }
+
+      function answerHtml() {
+        return (
+          '<p>综合 <b>网络正文</b> 与仓库回搜：戴佳伟是 OneTone / Soft Pad 相关的客户端同学；' +
+          '<code>docs/team.md</code> 与 README 贡献者列表可旁证。</p>' +
+          '<p>同名公众人物没有单一默认指向；就你这个仓库问题，以上结论已够用，无需再让你切模式。</p>' +
+          '<div class="sources">' +
+          '<span class="src">web · 团队介绍页</span>' +
+          '<span class="src">repo · docs/team.md</span>' +
+          '<span class="src">repo · README.md</span>' +
+          '</div>'
+        );
+      }
+
+      function buildLoopShell(upto, running) {
+        var doneAll = upto >= STEPS.length - 1 && !running;
+        var head =
+          '<div class="loop-log' + (doneAll ? '' : '') + '">' +
+          '<div class="loop-log-h' + (doneAll ? ' done' : '') + '">' +
+          (doneAll ? '' : '<span class="spin"></span>') +
+          (doneAll ? 'Loop finished · goal 已解决' : 'Agentic loop · 证据不够就继续搜') +
+          '</div>';
+
+        var body = '';
+        for (var i = 0; i < STEPS.length; i++) {
+          var st = STEPS[i];
+          var cls = 'step pending';
+          if (i < upto) cls = 'step done';
+          if (i === upto && running) cls = 'step active';
+          if (i === upto && !running && doneAll) cls = 'step done';
+          if (i <= upto && !running && i < STEPS.length - 1 && doneAll) cls = 'step done';
+          if (!running && i <= upto) cls = 'step done';
+
+          var pre = st.pre
+            ? '<details' + (st.open && i === upto ? ' open' : '') +
+              '><summary>结果</summary><pre>' +
+              st.pre +
+              '</pre></details>'
+            : '';
+          body +=
+            '<div class="' +
+            cls +
+            '"><span class="badge">' +
+            st.badge +
+            '</span><div><strong>' +
+            st.title +
+            '</strong><div>' +
+            st.detail +
+            '</div>' +
+            pre +
+            '</div></div>';
+        }
+        return head + body + '</div>';
+      }
+
+      function paintLoop(upto, running, withAnswer) {
+        var html = userBubble('戴佳伟是谁？') + asst(buildLoopShell(upto, running), 'OneTone · loop');
+        if (withAnswer) {
+          html += asst(answerHtml(), '结案');
+        }
+        thread.innerHTML = html;
+        thread.scrollTop = thread.scrollHeight;
+
+        var spoke = upto >= 0 && upto < STEPS.length ? STEPS[upto].spoke : 3;
+        setSpokes(withAnswer ? 3 : spoke);
+
+        if (withAnswer) {
+          goalPills.innerHTML =
+            '<span class="pill ok">solved</span>' +
+            '<span class="pill ok">web_search ✓</span>' +
+            '<span class="pill ok">fetch_url ✓</span>' +
+            '<span class="pill ok">search_code ✓</span>';
+        } else {
+          var tools = ['web_search', 'fetch_url', 'search_code'];
+          var pills = '<span class="pill on">looping · step ' + (upto + 1) + '/' + STEPS.length + '</span>';
+          tools.forEach(function (t) {
+            var hit = STEPS.slice(0, upto + 1).some(function (s) {
+              return s.title.indexOf(t) >= 0;
+            });
+            pills += '<span class="pill' + (hit ? ' on' : '') + '">' + t + '</span>';
+          });
+          goalPills.innerHTML = pills;
+        }
+      }
+
+      function stopTimer() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      function replay() {
+        stopTimer();
+        stepIdx = -1;
+        paintLoop(0, true, false);
+        stepIdx = 0;
+        timer = setInterval(function () {
+          stepIdx += 1;
+          if (stepIdx >= STEPS.length) {
+            stopTimer();
+            paintLoop(STEPS.length - 1, false, true);
+            return;
+          }
+          paintLoop(stepIdx, true, false);
+        }, 900);
+      }
+
+      function jumpEnd() {
+        stopTimer();
+        stepIdx = STEPS.length - 1;
+        paintLoop(stepIdx, false, true);
+      }
+
+      function applyMode() {
+        stopTimer();
+        callout.innerHTML = NOTES[mode];
+        document.querySelectorAll('.mode button').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+        });
+        if (mode === 'passive') {
+          loopBoard.style.display = 'none';
+          goalBox.style.display = 'none';
+          brandLabel.textContent = 'WorkBuddy · hy3';
+          topMeta.textContent = '无工具 · 一次 completion · 推卸给用户';
+          setSpokes(-1);
+          renderPassive();
+        } else {
+          loopBoard.style.display = '';
+          goalBox.style.display = '';
+          brandLabel.textContent = 'OneTone · Agentic Loop';
+          topMeta.textContent = '主动网络搜索开启 · 直到 finish';
+          replay();
+        }
+      }
+
+      document.querySelectorAll('.mode button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          mode = btn.getAttribute('data-mode');
+          applyMode();
+        });
+      });
+      document.getElementById('replay').addEventListener('click', function () {
+        if (mode !== 'loop') return;
+        replay();
+      });
+      document.getElementById('jumpEnd').addEventListener('click', function () {
+        if (mode !== 'loop') return;
+        jumpEnd();
+      });
+      document.getElementById('send').addEventListener('click', function () {
+        var t = document.getElementById('draft').value.trim();
+        if (!t) return;
+        document.getElementById('draft').value = '';
+        if (mode === 'passive') {
+          thread.insertAdjacentHTML('beforeend', userBubble(t));
+          thread.insertAdjacentHTML(
+            'beforeend',
+            asst('<p style="color:var(--muted)">（示意）仍无 loop，多半继续表格推诿。</p>', '旁路')
+          );
+        } else {
+          document.getElementById('goalText').textContent = t;
+          replay();
+        }
+        thread.scrollTop = thread.scrollHeight;
+      });
+
+      applyMode();
+    })();
+  </script>
+</body>
+</html>

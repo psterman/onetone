@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 原生 DESIGN.md 主题对比（非近似蓝）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ot-primary: #2a9cc4;
+    --ot-soft: #e6f7fc;
+    --ot-ink: #152238;
+    --ot-muted: #5a7086;
+    --ot-navy: #1a2d4a;
+    --ot-bg: #edf2f8;
+    --line: rgba(26, 45, 74, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ot-ink);
+    font: 14px/1.5 "IBM Plex Sans", "Segoe UI", "PingFang SC", sans-serif;
+    background:
+      radial-gradient(800px 400px at 0% 0%, rgba(42, 156, 196, 0.12), transparent 55%),
+      linear-gradient(180deg, #f8fbfd, var(--ot-bg));
+  }
+  .wrap { width: min(1340px, 100%); margin: 0 auto; padding: 20px 18px 40px; }
+  .hero { display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 20px; align-items: start; margin-bottom: 18px; }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ot-primary); }
+  h1 { margin: 8px 0; font-family: Fraunces, Georgia, serif; font-size: clamp(26px, 3.6vw, 40px); letter-spacing: -0.03em; line-height: 1.12; }
+  .lede { margin: 0; color: var(--ot-muted); max-width: 58ch; }
+  .warn {
+    margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+    background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 13px;
+  }
+  .baseline {
+    border: 1px solid var(--line); background: rgba(255,255,255,.9); border-radius: 16px; padding: 14px 16px;
+  }
+  .baseline h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ot-muted); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .swatch { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); }
+  .meta { margin-top: 8px; font-size: 12px; color: var(--ot-muted); }
+  .meta code { color: var(--ot-navy); font-weight: 650; }
+
+  .verdict { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 18px; }
+  @media (max-width: 900px) { .verdict { grid-template-columns: 1fr; } }
+  .verdict article { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .verdict article.best { background: linear-gradient(180deg, #fff, var(--ot-soft)); border-color: color-mix(in srgb, var(--ot-primary) 40%, var(--line)); }
+  .verdict b { display: block; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ot-muted); }
+  .verdict strong { display: block; margin-top: 4px; font-size: 18px; }
+  .verdict p { margin: 6px 0 0; color: var(--ot-muted); font-size: 12.5px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; position: sticky; top: 0; z-index: 5; padding: 8px 0; background: color-mix(in srgb, var(--ot-bg) 88%, transparent); backdrop-filter: blur(8px); }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 650; color: var(--ot-muted); cursor: pointer; }
+  .chip.is-on { background: var(--ot-primary); color: #fff; border-color: var(--ot-primary); }
+  .hint { margin-left: auto; font-size: 12px; color: var(--ot-muted); }
+
+  .stack { display: grid; gap: 18px; }
+  .brand {
+    display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 0;
+    border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #fff;
+    box-shadow: 0 10px 28px rgba(26,45,74,.05);
+  }
+  @media (max-width: 980px) { .brand { grid-template-columns: 1fr; } }
+  .brand.is-dim { opacity: 0.35; filter: grayscale(0.4); }
+  .side { padding: 16px; border-right: 1px solid var(--line); background: #fbfcfe; }
+  @media (max-width: 980px) { .side { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .side-top { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
+  .side h3 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+  .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #eef2f7; color: var(--ot-muted); white-space: nowrap; }
+  .tag.good { background: #e6f7fc; color: #1f8fb8; }
+  .tag.warn { background: #fff7ed; color: #c2410c; }
+  .tag.bad { background: #fef2f2; color: #b91c1c; }
+  .accent-line { margin: 10px 0 8px; font-size: 12px; color: var(--ot-muted); }
+  .accent-line code { font-weight: 700; color: var(--ot-navy); }
+  .native-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+  .native-swatches span { width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); }
+  .scores { display: grid; gap: 6px; margin: 10px 0; }
+  .score { display: grid; grid-template-columns: 72px 1fr 24px; gap: 6px; align-items: center; font-size: 11px; }
+  .score i { display: block; height: 7px; border-radius: 99px; background: #e8eef5; overflow: hidden; }
+  .score i b { display: block; height: 100%; background: var(--ot-primary); border-radius: inherit; }
+  .score em { font-style: normal; font-weight: 700; text-align: right; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 10px; border-radius: 10px; background: #f3f7fb; border: 1px solid var(--line); }
+  .total b { font-size: 20px; color: var(--ot-primary); }
+  .notes { margin: 10px 0 0; padding-left: 16px; color: var(--ot-muted); font-size: 12px; }
+  .notes li { margin: 3px 0; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .links a { font-size: 12px; font-weight: 650; color: var(--ot-primary); text-decoration: none; }
+  .preview-pane { min-height: 520px; background: #eef1f5; }
+  .preview-pane iframe { width: 100%; height: 560px; border: 0; background: #fff; }
+  .preview-cap { padding: 8px 12px; font-size: 11px; color: var(--ot-muted); border-top: 1px solid var(--line); background: #fff; }
+
+  .matrix { margin-top: 22px; border: 1px solid var(--line); border-radius: 16px; overflow: auto; background: #fff; }
+  table { width: 100%; border-collapse: collapse; min-width: 860px; font-size: 13px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ot-muted); background: #f8fbfd; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 650; }
+  tr.best { background: #f0f9fc; }
+  footer { margin-top: 18px; font-size: 12px; color: var(--ot-muted); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Native DESIGN.md · not approximated blues</div>
+        <h1>用配置里的原生色系与组件对比</h1>
+        <p class="lede">
+          右侧 iframe 直接加载各品牌官方 <code>preview.html</code>（来自 getdesign 镜像），左侧 token 摘自同目录
+          <code>DESIGN.md</code>。不再用同一套蓝按钮复刻。
+        </p>
+        <div class="warn">
+          纠正：Intercom 原生主色是 <strong>Fin Orange <code>#ff5600</code></strong> + 奶油底 <code>#faf9f6</code>，不是蓝。
+          上一版按 README 摘要误判成「友好蓝」。
+        </div>
+      </div>
+      <aside class="baseline">
+        <h2>OneTone 现网基线（改造锚点）</h2>
+        <div class="swatches">
+          <div class="swatch" style="background:#2a9cc4"></div>
+          <div class="swatch" style="background:#1f8fb8"></div>
+          <div class="swatch" style="background:#5ec8e8"></div>
+          <div class="swatch" style="background:#e6f7fc"></div>
+          <div class="swatch" style="background:#1a2d4a"></div>
+          <div class="swatch" style="background:#f0f7fb"></div>
+        </div>
+        <div class="meta">青蓝主色 <code>#2a9cc4</code> · 软圆角 · 浅色生产力桌面 · 对话气泡</div>
+      </aside>
+    </header>
+
+    <div class="verdict">
+      <article class="best">
+        <b>色板最接近蓝系</b>
+        <strong>Webflow</strong>
+        <p>原生主色 <code>#146ef5</code>，白底营销壳；按钮偏锐（4–8px），需软化才能进 OneTone。</p>
+      </article>
+      <article>
+        <b>密面板组件</b>
+        <strong>IBM Carbon</strong>
+        <p>原生 <code>#0f62fe</code> + 0px 直角按钮、底边输入；适合 Keys/Voice 密度，不适合聊天皮。</p>
+      </article>
+      <article>
+        <b>别当蓝主题用</b>
+        <strong>Intercom / Cal.com</strong>
+        <p>Intercom=橙；Cal=灰度（蓝只给链接）。可借组件节奏，不能借「蓝皮肤」。</p>
+      </article>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="chip is-on" data-filter="all">全部</button>
+      <button type="button" class="chip" data-filter="blue">真蓝主色</button>
+      <button type="button" class="chip" data-filter="dense">密面板</button>
+      <button type="button" class="chip" data-filter="chat">对话感</button>
+      <button type="button" class="chip" data-filter="dark">暗底优先</button>
+      <button type="button" class="chip" data-filter="mono">非蓝/灰度</button>
+      <span class="hint">源文件在 <code>docs/prototypes/design-md-native/</code></span>
+    </div>
+
+    <section class="stack" id="stack"></section>
+
+    <section class="matrix">
+      <table>
+        <thead>
+          <tr>
+            <th>系统</th>
+            <th>原生主色</th>
+            <th>色板↔OneTone</th>
+            <th>对话组件</th>
+            <th>桌面壳</th>
+            <th>密面板</th>
+            <th>圆角气质</th>
+            <th>加权</th>
+            <th>改造用法</th>
+          </tr>
+        </thead>
+        <tbody id="matrix"></tbody>
+      </table>
+    </section>
+
+    <footer>
+      原生包镜像：Meliwat/awesome-design-md-pre-paywall（及 wangsixiang777 的 Meta DESIGN.md）。
+      Meta 无官方 preview.html，预览页按 DESIGN.md token 组装并已标注。
+      OneTone 改造建议：色板锚点仍用 <code>#2a9cc4</code>；组件可混 Webflow 壳 + IBM 表单密度 + Coinbase/Meta 的 pill CTA，不要整盘换成某一品牌蓝。
+    </footer>
+  </div>
+
+<script>
+/** Scores are against OneTone (#2a9cc4 cyan, soft light desktop), using REAL DESIGN.md tokens. */
+const SYSTEMS = [
+  {
+    id: "webflow",
+    name: "Webflow",
+    roles: ["blue", "shell"],
+    tag: "真蓝主色",
+    tagClass: "good",
+    accent: "#146ef5",
+    swatches: ["#146ef5", "#3b89ff", "#0055d4", "#080808", "#ffffff", "#7a3dff", "#ed52cb", "#d8d8d8"],
+    radius: "4–8px 锐边",
+    scores: { color: 9, chat: 5, shell: 9, dense: 5, radius: 4 },
+    advice: "借蓝 CTA / 分区壳；圆角与二级彩要降噪后映射到 #2a9cc4。",
+    notes: [
+      "DESIGN.md 主色 Webflow Blue #146ef5（电蓝，比 OneTone 青蓝更冷）",
+      "按钮 translate(6px) hover；卡片 4–8px",
+      "二级紫/粉/绿很吵，不适合整盘进桌面工具"
+    ]
+  },
+  {
+    id: "ibm",
+    name: "IBM Carbon",
+    roles: ["blue", "dense"],
+    tag: "密面板",
+    tagClass: "good",
+    accent: "#0f62fe",
+    swatches: ["#0f62fe", "#0043ce", "#edf5ff", "#161616", "#f4f4f4", "#e0e0e0", "#da1e28", "#24a148"],
+    radius: "按钮 0px 直角",
+    scores: { color: 8, chat: 3, shell: 6, dense: 10, radius: 2 },
+    advice: "Keys/Voice/Camera/表单直接对标 Carbon；聊天与软圆角不要跟。",
+    notes: [
+      "IBM Blue 60 #0f62fe + --cds-* token 体系",
+      "底边输入、无阴影灰层分层是原生特征",
+      "和 OneTone 28px 卡片圆角冲突大，需改编"
+    ]
+  },
+  {
+    id: "coinbase",
+    name: "Coinbase",
+    roles: ["blue", "shell"],
+    tag: "信任蓝",
+    tagClass: "good",
+    accent: "#0052ff",
+    swatches: ["#0052ff", "#578bfa", "#0667d0", "#0a0b0d", "#eef0f3", "#282b31", "#ffffff"],
+    radius: "CTA 56px pill",
+    scores: { color: 8, chat: 4, shell: 7, dense: 6, radius: 7 },
+    advice: "登录/账号/授权链路；主色偏纯蓝，映射时保持青调。",
+    notes: [
+      "Coinbase Blue #0052ff，hover #578bfa",
+      "原生 pill 56px + 深色金融区块",
+      "对话组件不是强项"
+    ]
+  },
+  {
+    id: "meta",
+    name: "Meta",
+    roles: ["blue", "chat", "shell"],
+    tag: "CTA 蓝",
+    tagClass: "good",
+    accent: "#0064E0",
+    swatches: ["#0064E0", "#0143B5", "#47A5FA", "#1877F2", "#F0F2F5", "#F1F4F7", "#050505", "#CED0D4"],
+    radius: "pill CTA",
+    scores: { color: 7, chat: 6, shell: 7, dense: 4, radius: 8 },
+    advice: "借 pill 主按钮与 Web Wash 表面；零售摄影风不要整盘搬。",
+    notes: [
+      "Meta Blue #0064E0（DESIGN.md Store）",
+      "无镜像 preview.html，右侧为 token 组装预览",
+      "另有产品线紫/红，勿当全局语义色"
+    ]
+  },
+  {
+    id: "framer",
+    name: "Framer",
+    roles: ["blue", "dark"],
+    tag: "暗底电蓝",
+    tagClass: "warn",
+    accent: "#0099ff",
+    swatches: ["#000000", "#0099ff", "#ffffff", "#a6a6a6", "#090909"],
+    radius: "pill on void black",
+    scores: { color: 5, chat: 3, shell: 5, dense: 3, radius: 7 },
+    advice: "只借动效/选中蓝光；OneTone 浅色壳不要改成 void black。",
+    notes: [
+      "Framer Blue #0099ff 点缀在 #000 虚空底",
+      "暗底优先，和现网浅色生产力冲突",
+      "GT Walsheim 极负字距不适合中文工具台"
+    ]
+  },
+  {
+    id: "cal",
+    name: "Cal.com",
+    roles: ["mono", "dense", "shell"],
+    tag: "灰度·非蓝主题",
+    tagClass: "warn",
+    accent: "#242424",
+    swatches: ["#242424", "#111111", "#ffffff", "#898989", "#f5f5f5", "#0099ff"],
+    radius: "2px–9999px 混用",
+    scores: { color: 2, chat: 5, shell: 8, dense: 8, radius: 7 },
+    advice: "学阴影层级与干净壳；蓝只作链接，不能当品牌主色。",
+    notes: [
+      "品牌故意无色：近黑 #242424 on 白",
+      "Link Blue #0099ff 仅超链接",
+      "适合组件骨架，不适合「换蓝皮肤」"
+    ]
+  },
+  {
+    id: "intercom",
+    name: "Intercom",
+    roles: ["mono", "chat"],
+    tag: "橙色·不是蓝",
+    tagClass: "bad",
+    accent: "#ff5600",
+    swatches: ["#faf9f6", "#111111", "#ff5600", "#dedbd6", "#65b5ff", "#0bdf50", "#ffffff"],
+    radius: "按钮 4px 近直角",
+    scores: { color: 1, chat: 8, shell: 6, dense: 4, radius: 3 },
+    advice: "可借对话/帮助台信息架构与 scale hover；色板勿当蓝主题。",
+    notes: [
+      "Fin Orange #ff5600 + 奶油 #faf9f6（DESIGN.md 原文）",
+      "Report Blue #65b5ff 只是数据色，不是品牌主色",
+      "上一版 README「friendly blue」描述与配置不符"
+    ]
+  }
+];
+
+const W = { color: 0.3, chat: 0.2, shell: 0.2, dense: 0.2, radius: 0.1 };
+const total = (s) => Object.keys(W).reduce((n, k) => n + s.scores[k] * W[k], 0);
+
+function bars(s) {
+  return ["color", "chat", "shell", "dense", "radius"].map((k) => {
+    const label = { color: "色板贴合", chat: "对话感", shell: "桌面壳", dense: "密面板", radius: "圆角匹配" }[k];
+    return `<div class="score"><span>${label}</span><i><b style="width:${s.scores[k] * 10}%"></b></i><em>${s.scores[k]}</em></div>`;
+  }).join("");
+}
+
+function card(s) {
+  const t = total(s).toFixed(1);
+  const previewNote = s.id === "meta"
+    ? "Meta：镜像无 preview.html，按 DESIGN.md token 组装（已标注）"
+    : "官方 preview.html（getdesign 镜像）· 原生组件/色板";
+  return `
+  <article class="brand" data-id="${s.id}" data-roles="${s.roles.join(" ")}">
+    <aside class="side">
+      <div class="side-top">
+        <h3>${s.name}</h3>
+        <span class="tag ${s.tagClass}">${s.tag}</span>
+      </div>
+      <div class="accent-line">原生主色 <code>${s.accent}</code> · ${s.radius}</div>
+      <div class="native-swatches" aria-label="${s.name} native swatches">
+        ${s.swatches.map((c) => `<span title="${c}" style="background:${c}"></span>`).join("")}
+      </div>
+      <div class="scores">${bars(s)}</div>
+      <div class="total"><span>对 OneTone 加权</span><b>${t}</b></div>
+      <ul class="notes">${s.notes.map((n) => `<li>${n}</li>`).join("")}</ul>
+      <p style="margin:10px 0 0;font-size:12px;color:var(--ot-muted)">${s.advice}</p>
+      <div class="links">
+        <a href="./design-md-native/${s.id}/preview.html" target="_blank" rel="noopener">打开原生预览</a>
+        <a href="./design-md-native/${s.id}/DESIGN.md" target="_blank" rel="noopener">DESIGN.md</a>
+      </div>
+    </aside>
+    <div>
+      <div class="preview-pane">
+        <iframe src="./design-md-native/${s.id}/preview.html" title="${s.name} native preview" loading="lazy"></iframe>
+      </div>
+      <div class="preview-cap">${previewNote}</div>
+    </div>
+  </article>`;
+}
+
+function row(s) {
+  const best = s.id === "webflow" ? " best" : "";
+  return `<tr class="${best}">
+    <td><strong>${s.name}</strong></td>
+    <td><code>${s.accent}</code></td>
+    <td class="num">${s.scores.color}</td>
+    <td class="num">${s.scores.chat}</td>
+    <td class="num">${s.scores.shell}</td>
+    <td class="num">${s.scores.dense}</td>
+    <td class="num">${s.scores.radius}</td>
+    <td class="num">${total(s).toFixed(1)}</td>
+    <td>${s.advice}</td>
+  </tr>`;
+}
+
+const ranked = SYSTEMS.slice().sort((a, b) => total(b) - total(a));
+document.getElementById("stack").innerHTML = ranked.map(card).join("");
+document.getElementById("matrix").innerHTML = ranked.map(row).join("");
+
+let filter = "all";
+document.querySelectorAll("[data-filter]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    filter = btn.getAttribute("data-filter");
+    document.querySelectorAll("[data-filter]").forEach((b) => b.classList.toggle("is-on", b === btn));
+    document.querySelectorAll(".brand").forEach((el) => {
+      const roles = (el.getAttribute("data-roles") || "").split(/\s+/);
+      const ok = filter === "all" || roles.includes(filter) || (filter === "blue" && roles.includes("blue"));
+      el.classList.toggle("is-dim", !ok);
+    });
+  });
+});
+</script>
+</body>
+</html>

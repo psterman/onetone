@@ -44,4 +44,19 @@ assert.match(ha2Css, /\.ha2-wb-page-turn--assistant/);
 assert.match(ha2Css, /\.ha2-wb-turn--user/);
 assert.match(ha2Css, /\.ha2-wb-avatar-me/);
 
+// Collapsed tool chips use <details>; flex on details leaves closed body in layout
+// (grey strips + per-chip scrollbars). Guard the block display + closed-body hide.
+assert.match(
+  ha2Css,
+  /\.ha2-wb-page-turn--tool\{[\s\S]*?display:\s*block;/
+);
+assert.match(
+  ha2Css,
+  /details\.ha2-wb-page-turn--tool:not\(\[open\]\)\s*>\s*\.ha2-tool-step-detail\{[\s\S]*?display:\s*none;/
+);
+assert.match(
+  ha2Css,
+  /\.ha2-tool-step-detail\{[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/
+);
+
 console.log('test-wb-chat-turns: ok');

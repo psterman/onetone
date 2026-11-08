@@ -152,6 +152,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   ) {
     throw new Error('composer must host ha2 compose dock (data-hf-ha2-compose-host)');
   }
+  if (!html.includes('data-hf-home-notice')) {
+    throw new Error('Focus must host data-hf-home-notice for delivery / work-confirm');
+  }
   if (!html.includes('data-ha2-wb-page-host')) {
     throw new Error('focus must keep ha2 wb page host for in-place chat');
   }
@@ -162,8 +165,11 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error(`${expectMode} must not show legacy prepLaunch card`);
   }
   if (idleQuiet) {
-    if (!html.includes('写一句，开始') || !html.includes('hn-invite')) {
-      throw new Error('quiet missing idle invite (写一句，开始)');
+    if (!html.includes('写一句，向大模型提问') || !html.includes('hn-invite')) {
+      throw new Error('quiet missing idle invite (写一句，向大模型提问)');
+    }
+    if (!html.includes('向大模型提问') || !html.includes('向各 Agent 转发')) {
+      throw new Error('quiet missing 提问/投递 intent chrome');
     }
     if (html.includes('暂时无需处理') || html.includes('需要你时再提醒')) {
       throw new Error('quiet composer must not use long quiet narrative');
@@ -188,10 +194,10 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     if (!html.includes('hn-task-card') || !html.includes('data-hn-task-card="1"')) {
       throw new Error(`${expectMode} must render task status card below compose`);
     }
-    if (!html.includes('hn-invite') || !html.includes('写一句，开始')) {
+    if (!html.includes('hn-invite') || !html.includes('写一句，向大模型提问')) {
       throw new Error(`${expectMode} must keep invite above compose`);
     }
-    if (!html.includes('先写新的，或继续下面的任务')) {
+    if (!html.includes('先写新的，或继续下面这件事')) {
       throw new Error(`${expectMode} invite fact must point at card below`);
     }
     if (html.includes('发起另一项任务') || html.includes('is-secondary')) {
@@ -501,11 +507,20 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (runVm.mode !== 'attention') {
     throw new Error('Soft Pad waiting must upgrade running → attention');
   }
-  if (!runVm.primary || runVm.primary.label !== '查看并决定') {
-    throw new Error('lifted attention must own 查看并决定 CTA');
+  if (!runVm.primary || runVm.primary.id !== 'go_handle' || runVm.primary.label !== '前往处理') {
+    throw new Error('permission attention must own go_handle / 前往处理 CTA');
+  }
+  if (!/批准\s*Codex\s*的操作/.test(runVm.headline || '')) {
+    throw new Error('permission headline must ask to approve the Agent');
+  }
+  if (/信息不足/.test(runVm.assistance || '')) {
+    throw new Error('permission assistance must not use 信息不足 hedge');
   }
   if (!vm.desk.needsYouRows || vm.desk.needsYouRows.length < 1) {
     throw new Error('Needs You must project rows[] not only scalar');
+  }
+  if (vm.primary.id !== 'go_handle' || vm.desk.needsYou.actId !== 'go_handle') {
+    throw new Error('permission Soft Pad wait must set go_handle primary + row act');
   }
   if (!/Codex/.test(vm.desk.needsYou.title) && !/Codex/.test(vm.headline)) {
     throw new Error('Needs You should name Codex');
@@ -514,8 +529,8 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (html.includes('homeAgentRoster')) {
     throw new Error('enriched attention must not remount Agent roster on home');
   }
-  if (!html.includes('hn-task-card') || !html.includes('data-hf-act="view_progress"')) {
-    throw new Error('enriched attention must paint task card with view_progress');
+  if (!html.includes('hn-task-card') || !html.includes('data-hf-act="go_handle"')) {
+    throw new Error('enriched permission attention must paint task card with go_handle');
   }
   if (!html.includes('homeAgentStatusHost')) {
     throw new Error('enriched attention home must expose status strip host');
@@ -677,15 +692,15 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!deg.desk || !deg.desk.needsYou) {
     throw new Error('attention must still show Soft Pad Needs You on desk');
   }
-  if (deg.primary.id !== 'view_progress') {
-    throw new Error('attention primary must be view_progress, not project gate');
+  if (deg.primary.id !== 'go_handle') {
+    throw new Error('permission attention primary must be go_handle, not project gate');
   }
   const degHtml = HFView.renderFocus(deg, {});
   if (!degHtml.includes('homeAgentStatusHost') || !degHtml.includes('homePromptPrepHost')) {
     throw new Error('desk must keep status + prep hosts when Soft Pad waits');
   }
-  if (!degHtml.includes('data-hf-act="view_progress"')) {
-    throw new Error('attention Hero must expose view_progress');
+  if (!degHtml.includes('data-hf-act="go_handle"')) {
+    throw new Error('permission attention Hero must expose go_handle');
   }
   if (degHtml.includes('hn-desk-zone--gate')) {
     throw new Error('project gate must not compete with attention Hero CTA');
@@ -755,7 +770,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (homeHtml.includes('hn-compose-dock') || homeHtml.includes('data-hf-collect="')) {
     throw new Error('return mode must not resurrect legacy letter dock / collect chips');
   }
-  if (!homeHtml.includes('写一句，开始') || !homeHtml.includes('hn-task-card')) {
+  if (!homeHtml.includes('写一句，向大模型提问') || !homeHtml.includes('hn-task-card')) {
     throw new Error('return mode must show invite + task card');
   }
   if (homeHtml.includes('发起另一项任务') || homeHtml.includes('is-secondary')) {
@@ -790,7 +805,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
       { kind: 'chatgpt', label: 'ChatGPT' }
     ]
   });
-  if (!afterDismiss.includes('写一句，开始') || !afterDismiss.includes('hn-invite')) {
+  if (!afterDismiss.includes('写一句，向大模型提问') || !afterDismiss.includes('hn-invite')) {
     throw new Error('start_new_task dismiss must surface idle invite + composer');
   }
   if (!afterDismiss.includes('data-hf-act="restore_return"')) {
@@ -959,9 +974,33 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!living.some((r) => r.title === 'WorkBuddy')) throw new Error('WorkBuddy living from attention');
   if (!living.some((r) => r.title === 'MiniMax')) throw new Error('MiniMax living from running');
   const invHtml = HFView.renderFocus(invVm, {});
-  // Inventory ledger HTML is owned by Agent → 总览; VM projection still required.
+  // Full Agent Center roster stays off home; compact status chips are OK.
   if (invHtml.includes('Agent 台账') || invHtml.includes('hn-ledger-group-badge') || invHtml.includes('homeAgentRoster')) {
     throw new Error('home must not render inventory ledger / Agent roster');
+  }
+  if (
+    !invHtml.includes('hn-agent-watch') ||
+    !invHtml.includes('hn-compose-stack') ||
+    !invHtml.includes('hn-agent-status-row') ||
+    !invHtml.includes('data-hf-act="select_agent"') ||
+    !invHtml.includes('data-hf-act="toggle_watch"')
+  ) {
+    throw new Error('inventory-enriched home must render collapsed watch under compose');
+  }
+  if (!invHtml.includes('Claude') || !invHtml.includes('WorkBuddy')) {
+    throw new Error('status row must show multiple agent chips');
+  }
+  const rowAt = invHtml.indexOf('hn-agent-status-row');
+  const watchAt = invHtml.indexOf('hn-agent-watch');
+  const composeHostAt = invHtml.indexOf('data-hf-ha2-compose-host');
+  if (composeHostAt < 0 || rowAt < 0 || composeHostAt > rowAt) {
+    throw new Error('agent status row must sit under compose');
+  }
+  if (watchAt < 0 || composeHostAt > watchAt) {
+    throw new Error('collapsed watch must sit under compose host');
+  }
+  if (!invHtml.includes('hn-watch-pop') || !invHtml.includes('data-hf-agent-mode="send"')) {
+    throw new Error('home must keep watch peek pop with send-only target change');
   }
   if (!invHtml.includes('homePromptPrepHost') || !invHtml.includes('homeAgentStatusHost')) {
     throw new Error('inventory-enriched home must keep prep + status hosts');
@@ -1393,8 +1432,35 @@ assertFocus(
     ) {
       throw new Error('home must session-cache inventory for instant revisit paint');
     }
-    if (!nowSrc.includes('embedCompose')) {
-      throw new Error('Focus paint must call HA2.embedCompose');
+    if (!nowSrc.includes('tryEmbedHa2Compose') || !nowSrc.includes('embedCompose')) {
+      throw new Error('Focus paint must tryEmbedHa2Compose → HA2.embedCompose');
+    }
+    if (
+      !nowSrc.includes("loadGroup('home-agent')") &&
+      !nowSrc.includes('loadGroup("home-agent")')
+    ) {
+      throw new Error('Focus must defer-load home-agent scripts before embedCompose');
+    }
+    // mount: shell paint only — no heavy IPC before first paint.
+    const mountStart = nowSrc.indexOf('function mount()');
+    const mountEnd = nowSrc.indexOf('function showAgentV2Surface', mountStart);
+    const mountBody =
+      mountStart >= 0 && mountEnd > mountStart ? nowSrc.slice(mountStart, mountEnd) : '';
+    if (!mountBody) throw new Error('mount() body not found');
+    if (
+      /fetchAttention\s*\(/.test(mountBody) ||
+      /fetchInventory\s*\(/.test(mountBody) ||
+      /fetchAgentHomeSnapshot\s*\(/.test(mountBody) ||
+      /startFgPoll\s*\(/.test(mountBody)
+    ) {
+      throw new Error('mount() must not fire heavy IPC (moved to show post-paint batch)');
+    }
+    if (!nowSrc.includes('function bootHomeSurface') || !/bootHomeSurface[\s\S]*?\bshow\s*\(/.test(nowSrc)) {
+      throw new Error('bootHomeSurface must call show() (not mount+show double path)');
+    }
+    const htmlIdx = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
+    if (!/data-ot-defer="home-agent"[^>]*home-agent-v2\.js/.test(htmlIdx)) {
+      throw new Error('home-agent-v2.js must be data-ot-defer=home-agent');
     }
     const ha2Src = fs.readFileSync(path.join(root, 'src/js/features/now/home-agent-v2.js'), 'utf8');
     const matMenu = ha2Src.slice(
@@ -1411,6 +1477,15 @@ assertFocus(
     }
     if (!/embedMode[\s\S]*data-hf-ha2-compose-host/.test(ha2Src) && !ha2Src.includes('is-hf-ha2-compose')) {
       throw new Error('ha2 embedCompose must paint into Focus host without replacing chrome');
+    }
+    if (!ha2Src.includes('function patchFocusNotice') || !/embedMode[\s\S]*patchFocusNotice\(snap\)/.test(ha2Src)) {
+      throw new Error('embedMode paint must patchFocusNotice into data-hf-home-notice');
+    }
+    if (!/forcePage:\s*!embedMode/.test(ha2Src) || !/opts\.forcePage === true/.test(ha2Src)) {
+      throw new Error('openWorkConfirm must gate atrWbPageForced behind forcePage / !embedMode');
+    }
+    if (!nowSrc.includes("kind === 'go_handle'") && !nowSrc.includes('kind === "go_handle"')) {
+      throw new Error('now-home must handle Focus go_handle permission CTA');
     }
     const dockFn = ha2Src.slice(
       ha2Src.indexOf('function dockStaticHtml'),
@@ -1440,8 +1515,15 @@ assertFocus(
     if (!ha2Src.includes("esc(t('ha2OrganizeTask', '整理'))")) {
       throw new Error('整理 must sit on compose rail (not buried only in overflow)');
     }
-    if (!/aimChipHtml\(hasAim\)[\s\S]{0,400}targetChip/.test(ha2Src)) {
-      throw new Error('aim chip must sit before Agent chip');
+    // 投递 strip: aim before agent icon. 提问: askMode omits the whole strip.
+    if (!/aimChipHtml\(!!?hasAim\)[\s\S]{0,280}agentIcoBtnHtml/.test(ha2Src)) {
+      throw new Error('aim chip must sit before Agent icon inside agent strip');
+    }
+    if (!ha2Src.includes('function askModeOn') || !ha2Src.includes('clearAskModeTargetChrome')) {
+      throw new Error('提问 mode must clear aim+agent chrome');
+    }
+    if (!/askMode[\s\S]{0,120}\?[\s\S]{0,40}''[\s\S]{0,40}:[\s\S]{0,40}agentStripHtml/.test(dockFn)) {
+      throw new Error('dockStaticHtml must omit agent strip in ask mode');
     }
   }
   if (probeHtml.includes('hn-agent-tile__tag') || probeHtml.includes('data-hn-agent-grid')) {

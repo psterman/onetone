@@ -3367,6 +3367,27 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
   }
 
+  /** Deep-link provider → Soft Pad / 数据源 focus for that agent. */
+  function applyNavProvider(navOpts){
+    navOpts=navOpts||{};
+    var raw=navOpts.provider||(navOpts.target&&navOpts.target.provider)||'';
+    raw=String(raw||'').trim().toLowerCase();
+    if(!raw) return;
+    var kind=raw;
+    if(raw.indexOf('claude')>=0) kind='claude';
+    else if(raw.indexOf('codex')>=0) kind='codex';
+    else if(raw.indexOf('workbuddy')>=0) kind='workbuddy';
+    else if(raw.indexOf('cursor')>=0) kind='cursor';
+    else if(raw.indexOf('minimax')>=0) kind='minimax';
+    else if(raw.indexOf('qoder')>=0) kind='qoder';
+    else if(raw.indexOf('trae')>=0) kind='trae';
+    else if(raw.indexOf('gemini')>=0) kind='gemini';
+    var KIND_TO_APP={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax',workbuddy:'WorkBuddy',qoder:'Qoder',trae:'Trae',gemini:'Gemini'};
+    var name=KIND_TO_APP[kind];
+    if(name) setApp(name, false);
+    else postDataNestCmd('selectAgent',{ kind:kind, app:kind });
+  }
+
   function setSub(id, navOpts){
     navOpts=navOpts||{};
     // Old deep-links for work roster → Agent overview (no longer bounce to home).
@@ -3404,6 +3425,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(capsuleHost) capsuleHost.hidden = id!=='capsule';
     if(id==='overview'){
       detail.innerHTML='';
+      applyNavProvider(navOpts);
       mountOverviewIfNeeded(navOpts);
       syncGuide();
       notifyParentSub(id, navOpts);
@@ -3412,6 +3434,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
     if(id==='data'){
       detail.innerHTML='';
+      applyNavProvider(navOpts);
       setPreviewMode(id);
       syncPreview();
       syncGuide();

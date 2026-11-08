@@ -9,6 +9,7 @@
   var pollTimer = 0;
   var lastSnap = null;
   var hostEl = null;
+  var statusListenBound = false;
   /** Hero mode that already owns the story — suppress duplicate strip CTA. */
   var heroMode = '';
   var heroPrimaryId = '';
@@ -149,10 +150,28 @@
       if (!working) continue;
       if (proj && proj.reason === 'stale') continue;
       var when = relativeWhen(wa.observedAt || (wa.currentWork && wa.currentWork.updatedAt) || snap.asOf);
+      var proj = projectName(wa);
+      var workLine =
+        (wa.currentWork &&
+          String(wa.currentWork.summary || wa.currentWork.detail || wa.currentWork.title || '').trim()) ||
+        '';
+      // Skip placeholder shells — never show「当前工作 / 当前项目」as the story.
+      if (
+        !workLine ||
+        workLine === '当前工作' ||
+        workLine === '当前项目' ||
+        workLine === '当前任务' ||
+        workLine === '上次进度'
+      ) {
+        workLine = '';
+      }
+      var titleCore = workLine || proj;
       return {
         kind: 'working',
-        title: providerOf(wa) + ' 正在处理 ' + (projectName(wa) || '当前项目'),
-        sub: (when ? '已运行 · ' + when + ' · ' : '') + '当前无需操作',
+        title: titleCore
+          ? providerOf(wa) + ' 正在处理 ' + titleCore
+          : providerOf(wa) + ' 正在运行',
+        sub: when ? '已运行 · ' + when : '运行中',
         cta: '查看',
         target: targetFor(wa, 'working')
       };
@@ -281,6 +300,23 @@
     }
   }
 
+  function onHomeStatusPush(e) {
+    var msg = e && e.data;
+    if (!msg || msg.type !== 'home_status_changed') return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+    refresh();
+  }
+
+  function bindStatusPush() {
+    if (statusListenBound) return;
+    try {
+      if (global.chrome && global.chrome.webview && global.chrome.webview.addEventListener) {
+        global.chrome.webview.addEventListener('message', onHomeStatusPush);
+        statusListenBound = true;
+      }
+    } catch (_) {}
+  }
+
   function start(host, opts) {
     opts = opts || {};
     if (opts.heroMode != null) heroMode = String(opts.heroMode || '');
@@ -295,7 +331,9 @@
       hostEl.addEventListener('click', onClick);
     }
     stop();
+    bindStatusPush();
     refresh();
+    // Safety-net poll — hot path is to_js home_status_changed.
     pollTimer = setInterval(function () {
       if (typeof document !== 'undefined' && document.hidden) return;
       try {

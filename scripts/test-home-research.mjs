@@ -22,6 +22,10 @@ const ssrf = read('src-tauri/src/research/ssrf.rs');
 const ipcToml = read('src-tauri/permissions/app-ipc.toml');
 
 assert.match(html, /home-research\.js/);
+assert.match(
+  html,
+  /data-ot-defer="home-agent"[^>]*home-research\.js|home-research\.js[^>]*data-ot-defer="home-agent"/
+);
 assert.match(html, /tool-registry\.js[\s\S]*run-contracts\.js[\s\S]*work-controller\.js/);
 assert.match(registrySrc, /network_diagnostics/);
 assert.match(registrySrc, /actionSchema/);

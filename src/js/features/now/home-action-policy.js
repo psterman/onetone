@@ -407,9 +407,21 @@
       var ipc = global.OneToneIpc;
       var sessionId =
         (vm.dto && vm.dto._sessionId) ||
+        (vm.desk && vm.desk.continueCard && vm.desk.continueCard.sessionId) ||
         (global.OneToneNowHome &&
           global.OneToneNowHome.lastAgentSessionId &&
           global.OneToneNowHome.lastAgentSessionId());
+      function wrapResume(res) {
+        if (!res) return { ok: false, error: 'resume failed' };
+        if (res.ok === false) return res;
+        return {
+          ok: true,
+          kind: 'resume',
+          brief: res.brief || '',
+          checkpoint: res.checkpoint || null,
+          resumable: res.resumable !== false
+        };
+      }
       if (!sessionId && ipc && ipc.invoke) {
         return ipc
           .invoke('cmd_agent_home_snapshot', {})
@@ -418,12 +430,12 @@
               (snap && snap.activeSession && snap.activeSession.sessionId) ||
               (snap && snap.checkpoint && snap.checkpoint.sessionId) ||
               '';
-            if (!id) return { ok: false, error: 'no session' };
-            return S.resumeCheckpoint(id);
+            if (!id) return { ok: false, error: '找不到可续的会话' };
+            return S.resumeCheckpoint(id).then(wrapResume);
           });
       }
-      if (!sessionId) return Promise.resolve({ ok: false, error: 'no session' });
-      return S.resumeCheckpoint(sessionId);
+      if (!sessionId) return Promise.resolve({ ok: false, error: '找不到可续的会话' });
+      return S.resumeCheckpoint(sessionId).then(wrapResume);
     }
     if (kind === 'open_prep' || kind === 'start_task') {
       if (typeof hooks.openPrep === 'function') {

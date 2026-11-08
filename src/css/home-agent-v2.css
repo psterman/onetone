@@ -531,6 +531,9 @@
   flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 2px 2px;
   scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;
 }
+.ha2-model-empty-cta{
+  display:block;width:calc(100% - 8px);margin:6px 4px;text-align:center;
+}
 .ha2-model-dd-list::-webkit-scrollbar{width:6px}
 .ha2-model-dd-list::-webkit-scrollbar-track{background:transparent}
 .ha2-model-dd-list::-webkit-scrollbar-thumb{
@@ -994,6 +997,62 @@
 }
 .ha2-wb-page-turn--user{align-self:flex-end;align-items:flex-end}
 .ha2-wb-page-turn--assistant{align-self:flex-start;align-items:flex-start;max-width:92%}
+.ha2-wb-page-turn--tool{
+  /* Must not inherit .ha2-wb-page-turn's display:flex — flex on <details>
+     keeps closed body in layout (empty strips + nested scrollbars). */
+  display:block;
+  align-self:flex-start;max-width:92%;
+  border:1px solid color-mix(in srgb, var(--ha2-line) 80%, transparent);
+  border-radius:10px;background:color-mix(in srgb, var(--ha2-line) 18%, transparent);
+  padding:0;overflow:hidden;
+}
+.ha2-wb-page-turn--tool.is-err{border-color:color-mix(in srgb, #c45c2a 45%, var(--ha2-line))}
+.ha2-wb-page-turn--tool.is-needs-input,
+.ha2-wb-page-turn--tool.is-deliver-approval{
+  border-color:color-mix(in srgb, #8a4fbf 40%, var(--ha2-line));
+  background:color-mix(in srgb, #8a4fbf 8%, transparent);
+}
+.ha2-tool-step-hd{
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  list-style:none;padding:7px 10px;font-size:12px;font-weight:650;color:#3a556e;
+}
+.ha2-tool-step-hd::-webkit-details-marker{display:none}
+.ha2-tool-step-badge{
+  display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;
+  background:color-mix(in srgb, #2a9cc4 14%, transparent);color:#1f5f78;font-size:11px;
+}
+.ha2-wb-page-turn--tool.is-needs-input .ha2-tool-step-badge,
+.ha2-wb-page-turn--tool.is-deliver-approval .ha2-tool-step-badge{
+  background:color-mix(in srgb, #8a4fbf 16%, transparent);color:#5a3480;
+}
+.ha2-tool-step-label{font-weight:600;color:var(--ha2-ink)}
+.ha2-tool-step-err{color:#c45c2a;font-weight:800}
+.ha2-tool-step-detail{
+  margin:0;padding:8px 10px 10px;border-top:1px solid var(--ha2-line);
+  font:11px/1.45 ui-monospace,Consolas,monospace;color:var(--ha2-muted);
+  white-space:pre-wrap;word-break:break-word;
+  /* Transcript owns scrolling; avoid a scrollbar per collapsed chip. */
+  max-height:none;overflow:visible;
+}
+details.ha2-wb-page-turn--tool:not([open]) > .ha2-tool-step-detail{
+  display:none;
+}
+details.ha2-wb-page-turn--tool[open] > .ha2-tool-step-detail{
+  max-height:min(36vh,240px);overflow:auto;
+}
+.ha2-chat-needs-row,
+.ha2-chat-deliver-actions{
+  display:flex;align-items:center;gap:8px;padding:0 10px 10px;
+}
+.ha2-chat-needs-input{
+  flex:1;min-width:0;height:30px;padding:0 10px;border-radius:8px;
+  border:1px solid var(--ha2-line);background:var(--ha2-surface, #fff);
+  color:var(--ha2-ink);font-size:12px;
+}
+.ha2-chat-needs-go{flex:0 0 auto}
+.ha2-wb-page-turn--finish .ha2-wb-page-turn-text{
+  border-left:3px solid #1a9b5f;
+}
 .ha2-wb-page-turn-role{
   display:inline-flex;align-items:center;gap:6px;
   font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ha2-muted);

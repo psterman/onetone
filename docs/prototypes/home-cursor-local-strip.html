@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Cursor 状态卡 + 本机活动</title>
+  <style>
+    :root {
+      --ink: #14233a;
+      --muted: #556576;
+      --line: rgba(20, 35, 58, 0.12);
+      --teal: #2a9cc4;
+      --ok: #1a9b5f;
+      --wait: #c97820;
+      --fail: #c44;
+      --run: #2a9cc4;
+      --card: #fff;
+      --bg: #eef3f6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(700px 320px at 50% 0%, #f8fbfd 0%, transparent 55%),
+        linear-gradient(180deg, #e9eef3 0%, var(--bg) 100%);
+      display: grid;
+      place-items: center;
+      padding: 28px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .board { width: min(100%, 420px); }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+      justify-content: center;
+    }
+    .tag {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tag.is-on {
+      color: var(--ink);
+      border-color: color-mix(in srgb, var(--teal) 40%, var(--line));
+      background: color-mix(in srgb, var(--teal) 10%, white);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 12%, transparent);
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 80%, transparent) inset,
+        0 14px 32px -20px color-mix(in srgb, var(--ink) 22%, transparent);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+    }
+    .card__hd {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card__ico {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+    .card__who {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .card__who b {
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .card__who span {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pill {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, #e8eef3 50%, white);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .pill.run {
+      border-color: color-mix(in srgb, var(--run) 35%, var(--line));
+      background: color-mix(in srgb, var(--run) 10%, white);
+      color: var(--run);
+    }
+    .pill.resume {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white);
+      color: var(--ok);
+    }
+    .pill.wait {
+      border-color: color-mix(in srgb, var(--wait) 40%, var(--line));
+      background: color-mix(in srgb, var(--wait) 10%, white);
+      color: var(--wait);
+    }
+    .pill.fail {
+      border-color: color-mix(in srgb, var(--fail) 35%, var(--line));
+      background: color-mix(in srgb, var(--fail) 8%, white);
+      color: var(--fail);
+    }
+    .pill.done {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white);
+      color: var(--ok);
+    }
+
+    .card h1 {
+      margin: 2px 0 0;
+      font-size: 17px;
+      font-weight: 750;
+      line-height: 1.3;
+    }
+    .card .fact {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    /* 本机活动 — 融在 Cursor 状态卡内，一行摘要 */
+    .local {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px 8px;
+      margin: 2px 0 0;
+      padding: 6px 0 0;
+      border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .local-k {
+      flex: 0 0 auto;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: color-mix(in srgb, var(--muted) 78%, transparent);
+    }
+    .local-line {
+      flex: 1 1 12rem;
+      min-width: 0;
+      color: var(--ink);
+    }
+    .local.is-off .local-line { color: var(--muted); }
+    .local-act {
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--teal);
+      cursor: pointer;
+    }
+
+    .acts {
+      margin-top: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .cta {
+      border: 1px solid color-mix(in srgb, var(--teal) 40%, transparent);
+      background: color-mix(in srgb, var(--teal) 10%, transparent);
+      color: var(--teal);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 11px;
+      cursor: pointer;
+    }
+    .cta.primary {
+      background: var(--teal);
+      border-color: color-mix(in srgb, var(--teal) 70%, #0b4f5c);
+      color: #fff;
+    }
+    .cta.warn {
+      border-color: color-mix(in srgb, var(--wait) 40%, transparent);
+      background: color-mix(in srgb, var(--wait) 10%, transparent);
+      color: var(--wait);
+    }
+    .cta.fail {
+      border-color: color-mix(in srgb, var(--fail) 40%, transparent);
+      background: color-mix(in srgb, var(--fail) 10%, transparent);
+      color: var(--fail);
+    }
+    .link {
+      border: 0;
+      background: none;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      padding: 4px 2px;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin: 10px 2px 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <div class="tags" role="tablist" aria-label="Cursor 状态">
+      <button type="button" class="tag is-on" data-mode="running" role="tab" aria-selected="true">执行中</button>
+      <button type="button" class="tag" data-mode="return" role="tab" aria-selected="false">可恢复</button>
+      <button type="button" class="tag" data-mode="attention" role="tab" aria-selected="false">等你决定</button>
+      <button type="button" class="tag" data-mode="consent_off" role="tab" aria-selected="false">未开启</button>
+      <button type="button" class="tag" data-mode="completed" role="tab" aria-selected="false">刚完成</button>
+      <button type="button" class="tag" data-mode="degraded" role="tab" aria-selected="false">失败</button>
+    </div>
+
+    <section class="card" id="card" aria-live="polite">
+      <div class="card__hd">
+        <span class="card__ico" aria-hidden="true">Cu</span>
+        <div class="card__who">
+          <b>Cursor</b>
+          <span id="sub">voice-pilot · 执行中</span>
+        </div>
+        <span class="pill run" id="pill">执行中</span>
+      </div>
+      <h1 id="title">正在处理首页状态分层</h1>
+      <p class="fact" id="fact">Hook 有实时信号 · 可在 Soft Pad 看详情</p>
+      <div class="local is-ready" id="local" data-hn-cursor-local="ready">
+        <span class="local-k">本机</span>
+        <span class="local-line" id="localLine">今日 12 次 · 3 会话 · 活跃 1小时30分 · 较昨 ↑20%</span>
+      </div>
+      <div class="acts" id="acts">
+        <button type="button" class="cta">查看</button>
+        <button type="button" class="link">新任务</button>
+      </div>
+    </section>
+
+    <p class="hint">本机活动融在 Cursor 状态卡里（一行）。完整三列统计仍在 Soft Pad。</p>
+  </div>
+
+  <script>
+    (function () {
+      var READY_LOCAL = '今日 12 次 · 3 会话 · 活跃 1小时30分 · 较昨 ↑20%';
+      var CARDS = {
+        running: {
+          sub: 'voice-pilot · 执行中',
+          pill: '执行中',
+          pillCls: 'run',
+          title: '正在处理首页状态分层',
+          fact: 'Hook 有实时信号 · 可在 Soft Pad 看详情',
+          local: { state: 'ready', line: READY_LOCAL, enable: false },
+          acts: [
+            { label: '查看', cls: 'cta' },
+            { label: '新任务', cls: 'link' }
+          ]
+        },
+        return: {
+          sub: 'voice-pilot · 可恢复',
+          pill: '可恢复',
+          pillCls: 'resume',
+          title: '上次停在「修状态卡假执行中」。',
+          fact: '47 分钟前有进度，可以从停下的地方继续。',
+          local: { state: 'ready', line: '今日 4 次 · 1 会话 · 活跃 22分', enable: false },
+          acts: [
+            { label: '继续', cls: 'cta primary' },
+            { label: '新任务', cls: 'link' }
+          ]
+        },
+        attention: {
+          sub: 'voice-pilot · 等你决定',
+          pill: '等你决定',
+          pillCls: 'wait',
+          title: 'Cursor 等你确认后才能继续',
+          fact: '需要你拍板 · 确认权限或下一步',
+          local: { state: 'ready', line: READY_LOCAL, enable: false },
+          acts: [
+            { label: '去处理', cls: 'cta warn' },
+            { label: '新任务', cls: 'link' }
+          ]
+        },
+        consent_off: {
+          sub: 'voice-pilot · 等你决定',
+          pill: '等你决定',
+          pillCls: 'wait',
+          title: '开启活动后，可读到停在哪一步',
+          fact: '不会读取本机 Cursor 使用记录，直到你同意。',
+          local: {
+            state: 'consent_off',
+            line: '未启用 Cursor 本机活动',
+            enable: false
+          },
+          acts: [
+            { label: '开启 Cursor 活动', cls: 'cta' },
+            { label: '新任务', cls: 'link' }
+          ]
+        },
+        completed: {
+          sub: 'voice-pilot · 刚刚完成',
+          pill: '刚刚完成',
+          pillCls: 'done',
+          title: '本机活动条已合进状态卡',
+          fact: '刚结束 · Soft Pad 仍有完整统计',
+          local: {
+            state: 'ready',
+            line: '今日 13 次 · 3 会话 · 活跃 1小时42分 · 较昨 ↑30%',
+            enable: false
+          },
+          acts: [
+            { label: '新任务', cls: 'cta' },
+            { label: '关掉', cls: 'link' }
+          ]
+        },
+        degraded: {
+          sub: 'voice-pilot · 执行失败',
+          pill: '失败',
+          pillCls: 'fail',
+          title: 'Cursor 这一轮没跑通',
+          fact: '可看原因后重试，或先开新任务',
+          local: { state: 'ready', line: READY_LOCAL, enable: false },
+          acts: [
+            { label: '重试', cls: 'cta fail' },
+            { label: '新任务', cls: 'link' }
+          ]
+        }
+      };
+
+      function paint(mode) {
+        var d = CARDS[mode] || CARDS.running;
+        document.getElementById('sub').textContent = d.sub;
+        var pill = document.getElementById('pill');
+        pill.className = 'pill ' + d.pillCls;
+        pill.textContent = d.pill;
+        document.getElementById('title').textContent = d.title;
+        document.getElementById('fact').textContent = d.fact;
+
+        var local = document.getElementById('local');
+        var line = document.getElementById('localLine');
+        local.className = 'local ' + (d.local.state === 'ready' ? 'is-ready' : 'is-off');
+        local.setAttribute('data-hn-cursor-local', d.local.state);
+        line.textContent = d.local.line;
+        var act = local.querySelector('.local-act');
+        if (act) act.remove();
+        if (d.local.enable) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'local-act';
+          btn.textContent = '开启';
+          local.appendChild(btn);
+        }
+
+        document.getElementById('acts').innerHTML = d.acts
+          .map(function (a) {
+            return '<button type="button" class="' + a.cls + '">' + a.label + '</button>';
+          })
+          .join('');
+      }
+
+      document.querySelector('.tags').addEventListener('click', function (e) {
+        var btn = e.target.closest('.tag');
+        if (!btn) return;
+        document.querySelectorAll('.tag').forEach(function (t) {
+          var on = t === btn;
+          t.classList.toggle('is-on', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        paint(btn.getAttribute('data-mode'));
+      });
+
+      paint('running');
+    })();
+  </script>
+</body>
+</html>

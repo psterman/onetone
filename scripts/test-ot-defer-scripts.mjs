@@ -1,5 +1,5 @@
 /**
- * Phase 1 cold-start defer contracts: camera-ui + debug only; habit-heavy sync;
+ * Cold-start defer contracts: camera-ui + debug + home-agent; habit-heavy sync;
  * chrome-first ensure (no openDrawer Promise gate); idle-preload camera-ui only.
  * Run: node scripts/test-ot-defer-scripts.mjs
  */
@@ -45,7 +45,27 @@ function isDeferred(srcStem) {
 assert(/ot-defer-scripts\.js/.test(html), 'index loads ot-defer-scripts.js');
 
 const deferCount = (html.match(/data-ot-defer=/g) || []).length;
-assert(deferCount === 16, 'exactly 16 data-ot-defer markers (got ' + deferCount + ')');
+assert(deferCount === 20, 'exactly 20 data-ot-defer markers (got ' + deferCount + ')');
+
+const homeAgent = [
+  'home-research.js',
+  'home-agent-v2-store.js',
+  'home-agent-v2-dock.js',
+  'home-agent-v2.js',
+];
+for (const stem of homeAgent) {
+  const r = isDeferred(stem);
+  assert(r.found && r.deferred, stem + ' is deferred (home-agent)');
+  const tagRe = new RegExp(
+    '<script\\b[^>]*src="[^"]*' + stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^"]*"[^>]*>',
+    'i'
+  );
+  const m = html.match(tagRe);
+  assert(
+    m && /data-ot-defer="home-agent"/i.test(m[0]),
+    stem + ' uses data-ot-defer="home-agent"'
+  );
+}
 
 const cameraUi = [
   'gaze-karaoke-lines.js',

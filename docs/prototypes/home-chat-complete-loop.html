@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · LangChain / LangGraph 完整 Loop</title>
+  <style>
+    :root {
+      --ink: #14233a;
+      --muted: #556576;
+      --line: rgba(20, 35, 58, 0.12);
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --card: #fff;
+      --bg: #eef3f6;
+      --user: #dceef6;
+      --loop: #6b4fd8;
+      --loop-soft: #f0ecff;
+      --file: #2a9cc4;
+      --search: #3d7a5a;
+      --net: #c45c2a;
+      --comm: #8a4fbf;
+      --chip: #f0f4f7;
+      --mem: #1f6f8b;
+      --cb: #b8860b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 360px at 50% 0%, #f8fbfd 0%, transparent 55%),
+        linear-gradient(180deg, #e9eef3 0%, var(--bg) 100%);
+      padding: 28px 18px 48px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { width: min(1240px, 100%); margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--loop); text-transform: uppercase;
+    }
+    h1 { margin: 6px 0 8px; font-size: 26px; letter-spacing: -0.02em; }
+    .lead {
+      margin: 0 0 16px; color: var(--muted); font-size: 14px;
+      line-height: 1.55; max-width: 88ch;
+    }
+    .lead code, .foot code, .map code, .kit-card code, .asst-body code, .step code {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+      background: #f1f4f7; padding: 1px 5px; border-radius: 4px;
+    }
+
+    /* LangChain stack */
+    .stack {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 960px) {
+      .stack { grid-template-columns: 1fr 1fr; }
+      .stack .s5 { grid-column: 1 / -1; }
+    }
+    .stack-card {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+      padding: 10px 11px; min-height: 96px;
+    }
+    .stack-card .lc {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+      color: var(--loop); text-transform: uppercase;
+    }
+    .stack-card h3 { margin: 4px 0 4px; font-size: 13px; }
+    .stack-card p { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted); }
+    .stack-card .ot { margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--ink); }
+
+    /* LangGraph diagram */
+    .graph-wrap {
+      border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+      padding: 12px 14px; margin-bottom: 14px;
+    }
+    .graph-wrap h2 { margin: 0 0 8px; font-size: 14px; }
+    .graph {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px;
+      font-size: 12px; font-weight: 700;
+    }
+    .gnode {
+      padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; color: var(--muted);
+    }
+    .gnode.is-on {
+      color: #fff; border-color: transparent;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--loop) 18%, transparent);
+    }
+    .gnode[data-n="start"].is-on,
+    .gnode[data-n="agent"].is-on { background: var(--loop); }
+    .gnode[data-n="tools"].is-on { background: var(--file); }
+    .gnode[data-n="human"].is-on { background: var(--comm); }
+    .gnode[data-n="deliver"].is-on { background: var(--comm); }
+    .gnode[data-n="end"].is-on { background: var(--ok); }
+    .garrow { color: var(--muted); font-weight: 400; opacity: 0.7; }
+    .graph-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .kit {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 900px) {
+      .kit { grid-template-columns: 1fr 1fr; }
+    }
+    .kit-card {
+      border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+      padding: 12px 12px 10px; cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .kit-card:hover, .kit-card.is-on {
+      border-color: color-mix(in srgb, var(--accent, var(--loop)) 45%, var(--line));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, var(--loop)) 14%, transparent);
+    }
+    .kit-card[data-kind="file"] { --accent: var(--file); }
+    .kit-card[data-kind="search"] { --accent: var(--search); }
+    .kit-card[data-kind="net"] { --accent: var(--net); }
+    .kit-card[data-kind="comm"] { --accent: var(--comm); }
+    .kit-card h3 {
+      margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent, var(--loop));
+    }
+    .kit-card ul {
+      margin: 0; padding-left: 1.1em; font-size: 11px; line-height: 1.45; color: var(--muted);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr) 220px;
+      min-height: 640px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: 0 18px 40px rgba(20, 35, 58, 0.08);
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .state-pane { border-left: 0; border-top: 1px solid var(--line); }
+    }
+
+    .rail {
+      background: #f7f9fb; border-right: 1px solid var(--line);
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .rail-title {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      color: var(--muted); text-transform: uppercase; padding: 0 4px;
+    }
+    .sess {
+      appearance: none; border: 1px solid transparent; background: transparent;
+      text-align: left; width: 100%; padding: 9px 10px; border-radius: 10px;
+      cursor: pointer; font: inherit;
+    }
+    .sess.is-on {
+      background: #fff; border-color: var(--line);
+      box-shadow: 0 1px 2px rgba(20,35,58,0.04);
+    }
+    .sess .t { display: block; font-size: 13px; font-weight: 700; }
+    .sess .s { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 11px 14px; border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, #7a5ce8, #2a9cc4);
+      box-shadow: 0 0 0 2px #fff, 0 0 0 3px #ddd6ff;
+    }
+    .brand { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .topbar .meta { margin-left: auto; font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .actions button {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      font: inherit; font-size: 12px; font-weight: 700; height: 30px;
+      padding: 0 11px; border-radius: 999px; cursor: pointer;
+    }
+    .actions button.primary {
+      background: var(--loop); border-color: var(--loop); color: #fff;
+    }
+
+    .goal {
+      margin: 12px 14px 0;
+      border: 1px solid color-mix(in srgb, var(--loop) 28%, var(--line));
+      background: linear-gradient(180deg, #faf8ff, #fff);
+      border-radius: 12px; padding: 10px 12px;
+    }
+    .goal .k {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      color: var(--loop); text-transform: uppercase;
+    }
+    .goal .v { margin-top: 4px; font-size: 14px; font-weight: 700; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--chip); color: var(--muted);
+    }
+    .pill.on { color: #fff; }
+    .pill[data-k="file"].on { background: var(--file); }
+    .pill[data-k="search"].on { background: var(--search); }
+    .pill[data-k="net"].on { background: var(--net); }
+    .pill[data-k="comm"].on { background: var(--comm); }
+    .pill.ok { background: #e5f6ee; color: var(--ok); }
+
+    .thread {
+      flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+      min-height: 380px;
+      background: linear-gradient(180deg, #fbfcfd 0%, #fff 45%);
+    }
+    .bubble-user {
+      align-self: flex-end; max-width: 78%;
+      background: var(--user); border-radius: 14px 14px 4px 14px;
+      padding: 10px 14px; font-size: 14px; line-height: 1.5;
+    }
+    .bubble-asst {
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 12px 14px;
+    }
+    .asst-head {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .asst-body { font-size: 14px; line-height: 1.6; }
+    .asst-body p { margin: 0 0 10px; }
+
+    .loop-log {
+      border: 1px solid color-mix(in srgb, var(--loop) 22%, var(--line));
+      background: #fbfaff; border-radius: 12px; overflow: hidden; margin-bottom: 10px;
+    }
+    .loop-log-h {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 800; color: var(--loop); background: var(--loop-soft);
+    }
+    .loop-log-h.done { color: var(--ok); background: #e5f6ee; }
+    .spin {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--loop) 30%, transparent);
+      border-top-color: var(--loop);
+      animation: spin 0.8s linear infinite;
+    }
+    .loop-log-h.done .spin { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .step {
+      display: grid; grid-template-columns: 78px minmax(0, 1fr);
+      gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--muted);
+    }
+    .step:last-child { border-bottom: 0; }
+    .step.pending { opacity: 0.32; }
+    .step.active { background: color-mix(in srgb, var(--loop) 6%, white); }
+    .badge {
+      font-size: 10px; font-weight: 800; height: 22px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0 8px; border-radius: 999px; color: #fff; white-space: nowrap;
+    }
+    .badge.file { background: var(--file); }
+    .badge.search { background: var(--search); }
+    .badge.net { background: var(--net); }
+    .badge.comm { background: var(--comm); }
+    .badge.agent { background: var(--loop); }
+    .badge.mem { background: var(--mem); }
+    .badge.cb { background: var(--cb); }
+    .badge.end { background: var(--ok); }
+    .step strong { color: var(--ink); }
+    .step .lc-tag {
+      display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700;
+      color: var(--loop); background: var(--loop-soft); padding: 1px 6px; border-radius: 999px;
+      vertical-align: 1px;
+    }
+    .step details { margin-top: 4px; }
+    .step summary { cursor: pointer; font-weight: 700; color: var(--loop); }
+    .step pre {
+      margin: 6px 0 0; white-space: pre-wrap; word-break: break-word;
+      font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+      background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+    }
+
+    .ask-card {
+      margin-top: 8px; border: 1px solid color-mix(in srgb, var(--comm) 35%, var(--line));
+      background: #faf6ff; border-radius: 10px; padding: 10px;
+    }
+    .ask-card .q { font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+    .ask-card .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ask-card button {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      font: inherit; font-size: 12px; font-weight: 700; padding: 6px 10px;
+      border-radius: 8px; cursor: pointer;
+    }
+    .deliver {
+      margin-top: 8px; border: 1px dashed color-mix(in srgb, var(--comm) 40%, var(--line));
+      border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--muted);
+    }
+    .deliver b { color: var(--comm); }
+    .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .src {
+      font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 8px;
+      background: var(--chip); border: 1px solid var(--line);
+    }
+
+    .state-pane {
+      border-left: 1px solid var(--line); background: #f8fafb;
+      padding: 12px; font-size: 11px; line-height: 1.45; color: var(--muted);
+      overflow: auto;
+    }
+    .state-pane h3 {
+      margin: 0 0 8px; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--mem);
+    }
+    .state-pane pre {
+      margin: 0 0 12px; white-space: pre-wrap; word-break: break-word;
+      font-family: ui-monospace, Consolas, monospace; font-size: 10px;
+      background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+      color: var(--ink);
+    }
+    .cb-list { margin: 0; padding: 0; list-style: none; }
+    .cb-list li {
+      padding: 5px 0; border-bottom: 1px solid var(--line);
+      font-family: ui-monospace, Consolas, monospace; font-size: 10px;
+    }
+    .cb-list li:last-child { border-bottom: 0; }
+    .cb-list .t { color: var(--cb); font-weight: 700; }
+
+    .compose {
+      border-top: 1px solid var(--line); padding: 12px 14px;
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .compose textarea {
+      flex: 1; resize: none; height: 44px; border: 1px solid var(--line);
+      border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 13px;
+      outline: none; background: #fafbfc;
+    }
+    .send {
+      appearance: none; border: 0; background: var(--loop); color: #fff;
+      font: inherit; font-size: 13px; font-weight: 700;
+      height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+    }
+
+    .map {
+      margin-top: 14px; border: 1px solid var(--line); border-radius: 14px;
+      background: var(--card); padding: 12px 14px; font-size: 12px; color: var(--muted);
+      line-height: 1.5;
+    }
+    .map h2 { margin: 0 0 8px; font-size: 14px; color: var(--ink); }
+    .map table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .map th, .map td {
+      border-top: 1px solid var(--line); padding: 7px 6px; text-align: left; vertical-align: top;
+    }
+    .map th { color: var(--ink); font-weight: 700; width: 28%; }
+
+    .foot { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="eyebrow">Prototype · LangChain / LangGraph</div>
+    <h1>用 LangChain 方案补全：Agent + Tools + Memory + Graph</h1>
+    <p class="lead">
+      不引入 npm 依赖也能按 LangChain 心智落地：<b>ChatModel.bind_tools</b> →
+      <b>LangGraph</b>（agent ⇄ tools，可 interrupt 到 human）→
+      <b>MemorySaver(thread_id)</b> 会话归属 →
+      <b>Callbacks</b> 驱动 UI 步骤。
+      OneTone 映射：ModelGateway ≈ ChatModel，ATR/research/Soft Pad ≈ Tools，
+      WorkController ≈ AgentExecutor/Graph，journal ≈ checkpointer。
+    </p>
+
+    <div class="stack">
+      <div class="stack-card">
+        <div class="lc">1 · Model</div>
+        <h3>ChatModel.bind_tools</h3>
+        <p>原生 tool_calls；不够再 JSON ReAct fallback</p>
+        <div class="ot">→ ModelGateway / WorkbuddyDriver</div>
+      </div>
+      <div class="stack-card">
+        <div class="lc">2 · Tools</div>
+        <h3>StructuredTool[]</h3>
+        <p>文件 · 搜索 · 网络 · 通信 四套齐</p>
+        <div class="ot">→ ATR + research + Soft Pad</div>
+      </div>
+      <div class="stack-card">
+        <div class="lc">3 · Agent</div>
+        <h3>create_react_agent</h3>
+        <p>Goal 驱动；证据不够继续调工具</p>
+        <div class="ot">→ ATR prompts chat/work</div>
+      </div>
+      <div class="stack-card">
+        <div class="lc">4 · Memory</div>
+        <h3>MemorySaver</h3>
+        <p>thread_id = 会话；messages + tool 事件</p>
+        <div class="ot">→ home-task-journal</div>
+      </div>
+      <div class="stack-card s5">
+        <div class="lc">5 · Runtime</div>
+        <h3>StateGraph + Callbacks</h3>
+        <p>节点流转可恢复；on_tool_start/end 渲染芯片；human interrupt 等用户</p>
+        <div class="ot">→ WorkController + transcript UI</div>
+      </div>
+    </div>
+
+    <div class="graph-wrap">
+      <h2>LangGraph 节点（本轮高亮）</h2>
+      <div class="graph" id="graph">
+        <span class="gnode" data-n="start">START</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="agent">agent</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="tools">tools</span>
+        <span class="garrow">⇄</span>
+        <span class="gnode" data-n="agent">agent</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="human">human</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="deliver">deliver</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="agent">agent</span>
+        <span class="garrow">→</span>
+        <span class="gnode" data-n="end">END / finish</span>
+      </div>
+      <div class="graph-note">
+        条件边：<code>should_continue</code> — 有 tool_calls 去 tools；要澄清去 human；
+        要投递去 deliver；否则 END。禁止用「请点顶部工作」代替边。
+      </div>
+    </div>
+
+    <div class="kit" id="kit">
+      <div class="kit-card is-on" data-kind="file">
+        <h3><span class="dot"></span>File tools</h3>
+        <ul>
+          <li><code>inspect_workspace</code></li>
+          <li><code>search_code</code> / <code>read_file</code></li>
+          <li><code>propose_changes</code>（审批）</li>
+        </ul>
+      </div>
+      <div class="kit-card" data-kind="search">
+        <h3><span class="dot"></span>Search tools</h3>
+        <ul>
+          <li>仓内 <code>search_code</code></li>
+          <li>网上 <code>web_search</code></li>
+          <li>回灌再搜</li>
+        </ul>
+      </div>
+      <div class="kit-card" data-kind="net">
+        <h3><span class="dot"></span>Network tools</h3>
+        <ul>
+          <li><code>web_search</code></li>
+          <li><code>fetch_url</code></li>
+          <li>SSRF 护栏</li>
+        </ul>
+      </div>
+      <div class="kit-card" data-kind="comm">
+        <h3><span class="dot"></span>Comm tools</h3>
+        <ul>
+          <li><code>request_user_input</code> → human</li>
+          <li><code>deliver_to_agent</code></li>
+          <li>Soft Pad → Cursor/Codex</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="rail">
+        <div class="rail-title">Memory · threads</div>
+        <button type="button" class="sess is-on" data-sid="a">
+          <span class="t">thread: dai-jiawei</span>
+          <span class="s">MemorySaver · 完整图</span>
+        </button>
+        <button type="button" class="sess" data-sid="b">
+          <span class="t">thread: broken</span>
+          <span class="s">无 Tools · 旧旁路</span>
+        </button>
+      </aside>
+
+      <section class="main">
+        <div class="topbar">
+          <div class="brand"><span class="logo"></span>AgentExecutor · invoke</div>
+          <div class="actions">
+            <button type="button" class="primary" id="replay">▶ graph.stream</button>
+            <button type="button" id="jumpAsk">interrupt → human</button>
+            <button type="button" id="jumpEnd">跳到 END</button>
+          </div>
+          <div class="meta">recursion_limit · budget</div>
+        </div>
+
+        <div class="goal">
+          <div class="k">state.goal</div>
+          <div class="v" id="goalText">弄清戴佳伟身份；不够就上网；必要时 human；可 deliver 到 Cursor</div>
+          <div class="pills" id="pills"></div>
+        </div>
+
+        <div class="thread" id="thread"></div>
+
+        <div class="compose">
+          <textarea id="draft" placeholder="改 goal 后再次 graph.stream…"></textarea>
+          <button type="button" class="send" id="send">invoke</button>
+        </div>
+      </section>
+
+      <aside class="state-pane">
+        <h3>Checkpointer · state</h3>
+        <pre id="statePre">{}</pre>
+        <h3>Callbacks</h3>
+        <ul class="cb-list" id="cbList"></ul>
+      </aside>
+    </div>
+
+    <div class="map">
+      <h2>LangChain 概念 → OneTone 落地（不硬加 langchain 包）</h2>
+      <table>
+        <tr><th>LangChain / LangGraph</th><td>OneTone</td></tr>
+        <tr><th>ChatModel.bind_tools</th><td><code>WorkbuddyDriver.agent_tool_turn</code> / ModelGateway</td></tr>
+        <tr><th>StructuredTool</th><td>ATR <code>TOOL_NAMES</code> + research IPC + Soft Pad paste</td></tr>
+        <tr><th>StateGraph / AgentExecutor</th><td><code>WorkController</code> + <code>cmd_agent_task_drive</code></td></tr>
+        <tr><th>MemorySaver(thread_id)</th><td><code>home-task-journal</code> 按 taskId 存 turns/tool events</td></tr>
+        <tr><th>interrupt / human</th><td><code>request_user_input</code> → Needs input UI</td></tr>
+        <tr><th>Callbacks</th><td>transcript tool chips / status strip</td></tr>
+        <tr><th>recursion_limit</th><td>WorkController budget（search/fetch/model）</td></tr>
+      </table>
+    </div>
+
+    <p class="foot">
+      文件：<code>docs/prototypes/home-chat-complete-loop.html</code>
+      · 产品不强制安装 <code>@langchain/*</code>：按同一合约用现有 ATR/Controller 实现。
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      var timer = null;
+      var stepIdx = -1;
+      var filterKind = null;
+      var pausedForAsk = false;
+      var callbacks = [];
+
+      var STEPS = [
+        {
+          kind: 'agent', node: 'agent', badge: 'agent', badgeClass: 'agent',
+          lc: 'agent',
+          title: 'agent · 读 state / 选下一步',
+          detail: 'system + messages；决定调哪些 StructuredTool。'
+        },
+        {
+          kind: 'file', node: 'tools', badge: 'File', badgeClass: 'file',
+          lc: 'tools',
+          title: 'Tool · inspect_workspace',
+          detail: 'StructuredTool.invoke',
+          pre: 'docs/  src/  README.md',
+          cb: 'on_tool_end:inspect_workspace'
+        },
+        {
+          kind: 'search', node: 'tools', badge: 'Search', badgeClass: 'search',
+          lc: 'tools',
+          title: 'Tool · search_code',
+          detail: '仓内检索偏弱 → should_continue=tools(web)',
+          pre: 'hits: 1 weak',
+          open: true,
+          cb: 'on_tool_end:search_code'
+        },
+        {
+          kind: 'agent', node: 'agent', badge: 'agent', badgeClass: 'agent',
+          lc: 'agent',
+          title: 'agent · Observe 不足',
+          detail: 'Decide：继续；绑定 web_search（能动性）。'
+        },
+        {
+          kind: 'net', node: 'tools', badge: 'Net', badgeClass: 'net',
+          lc: 'tools',
+          title: 'Tool · web_search',
+          detail: '主动网络搜索',
+          pre: '1. 团队页  2. Soft Pad 帖  3. 噪声×3',
+          open: true,
+          cb: 'on_tool_end:web_search'
+        },
+        {
+          kind: 'net', node: 'tools', badge: 'Net', badgeClass: 'net',
+          lc: 'tools',
+          title: 'Tool · fetch_url',
+          detail: '抓正文核实',
+          pre: '> 戴佳伟负责 Soft Pad…',
+          open: true,
+          cb: 'on_tool_end:fetch_url'
+        },
+        {
+          kind: 'search', node: 'tools', badge: 'Search', badgeClass: 'search',
+          lc: 'tools',
+          title: 'Tool · search_code（回灌）',
+          detail: '网上线索回仓库',
+          pre: 'docs/team.md:4  戴佳伟 · 客户端',
+          open: true
+        },
+        {
+          kind: 'file', node: 'tools', badge: 'File', badgeClass: 'file',
+          lc: 'tools',
+          title: 'Tool · read_file',
+          detail: '读本地确认',
+          pre: '## 团队\n- 戴佳伟 · 客户端 / Soft Pad',
+          open: true
+        },
+        {
+          kind: 'comm', node: 'human', badge: 'human', badgeClass: 'comm',
+          lc: 'interrupt',
+          title: 'Tool · request_user_input',
+          detail: 'LangGraph interrupt → 等 Human',
+          ask: true,
+          cb: 'on_chain_end:waiting_human'
+        },
+        {
+          kind: 'comm', node: 'deliver', badge: 'deliver', badgeClass: 'comm',
+          lc: 'tools',
+          title: 'Tool · deliver_to_agent',
+          detail: 'Soft Pad paste → Cursor',
+          deliver: true,
+          pre: 'paste ok',
+          cb: 'on_tool_end:deliver_to_agent'
+        },
+        {
+          kind: 'agent', node: 'agent', badge: 'agent', badgeClass: 'agent',
+          lc: 'agent',
+          title: 'agent · 结案草稿',
+          detail: '无更多 tool_calls → should_continue=end'
+        },
+        {
+          kind: 'decide', node: 'end', badge: 'END', badgeClass: 'end',
+          lc: 'finish',
+          title: 'finish · 写回 Memory',
+          detail: 'MemorySaver 持久化 messages；UI 显示自然语言结案。',
+          cb: 'on_chain_end:finish'
+        }
+      ];
+
+      var thread = document.getElementById('thread');
+      var pills = document.getElementById('pills');
+      var statePre = document.getElementById('statePre');
+      var cbList = document.getElementById('cbList');
+
+      function userBubble(t) {
+        return '<div class="bubble-user">' + t + '</div>';
+      }
+      function asst(inner, head) {
+        return (
+          '<div class="bubble-asst"><div class="asst-head">' +
+          '<span class="logo" style="width:18px;height:18px"></span>' +
+          (head || 'graph.stream') +
+          '</div><div class="asst-body">' + inner + '</div></div>'
+        );
+      }
+      function answerHtml() {
+        return (
+          '<p>戴佳伟是仓库内客户端同学（Soft Pad）。证据：<code>docs/team.md</code> + 网络正文；已 deliver 到 Cursor。</p>' +
+          '<p>本轮走完 LangGraph：agent ⇄ tools → human → deliver → END，无模式推诿。</p>' +
+          '<div class="sources">' +
+          '<span class="src">File</span><span class="src">Search</span>' +
+          '<span class="src">Net</span><span class="src">Comm</span></div>'
+        );
+      }
+      function brokenHtml() {
+        return (
+          userBubble('戴佳伟是谁？') +
+          asst(
+            '<p style="color:#a33;font-weight:700">无 Tools 绑定的 ChatModel：只能一次 completion</p>' +
+              '<p>等价于没跑 AgentExecutor —— 只能输出「项/说明」行政管理表。</p>',
+            'broken'
+          )
+        );
+      }
+
+      function setGraphNode(name) {
+        document.querySelectorAll('.gnode').forEach(function (el) {
+          el.classList.toggle('is-on', el.getAttribute('data-n') === name);
+        });
+      }
+
+      function pushCb(msg) {
+        callbacks.push(msg);
+        if (callbacks.length > 14) callbacks.shift();
+        cbList.innerHTML = callbacks
+          .map(function (c) {
+            return '<li><span class="t">cb</span> ' + c + '</li>';
+          })
+          .reverse()
+          .join('');
+      }
+
+      function writeState(upto, running, done) {
+        var used = [];
+        for (var i = 0; i <= upto && i < STEPS.length; i++) {
+          if (STEPS[i].kind === 'file' || STEPS[i].kind === 'search' || STEPS[i].kind === 'net' || STEPS[i].kind === 'comm') {
+            if (used.indexOf(STEPS[i].title) < 0) used.push(STEPS[i].title.replace(/^Tool · /, ''));
+          }
+        }
+        var node = upto >= 0 && upto < STEPS.length ? STEPS[upto].node : 'start';
+        if (done) node = 'end';
+        var st = {
+          thread_id: 'dai-jiawei',
+          goal: document.getElementById('goalText').textContent,
+          next: running ? node : done ? 'end' : node,
+          messages: upto + 1,
+          tool_trace: used,
+          interrupt: pausedForAsk ? 'request_user_input' : null,
+          status: done ? 'finished' : pausedForAsk ? 'interrupted' : running ? 'running' : 'idle'
+        };
+        statePre.textContent = JSON.stringify(st, null, 2);
+      }
+
+      function stepBlock(st, cls) {
+        var extra = '';
+        if (st.pre) {
+          extra +=
+            '<details' +
+            (st.open && cls.indexOf('active') >= 0 ? ' open' : '') +
+            '><summary>tool output</summary><pre>' +
+            st.pre +
+            '</pre></details>';
+        }
+        if (st.ask) {
+          extra +=
+            '<div class="ask-card"><div class="q">Human · 是否 deliver 到 Cursor？</div>' +
+            '<div class="opts">' +
+            '<button type="button" data-ask="yes">是 · resume</button>' +
+            '<button type="button" data-ask="no">否 · 直接 END</button>' +
+            '</div></div>';
+        }
+        if (st.deliver) {
+          extra +=
+            '<div class="deliver"><b>deliver_to_agent</b> · Cursor Soft Pad paste ok</div>';
+        }
+        return (
+          '<div class="step ' +
+          cls +
+          '" data-kind="' +
+          st.kind +
+          '"><span class="badge ' +
+          st.badgeClass +
+          '">' +
+          st.badge +
+          '</span><div><strong>' +
+          st.title +
+          '</strong><span class="lc-tag">' +
+          st.lc +
+          '</span><div>' +
+          st.detail +
+          '</div>' +
+          extra +
+          '</div></div>'
+        );
+      }
+
+      function buildLog(upto, running, done) {
+        var head =
+          '<div class="loop-log"><div class="loop-log-h' +
+          (done ? ' done' : '') +
+          '">' +
+          (done ? '' : '<span class="spin"></span>') +
+          (done ? 'graph done · Memory 已写回' : 'LangGraph · agent ⇄ tools') +
+          '</div>';
+        var body = '';
+        for (var i = 0; i < STEPS.length; i++) {
+          var cls = 'pending';
+          if (i < upto) cls = 'done';
+          if (i === upto && running) cls = 'active';
+          if (done || (!running && i <= upto && !pausedForAsk)) cls = 'done';
+          if (i === upto && (running || pausedForAsk)) cls = 'active';
+          if (filterKind && STEPS[i].kind !== filterKind && STEPS[i].kind !== 'agent' && STEPS[i].kind !== 'decide') {
+            cls += ' pending';
+          }
+          body += stepBlock(STEPS[i], 'step ' + cls);
+        }
+        return head + body + '</div>';
+      }
+
+      function syncPills(upto, done) {
+        var used = { file: false, search: false, net: false, comm: false };
+        for (var i = 0; i <= upto && i < STEPS.length; i++) {
+          var k = STEPS[i].kind;
+          if (used[k] !== undefined) used[k] = true;
+        }
+        var html = done
+          ? '<span class="pill ok">END</span>'
+          : '<span class="pill on" style="background:var(--loop)">streaming</span>';
+        ['file', 'search', 'net', 'comm'].forEach(function (k) {
+          var label = { file: 'File', search: 'Search', net: 'Net', comm: 'Comm' }[k];
+          html +=
+            '<span class="pill' +
+            (done || used[k] ? ' on' : '') +
+            '" data-k="' +
+            k +
+            '">' +
+            label +
+            (done || used[k] ? ' ✓' : '') +
+            '</span>';
+        });
+        pills.innerHTML = html;
+      }
+
+      function paint(upto, running, withAnswer) {
+        var done = !!withAnswer;
+        var html =
+          userBubble('戴佳伟是谁？') +
+          asst(buildLog(upto, running, done), 'create_react_agent');
+        if (withAnswer) html += asst(answerHtml(), 'final');
+        thread.innerHTML = html;
+        thread.scrollTop = thread.scrollHeight;
+        syncPills(upto, done);
+        writeState(upto, running, done);
+        if (upto >= 0 && upto < STEPS.length) setGraphNode(STEPS[upto].node);
+        if (done) setGraphNode('end');
+
+        thread.querySelectorAll('[data-ask]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            pushCb('human_response:' + btn.getAttribute('data-ask'));
+            if (btn.getAttribute('data-ask') === 'no') {
+              stop();
+              pausedForAsk = false;
+              paint(STEPS.length - 1, false, true);
+              pushCb('on_chain_end:finish');
+              return;
+            }
+            pausedForAsk = false;
+            continueFrom(stepIdx + 1);
+          });
+        });
+      }
+
+      function stop() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      function continueFrom(start) {
+        stop();
+        stepIdx = start - 1;
+        timer = setInterval(function () {
+          if (pausedForAsk) return;
+          stepIdx += 1;
+          if (stepIdx >= STEPS.length) {
+            stop();
+            paint(STEPS.length - 1, false, true);
+            return;
+          }
+          if (STEPS[stepIdx].cb) pushCb(STEPS[stepIdx].cb);
+          paint(stepIdx, true, false);
+          if (STEPS[stepIdx].ask) {
+            pausedForAsk = true;
+            stop();
+          }
+        }, 700);
+        stepIdx = start;
+        if (STEPS[stepIdx] && STEPS[stepIdx].cb) pushCb(STEPS[stepIdx].cb);
+        paint(stepIdx, true, false);
+        if (STEPS[stepIdx] && STEPS[stepIdx].ask) {
+          pausedForAsk = true;
+          stop();
+        }
+      }
+
+      function replay() {
+        pausedForAsk = false;
+        stop();
+        callbacks = [];
+        cbList.innerHTML = '';
+        pushCb('on_chain_start:graph.stream');
+        filterKind = null;
+        document.querySelectorAll('.kit-card').forEach(function (c) {
+          c.classList.add('is-on');
+        });
+        setGraphNode('start');
+        continueFrom(0);
+      }
+
+      document.getElementById('replay').addEventListener('click', replay);
+      document.getElementById('jumpAsk').addEventListener('click', function () {
+        pausedForAsk = false;
+        stop();
+        var i = STEPS.findIndex(function (s) {
+          return s.ask;
+        });
+        stepIdx = i;
+        callbacks = [];
+        for (var j = 0; j <= i; j++) if (STEPS[j].cb) pushCb(STEPS[j].cb);
+        paint(i, true, false);
+        pausedForAsk = true;
+      });
+      document.getElementById('jumpEnd').addEventListener('click', function () {
+        pausedForAsk = false;
+        stop();
+        paint(STEPS.length - 1, false, true);
+        pushCb('on_chain_end:finish');
+      });
+
+      document.querySelectorAll('.kit-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+          var kind = card.getAttribute('data-kind');
+          filterKind = filterKind === kind ? null : kind;
+          document.querySelectorAll('.kit-card').forEach(function (c) {
+            c.classList.toggle('is-on', !filterKind || c.getAttribute('data-kind') === filterKind);
+          });
+          if (thread.querySelector('.loop-log-h.done')) paint(STEPS.length - 1, false, true);
+          else paint(Math.max(stepIdx, 0), !!timer || pausedForAsk, false);
+        });
+      });
+
+      document.querySelectorAll('.sess').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.sess').forEach(function (s) {
+            s.classList.toggle('is-on', s === btn);
+          });
+          stop();
+          if (btn.getAttribute('data-sid') === 'b') {
+            setGraphNode('start');
+            statePre.textContent = JSON.stringify(
+              { thread_id: 'broken', tools: [], note: 'plain completion only' },
+              null,
+              2
+            );
+            cbList.innerHTML = '';
+            pills.innerHTML = '<span class="pill">no tools</span>';
+            thread.innerHTML = brokenHtml();
+            return;
+          }
+          replay();
+        });
+      });
+
+      document.getElementById('send').addEventListener('click', function () {
+        var t = document.getElementById('draft').value.trim();
+        if (t) {
+          document.getElementById('goalText').textContent = t;
+          document.getElementById('draft').value = '';
+        }
+        document.querySelectorAll('.sess').forEach(function (s, i) {
+          s.classList.toggle('is-on', i === 0);
+        });
+        replay();
+      });
+
+      replay();
+    })();
+  </script>
+</body>
+</html>

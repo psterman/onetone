@@ -138,6 +138,21 @@ pub fn cmd_agent_task_ensure_verify_sandbox() -> Result<serde_json::Value, Strin
 }
 
 #[tauri::command]
+pub fn cmd_agent_task_ensure_chat_scratch() -> Result<serde_json::Value, String> {
+    agent_task_runtime::ensure_chat_scratch()
+}
+
+#[tauri::command]
+pub fn cmd_agent_task_approve_deliver(args: ApprovePatchRequest) -> Result<TaskDto, String> {
+    agent_task_runtime::api_approve_deliver(args)
+}
+
+#[tauri::command]
+pub fn cmd_agent_task_reject_deliver(args: ApprovePatchRequest) -> Result<TaskDto, String> {
+    agent_task_runtime::api_reject_deliver(args)
+}
+
+#[tauri::command]
 pub fn cmd_agent_task_evaluate_verify(args: TaskIdRequest) -> Result<serde_json::Value, String> {
     agent_task_runtime::evaluate_verify(&args.task_id)
 }

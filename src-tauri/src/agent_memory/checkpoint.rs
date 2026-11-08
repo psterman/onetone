@@ -285,6 +285,10 @@ pub fn latest_checkpoint_for_project(project_id: &str) -> Option<CheckpointDto> 
 
 /// Resume surface: continuation brief + mark session resumed.
 /// Does not execute shell/git, write files, call agents, or open network.
+///
+/// Cursor cannot be HWND-driven from this path — do **not** write `task_resumed`
+/// (that would fake Hero「执行中»). Soft resume is observed-only; Soft Pad Working
+/// remains the authority for a live Cursor run.
 pub fn resume_checkpoint(session_id: &str) -> Result<ContinuationBrief, String> {
     let ckpt = latest_checkpoint_for_session(session_id)
         .ok_or_else(|| format!("no checkpoint for session: {session_id}"))?;
@@ -299,14 +303,31 @@ pub fn resume_checkpoint(session_id: &str) -> Result<ContinuationBrief, String> 
 
     let ts = now_ms();
     let source_ref = format!("resume|{}|{}", ckpt.checkpoint_id, ts);
-    let _ = append_lifecycle_event(
-        session_id,
-        &provider,
-        "task_resumed",
-        &source_ref,
-        ts,
-        ckpt.next_action.as_deref().unwrap_or("从上次进度继续"),
-    );
+    let summary = ckpt
+        .next_action
+        .as_deref()
+        .unwrap_or("从上次进度继续");
+    let is_cursor = provider.eq_ignore_ascii_case("cursor");
+    if is_cursor {
+        // Observed: bump last_seen only — never flip session.status → running.
+        let _ = crate::agent_memory::events::append_observed_event(
+            session_id,
+            &provider,
+            "checkpoint_surfaced",
+            &source_ref,
+            ts,
+            summary,
+        );
+    } else {
+        let _ = append_lifecycle_event(
+            session_id,
+            &provider,
+            "task_resumed",
+            &source_ref,
+            ts,
+            summary,
+        );
+    }
 
     Ok(ContinuationBrief {
         checkpoint: ckpt.clone(),
@@ -552,6 +573,27 @@ pub fn latest_atr_checkpoint_for_project(project_id: &str) -> Option<CheckpointD
                 "{CKPT_SELECT}
              WHERE project_id = ?1
                AND session_id IN (
+                 SELECT session_id FROM agent_sessions WHERE provider = ?2 AND project_id = ?1
+               )
+             ORDER BY updated_at_ms DESC, created_at_ms DESC LIMIT 1"
+            ),
+            params![project_id, PROVIDER_ONETONE_ATR],
+            map_checkpoint_row,
+        )
+        .map_err(|e| e.to_string())
+    })
+    .ok()
+}
+
+/// Latest non-ATR checkpoint for a project (Cursor / Codex / …).
+/// Home Focus must not feed ATR goals into the Cursor resumable path.
+pub fn latest_non_atr_checkpoint_for_project(project_id: &str) -> Option<CheckpointDto> {
+    with_read_path(|conn| {
+        conn.query_row(
+            &format!(
+                "{CKPT_SELECT}
+             WHERE project_id = ?1
+               AND session_id NOT IN (
                  SELECT session_id FROM agent_sessions WHERE provider = ?2 AND project_id = ?1
                )
              ORDER BY updated_at_ms DESC, created_at_ms DESC LIMIT 1"

@@ -339,7 +339,8 @@
       cursorNeedsConsent: !!(
         cursor &&
         !cursorReady &&
-        /未启用|活动统计/.test(String(cursor.message || cursor.note || ''))
+        (String(cursor.status || '') === 'consent_off' ||
+          /未启用/.test(String(cursor.message || cursor.note || '')))
       ),
       homeProject: homeSnap && homeSnap.project ? homeSnap.project : null,
       homeProbeStatus: homeSnap && homeSnap.probeStatus ? homeSnap.probeStatus : null,

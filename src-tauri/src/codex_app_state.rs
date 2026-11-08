@@ -40,6 +40,21 @@ pub struct CodexAppStatePayload {
     /// Rust fixtures / future trusted paths may set it.
     #[serde(default)]
     pub prompt: String,
+    /// Cursor `stop.status` / `subagentStop.status` / `sessionEnd.reason`.
+    #[serde(default)]
+    pub stop_status: String,
+    /// Truncated Cursor `agent_message` (preToolUse short status line).
+    #[serde(default)]
+    pub agent_message: String,
+    /// First `workspace_roots` entry when present.
+    #[serde(default)]
+    pub workspace: String,
+    /// Basename-only path from `afterFileEdit` (never full file body).
+    #[serde(default)]
+    pub file_path: String,
+    /// Cursor `sessionStart.composer_mode` when present.
+    #[serde(default)]
+    pub composer_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -130,9 +145,9 @@ pub fn map_event_to_status(event: &str) -> Option<&'static str> {
     }
 }
 
-fn map_hook_event_to_status(source: &str, event: &str) -> Option<&'static str> {
+fn map_hook_event_to_status(source: &str, event: &str, outcome: &str) -> Option<&'static str> {
     if source == "cursor_hook" {
-        return crate::pad_status::map_cursor_event_to_state(event);
+        return crate::pad_status::map_cursor_event_to_state(event, outcome);
     }
     map_event_to_status(event)
 }
@@ -207,7 +222,7 @@ fn apply_payload_at(store: &mut CodexAppStateStore, payload: &CodexAppStatePaylo
         store.turn_id = payload.turn_id.trim().to_string();
     }
 
-    if let Some(status) = map_hook_event_to_status(source, event) {
+    if let Some(status) = map_hook_event_to_status(source, event, payload.stop_status.trim()) {
         store.status = status.to_string();
         if status == "done" {
             store.pending_idle_at_ms = now.saturating_add(IDLE_AFTER_DONE_MS);
@@ -337,6 +352,11 @@ mod tests {
             agent_type: String::new(),
             ts: 0,
             prompt: String::new(),
+            stop_status: String::new(),
+            agent_message: String::new(),
+            workspace: String::new(),
+            file_path: String::new(),
+            composer_mode: String::new(),
         }
     }
 

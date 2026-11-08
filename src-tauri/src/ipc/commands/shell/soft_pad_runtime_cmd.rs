@@ -91,9 +91,14 @@ pub fn cmd_cursor_hook_ingest(
     state: State<'_, Arc<AppState>>,
     event: String,
     session_id: Option<String>,
+    stop_status: Option<String>,
 ) -> AttentionPublicSnapshot {
     let _ = state;
-    agent_attention::ingest_cursor_hook_event(event.trim(), session_id.as_deref().unwrap_or(""));
+    agent_attention::ingest_cursor_hook_event(
+        event.trim(),
+        session_id.as_deref().unwrap_or(""),
+        stop_status.as_deref().unwrap_or(""),
+    );
     agent_attention::public_snapshot()
 }
 

@@ -13,6 +13,21 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub const CURSOR_HOOK_SENTINEL: &str = "--onetone-hook-id cursor-observer-v1";
 pub const PROBE_RESOURCE: &str = "scripts/cursor-hook-probe.js";
 
+/// Phase1 Soft Pad / home live-status events (Agent hooks only; no Tab / workspaceOpen).
+pub const CURSOR_HOOK_EVENTS: &[&str] = &[
+    "sessionStart",
+    "beforeSubmitPrompt",
+    "preToolUse",
+    "postToolUse",
+    "postToolUseFailure",
+    "afterFileEdit",
+    "subagentStart",
+    "subagentStop",
+    "afterAgentResponse",
+    "stop",
+    "sessionEnd",
+];
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorHookScopeStatus {
@@ -153,15 +168,11 @@ fn inspect_hooks_file(scope: &str, path: &Path, expected_probe: &Path) -> Cursor
 
 pub fn build_merge_preview(probe_abs: &Path) -> String {
     let cmd = format!("node \"{}\" {}", probe_abs.display(), CURSOR_HOOK_SENTINEL);
-    let draft = json!({
-        "version": 1,
-        "hooks": {
-            "beforeSubmitPrompt": [{ "command": cmd }],
-            "afterAgentResponse": [{ "command": cmd }],
-            "stop": [{ "command": cmd }],
-            "subagentStart": [{ "command": cmd }]
-        }
-    });
+    let mut hooks = serde_json::Map::new();
+    for event in CURSOR_HOOK_EVENTS {
+        hooks.insert((*event).into(), json!([{ "command": cmd }]));
+    }
+    let draft = json!({ "version": 1, "hooks": hooks });
     serde_json::to_string_pretty(&draft).unwrap_or_default()
 }
 
@@ -286,13 +297,8 @@ pub fn merge_onetone_hooks(existing: &str, probe_abs: &Path) -> Result<String, S
     let obj = hooks
         .as_object_mut()
         .ok_or_else(|| "invalid_json".to_string())?;
-    for event in [
-        "beforeSubmitPrompt",
-        "afterAgentResponse",
-        "stop",
-        "subagentStart",
-    ] {
-        let arr = obj.entry(event).or_insert_with(|| json!([]));
+    for event in CURSOR_HOOK_EVENTS {
+        let arr = obj.entry((*event).to_string()).or_insert_with(|| json!([]));
         let list = arr
             .as_array_mut()
             .ok_or_else(|| "invalid_json".to_string())?;
@@ -375,6 +381,22 @@ mod tests {
         assert!(merged.contains("other.js"));
         assert!(merged.contains(CURSOR_HOOK_SENTINEL));
         assert!(merged.contains("cursor-hook-probe.js"));
+        for event in CURSOR_HOOK_EVENTS {
+            assert!(
+                merged.contains(&format!("\"{event}\"")),
+                "missing Phase1 event {event}"
+            );
+        }
+    }
+
+    #[test]
+    fn merge_preview_lists_phase1_events() {
+        let preview = build_merge_preview(Path::new(r"C:\OneTone\scripts\cursor-hook-probe.js"));
+        for event in CURSOR_HOOK_EVENTS {
+            assert!(preview.contains(event), "preview missing {event}");
+        }
+        assert!(!preview.contains("workspaceOpen"));
+        assert!(!preview.contains("beforeTabFileRead"));
     }
 
     #[test]

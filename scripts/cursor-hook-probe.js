@@ -3,9 +3,9 @@
 
 /**
  * Cursor lifecycle probe — fail-open.
- * Keeps only identity/lifecycle fields and forwards them to OneTone loopback.
- * Always prints schema-valid JSON on stdout (empty stdout breaks subagentStart /
- * beforeSubmitPrompt on current Cursor).
+ * Keeps only identity/lifecycle + safe activity fields; forwards to OneTone loopback.
+ * Never forwards prompt / response text / tool IO / shell output / file diffs.
+ * Always prints schema-valid JSON on stdout (empty stdout breaks permission hooks).
  */
 
 var fs = require('fs');
@@ -18,6 +18,7 @@ var JSONL_PATH = path.join(LOG_DIR, 'cursor-hook-probe.jsonl');
 var DEBUG_PATH = path.join(LOG_DIR, 'cursor-hook-probe.debug.log');
 var DEFAULT_URL = 'http://127.0.0.1:8796/api/codex-app/state';
 var POST_TIMEOUT_MS = 1500;
+var AGENT_MESSAGE_MAX = 120;
 
 function debugLog(message) {
   try {
@@ -34,11 +35,52 @@ function firstScalar(obj, keys) {
   return '';
 }
 
+function truncate(text, max) {
+  var s = String(text || '').trim();
+  if (!s) return '';
+  if (s.length <= max) return s;
+  return s.slice(0, max);
+}
+
+function basenameOnly(filePath) {
+  var raw = String(filePath || '').trim();
+  if (!raw) return '';
+  try {
+    return path.basename(raw.replace(/\\/g, '/'));
+  } catch (_) {
+    var parts = raw.replace(/\\/g, '/').split('/');
+    return parts[parts.length - 1] || '';
+  }
+}
+
+function firstWorkspaceRoot(obj) {
+  var roots = obj.workspace_roots || obj.workspaceRoots;
+  if (Array.isArray(roots) && roots.length > 0 && roots[0] != null) {
+    return String(roots[0]);
+  }
+  return firstScalar(obj, ['workspace', 'cwd']);
+}
+
+function extractOutcome(obj, event) {
+  var e = String(event || '');
+  if (e === 'sessionEnd') {
+    return firstScalar(obj, ['reason', 'final_status', 'finalStatus', 'status']);
+  }
+  if (e === 'stop' || e === 'subagentStop') {
+    return firstScalar(obj, ['status']);
+  }
+  return firstScalar(obj, ['status', 'reason']);
+}
+
 function extractSafeFields(raw) {
   var obj = raw && typeof raw === 'object' ? raw : {};
+  var event = firstScalar(obj, ['hook_event_name', 'event']);
+  var toolName = firstScalar(obj, ['tool_name', 'toolName']);
+  var filePath = basenameOnly(firstScalar(obj, ['file_path', 'filePath']));
+  var agentMessage = truncate(firstScalar(obj, ['agent_message', 'agentMessage']), AGENT_MESSAGE_MAX);
   return {
     ts: Date.now(),
-    event: firstScalar(obj, ['hook_event_name', 'event']),
+    event: event,
     sessionId: firstScalar(obj, [
       'conversation_id',
       'session_id',
@@ -47,7 +89,13 @@ function extractSafeFields(raw) {
     ]),
     turnId: firstScalar(obj, ['generation_id', 'turn_id', 'turnId', 'subagent_id']),
     cwd: firstScalar(obj, ['cwd']),
-    model: firstScalar(obj, ['model', 'subagent_model'])
+    model: firstScalar(obj, ['model', 'subagent_model', 'model_id', 'modelId']),
+    toolName: toolName,
+    stopStatus: extractOutcome(obj, event),
+    agentMessage: agentMessage,
+    workspace: firstWorkspaceRoot(obj),
+    filePath: filePath,
+    composerMode: firstScalar(obj, ['composer_mode', 'composerMode'])
   };
 }
 
@@ -59,6 +107,12 @@ function buildPostBody(fields) {
     turnId: fields.turnId,
     cwd: fields.cwd,
     model: fields.model,
+    toolName: fields.toolName || '',
+    stopStatus: fields.stopStatus || '',
+    agentMessage: fields.agentMessage || '',
+    workspace: fields.workspace || '',
+    filePath: fields.filePath || '',
+    composerMode: fields.composerMode || '',
     ts: fields.ts
   };
 }
@@ -67,7 +121,8 @@ function buildPostBody(fields) {
 function buildStdoutResponse(event) {
   var e = String(event || '').trim();
   if (e === 'beforeSubmitPrompt') return { continue: true };
-  if (e === 'subagentStart') return { permission: 'allow' };
+  // Permission gates: allow explicitly so we never block Cursor (Trajectory-style observe).
+  if (e === 'subagentStart' || e === 'preToolUse') return { permission: 'allow' };
   // Unknown event (parse salvage miss): cover both gate schemas without blocking.
   if (!e) return { continue: true, permission: 'allow' };
   return {};
@@ -272,5 +327,6 @@ module.exports = {
   buildPostBody: buildPostBody,
   buildStdoutResponse: buildStdoutResponse,
   parseHookInput: parseHookInput,
-  run: run
+  run: run,
+  AGENT_MESSAGE_MAX: AGENT_MESSAGE_MAX
 };

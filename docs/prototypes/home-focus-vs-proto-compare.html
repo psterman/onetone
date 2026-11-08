@@ -50,17 +50,51 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 11.5px; color: var(--accent);
     }
-    .links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
-    a.btn {
-      display: inline-flex; align-items: center; text-decoration: none;
+    .links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+    .links button {
+      display: inline-flex; align-items: center;
       border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 13px;
-      background: var(--accent); color: #fff;
-    }
-    a.btn.sec {
+      font-family: inherit; cursor: pointer;
       background: transparent; color: var(--ink);
       border: 1px solid var(--line);
     }
-    a.btn.proto { background: var(--proto); }
+    .links button:hover {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      background: color-mix(in srgb, var(--accent) 6%, white);
+    }
+    .links button.is-on {
+      background: var(--proto); color: #fff; border-color: var(--proto);
+    }
+    .links button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    a.btn {
+      display: inline-flex; align-items: center; text-decoration: none;
+      border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 13px;
+      background: var(--proto); color: #fff; border: 1px solid var(--proto);
+      cursor: pointer;
+    }
+    a.btn.sec {
+      background: transparent; color: var(--ink); border-color: var(--line);
+    }
+    .tab-panel[hidden] { display: none !important; }
+    .proto-card {
+      background: var(--paper); border-radius: 16px; padding: 16px;
+      box-shadow: var(--shadow); margin-bottom: 22px;
+    }
+    .proto-card h2 { margin: 0 0 8px; font-size: 17px; }
+    .proto-card p { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+    .proto-card .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .proto-card img {
+      display: block; width: 100%; max-width: 960px; border-radius: 12px;
+      border: 1px solid var(--line); background: #fff;
+    }
+    .proto-card .shots { display: grid; gap: 12px; }
+    .file-hint {
+      margin: 0 0 16px; padding: 10px 12px; border-radius: 10px;
+      background: color-mix(in srgb, var(--warn) 10%, white);
+      border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--line));
+      color: var(--muted); font-size: 12.5px; line-height: 1.45;
+    }
+    .file-hint b { color: var(--ink); }
 
     .split {
       display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px;
@@ -107,10 +141,16 @@
       justify-self: center; display: inline-flex; gap: 2px; padding: 2px;
       border-radius: 8px; border: 1px solid var(--line); background: white;
     }
-    .ph-intent span {
-      padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 650;
+    .ph-intent button {
+      border: 0; background: transparent; padding: 4px 8px; border-radius: 6px;
+      font: inherit; font-size: 10px; font-weight: 650; color: var(--muted);
+      cursor: pointer;
     }
-    .ph-intent span.on { background: color-mix(in srgb, var(--bg) 80%, white); color: var(--ink); }
+    .ph-intent button.on,
+    .ph-intent button[aria-pressed="true"] {
+      background: color-mix(in srgb, var(--bg) 80%, white); color: var(--ink);
+    }
+    .ph-intent button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .ph-end { justify-self: end; display: flex; gap: 4px; }
     .ph-ico {
       width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line);
@@ -235,13 +275,20 @@
       紧急项才升 primary。compose 已嵌 ha2，不要再画第二套输入栏。
     </div>
 
-    <div class="links">
-      <a class="btn proto" href="home-focus-simple.html">新稿 · 居中简单 Hero</a>
-      <a class="btn sec" href="../mock-home-hero-center.html#history">旧原型 · 工作区</a>
-      <a class="btn sec" href="../mock-home-hero-center.html">旧原型首页</a>
-      <a class="btn sec" href="home-schemes-compare.html">更早方案比较</a>
+    <p class="file-hint" id="fileHint" hidden>
+      <b>当前是 file:// 打开：</b>内嵌预览常拦页面跳转。顶部标签会在本页切换；要完点交互请点「用系统浏览器打开」，或先起本地服务再访问。
+    </p>
+
+    <div class="links" role="tablist" aria-label="对照与原型">
+      <button type="button" role="tab" class="is-on" aria-selected="true" data-panel="compare">对照线框</button>
+      <button type="button" role="tab" aria-selected="false" data-panel="merge">融合稿 · 输入下监视条</button>
+      <button type="button" role="tab" aria-selected="false" data-panel="simple">B 原稿 · 居中简单 Hero</button>
+      <button type="button" role="tab" aria-selected="false" data-panel="history">旧原型 · 工作区</button>
+      <button type="button" role="tab" aria-selected="false" data-panel="hero">旧原型首页</button>
+      <button type="button" role="tab" aria-selected="false" data-panel="schemes">更早方案比较</button>
     </div>
 
+    <div class="tab-panel" id="panel-compare" role="tabpanel">
     <div class="split">
       <!-- LIVE -->
       <section class="col live">
@@ -253,13 +300,16 @@
         <div class="phone" aria-label="现网线框">
           <div class="ph-top">
             <span class="ph-chip">应用 · 项目</span>
-            <div class="ph-intent"><span class="on">对话</span><span>工作</span></div>
+            <div class="ph-intent" role="group" aria-label="意图（线框演示）">
+              <button type="button" class="on" data-intent="chat" aria-pressed="true">对话</button>
+              <button type="button" data-intent="work" aria-pressed="false">工作</button>
+            </div>
             <div class="ph-end">
               <span class="ph-ico">习</span>
               <span class="ph-ico" title="历史抽屉（条目偏 session，非 ha2 工作区）">🕒</span>
             </div>
           </div>
-          <div class="ph-invite">
+          <div class="ph-invite" data-invite="live">
             <h3>写一句，开始</h3>
             <p>空闲邀请 · 或一张 task card（有 primary 时）</p>
           </div>
@@ -300,12 +350,15 @@
         <div class="phone" aria-label="原型线框">
           <div class="ph-top">
             <span class="ph-chip">前台 · Cursor</span>
-            <div class="ph-intent"><span class="on">对话</span><span>工作</span></div>
+            <div class="ph-intent" role="group" aria-label="意图（线框演示）">
+              <button type="button" class="on" data-intent="chat" aria-pressed="true">对话</button>
+              <button type="button" data-intent="work" aria-pressed="false">工作</button>
+            </div>
             <div class="ph-end">
               <span class="ph-ico">🕒<span class="badge">3</span></span>
             </div>
           </div>
-          <div class="ph-invite">
+          <div class="ph-invite" data-invite="proto">
             <h3>写一句，开始</h3>
             <p>先写新的，或继续下面的任务</p>
           </div>
@@ -460,9 +513,168 @@
 
     <p class="footer">
       对照页只服务对齐决策，不接 IPC。
-      原型可交互：<a href="../mock-home-hero-center.html#history">mock-home-hero-center.html#history</a>。
+      线框顶栏「对话 / 工作」可点，仅演示意图文案差；完整交互见
+      <a href="home-focus-merge.html">融合稿</a> /
+      <a href="../mock-home-hero-center.html#history">mock-home-hero-center.html#history</a>。
       现网切回纯 ha2 工作台：<code>?homeAgentV2=1</code>（看旧「任务与会话」密度，作视觉参照，不是默认目标）。
     </p>
+    </div><!-- /panel-compare -->
+
+    <div class="tab-panel" id="panel-merge" role="tabpanel" hidden>
+      <div class="proto-card">
+        <h2>融合稿 · B骨架 + 输入下监视条</h2>
+        <p>invite → compose → 监视条 → teaser → 单卡。监视与发送分离；主 CTA 只在卡上。</p>
+        <div class="actions">
+          <a class="btn" data-open="home-focus-merge.html" href="home-focus-merge.html">用系统浏览器打开</a>
+          <a class="btn sec" href="#compare" data-panel-link="compare">回对照线框</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-simple" role="tabpanel" hidden>
+      <div class="proto-card">
+        <h2>B 原稿 · 居中简单 Hero</h2>
+        <p>评审主口径来源稿。已知：矮窗主 CTA 易被挡、「整理」撞名、角标与舞台条数曾不一致。</p>
+        <div class="actions">
+          <a class="btn" data-open="home-focus-simple.html" href="home-focus-simple.html">用系统浏览器打开</a>
+          <a class="btn sec" href="#compare" data-panel-link="compare">回对照线框</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-history" role="tabpanel" hidden>
+      <div class="proto-card">
+        <h2>旧原型 · 工作区</h2>
+        <p><code>mock-home-hero-center.html#history</code> — 工作区抽屉与 list 形态参照。</p>
+        <div class="actions">
+          <a class="btn" data-open="../mock-home-hero-center.html#history" href="../mock-home-hero-center.html#history">用系统浏览器打开</a>
+          <a class="btn sec" href="#compare" data-panel-link="compare">回对照线框</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-hero" role="tabpanel" hidden>
+      <div class="proto-card">
+        <h2>旧原型首页</h2>
+        <p><code>mock-home-hero-center.html</code> — Hero Center 整页参照。</p>
+        <div class="actions">
+          <a class="btn" data-open="../mock-home-hero-center.html" href="../mock-home-hero-center.html">用系统浏览器打开</a>
+          <a class="btn sec" href="#compare" data-panel-link="compare">回对照线框</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-schemes" role="tabpanel" hidden>
+      <div class="proto-card">
+        <h2>更早方案比较</h2>
+        <p><code>home-schemes-compare.html</code> — 更早一轮方案并列。</p>
+        <div class="actions">
+          <a class="btn" data-open="home-schemes-compare.html" href="home-schemes-compare.html">用系统浏览器打开</a>
+          <a class="btn sec" href="#compare" data-panel-link="compare">回对照线框</a>
+        </div>
+      </div>
+    </div>
   </div>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.links [data-panel]');
+      var panels = {
+        compare: document.getElementById('panel-compare'),
+        merge: document.getElementById('panel-merge'),
+        simple: document.getElementById('panel-simple'),
+        history: document.getElementById('panel-history'),
+        hero: document.getElementById('panel-hero'),
+        schemes: document.getElementById('panel-schemes')
+      };
+
+      function showPanel(id) {
+        if (!panels[id]) id = 'compare';
+        Object.keys(panels).forEach(function (key) {
+          var el = panels[key];
+          if (!el) return;
+          var on = key === id;
+          el.hidden = !on;
+        });
+        tabs.forEach(function (b) {
+          var on = b.getAttribute('data-panel') === id;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        try {
+          history.replaceState(null, '', '#' + id);
+        } catch (e) {}
+        window.scrollTo(0, 0);
+      }
+
+      document.querySelector('.links').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-panel]');
+        if (!btn) return;
+        e.preventDefault();
+        showPanel(btn.getAttribute('data-panel'));
+      });
+
+      document.addEventListener('click', function (e) {
+        var back = e.target.closest('[data-panel-link]');
+        if (back) {
+          e.preventDefault();
+          showPanel(back.getAttribute('data-panel-link'));
+          return;
+        }
+        var open = e.target.closest('a[data-open]');
+        if (!open) return;
+        // 尽量顶层跳转；Cursor 内嵌仍可能拦，截图面板已先切换
+        var url = new URL(open.getAttribute('data-open'), location.href).href;
+        try {
+          var w = window.open(url, '_blank');
+          if (!w) location.href = url;
+        } catch (err) {
+          location.href = url;
+        }
+        e.preventDefault();
+      });
+
+      if (location.protocol === 'file:') {
+        var hint = document.getElementById('fileHint');
+        if (hint) hint.hidden = false;
+      }
+
+      var hash = (location.hash || '').replace(/^#/, '');
+      showPanel(panels[hash] ? hash : 'compare');
+
+      var COPY = {
+        live: {
+          chat: { title: '写一句，开始', fact: '空闲邀请 · 或一张 task card（有 primary 时）' },
+          work: { title: '写一句，开始改', fact: '工作意图 · 描述要改的文件或功能后再送出' }
+        },
+        proto: {
+          chat: { title: '写一句，开始', fact: '先写新的，或继续下面的任务' },
+          work: { title: '写一句，开始改', fact: '可改项目文件 · 先写新的，或继续下面的任务' }
+        }
+      };
+
+      document.querySelectorAll('.ph-intent').forEach(function (group) {
+        var phone = group.closest('.phone');
+        var invite = phone && phone.querySelector('[data-invite]');
+        var key = invite && invite.getAttribute('data-invite');
+
+        group.addEventListener('click', function (e) {
+          var btn = e.target.closest('button[data-intent]');
+          if (!btn || !group.contains(btn)) return;
+          var intent = btn.getAttribute('data-intent') === 'work' ? 'work' : 'chat';
+          group.querySelectorAll('button[data-intent]').forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          if (!invite || !COPY[key] || !COPY[key][intent]) return;
+          var c = COPY[key][intent];
+          var h = invite.querySelector('h3');
+          var p = invite.querySelector('p');
+          if (h) h.textContent = c.title;
+          if (p) p.textContent = c.fact;
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

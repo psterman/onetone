@@ -223,6 +223,13 @@ assert.ok(html.includes('AGENT_ICON') && html.includes('icons/app-target/'), 'ag
 assert.ok(html.includes('function faceHtml') || html.includes('faceHtml('), 'faceHtml helper');
 assert.ok(html.includes('需日桶'), 'period disabled honesty');
 assert.ok(html.includes('较上周'), 'compare shell');
+assert.ok(
+  html.includes('state.history=Array.isArray(payload.history)?payload.history:[]') ||
+    html.includes("state.history=Array.isArray(payload.history)?payload.history:[]"),
+  'history kept as array (not !!boolean)'
+);
+assert.ok(!html.includes('state.history=!!payload.history'), 'no boolean coercion of history');
+assert.ok(html.includes('historyForAgent') && html.includes('近期会话'), 'per-agent history panel');
 assert.ok(!html.includes('id="subtabs"'), 'old 4 subtabs removed');
 assert.ok(!html.includes('pane-rank'), 'old rank pane removed');
 
@@ -236,6 +243,7 @@ assert.ok(pageHtml.includes('agentPadPaint') && pageHtml.includes("setSub('data'
 assert.ok(pageHtml.includes('onDataLeaf') && pageHtml.includes('切数据 focus'), 'data leaf Soft Pad icons switch data focus');
 assert.ok(pageHtml.includes("workspace.classList.toggle('is-data'"), 'data leaf toggles is-data');
 assert.ok(pageHtml.includes("workspace.classList.toggle('is-overview'"), 'overview leaf toggles is-overview');
+assert.ok(pageHtml.includes('function applyNavProvider') && pageHtml.includes('applyNavProvider(navOpts)'), 'nav provider focuses agent');
 assert.ok(/getElementById\('gotoStats'\)[\s\S]{0,120}setSub\('data'\)/.test(pageHtml), 'gotoStats stays in-page');
 assert.ok(!/getElementById\('gotoStats'\)[\s\S]{0,200}ot-nav/.test(pageHtml), 'gotoStats does not ot-nav away');
 assert.ok(/setSub\(allowedDeep\[deepSub\]\?deepSub:'overview'\)/.test(pageHtml), 'default overview');

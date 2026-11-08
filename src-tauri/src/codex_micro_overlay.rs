@@ -9529,7 +9529,7 @@ mod tests {
             "",
             "claude_hook",
         );
-        crate::agent_attention::ingest_cursor_hook_event("beforeSubmitPrompt", "cursor-s");
+        crate::agent_attention::ingest_cursor_hook_event("beforeSubmitPrompt", "cursor-s", "");
         crate::agent_model_metadata::ingest_hook_model(
             crate::soft_pad_runtime::AgentKind::Codex,
             "PreToolUse",

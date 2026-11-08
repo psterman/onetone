@@ -5,22 +5,68 @@ use crate::pad_status::arbiter::DONE_SETTLE_MS;
 use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 use crate::pad_status::store;
 
-/// Map Cursor lifecycle hook event → core state string.
-pub fn map_cursor_event_to_state(event: &str) -> Option<&'static str> {
+/// Map Cursor lifecycle hook event (+ optional stop/session outcome) → core state string.
+///
+/// `outcome` is `stop.status`, `subagentStop.status`, or `sessionEnd.reason` when present.
+/// `afterAgentResponse` keeps `running` — turn end is authoritative only on `stop` / `sessionEnd`.
+pub fn map_cursor_event_to_state(event: &str, outcome: &str) -> Option<&'static str> {
     let ev = event.trim();
     let lower = ev.to_ascii_lowercase();
+    let outcome = outcome.trim().to_ascii_lowercase();
+
     if matches!(
         lower.as_str(),
         "agent_needs_input" | "permission_prompt" | "elicitation_dialog"
     ) {
         return Some("needs_input");
     }
+
+    if matches!(lower.as_str(), "posttoolusefailure") || matches!(ev, "postToolUseFailure") {
+        return Some("error");
+    }
+
+    if matches!(ev, "subagentStop") || lower == "subagentstop" {
+        return if outcome == "error" {
+            Some("error")
+        } else {
+            Some("running")
+        };
+    }
+
+    if matches!(ev, "stop") || lower == "stop" {
+        return match outcome.as_str() {
+            "error" => Some("error"),
+            "aborted" => Some("idle"),
+            // empty → completed (backward-compatible probes that omit status)
+            "completed" | "" => Some("done"),
+            _ => Some("done"),
+        };
+    }
+
+    if matches!(ev, "sessionEnd") || lower == "sessionend" {
+        return match outcome.as_str() {
+            "error" => Some("error"),
+            "aborted" | "user_close" | "window_close" => Some("idle"),
+            "completed" | "" => Some("done"),
+            _ => Some("idle"),
+        };
+    }
+
+    // Mid-turn assistant text — keep Working; do not settle to done.
+    if matches!(ev, "afterAgentResponse")
+        || matches!(lower.as_str(), "afteragentresponse" | "agentresponse")
+    {
+        return Some("running");
+    }
+
     if matches!(
         lower.as_str(),
         "beforesubmitprompt"
             | "beforeshellexecution"
             | "beforemcpexecution"
             | "pretooluse"
+            | "posttooluse"
+            | "afterfileedit"
             | "agentstart"
             | "subagentstart"
             | "sessionstart"
@@ -30,23 +76,41 @@ pub fn map_cursor_event_to_state(event: &str) -> Option<&'static str> {
             | "beforeShellExecution"
             | "beforeMcpExecution"
             | "preToolUse"
+            | "postToolUse"
+            | "afterFileEdit"
             | "agentStart"
             | "subagentStart"
             | "sessionStart"
     ) {
         return Some("running");
     }
-    if matches!(
-        lower.as_str(),
-        "afteragentresponse" | "agentresponse" | "stop" | "sessionend" | "agentstop"
-    ) || matches!(ev, "afterAgentResponse" | "stop" | "sessionEnd")
-    {
-        return Some("done");
-    }
+
     if matches!(lower.as_str(), "idle" | "agentidle") {
         return Some("idle");
     }
     None
+}
+
+fn status_message(state: PadState, payload: &CodexAppStatePayload) -> Option<String> {
+    let agent_message = payload.agent_message.trim();
+    if !agent_message.is_empty() {
+        return Some(agent_message.chars().take(120).collect());
+    }
+    let tool = payload.tool_name.trim();
+    if !tool.is_empty() && matches!(state, PadState::Running | PadState::Error) {
+        return Some(format!("执行中 · {tool}"));
+    }
+    let file = payload.file_path.trim();
+    if !file.is_empty() && matches!(state, PadState::Running) {
+        return Some(format!("正在编辑 {file}"));
+    }
+    match state {
+        PadState::NeedsInput => Some("等待确认".into()),
+        PadState::Running => Some("执行中".into()),
+        PadState::Done => Some("本回合完成".into()),
+        PadState::Error => Some("出现失败".into()),
+        PadState::Idle | PadState::Offline => None,
+    }
 }
 
 pub fn ingest_cursor_payload(payload: &CodexAppStatePayload) -> PadStatus {
@@ -61,8 +125,9 @@ pub fn ingest_cursor_payload_at(payload: &CodexAppStatePayload, now: u64) -> Pad
     let source = PadSource::from_legacy(payload.source.trim());
     let event = payload.event.trim();
     let incoming_session = payload.session_id.trim();
+    let outcome = payload.stop_status.trim();
 
-    crate::agent_attention::ingest_cursor_hook_event(event, incoming_session);
+    crate::agent_attention::ingest_cursor_hook_event(event, incoming_session, outcome);
 
     let cur = store::snapshot_at(now);
     let sticky = matches!(cur.state_enum(), PadState::NeedsInput | PadState::Running);
@@ -76,7 +141,7 @@ pub fn ingest_cursor_payload_at(payload: &CodexAppStatePayload, now: u64) -> Pad
         return cur;
     }
 
-    let Some(state_str) = map_cursor_event_to_state(event) else {
+    let Some(state_str) = map_cursor_event_to_state(event, outcome) else {
         return store::snapshot_at(now);
     };
     let state = PadState::parse(state_str).unwrap_or(PadState::Idle);
@@ -84,14 +149,7 @@ pub fn ingest_cursor_payload_at(payload: &CodexAppStatePayload, now: u64) -> Pad
     let sticky_until = match state {
         PadState::NeedsInput => Some(now.saturating_add(24 * 60 * 60 * 1000)),
         PadState::Done => Some(now.saturating_add(DONE_SETTLE_MS)),
-        _ => None,
-    };
-
-    let message = match state {
-        PadState::NeedsInput => Some("等待确认".into()),
-        PadState::Running => Some("执行中".into()),
-        PadState::Done => Some("本回合完成".into()),
-        PadState::Error => Some("出现失败".into()),
+        PadState::Error => Some(now.saturating_add(DONE_SETTLE_MS.saturating_mul(2))),
         _ => None,
     };
 
@@ -117,7 +175,7 @@ pub fn ingest_cursor_payload_at(payload: &CodexAppStatePayload, now: u64) -> Pad
                 Some(turn.to_string())
             },
             session_id,
-            message,
+            message: status_message(state, payload),
             sticky_until,
             last_event: Some(event.to_string()),
         },
@@ -130,14 +188,11 @@ mod tests {
     use super::*;
     use crate::pad_status::store::{reset_for_test, test_lock};
 
-    #[test]
-    fn cursor_submit_then_stop() {
-        let _g = test_lock();
-        reset_for_test();
-        let p = CodexAppStatePayload {
+    fn payload(event: &str, session: &str) -> CodexAppStatePayload {
+        CodexAppStatePayload {
             source: "cursor_hook".into(),
-            event: "beforeSubmitPrompt".into(),
-            session_id: "c1".into(),
+            event: event.into(),
+            session_id: session.into(),
             turn_id: "g1".into(),
             cwd: String::new(),
             model: String::new(),
@@ -147,25 +202,84 @@ mod tests {
             agent_type: String::new(),
             ts: 0,
             prompt: String::new(),
-        };
-        let st = ingest_cursor_payload(&p);
+            stop_status: String::new(),
+            agent_message: String::new(),
+            workspace: String::new(),
+            file_path: String::new(),
+            composer_mode: String::new(),
+        }
+    }
+
+    #[test]
+    fn cursor_submit_then_stop() {
+        let _g = test_lock();
+        reset_for_test();
+        let st = ingest_cursor_payload(&payload("beforeSubmitPrompt", "c1"));
         assert_eq!(st.state, "running");
         assert_eq!(st.agent.as_deref(), Some("cursor"));
-        let p2 = CodexAppStatePayload {
-            source: "cursor_hook".into(),
-            event: "stop".into(),
-            session_id: "c1".into(),
-            turn_id: String::new(),
-            cwd: String::new(),
-            model: String::new(),
-            permission_mode: String::new(),
-            tool_name: String::new(),
-            agent_id: String::new(),
-            agent_type: String::new(),
-            ts: 0,
-            prompt: String::new(),
-        };
+        let mut p2 = payload("stop", "c1");
+        p2.stop_status = "completed".into();
         let st2 = ingest_cursor_payload(&p2);
         assert_eq!(st2.state, "done");
+    }
+
+    #[test]
+    fn pre_tool_use_keeps_running() {
+        let _g = test_lock();
+        reset_for_test();
+        let _ = ingest_cursor_payload(&payload("beforeSubmitPrompt", "c1"));
+        let mut p = payload("preToolUse", "c1");
+        p.tool_name = "Shell".into();
+        p.agent_message = "Installing…".into();
+        let st = ingest_cursor_payload(&p);
+        assert_eq!(st.state, "running");
+        assert_eq!(st.message.as_deref(), Some("Installing…"));
+    }
+
+    #[test]
+    fn after_agent_response_does_not_settle_done() {
+        let _g = test_lock();
+        reset_for_test();
+        let _ = ingest_cursor_payload(&payload("beforeSubmitPrompt", "c1"));
+        let st = ingest_cursor_payload(&payload("afterAgentResponse", "c1"));
+        assert_eq!(st.state, "running");
+    }
+
+    #[test]
+    fn stop_error_and_aborted() {
+        let _g = test_lock();
+        reset_for_test();
+        let _ = ingest_cursor_payload(&payload("beforeSubmitPrompt", "c1"));
+        let mut err = payload("stop", "c1");
+        err.stop_status = "error".into();
+        assert_eq!(ingest_cursor_payload(&err).state, "error");
+
+        reset_for_test();
+        let _ = ingest_cursor_payload(&payload("beforeSubmitPrompt", "c1"));
+        let mut aborted = payload("stop", "c1");
+        aborted.stop_status = "aborted".into();
+        assert_eq!(ingest_cursor_payload(&aborted).state, "idle");
+    }
+
+    #[test]
+    fn map_outcomes() {
+        assert_eq!(
+            map_cursor_event_to_state("stop", "completed"),
+            Some("done")
+        );
+        assert_eq!(map_cursor_event_to_state("stop", "error"), Some("error"));
+        assert_eq!(map_cursor_event_to_state("stop", "aborted"), Some("idle"));
+        assert_eq!(
+            map_cursor_event_to_state("afterAgentResponse", ""),
+            Some("running")
+        );
+        assert_eq!(
+            map_cursor_event_to_state("postToolUseFailure", ""),
+            Some("error")
+        );
+        assert_eq!(
+            map_cursor_event_to_state("sessionEnd", "user_close"),
+            Some("idle")
+        );
     }
 }

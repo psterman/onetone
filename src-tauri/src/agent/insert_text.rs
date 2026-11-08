@@ -73,6 +73,19 @@ fn wide_null(s: &str) -> Vec<u16> {
     OsStr::new(s).encode_wide().chain(Some(0)).collect()
 }
 
+/// Set CF_UNICODETEXT without paste (Soft Pad deliver keeps text for Ctrl+V).
+pub fn set_clipboard_text(text: &str) -> bool {
+    #[cfg(windows)]
+    {
+        write_clipboard_unicode(text)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = text;
+        false
+    }
+}
+
 #[cfg(windows)]
 fn write_clipboard_unicode(text: &str) -> bool {
     use winapi::um::winbase::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};

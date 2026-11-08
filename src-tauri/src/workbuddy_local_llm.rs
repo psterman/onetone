@@ -1299,7 +1299,7 @@ fn read_agent_response_body(resp: reqwest::blocking::Response) -> Result<String,
 
 /// Line-by-line SSE read: push ATR live progress, stop on `[DONE]`, keep partial on disconnect.
 fn stream_agent_sse_body(resp: reqwest::blocking::Response) -> Result<String, String> {
-    atr_live_push("模型思考中…");
+    atr_live_push("status|正在等待模型");
     let mut content = String::new();
     let mut reasoning = String::new();
     let mut usage = Value::Null;
@@ -1349,11 +1349,25 @@ fn stream_agent_sse_body(resp: reqwest::blocking::Response) -> Result<String, St
                     .filter(|s| !s.is_empty())
             })
             .unwrap_or("");
-        let visible = visible_assistant_text(&content, &reasoning);
-        if !visible.is_empty() {
-            atr_live_push(&visible);
+        let finish_summary = tool_calls.iter().find_map(|call| {
+            let name = call.pointer("/function/name").and_then(|v| v.as_str())?;
+            if name != "finish" {
+                return None;
+            }
+            let args = call
+                .pointer("/function/arguments")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            partial_json_string_field(args, "summary")
+        });
+        if let Some(summary) = finish_summary.filter(|s| !s.is_empty()) {
+            atr_live_push(&format!("answer|{summary}"));
         } else if !tool_hint.is_empty() {
-            atr_live_push(&format!("正在调用 {tool_hint}…"));
+            atr_live_push(&format!("status|正在调用 {tool_hint}"));
+        } else {
+            // Raw reasoning/content can be a half-written thought. Only the
+            // structured finish.summary is safe to stream as the final answer.
+            atr_live_push("status|正在整理下一步");
         }
         if done_stream {
             break;
@@ -1485,6 +1499,46 @@ fn ingest_tool_calls_from_value(acc: &mut Vec<Value>, root: &Value) {
     if let Some(inner) = root.get("data") {
         ingest_tool_calls_from_value(acc, inner);
     }
+}
+
+/// Extract a JSON string prefix while tool-call arguments are still streaming.
+/// This deliberately supports only the safe `finish.summary` surface.
+fn partial_json_string_field(input: &str, field: &str) -> Option<String> {
+    let marker = format!("\"{field}\"");
+    let marker_at = input.find(&marker)?;
+    let tail = &input[marker_at + marker.len()..];
+    let colon = tail.find(':')?;
+    let tail = tail[colon + 1..].trim_start();
+    let mut chars = tail.chars();
+    if chars.next()? != '"' {
+        return None;
+    }
+    let mut out = String::new();
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            match ch {
+                'n' => out.push('\n'),
+                'r' => out.push('\r'),
+                't' => out.push('\t'),
+                '"' => out.push('"'),
+                '\\' => out.push('\\'),
+                '/' => out.push('/'),
+                // Wait for a later complete delta rather than showing a broken
+                // Unicode escape sequence.
+                'u' => break,
+                other => out.push(other),
+            }
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '"' => break,
+            other => out.push(other),
+        }
+    }
+    Some(out)
 }
 
 fn strip_content_fence(content: &str) -> String {
@@ -2460,6 +2514,22 @@ fn upsert_oauth_account(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn partial_finish_summary_streams_incrementally() {
+        assert_eq!(
+            partial_json_string_field(r#"{"summary":"你好，正在查询"#, "summary").as_deref(),
+            Some("你好，正在查询")
+        );
+        assert_eq!(
+            partial_json_string_field(r#"{"summary":"第一行\n第二行"}"#, "summary").as_deref(),
+            Some("第一行\n第二行")
+        );
+        assert_eq!(
+            partial_json_string_field(r#"{"other":"x"}"#, "summary"),
+            None
+        );
+    }
 
     #[test]
     fn parse_cli_models_filters_and_orders() {

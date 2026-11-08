@@ -6,19 +6,19 @@
    */
   var defs = {
     inspect_workspace: {
-      modes: ['work'], permission: 'workspace_read',
+      modes: ['chat', 'work'], permission: 'workspace_read',
       executor: 'atr_internal', retryable: true, cancellable: true,
       timeoutMs: 30000, required: [],
       inputSchema: { type: 'object', additionalProperties: true }
     },
     read_file: {
-      modes: ['work'], permission: 'workspace_read',
+      modes: ['chat', 'work'], permission: 'workspace_read',
       executor: 'atr_internal', retryable: true, cancellable: true,
       timeoutMs: 30000, required: ['path'],
       inputSchema: { type: 'object', required: ['path'], properties: { path: { type: 'string' } } }
     },
     search_code: {
-      modes: ['work'], permission: 'workspace_read',
+      modes: ['chat', 'work'], permission: 'workspace_read',
       executor: 'atr_internal', retryable: true, cancellable: true,
       timeoutMs: 60000, required: ['query'],
       inputSchema: { type: 'object', required: ['query'], properties: { query: { type: 'string' } } }
@@ -54,21 +54,31 @@
       inputSchema: { type: 'object', additionalProperties: true }
     },
     request_user_input: {
-      modes: ['work'], permission: 'none',
+      modes: ['chat', 'work'], permission: 'none',
       executor: 'atr_internal', retryable: false, cancellable: true,
       timeoutMs: 0, required: [],
       inputSchema: { type: 'object', additionalProperties: true }
     },
+    deliver_to_agent: {
+      modes: ['chat', 'work'], permission: 'deliver',
+      executor: 'atr_internal', retryable: false, cancellable: true,
+      timeoutMs: 15000, required: ['text'],
+      inputSchema: {
+        type: 'object',
+        required: ['text'],
+        properties: { text: { type: 'string' }, kind: { type: 'string' } }
+      }
+    },
     web_search: {
-      modes: ['research'], permission: 'network_read',
-      executor: 'cmd_research_web_search', retryable: true, cancellable: true,
+      modes: ['chat', 'work', 'research'], permission: 'network_read',
+      executor: 'atr_internal', retryable: true, cancellable: true,
       timeoutMs: 45000, required: ['query'],
       budgetKind: 'search',
       inputSchema: { type: 'object', required: ['query'], properties: { query: { type: 'string' } } }
     },
     fetch_url: {
-      modes: ['research'], permission: 'network_read',
-      executor: 'cmd_research_fetch_url', retryable: true, cancellable: true,
+      modes: ['chat', 'work', 'research'], permission: 'network_read',
+      executor: 'atr_internal', retryable: true, cancellable: true,
       timeoutMs: 45000, required: ['url'],
       budgetKind: 'fetch',
       inputSchema: { type: 'object', required: ['url'], properties: { url: { type: 'string' } } }
@@ -104,15 +114,16 @@
       timeoutMs: 10000, required: [],
       inputSchema: { type: 'object' }
     },
+    // Meta drive IPC — not a workspace mutation. Chat lane must be able to step ATR.
     atr_turn: {
-      modes: ['work'], permission: 'workspace_execute',
+      modes: ['chat', 'work'], permission: 'model',
       executor: 'cmd_agent_task_drive', retryable: true, cancellable: true,
       timeoutMs: 180000, required: ['taskId'],
       budgetKind: 'model',
       inputSchema: { type: 'object', required: ['taskId'] }
     },
     atr_tool_call: {
-      modes: ['work'], permission: 'workspace_execute',
+      modes: ['chat', 'work'], permission: 'model',
       executor: 'cmd_agent_task_drive', retryable: true, cancellable: true,
       timeoutMs: 180000, required: ['taskId'],
       inputSchema: { type: 'object', required: ['taskId'] }

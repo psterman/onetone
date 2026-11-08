@@ -1,5 +1,5 @@
-//! Home research mode: pluggable web search, SSRF-safe fetch, export.
-//! Not part of ATR edit tool loop.
+//! Pluggable web search, SSRF-safe fetch, export.
+//! Also used by ATR tools `web_search` / `fetch_url`.
 
 pub mod export;
 pub mod fetch;

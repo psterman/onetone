@@ -159,6 +159,15 @@ html.ot-embed .preview .pbody{min-height:0}
 .filters button.is-on{color:var(--teal);background:var(--teal-soft)}
 .filters button[hidden]{display:none!important}
 .compare{font-size:11px;color:var(--faint);min-height:18px;margin-bottom:8px}
+.hist{margin-top:10px;padding:10px 12px}
+.hist-h{font-size:11px;font-weight:800;color:var(--mute);margin-bottom:6px}
+.hist-empty{font-size:11.5px;color:var(--faint)}
+.hist-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:5px 0;border-top:1px solid rgba(21,32,51,.06);font-size:12px}
+.hist-row:first-of-type{border-top:0}
+.hist-row.is-active .hist-t{color:var(--teal);font-weight:750}
+.hist-t{flex:1;min-width:0;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-when{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex-shrink:0}
+.hist-m{width:100%;font-size:10px;color:var(--faint)}
 
 .cost-layout{display:none;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px}
 .cost-layout.is-on{display:grid}
@@ -481,8 +490,57 @@ html.ot-nest .lens-rail{width:72px}
   var state={
     asOf:'', lens:'eff', layout:'overview', previewId:'', focusId:'',
     showAll:false, filter:'all', agents:[], live:false,
-    cursorNeedsConsent:false, cursorReady:false, history:false
+    cursorNeedsConsent:false, cursorReady:false, history:[]
   };
+
+  function kindKey(id){
+    return String(id||'').trim().toLowerCase().replace(/_/g,'');
+  }
+
+  /** Sessions for the focused agent only — never mix other providers into this source. */
+  function historyForAgent(agentId){
+    var want=kindKey(agentId);
+    var list=Array.isArray(state.history)?state.history:[];
+    if(!want) return list.slice();
+    return list.filter(function(h){
+      var p=kindKey(h&&h.provider);
+      return !!p&&(p===want||p.indexOf(want)>=0||want.indexOf(p)>=0);
+    });
+  }
+
+  function fmtHistWhen(ts){
+    if(ts==null||ts==='') return '';
+    var n=Number(ts);
+    if(!isFinite(n)||n<=0) return '';
+    if(n<1e12) n=n*1000;
+    try{
+      var d=new Date(n);
+      if(isNaN(d.getTime())) return '';
+      return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    }catch(_){ return ''; }
+  }
+
+  function esc(s){
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function historyPanelHtml(agentId){
+    var rows=historyForAgent(agentId).slice(0,8);
+    if(!rows.length){
+      return '<div class="panel hist"><div class="hist-h">近期会话</div><div class="hist-empty">此源暂无会话历史</div></div>';
+    }
+    return '<div class="panel hist"><div class="hist-h">近期会话 · '+rows.length+'</div>'+
+      rows.map(function(h){
+        var when=fmtHistWhen(h.updatedAt);
+        var title=esc(h.title||h.id||'session');
+        var match=h.projectMatch&&h.projectMatch!=='unknown'?(' · '+esc(h.projectMatch)):'';
+        var active=h.isActive?' is-active':'';
+        return '<div class="hist-row'+active+'"><span class="hist-t">'+title+'</span>'+
+          (when?'<span class="hist-when">'+esc(when)+'</span>':'')+
+          (match?'<span class="hist-m">'+match+'</span>':'')+'</div>';
+      }).join('')+'</div>';
+  }
 
   function fmtUsd(n){ return n==null?'—':('$'+Number(n).toFixed(2)); }
   function fmtMin(m){
@@ -808,7 +866,8 @@ html.ot-nest .lens-rail{width:72px}
       (s.model&&s.model!=='—'?'<div class="panel" style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:12px"><span style="font-weight:700;color:var(--mute)">最近模型</span><span style="font-family:var(--mono);font-weight:700">'+s.model+'</span></div>':'')+
       '<div class="panel"><div class="l" style="margin-bottom:6px;font-size:11px;font-weight:800;color:var(--mute)">字段诚实表</div>'+
       fields.map(function(f){return '<div class="field"><span class="n">'+f[0]+'</span><span class="v'+(f[1]?'':' miss')+'">'+f[2]+'</span></div>';}).join('')+
-      '</div>';
+      '</div>'+
+      historyPanelHtml(s.id);
   }
 
   function renderLedger(s){
@@ -861,6 +920,7 @@ html.ot-nest .lens-rail{width:72px}
       '<div class="panel"><div style="font-size:11px;font-weight:800;color:var(--mute);margin-bottom:6px">字段诚实表</div>'+
       fields.map(function(f){return '<div class="field"><span class="n">'+f[0]+'</span><span class="v'+(f[1]?'':' miss')+'">'+f[2]+'</span></div>';}).join('')+
       '<div style="font-size:10px;color:var(--faint);margin-top:6px">'+(s.costBasis==='unpriced'?'无合法单价，不猜':s.costBasis==='estimate'?'估价不进已记账':'会话上报原价')+'</div></div>'+
+      historyPanelHtml(s.id)+
       '<div class="pv-actions">'+(s.group==='offline'?'<button type="button" class="pri" id="pvConnect">去接通</button>':'')+
         '<button type="button" class="sec" id="pvExport">导出此源</button></div>';
     var c=document.getElementById('pvConnect');
@@ -956,7 +1016,10 @@ html.ot-nest .lens-rail{width:72px}
     var hasDomestic=state.agents.some(function(a){return a.domestic;});
     var domBtn=document.querySelector('#filters [data-filter="domestic"]');
     if(domBtn) domBtn.hidden=!hasDomestic;
-    document.getElementById('compare').textContent=state.history?'较上周 · …':'较上周 · —（需周序列）';
+    var focusHist=historyForAgent(state.focusId||state.previewId);
+    document.getElementById('compare').textContent=focusHist.length
+      ?('本源近期会话 · '+focusHist.length+'（周对比需周序列）')
+      :'较上周 · —（需周序列）';
     document.getElementById('heatWrap').style.display=state.lens==='time'||state.lens==='spark'?'':'none';
     if(!state.previewId&&state.agents.length) state.previewId=state.agents[0].id;
     if(!state.focusId&&state.previewId) state.focusId=state.previewId;
@@ -971,7 +1034,8 @@ html.ot-nest .lens-rail{width:72px}
     state.live=true;
     state.asOf=String(payload.asOf||'');
     state.agents=Array.isArray(payload.agents)?payload.agents:[];
-    state.history=!!payload.history;
+    // Bridge sends session array — never coerce to boolean (that dropped per-agent history).
+    state.history=Array.isArray(payload.history)?payload.history:[];
     state.cursorNeedsConsent=!!payload.cursorNeedsConsent;
     state.cursorReady=!!payload.cursorReady;
     if(payload.focusId) state.focusId=String(payload.focusId);

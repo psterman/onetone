@@ -214,10 +214,12 @@ pub fn ingest_codex_app_server_event(event: &str, session_id: &str, request_id: 
 }
 
 /// Cursor lifecycle only — NeedsInput only when capability gate is open.
-pub fn ingest_cursor_hook_event(event: &str, session_id: &str) {
+/// `outcome` is stop.status / subagentStop.status / sessionEnd.reason when known.
+pub fn ingest_cursor_hook_event(event: &str, session_id: &str, outcome: &str) {
     let session = sid(session_id);
     let ev = event.trim();
     let lower = ev.to_ascii_lowercase();
+    let outcome = outcome.trim().to_ascii_lowercase();
 
     if matches!(
         lower.as_str(),
@@ -235,32 +237,57 @@ pub fn ingest_cursor_hook_event(event: &str, session_id: &str) {
         return;
     }
 
-    let state = if matches!(
+    let state = if matches!(lower.as_str(), "posttoolusefailure")
+        || matches!(ev, "postToolUseFailure")
+        || ((matches!(ev, "subagentStop") || lower == "subagentstop") && outcome == "error")
+        || ((matches!(ev, "stop") || lower == "stop") && outcome == "error")
+        || ((matches!(ev, "sessionEnd") || lower == "sessionend") && outcome == "error")
+    {
+        Some(AttentionState::Error)
+    } else if (matches!(ev, "stop") || lower == "stop") && outcome == "aborted"
+        || (matches!(ev, "sessionEnd") || lower == "sessionend")
+            && matches!(
+                outcome.as_str(),
+                "aborted" | "user_close" | "window_close"
+            )
+        || matches!(lower.as_str(), "idle" | "agentidle")
+    {
+        Some(AttentionState::Idle)
+    } else if (matches!(ev, "stop") || lower == "stop")
+        && (outcome == "completed" || outcome.is_empty())
+        || (matches!(ev, "sessionEnd") || lower == "sessionend")
+            && (outcome == "completed" || outcome.is_empty())
+        || matches!(lower.as_str(), "agentstop")
+    {
+        Some(AttentionState::Complete)
+    } else if matches!(
         lower.as_str(),
         "beforesubmitprompt"
             | "beforeshellexecution"
             | "beforemcpexecution"
             | "pretooluse"
+            | "posttooluse"
+            | "afterfileedit"
+            | "afteragentresponse"
+            | "agentresponse"
             | "agentstart"
             | "subagentstart"
+            | "subagentstop"
             | "sessionstart"
     ) || matches!(
         ev,
         "beforeSubmitPrompt"
             | "beforeShellExecution"
+            | "preToolUse"
+            | "postToolUse"
+            | "afterFileEdit"
+            | "afterAgentResponse"
             | "agentStart"
             | "subagentStart"
+            | "subagentStop"
             | "sessionStart"
     ) {
         Some(AttentionState::Working)
-    } else if matches!(
-        lower.as_str(),
-        "afteragentresponse" | "agentresponse" | "stop" | "sessionend" | "agentstop"
-    ) || matches!(ev, "afterAgentResponse" | "stop" | "sessionEnd")
-    {
-        Some(AttentionState::Complete)
-    } else if matches!(lower.as_str(), "idle" | "agentidle") {
-        Some(AttentionState::Idle)
     } else {
         None
     };
@@ -382,21 +409,38 @@ mod tests {
         let _g = test_lock();
         reset_for_test();
         crate::agent_catalog::set_cursor_can_observe_needs_input(false);
-        ingest_cursor_hook_event("beforeSubmitPrompt", "c1");
+        ingest_cursor_hook_event("beforeSubmitPrompt", "c1", "");
         assert!(project_waiting_kinds().0.is_empty());
         assert_eq!(
             primary_state_for(AgentKind::Cursor),
             Some(AttentionState::Working)
         );
-        ingest_cursor_hook_event("subagentStart", "c1");
+        ingest_cursor_hook_event("subagentStart", "c1", "");
         assert_eq!(
             primary_state_for(AgentKind::Cursor),
             Some(AttentionState::Working)
         );
-        ingest_cursor_hook_event("stop", "c1");
+        ingest_cursor_hook_event("afterAgentResponse", "c1", "");
+        assert_eq!(
+            primary_state_for(AgentKind::Cursor),
+            Some(AttentionState::Working)
+        );
+        ingest_cursor_hook_event("stop", "c1", "completed");
         assert_eq!(
             primary_state_for(AgentKind::Cursor),
             Some(AttentionState::Complete)
+        );
+        ingest_cursor_hook_event("beforeSubmitPrompt", "c1", "");
+        ingest_cursor_hook_event("stop", "c1", "error");
+        assert_eq!(
+            primary_state_for(AgentKind::Cursor),
+            Some(AttentionState::Error)
+        );
+        ingest_cursor_hook_event("beforeSubmitPrompt", "c1", "");
+        ingest_cursor_hook_event("stop", "c1", "aborted");
+        assert_eq!(
+            primary_state_for(AgentKind::Cursor),
+            Some(AttentionState::Idle)
         );
     }
 }

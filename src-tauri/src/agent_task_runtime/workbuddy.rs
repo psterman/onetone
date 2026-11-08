@@ -4,7 +4,8 @@
 use serde_json::{json, Value};
 
 use super::contracts::MAX_TOOL_JSON_DEPTH;
-use super::deepseek::openai_tools;
+use super::contracts::PermissionMode;
+use super::deepseek::{openai_tools, openai_tools_for_task};
 use super::engine::ModelDriver;
 use super::parse;
 use super::prompts::{self, trace_ran, user_tool_trace_section};
@@ -54,14 +55,84 @@ fn finish_from_prose(summary: &str) -> String {
     json!({"tool":"finish","arguments":{"summary": s}}).to_string()
 }
 
+/// CoT / mid-plan monologue must not become the user-facing finish summary.
+fn looks_like_incomplete_thinking(s: &str) -> bool {
+    let t = s.trim();
+    if t.is_empty() {
+        return true;
+    }
+    // Cut mid-sentence (screenshots: "实际上，根据我的知识:" / "Now I need to").
+    let last = t.chars().last().unwrap_or(' ');
+    if matches!(last, ':' | '：' | ',' | '，' | '、' | '-' | '—') {
+        return true;
+    }
+    if t.ends_with(" to") || t.ends_with(" to ") || t.ends_with("需要") {
+        return true;
+    }
+    let lower = t.to_ascii_lowercase();
+    // Protocol / tool-loop leakage — not an answer.
+    if lower.contains("tool_trace")
+        || lower.contains("prior_chat")
+        || lower.contains("let me search")
+        || lower.contains("let me analyze")
+        || t.contains("让我搜索")
+        || t.contains("让我分析")
+        || t.contains("根据我的知识") && !t.contains('。') && !t.contains('.')
+    {
+        return true;
+    }
+    false
+}
+
+/// Last web_search/fetch_url failed/empty with no later read_file/fetch_url success.
+/// Blocks mid-loop "搜不到就算了" prose from becoming finish.
+fn thin_failed_network_without_followup(trace: &str) -> bool {
+    let mut last_net_fail_at: Option<usize> = None;
+    for (i, line) in trace.lines().enumerate() {
+        let is_ws = line.contains("tool=web_search]");
+        let is_fu = line.contains("tool=fetch_url]");
+        if !(is_ws || is_fu) || !line.contains("tool_result") {
+            continue;
+        }
+        let failed = line.contains("\"ok\":false")
+            || line.contains("\"ok\": false")
+            || line.contains("\"code\":\"empty\"")
+            || line.contains("\"code\": \"empty\"");
+        if failed {
+            last_net_fail_at = Some(i);
+        } else {
+            // Successful web_search / fetch_url clears prior empty-search block.
+            last_net_fail_at = None;
+        }
+    }
+    let Some(fail_line) = last_net_fail_at else {
+        return false;
+    };
+    for (i, line) in trace.lines().enumerate() {
+        if i <= fail_line || !line.contains("tool_result") {
+            continue;
+        }
+        if line.contains("tool=read_file]") || line.contains("tool=fetch_url]") {
+            if line.contains("\"ok\":false") || line.contains("\"ok\": false") {
+                continue;
+            }
+            return false;
+        }
+    }
+    true
+}
+
 fn salvage_prose_finish(trace: &str, err: &str) -> Option<String> {
     let summary = err.strip_prefix("prose_no_tool:")?;
     // Only after at least one real tool result — protocol recovery, not a scripted chain.
     if !trace.contains("tool=") {
         return None;
     }
+    if thin_failed_network_without_followup(trace) {
+        return None;
+    }
     let t = summary.trim();
-    if t.is_empty() {
+    if t.is_empty() || looks_like_incomplete_thinking(t) {
         return None;
     }
     Some(finish_from_prose(t))
@@ -85,10 +156,15 @@ impl WorkbuddyDriver {
         let trace = user_tool_trace_section(messages);
         let _ = scripted_readme_step(task, &trace);
 
+        let chat_lane =
+            PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly);
         // Model picks the first tool. After inspect once, drop it from the catalog
         // so freemodel can't loop on chrome — not a business tool chain.
+        // Chat lane: no forced inspect; keep full chat tool set.
         let had_inspect = trace_ran(&trace, "inspect_workspace");
-        let tools = if had_inspect {
+        let tools = if chat_lane {
+            openai_tools_for_task(task)
+        } else if had_inspect {
             tools_excluding_inspect()
         } else {
             openai_tools()
@@ -227,6 +303,40 @@ mod tests {
         assert!(fin.contains("\"tool\":\"finish\""), "{fin}");
         assert!(fin.contains("package.json"), "{fin}");
         assert!(salvage_prose_finish("(none yet)", "prose_no_tool:hi").is_none());
+        assert!(
+            salvage_prose_finish(
+                "[tool_result turn=1 tool=web_search] {}",
+                "prose_no_tool:Looking at prior_chat and tool_trace, Let me search for 异灵术"
+            )
+            .is_none(),
+            "must not salvage incomplete CoT"
+        );
+        assert!(
+            salvage_prose_finish(
+                "[tool_result turn=1 tool=web_search] {}",
+                "prose_no_tool:实际上，根据我的知识:"
+            )
+            .is_none()
+        );
+        // Empty/failed search without follow-up evidence must not soft-close the loop.
+        assert!(
+            salvage_prose_finish(
+                "[tool_result turn=1 tool=web_search] {\"result\":{\"ok\":false,\"code\":\"empty\",\"results\":[]}}\n\
+                 [tool_result turn=2 tool=inspect_workspace] {\"entries\":[]}",
+                "prose_no_tool:未能核实戴佳伟相关信息。有什么我可以帮你的吗？"
+            )
+            .is_none(),
+            "must not salvage after empty search"
+        );
+        // Successful fetch after a failed search allows salvage.
+        assert!(
+            salvage_prose_finish(
+                "[tool_result turn=1 tool=web_search] {\"result\":{\"ok\":false,\"code\":\"empty\"}}\n\
+                 [tool_result turn=2 tool=fetch_url] {\"result\":{\"ok\":true,\"text\":\"证据\"}}",
+                "prose_no_tool:根据页面内容，结论如下。"
+            )
+            .is_some()
+        );
     }
 
     #[test]

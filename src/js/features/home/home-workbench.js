@@ -3185,6 +3185,11 @@
     var api=global.OneToneNowHome;
     if(!api) return;
     if(activeNav==='home'){
+      // Left-nav 首页: always drop exclusive chat cover so Focus desk returns.
+      var HA2=global.OneToneHomeAgentV2;
+      if(HA2&&HA2.closeWbChatPage){
+        try{ HA2.closeWbChatPage(); }catch(_){}
+      }
       if(api.isEnabled&&api.isEnabled()){
         if(api.show) api.show();
       }else if(api.hide){

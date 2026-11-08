@@ -211,3 +211,7 @@ pub const MAX_TOOL_JSON_DEPTH: usize = 8;
 pub const MAX_FORMAT_RETRIES: u32 = 1;
 /// Same tool+args in a row (WorkBuddy/vague goals often spin inspect). Fail early vs burning MAX_TURNS.
 pub const MAX_IDENTICAL_TOOL: u32 = 3;
+/// Chat lane: soft-cap web_search attempts — engine nudges force-finish (not stuck_loop).
+pub const CHAT_WEB_SEARCH_CAP: u32 = 3;
+/// Chat lane: after this many failed/empty web_search results, nudge force-finish.
+pub const CHAT_WEB_SEARCH_FAIL_CAP: u32 = 2;

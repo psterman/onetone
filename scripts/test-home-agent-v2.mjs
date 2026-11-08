@@ -6,6 +6,13 @@
  * 2) Window focus + paste confirmation outcomes match deliveryReceipt wording
  * 3) Attention「前往处理」opens the attention Agent, not the currently selected one
  * 4) Agent Center clientEffect navigate still works from HA2 dispatch
+ * Chat ask polish hand-check:
+ * 5) 「戴佳伟是谁」→ web_search / fetch → finish 自然语言（无框架表）
+ * 6) 无已确认项目时提问仍能启动（atr-chat-scratch），不弹 need_project
+ * 7) Needs input 内联回复（无 window.prompt），compose「继续」续跑
+ * 8) Stop 取消 chat ATR（transcript「已停止」）
+ * 9) 坏模型 / 未配置 → transcript finish 诚实失败（换引擎/配置密钥）
+ * 10) deliver_to_agent → 批准前不粘贴；批准后 clipboard+paste
  *
  * Run: npm run test:home-agent-v2
  * Also: npm run test:project-path && npm run test:now-home && npm run test:agent-center
@@ -33,19 +40,26 @@ assert.match(html, /js\/core\/project-path\.js/);
 assert.match(html, /project-path\.js[\s\S]*home-agent-capabilities\.js/);
 assert.match(html, /home-agent-capabilities\.js[\s\S]*home-agent-v2-store\.js/);
 assert.match(html, /js\/features\/now\/home-agent-capabilities\.js/);
-assert.match(html, /js\/features\/now\/home-agent-v2-store\.js/);
-assert.match(html, /js\/features\/now\/home-agent-v2-dock\.js/);
-assert.match(html, /js\/features\/now\/home-agent-v2\.js/);
+assert.match(html, /data-ot-defer="home-agent"[^>]*home-agent-v2-store\.js|home-agent-v2-store\.js[^>]*data-ot-defer="home-agent"/);
+assert.match(html, /data-ot-defer="home-agent"[^>]*home-agent-v2-dock\.js|home-agent-v2-dock\.js[^>]*data-ot-defer="home-agent"/);
+assert.match(html, /data-ot-defer="home-agent"[^>]*home-agent-v2\.js|home-agent-v2\.js[^>]*data-ot-defer="home-agent"/);
 assert.match(html, /data-wb-nav="homeV2"/);
 assert.match(html, />新首页</);
 assert.match(now, /homeAgentV2/);
 assert.match(now, /onetone\.homeSurface/);
-assert.match(now, /OneToneHomeAgentV2\.mount/);
-assert.match(now, /detectHomeAgentV2\(\)[\s\S]*dashboardStack\(\)[\s\S]*OneToneHomeAgentV2\.show/);
+assert.match(now, /ensureHomeAgentScripts/);
+assert.match(now, /loadGroup\(['"]home-agent['"]\)/);
+assert.match(now, /OneToneHomeAgentV2\.mount|HA2\.mount/);
+assert.match(now, /detectHomeAgentV2\(\)[\s\S]*ensureHomeAgentScripts[\s\S]*showAgentV2Surface/);
 assert.match(now, /ls === 'focus' \|\| ls === 'classic'/);
 assert.match(now, /ls === 'agentV2'/);
 assert.match(now, /return false/);
-assert.match(now, /embedCompose/);
+assert.match(now, /tryEmbedHa2Compose|embedCompose/);
+assert.match(shell, /function ensureHomeAgentReadyThenSend/);
+assert.match(shell, /loadGroup\(['"]home-agent['"]\)/);
+assert.match(shell, /ensureHomeAgentReadyThenSend\(\)/);
+assert.match(storeSrc, /controller_unavailable/);
+assert.match(storeSrc, /controller_create_failed/);
 assert.match(workbench, /onetone\.homeSurface/);
 assert.match(workbench, /action==='homeV2'/);
 assert.match(workbench, /homeSurface','focus'/);
@@ -251,11 +265,19 @@ assert.match(
 assert.match(read('src/js/features/now/workbuddy-local-chat-window.js'), /wb_local_chat_delta/);
 assert.match(css, /\.ha2-wb-transcript\b/);
 assert.match(css, /\.ha2-wb-mode-btn\b/);
-// Compose rail: Agent+model inside card; caps in overflow; aim in agent fuse.
+// Compose rail: Agent+model inside card; caps in overflow.
+// Aim+Agent strip only in 投递 (edit); 提问 omits both.
 assert.match(
   shell,
-  /ha2-compose-rail[\s\S]*ha2-agent-fuse[\s\S]*data-ha2-aim[\s\S]*data-ha2-send/
+  /ha2-compose-rail[\s\S]*ha2-agent-fuse[\s\S]*data-ha2-send/
 );
+assert.match(shell, /function askModeOn|askModeOn\(snap\)/);
+assert.match(shell, /clearAskModeTargetChrome/);
+assert.match(
+  shell,
+  /var askMode = askModeOn\(snap\)[\s\S]{0,200}askMode[\s\S]{0,80}\?[\s\S]{0,40}''[\s\S]{0,40}:[\s\S]{0,40}agentStripHtml/
+);
+assert.match(shell, /aimChipHtml\(!!hasAim\)[\s\S]{0,400}agentIcoBtnHtml/);
 assert.match(shell, /ha2-compose-overflow[\s\S]*ha2-channel-caps/);
 assert.match(shell, /function lucide\(|data-lucide=/);
 assert.match(shell, /plus|paperclip|arrow-up|ellipsis|infinity/);
@@ -361,6 +383,13 @@ assert.match(shell, /classifyActionResult/);
 assert.match(shell, /verified_paste|AttemptedUnverified|ha2AttemptedUnverified/);
 assert.match(shell, /compositionstart|onCompositionStart/);
 assert.match(shell, /syncDraftMirrors/);
+assert.match(shell, /function stashLiveComposeDrafts/);
+assert.match(shell, /wbPageDraftText/);
+assert.match(shell, /stashLiveComposeDrafts:\s*stashLiveComposeDrafts/);
+assert.match(
+  shell,
+  /!next && String\(nodes\[i\]\.value \|\| ''\)\) continue/
+);
 
 assert.match(dockSrc, /OneToneHomeDockBridge/);
 assert.match(dockSrc, /configOn/);
@@ -414,6 +443,14 @@ assert.match(shell, /atrSelectedProviderEditCapable|atrPageNoticeHtml|ha2WorkSta
 assert.match(shell, /ha2AtrVerifySilent|首次编辑：正在后台验证引擎/);
 assert.match(shell, /permissionMode:\s*'write_autonomous'/);
 assert.match(shell, /atrUserStepLine|degradedNextHint|atrFailureNextHint/);
+// Work confirm: forcePage opt; embed must not set atrWbPageForced.
+assert.match(shell, /function openWorkConfirm\(goal, matSum, opts\)/);
+assert.match(shell, /opts\.forcePage === true/);
+assert.match(shell, /forcePage:\s*!embedMode/);
+assert.match(shell, /atrWbPageForced = false/);
+assert.match(shell, /function patchFocusNotice/);
+assert.match(shell, /patchDockMeta\(snap\);\s*\n\s*patchFocusNotice\(snap\)/);
+assert.match(focusView, /data-hf-home-notice/);
 // Home card dedup: confirm hides taskCore; model mutex; single notice; trim mode copy.
 assert.match(shell, /if \(workConfirmOpen\) return ''/);
 assert.match(shell, /atrLive[\s\S]{0,80}pillsHtml|taskCoreHtml\(snap\) \+ pillsHtml/);
@@ -421,6 +458,11 @@ assert.match(shell, /function modelRouteSelectHtml|data-ha2-model-route-host/);
 // Mixed model picker: WB models + API providers + add (custom dropdown with brand icons).
 assert.match(shell, /wb:|api:|__add__/);
 assert.match(shell, /ha2ModelTagWb|ha2ModelTagApi|ha2ModelAddProvider/);
+// Empty model list: primary CTA opens provider sheet.
+assert.match(shell, /modelListEmpty[\s\S]*data-ha2-open-model-providers|ha2ModelOpenProviders/);
+assert.match(shell, /ha2-model-empty-cta/);
+assert.match(css, /\.ha2-model-empty-cta/);
+assert.match(now, /kind === 'go_handle'|go_handle/);
 assert.match(shell, /modelBrandMeta|data-ha2-model-route-trigger|icons\/model-brand\//);
 assert.match(shell, /applyModelRouteSelection|data-ha2-model-route-opt/);
 assert.match(shell, /positionModelRouteMenu|fixed/);
@@ -728,6 +770,8 @@ assert.equal(Caps.looksLikeWorkspaceEditGoal('没有补充'), false);
 assert.equal(Caps.looksLikeWeatherAsk('今天天气'), true);
 var promptChat = Caps.buildLocalChatSystemPrompt({ workMode: 'think', projectPath: 'E:/x' });
 assert.match(promptChat, /对话模式/);
+assert.match(promptChat, /禁止把|自己用工具查/);
+assert.doesNotMatch(promptChat, /请用户点顶部|后再发目标/);
 var promptWork = Caps.buildLocalChatSystemPrompt({ workMode: 'edit', projectPath: 'E:/x' });
 assert.match(promptWork, /已在「工作」/);
 assert.match(promptWork, /禁止再说/);
@@ -745,6 +789,212 @@ assert.equal(Caps.isPlausibleWeatherCity('怎么样'), false);
 assert.equal(Caps.looksLikeCityOnly('上海'), true);
 assert.match(shell, /tryHandleWeatherLocal|cmd_weather_now|ha2WeatherAskCity/);
 assert.match(shell, /dispatchEditModeSend|atrLooksLikeContinueInput/);
+assert.match(shell, /function dispatchChatModeSend/);
+assert.match(shell, /permissionMode:\s*'read_only'|permissionMode:\s*"read_only"/);
+assert.match(shell, /syncChatLoopFromAtr|atrIsChatLoopTask/);
+assert.match(shell, /ha2-wb-page-turn--tool|Needs input/);
+assert.match(shell, /data-ha2-chat-needs-reply/);
+assert.match(shell, /chatHistoryMaterialsSummary/);
+assert.match(shell, /deliver_approval|waiting_deliver|data-ha2-chat-deliver-approve/);
+assert.match(shell, /chatLoopHonestFailText|ha2ChatFormatFail|换引擎/);
+assert.match(shell, /ha2ChatToolError|检索\/工具调用中断/);
+assert.match(shell, /tool_error[\s\S]*driveActiveIfRunning/);
+assert.match(storeSrc, /tool_error[\s\S]*driveActiveIfRunning\(\{\s*force:\s*true/);
+assert.match(shell, /function stopWbLocalStream[\s\S]*?A\.cancel|OneToneHomeAgentTask[\s\S]*?cancel/);
+assert.match(shell, /chatStopPendingId/);
+assert.match(shell, /chatDriveAlive|isAtrDriveInFlight/);
+assert.match(shell, /maybeHealChatDrive|driveActiveIfRunning\(\{\s*force:\s*true\s*\}\)/);
+assert.match(shell, /maybeStallChatDrive|CHAT_STALL_MS|ha2ChatLoopStall|ha2ChatLoopWaitingModel/);
+assert.match(shell, /chatLoopProgressText/);
+assert.match(shell, /Never dump liveThinking|ha2ChatLoopThinking/);
+// Persist thinking chip + tool_call sync + cancelled → 已停止 (not literal English).
+assert.match(shell, /function upsertChatLoopProgressTurn[\s\S]*?id:\s*'think_'\s*\+\s*tid/);
+assert.match(shell, /function finalizeChatLoopProgressTurn[\s\S]*?ha2ChatLoopStoppedStep|已停止（第/);
+assert.match(shell, /kind === 'tool_call'[\s\S]*?id:\s*'toolcall_'\s*\+\s*eid[\s\S]*?kind:\s*'tool_step'/);
+assert.match(
+  shell,
+  /function chatLoopHonestFailText[\s\S]*?code === 'cancelled'[\s\S]*?ha2WbChatCancelled[\s\S]*?已停止/
+);
+{
+  // Pure-function self-check: cancelled mapping (mirrors chatLoopHonestFailText branch).
+  function mapCancelled(code, fallback) {
+    code = String(code || '');
+    fallback = String(fallback || '');
+    if (code === 'cancelled' || /^cancelled$/i.test(fallback)) {
+      return '已停止';
+    }
+    return fallback || code;
+  }
+  assert.equal(mapCancelled('cancelled', ''), '已停止');
+  assert.equal(mapCancelled('', 'cancelled'), '已停止');
+  assert.equal(mapCancelled('', 'Cancelled'), '已停止');
+  assert.doesNotMatch(mapCancelled('cancelled', 'cancelled'), /cancelled/i);
+  // Source must wire sync + upsert so cancel mid-think still leaves a foldable step.
+  assert.match(shell, /upsertChatLoopProgressTurn\(task\)/);
+  assert.match(shell, /finalizeChatLoopProgressTurn/);
+  assert.match(shell, /toolcall_/);
+}
+assert.match(shell, /chatShouldStartNewWhileWaiting/);
+assert.match(
+  shell,
+  /chatShouldStartNewWhileWaiting\(text,\s*task\)[\s\S]{0,200}abandonAgentTask/
+);
+assert.match(shell, /Date\.now\(\)\s*-\s*since\s*<\s*CHAT_STALL_MS/);
+assert.match(shell, /abandoned\/i\.test\(cancelReason\)|reason === 'abandoned'|\/abandoned\/i/);
+assert.match(storeSrc, /Stop poll before abandon|stopAtrPoll\(\);\s*\n\s*return A\.abandon/);
+assert.match(shell, /kind === 'interrupted'|task_interrupted/);
+assert.match(shell, /emitChatRecoveryTurn|ha2ChatLoopInterrupted|ha2ChatLoopDriveDropped/);
+assert.match(storeSrc, /!isChatLaneTask\(dto\)[\s\S]{0,80}atr_driving|chat owns its own transcript/);
+assert.match(
+  shell,
+  /abandon_start_failed[\s\S]{0,200}chat_conflict|vnCode === 'abandon_start_failed'/
+);
+assert.doesNotMatch(shell, /gatewayChatEligible\(snap\)[\s\S]{0,200}sendWbLocal\(draftRemember/);
+// Chat needs_input is inline — atr-input prompt stays work-page only.
+assert.match(shell, /data-ha2-chat-needs-input/);
+assert.match(
+  shell,
+  /function wbToolStepHtml[\s\S]*?needs_input[\s\S]*?data-ha2-chat-needs-reply[\s\S]*?function wbChatTurnHtml/
+);
+assert.match(shell, /function chatLiveProjection/);
+assert.match(shell, /raw\.indexOf\('answer\|'\)/);
+assert.match(shell, /raw\.indexOf\('status\|'\)/);
+assert.match(shell, /function settleStreamedChatAnswer/);
+assert.match(shell, /settleStreamedChatAnswer\(tid, 'fin_' \+ eid/);
+assert.match(shell, /function persistChatProcessTrace/);
+assert.match(shell, /toolName: 'process_trace'/);
+assert.match(shell, /persistChatProcessTrace\(tid, evs, 'done'\)/);
+{
+  const storeAsk = fs.readFileSync('src/js/features/now/home-agent-v2-store.js', 'utf8');
+  assert.match(storeAsk, /ensureChatWorkspaceRoot|ensureChatScratch/);
+  assert.match(storeAsk, /approveAgentDeliver|rejectAgentDeliver/);
+  assert.match(storeAsk, /chatLane[\s\S]*?ensureChatWorkspaceRoot/);
+  assert.match(
+    storeAsk,
+    /chatLane[\s\S]{0,600}abandonAgentTask|Chat Q&A must not trap/
+  );
+  assert.match(storeAsk, /chatLanePf[\s\S]{0,200}editCapable|Chat only needs chatReady/);
+  assert.match(storeAsk, /function isAtrDriveInFlight/);
+  assert.match(
+    storeAsk,
+    /function ensureWorkController[\s\S]*?mode:\s*chatLane\s*\?\s*'chat'\s*:\s*'work'/
+  );
+  assert.match(
+    storeAsk,
+    /chatLane\s*\?\s*\[\s*'read_project',\s*'web',\s*'ask_user',\s*'deliver',\s*'model'\s*\]/
+  );
+  assert.match(shell, /chat_conflict|ha2ChatBlockedByWork|ha2ChatAbandonStartFail/);
+  assert.match(shell, /atrLooksLikeContinueInput[\s\S]{0,400}priorQ|conflictGoal/);
+  // Busy only when drive-in-flight — poll alone must not re-stick 「工具循环中」.
+  assert.match(
+    shell,
+    /chatAtrBusyPhase\(st\)[\s\S]*?chatDriveAlive\(tid\)[\s\S]*?ha2ChatLoopBusy/
+  );
+  assert.match(shell, /chatStopPendingId[\s\S]*?never re-stick|Soft-stop/);
+  // ensureWorkController remounts chat mode from read_only task.
+  {
+    const created = [];
+    sandbox.OneToneWorkController = {
+      create: function (opts) {
+        created.push(opts);
+        return {
+          driveAtrUntilIdle: function () {
+            return Promise.resolve({ ok: true });
+          },
+          confirmPlan: function () {},
+          isPlanConfirmed: function () {
+            return true;
+          },
+          bindAtrTask: function () {}
+        };
+      }
+    };
+    const st = Store.__testOnly.getState();
+    st.workController = null;
+    st.agentTask = {
+      taskId: 'chat-t1',
+      status: 'running',
+      permissionMode: 'read_only',
+      goal: 'who is x'
+    };
+    st.activeAgentTaskId = 'chat-t1';
+    const ctrl = Store.__testOnly.ensureWorkController({
+      taskId: 'chat-t1',
+      goal: 'who is x',
+      planConfirmed: true
+    });
+    assert.ok(ctrl && typeof ctrl.driveAtrUntilIdle === 'function');
+    assert.equal(created.length, 1);
+    assert.equal(created[0].mode, 'chat');
+    assert.equal(
+      JSON.stringify(created[0].permissions),
+      JSON.stringify([
+        'read_project',
+        'web',
+        'ask_user',
+        'deliver',
+        'model'
+      ])
+    );
+    assert.equal(Store.isChatLaneTask(st.agentTask), true);
+    assert.equal(Store.isAtrDriveInFlight('chat-t1'), false);
+    // Wrong-mode remount: existing work Controller must be replaced for chat task.
+    st.workController = {
+      driveAtrUntilIdle: function () {
+        return Promise.resolve({ ok: true });
+      },
+      snapshot: function () {
+        return { mode: 'work' };
+      },
+      confirmPlan: function () {},
+      isPlanConfirmed: function () {
+        return true;
+      },
+      bindAtrTask: function () {}
+    };
+    created.length = 0;
+    Store.__testOnly.ensureWorkController({
+      taskId: 'chat-t1',
+      goal: 'who is x',
+      planConfirmed: true
+    });
+    assert.equal(created.length, 1);
+    assert.equal(created[0].mode, 'chat');
+    st.workController = null;
+    st.agentTask = null;
+    st.activeAgentTaskId = null;
+  }
+  const taskSrc = fs.readFileSync('src/js/features/now/home-agent-task.js', 'utf8');
+  assert.match(taskSrc, /cmd_agent_task_ensure_chat_scratch/);
+  assert.match(taskSrc, /cmd_agent_task_approve_deliver/);
+  assert.match(taskSrc, /cmd_agent_task_reject_deliver/);
+  assert.match(taskSrc, /resolveChatProvider|isChatLaneOpts/);
+  assert.match(taskSrc, /chatLane[\s\S]*?anyChatProviderReady|anyChatProviderReady/);
+  const promptsRs = fs.readFileSync('src-tauri/src/agent_task_runtime/prompts.rs', 'utf8');
+  assert.match(promptsRs, /user_input/);
+  assert.match(promptsRs, /prior_chat/);
+  const engRs = fs.readFileSync('src-tauri/src/agent_task_runtime/engine.rs', 'utf8');
+  assert.match(engRs, /deliver_approval/);
+  assert.match(engRs, /fn approve_deliver|pub fn approve_deliver/);
+  const ipcToml = fs.readFileSync('src-tauri/permissions/app-ipc.toml', 'utf8');
+  assert.match(ipcToml, /allow-cmd-agent-task-ensure-chat-scratch/);
+  assert.match(ipcToml, /allow-cmd-agent-task-approve-deliver/);
+}
+{
+  const reg = fs.readFileSync('src/js/features/now/tool-registry.js', 'utf8');
+  assert.match(reg, /deliver_to_agent/);
+  assert.match(reg, /web_search:[\s\S]*modes:\s*\[[^\]]*chat/);
+  assert.match(reg, /search_code:[\s\S]*modes:\s*\[[^\]]*chat/);
+  // Chat WorkController mode:'chat' must be able to step atr_turn (else tool_not_allowed @ 第0步).
+  assert.match(reg, /atr_turn:\s*\{[\s\S]*?modes:\s*\[[^\]]*chat/);
+  assert.match(reg, /atr_tool_call:\s*\{[\s\S]*?modes:\s*\[[^\]]*chat/);
+  const regSrc = read('src/js/features/now/tool-registry.js');
+  vm.runInContext(regSrc, sandbox, { filename: 'tool-registry.js' });
+  const Reg = sandbox.OneToneToolRegistry;
+  assert.equal(Reg.validate('atr_turn', { taskId: 't1', maxSteps: 1 }, 'chat').ok, true);
+  assert.equal(Reg.checkPermission('atr_turn', 'chat', ['model']).ok, true);
+  assert.equal(Reg.validate('atr_turn', { taskId: 't1', maxSteps: 1 }, 'work').ok, true);
+}
 assert.match(shell, /ha2AtrDoneQuietNoWrite|编辑回合结束 · 未写入文件/);
 assert.match(shell, /atrOwnsHomeChrome/);
 {
@@ -790,9 +1040,9 @@ assert.match(shell, /atrOwnsHomeChrome/);
   assert.match(withPath, /E:\\voice-pilot|E:\\\\voice-pilot/);
   assert.match(withPath, /voice-pilot/);
   assert.match(withPath, /home local chat context/);
-  assert.match(withPath, /不能读写磁盘|看不到磁盘/);
-  assert.match(withPath, /少改写、少说教|结构化呈现|Mermaid/);
-  assert.match(withPath, /样式\/UI|无 OCR/);
+  assert.match(withPath, /少改写、少说教|用工具把问题查清楚/);
+  assert.match(withPath, /无 OCR|勿编造路径/);
+  assert.doesNotMatch(withPath, /请用户点顶部|后再发目标|不能读写磁盘/);
   assert.doesNotMatch(withPath, /你是 OneTone 首页的 WorkBuddy 本机讨论助手/);
   const noPath = Caps.buildLocalChatSystemPrompt({});
   assert.match(noPath, /未选定/);

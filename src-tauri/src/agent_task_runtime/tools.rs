@@ -534,6 +534,55 @@ pub fn apply_pending_patch(scope: &WorkspaceScope, pending: &PendingPatch) -> Re
     }))
 }
 
+pub fn web_search(query: &str, limit: Option<u32>, provider: Option<&str>) -> Value {
+    crate::research::web_search(query, limit, provider)
+}
+
+pub fn fetch_url(url: &str, provider: Option<&str>, max_chars: Option<u32>) -> Value {
+    crate::research::fetch_url(url, provider, max_chars)
+}
+
+/// Clipboard + Soft Pad Ctrl+V to external foreground. Never pretends paste succeeded.
+pub fn deliver_to_agent(text: &str, kind: &str) -> Value {
+    let text = text.trim();
+    if text.is_empty() {
+        return json!({
+            "ok": false,
+            "code": "empty_text",
+            "message": "deliver_to_agent needs non-empty text",
+            "kind": kind,
+        });
+    }
+    let clip_ok = crate::agent::insert_text::set_clipboard_text(text);
+    if !clip_ok {
+        return json!({
+            "ok": false,
+            "code": "clipboard_failed",
+            "message": "could not copy text to clipboard",
+            "kind": kind,
+            "clipboard": false,
+            "paste": false,
+        });
+    }
+    let paste = crate::ipc::paste_only_external(40);
+    json!({
+        "ok": paste.ok,
+        "code": paste.error.clone().unwrap_or_else(|| "ok".into()),
+        "message": if paste.ok {
+            "clipboard set and paste sent to external app".to_string()
+        } else {
+            format!(
+                "clipboard set; paste failed ({}) — focus Cursor/Codex and Ctrl+V",
+                paste.error.as_deref().unwrap_or("unknown")
+            )
+        },
+        "kind": kind,
+        "clipboard": true,
+        "paste": paste.paste_input_sent,
+        "chars": text.chars().count(),
+    })
+}
+
 thread_local! {
     static TEST_DESKTOP: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
 }
@@ -687,6 +736,26 @@ mod tests {
         assert!(diff.contains("-c"), "diff={diff}");
         assert!(diff.contains("+C"), "diff={diff}");
         assert!(diff.contains(" a"), "context line missing: {diff}");
+    }
+
+    #[test]
+    fn web_search_empty_query_fails() {
+        let v = web_search("", None, None);
+        assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(false));
+    }
+
+    #[test]
+    fn deliver_to_agent_empty_fails() {
+        let v = deliver_to_agent("  ", "soft_pad");
+        assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(false));
+        assert_eq!(v.get("code").and_then(|x| x.as_str()), Some("empty_text"));
+    }
+
+    #[test]
+    fn fetch_url_ssrf_blocked() {
+        let v = fetch_url("http://127.0.0.1/secret", None, None);
+        assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(false));
+        assert_eq!(v.get("code").and_then(|x| x.as_str()), Some("ssrf_blocked"));
     }
 
     #[test]

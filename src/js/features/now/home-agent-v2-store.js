@@ -9,7 +9,8 @@
   var LAST_GOOD_KEY = 'onetone.agentCenter.lastGood';
   var LAST_GOOD_MAX_AGE_MS = 5 * 60 * 1000;
   var COALESCE_MS = 120;
-  var POLL_MS = 15000;
+  /** Safety-net poll only — hot path is to_js `home_status_changed`. */
+  var POLL_MS = 30000;
   var WB_MODE_KEY = 'onetone.ha2.wbSendMode';
   var WORK_MODE_KEY = 'onetone.ha2.workMode';
   var ATR_STACK_KEY = 'onetone.ha2.agentTaskStack';
@@ -158,6 +159,11 @@
       if (global.localStorage) {
         var v = mode === 'edit' ? 'edit' : 'think';
         global.localStorage.setItem(WORK_MODE_KEY, v);
+        // Mirror home chrome intent: think=提问 / edit=投递.
+        global.localStorage.setItem(
+          'onetone.homeIntent',
+          mode === 'edit' ? 'work' : 'chat'
+        );
       }
     } catch (_) {}
   }
@@ -1975,11 +1981,13 @@
         }
         if (
           atrSendInFlight &&
+          !isChatLaneTask(dto) &&
           (dto.status === 'running' ||
             dto.status === 'verifying' ||
             dto.status === 'repair' ||
             dto.status === 'review')
         ) {
+          // Edit-lane progress only — chat owns its own transcript busy line.
           var turn = dto.currentTurn != null ? dto.currentTurn : 0;
           var tools = dto.toolCallCount != null ? dto.toolCallCount : 0;
           atrNotice(
@@ -2131,6 +2139,24 @@
       });
   }
 
+  /** Chat lane: confirmed project, else data-dir atr-chat-scratch (no need_project block). */
+  function ensureChatWorkspaceRoot() {
+    return ensureAtrWorkspaceRoot().then(function (path) {
+      if (path) return path;
+      var A = atrApi();
+      if (!A || typeof A.ensureChatScratch !== 'function') return null;
+      return A.ensureChatScratch().then(function (info) {
+        return (info && info.workspaceRoot) || null;
+      });
+    });
+  }
+
+  function isChatLaneStartOpts(opts) {
+    opts = opts || {};
+    var pm = String(opts.permissionMode || '').toLowerCase();
+    return pm === 'read_only' || pm === 'readonly' || opts.lane === 'chat';
+  }
+
   function atrNotice(kind, message, extra) {
     setValidationNotice(
       Object.assign(
@@ -2143,9 +2169,31 @@
     );
   }
 
+  function isChatLaneTask(task) {
+    if (!task) return false;
+    var pm = String(task.permissionMode || task.permission_mode || '').toLowerCase();
+    return pm === 'read_only' || pm === 'readonly';
+  }
+
+  /** True while start/drive promise covers this task (or any in-flight start). */
+  function isAtrDriveInFlight(taskId) {
+    var id = String(taskId || '').trim();
+    if (atrSendInFlight) {
+      if (!id) return true;
+      var active = String(
+        state.activeAgentTaskId ||
+          (state.agentTask && state.agentTask.taskId) ||
+          ''
+      ).trim();
+      if (!active || active === id) return true;
+    }
+    return !!(id && atrDriveInFlightByTask[id]);
+  }
+
   /**
    * Remount / resume / approve often leave ATR taskId but wipe in-memory Controller.
-   * Recreate a bound work Controller so drive never dies as controller_required.
+   * Recreate a bound Controller so drive never dies as controller_required.
+   * Chat tasks remount mode:'chat' (not work + *).
    */
   function ensureWorkController(opts) {
     opts = opts || {};
@@ -2158,41 +2206,63 @@
           (state.agentTask && state.agentTask.taskId) ||
           ''
       ).trim() || null;
+    var chatLane =
+      isChatLaneStartOpts(opts) ||
+      opts.mode === 'chat' ||
+      isChatLaneTask(state.agentTask);
     if (
       state.workController &&
       typeof state.workController.driveAtrUntilIdle === 'function'
     ) {
+      var existingMode = '';
+      try {
+        var snapCtrl =
+          typeof state.workController.snapshot === 'function'
+            ? state.workController.snapshot()
+            : null;
+        existingMode = String((snapCtrl && snapCtrl.mode) || '');
+      } catch (_) {}
+      // Chat resume must not keep a work-mode Controller (permissions/plan differ).
       if (
-        opts.planConfirmed !== false &&
-        typeof state.workController.isPlanConfirmed === 'function' &&
-        !state.workController.isPlanConfirmed() &&
-        typeof state.workController.confirmPlan === 'function'
+        (chatLane && existingMode && existingMode !== 'chat') ||
+        (!chatLane && existingMode === 'chat')
       ) {
-        try {
-          state.workController.confirmPlan({ goal: goal });
-        } catch (_) {}
+        state.workController = null;
+      } else {
+        if (
+          opts.planConfirmed !== false &&
+          typeof state.workController.isPlanConfirmed === 'function' &&
+          !state.workController.isPlanConfirmed() &&
+          typeof state.workController.confirmPlan === 'function'
+        ) {
+          try {
+            state.workController.confirmPlan({ goal: goal });
+          } catch (_) {}
+        }
+        if (id && typeof state.workController.bindAtrTask === 'function') {
+          try {
+            state.workController.bindAtrTask({
+              taskId: id,
+              status: (state.agentTask && state.agentTask.status) || 'running',
+              goal: goal
+            });
+          } catch (_) {}
+        }
+        return state.workController;
       }
-      if (id && typeof state.workController.bindAtrTask === 'function') {
-        try {
-          state.workController.bindAtrTask({
-            taskId: id,
-            status: (state.agentTask && state.agentTask.status) || 'running',
-            goal: goal
-          });
-        } catch (_) {}
-      }
-      return state.workController;
     }
     var WC = global.OneToneWorkController;
     if (!WC || typeof WC.create !== 'function') return null;
     state.workController = WC.create({
-      mode: 'work',
+      mode: chatLane ? 'chat' : 'work',
       originalRequest: goal,
       goal: goal,
-      budget: { model: 20 },
+      budget: chatLane ? { model: 24, search: 8, fetch: 8 } : { model: 20 },
       skipArchiveLoad: true,
       planConfirmed: true,
-      permissions: ['*']
+      permissions: chatLane
+        ? ['read_project', 'web', 'ask_user', 'deliver', 'model']
+        : ['*']
     });
     try {
       if (typeof state.workController.confirmPlan === 'function') {
@@ -2325,7 +2395,13 @@
     var evs = state.agentTaskEvents || [];
     for (var i = evs.length - 1; i >= 0; i--) {
       var e = evs[i];
-      if (!e || e.kind !== 'waiting_approval' || !e.payload) continue;
+      if (
+        !e ||
+        (e.kind !== 'waiting_approval' && e.kind !== 'waiting_deliver') ||
+        !e.payload
+      ) {
+        continue;
+      }
       var p = e.payload.approvalToken || e.payload.approval_token;
       if (p) return String(p);
     }
@@ -2365,6 +2441,38 @@
       state.agentTask = dto;
       if (state.workController && state.workController.continueFromPause) {
         try { state.workController.continueFromPause('rejected'); } catch (_) {}
+      }
+      return driveActiveIfRunning();
+    });
+  }
+
+  function approveAgentDeliver() {
+    var A = atrApi();
+    var t = state.agentTask;
+    var token = pendingApprovalTokenOf(t);
+    if (!A || !t || !token || typeof A.approveDeliver !== 'function') {
+      return Promise.reject(new Error('no_pending'));
+    }
+    return A.approveDeliver(t.taskId, token).then(function (dto) {
+      state.agentTask = dto;
+      if (state.workController && state.workController.continueFromPause) {
+        try { state.workController.continueFromPause('deliver_approved'); } catch (_) {}
+      }
+      return driveActiveIfRunning();
+    });
+  }
+
+  function rejectAgentDeliver() {
+    var A = atrApi();
+    var t = state.agentTask;
+    var token = pendingApprovalTokenOf(t);
+    if (!A || !t || !token || typeof A.rejectDeliver !== 'function') {
+      return Promise.reject(new Error('no_pending'));
+    }
+    return A.rejectDeliver(t.taskId, token).then(function (dto) {
+      state.agentTask = dto;
+      if (state.workController && state.workController.continueFromPause) {
+        try { state.workController.continueFromPause('deliver_rejected'); } catch (_) {}
       }
       return driveActiveIfRunning();
     });
@@ -2446,14 +2554,21 @@
     var A = atrApi();
     var id = state.activeAgentTaskId;
     if (!A || !id || !A.abandon) return Promise.reject(new Error('no_task'));
+    // Stop poll before abandon IPC — else a tick can reload cancelled events and
+    // chat UI paints「已停止」while a new send is already starting.
+    stopAtrPoll();
     return A.abandon(id).then(function (dto) {
       rememberAgentTask(dto || state.agentTask, state.agentTaskEvents);
-      state.agentTask = dto || null;
+      state.agentTask = null;
       state.activeAgentTaskId = null;
       state.agentTaskGrant = false;
       state.agentTaskEvents = [];
-      stopAtrPoll();
-      atrNotice('atr_abandoned', '已放弃当前编辑任务');
+      // Chat auto-abandon must not leave atr_abandoned notice / cancelled dto for sync.
+      if (!atrSendInFlight) {
+        atrNotice('atr_abandoned', '已放弃当前编辑任务');
+      } else {
+        state.validationNotice = null;
+      }
       emit();
       return dto;
     });
@@ -2497,12 +2612,17 @@
         message: 'Agent Task Runtime 未开启'
       });
     }
-    return ensureAtrWorkspaceRoot().then(function (path) {
+    var resolveRoot = isChatLaneStartOpts(opts)
+      ? ensureChatWorkspaceRoot
+      : ensureAtrWorkspaceRoot;
+    return resolveRoot().then(function (path) {
       if (!path) {
         return {
           ok: false,
-          code: 'need_project',
-          message: '请先在工作区确认项目后再发送'
+          code: isChatLaneStartOpts(opts) ? 'scratch_failed' : 'need_project',
+          message: isChatLaneStartOpts(opts)
+            ? '无法创建对话沙箱 — 请检查数据目录权限'
+            : '请先在工作区确认项目后再发送'
         };
       }
       var useFake =
@@ -2514,6 +2634,7 @@
       if (!A.ready) {
         return { ok: true, path: path, provider: opts.provider || null };
       }
+      var chatLanePf = isChatLaneStartOpts(opts);
       return A.ready()
         .then(function (info) {
           var preferred =
@@ -2536,11 +2657,14 @@
                 code: want + '_unconfigured',
                 message:
                   want.indexOf('workbuddy') >= 0
-                    ? '请先登录 WorkBuddy（账号模型），再发编辑任务'
+                    ? chatLanePf
+                      ? '请先登录 WorkBuddy（账号模型），再提问'
+                      : '请先登录 WorkBuddy（账号模型），再发编辑任务'
                     : '所选引擎未就绪 — 请登录 WorkBuddy 或配置 Soft Pad 密钥'
               };
             }
-            if (row && row.editCapable === false) {
+            // Chat only needs chatReady; editCapable is for write/work lane.
+            if (!chatLanePf && row && row.editCapable === false) {
               return {
                 ok: false,
                 code: 'provider_not_edit_capable',
@@ -2558,7 +2682,8 @@
           }
           var anyReady = false;
           for (i = 0; i < list.length; i++) {
-            if (list[i] && list[i].ready && list[i].editCapable !== false) {
+            if (!list[i] || !list[i].ready) continue;
+            if (chatLanePf || list[i].editCapable !== false) {
               anyReady = true;
               break;
             }
@@ -2681,23 +2806,50 @@
       emit();
       return Promise.resolve(null);
     }
-    state.workController =
-      global.OneToneWorkController && global.OneToneWorkController.create
-        ? global.OneToneWorkController.create({
-            mode: 'work',
+    var chatLane =
+      String(opts.permissionMode || '').toLowerCase() === 'read_only' ||
+      String(opts.permissionMode || '').toLowerCase() === 'readonly' ||
+      opts.lane === 'chat';
+    var Controller = global.OneToneWorkController;
+    if (!Controller || typeof Controller.create !== 'function') {
+      atrNotice(
+        'atr_controller_unavailable',
+        chatLane ? '首页对话控制器未加载，请稍后重试' : '任务控制器未加载，请稍后重试',
+        { code: 'controller_unavailable', actions: ['retry'] }
+      );
+      emit();
+      return Promise.resolve(null);
+    }
+    try {
+      state.workController = Controller.create({
+            mode: chatLane ? 'chat' : 'work',
             originalRequest: opts.goal || '',
             goal: opts.goal || '',
             providerRoute: global.OneToneModelGateway &&
               global.OneToneModelGateway.snapshot
               ? global.OneToneModelGateway.snapshot().routes
               : null,
-            budget: { model: 20 },
+            budget: chatLane
+              ? { model: 24, search: 8, fetch: 8 }
+              : { model: 20 },
             skipArchiveLoad: true,
             planConfirmed: true,
             skipPlanConfirm: !!opts.skipPlanConfirm || !!opts.verifySandboxRoot,
-            permissions: ['*']
-          })
-        : null;
+            permissions: chatLane
+              ? ['read_project', 'web', 'ask_user', 'deliver', 'model']
+              : ['*']
+          });
+    } catch (err) {
+      var controllerMsg = String((err && err.message) || err || 'controller_create_failed');
+      atrNotice(
+        'atr_controller_create_failed',
+        '首页任务控制器创建失败：' + controllerMsg.slice(0, 120),
+        { code: 'controller_create_failed', actions: ['retry'] }
+      );
+      state.workController = null;
+      emit();
+      return Promise.resolve(null);
+    }
     if (state.workController && typeof state.workController.confirmPlan === 'function') {
       try {
         state.workController.confirmPlan({
@@ -2710,7 +2862,8 @@
     if (global.OneToneModelGateway && global.OneToneModelGateway.snapshot) {
       state.modelRouting = global.OneToneModelGateway.snapshot();
     }
-    if (atrSendInFlight) return atrSendInFlight;
+    // skipBlockingCheck re-enters after abandon; must not return the outer in-flight promise.
+    if (atrSendInFlight && !opts.skipBlockingCheck) return atrSendInFlight;
 
     var A = atrApi();
     if (!A || !atrFeatureOn()) {
@@ -2722,6 +2875,40 @@
     var est = existing && existing.status;
     var goal = String(opts.goal || '').trim();
     if (existing && isAgentTaskBlockingNew(est) && !opts.skipBlockingCheck) {
+      // Chat Q&A must not trap behind edit conflict triage (no buttons in transcript).
+      // Abandon then start directly — skip abandonAndStart's edit-centric preflight.
+      // Do not assign atrSendInFlight here — inner startAndDrive owns it (else deadlock).
+      if (chatLane) {
+        return abandonAgentTask()
+          .catch(function (err) {
+            if (String((err && err.message) || err) === 'no_task') return null;
+            return Promise.reject(err);
+          })
+          .then(function () {
+            state.atrSendConflict = null;
+            state.validationNotice = null;
+            return startAndDriveAgentTask(
+              Object.assign({}, opts, {
+                goal: goal,
+                skipBlockingCheck: true,
+                skipPlanConfirm: true,
+                planConfirmed: true,
+                permissionMode: opts.permissionMode || 'read_only',
+                lane: 'chat'
+              })
+            );
+          })
+          .catch(function (err) {
+            var raw = String((err && err.message) || err || '');
+            atrNotice(
+              'atr_abandon_start_failed',
+              '旧任务已清理，提问未启动：' + raw.slice(0, 120),
+              { code: 'abandon_start_failed', abandoned: true }
+            );
+            emit();
+            return null;
+          });
+      }
       var goalOk = goal && goal.length >= 2 && !/^[\d\s.]+$/.test(goal);
       if (goalOk) {
         state.atrSendConflict = {
@@ -2784,7 +2971,13 @@
       return Promise.resolve(null);
     }
 
-    if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
+    // Edit goals need substance; chat can be short ("谁？") — only reject empty / pure digits.
+    if (chatLane) {
+      if (!goal) {
+        atrNotice('atr_need_goal', '请先输入问题', { code: 'need_goal' });
+        return Promise.resolve(null);
+      }
+    } else if (!goal || goal.length < 2 || /^[\d\s.]+$/.test(goal)) {
       atrNotice('atr_need_goal', '请写清要改什么（例如：给 README 加使用说明）');
       return Promise.resolve(null);
     }
@@ -2794,13 +2987,21 @@
     atrSendInFlight = (
       opts.verifySandboxRoot
         ? Promise.resolve(String(opts.verifySandboxRoot))
-        : ensureAtrWorkspaceRoot()
+        : opts.chatScratchRoot
+          ? Promise.resolve(String(opts.chatScratchRoot))
+          : chatLane
+            ? ensureChatWorkspaceRoot()
+            : ensureAtrWorkspaceRoot()
     )
       .then(function (path) {
         if (!path) {
-          atrNotice('atr_need_project', '请先在工作区确认项目后再发送', {
-            code: 'need_project'
-          });
+          atrNotice(
+            chatLane ? 'atr_scratch_failed' : 'atr_need_project',
+            chatLane
+              ? '无法创建对话沙箱 — 请检查数据目录权限'
+              : '请先在工作区确认项目后再发送',
+            { code: chatLane ? 'scratch_failed' : 'need_project' }
+          );
           return null;
         }
         var provider =
@@ -2824,6 +3025,7 @@
             opts.permissionMode ||
             (A.readPermissionMode && A.readPermissionMode()) ||
             'write_with_approval',
+          lane: opts.lane || (chatLane ? 'chat' : undefined),
           useFakeDriver: !!opts.useFakeDriver,
           driveFakeSteps: opts.driveFakeSteps,
           provider: provider,
@@ -2963,7 +3165,21 @@
                           ? '模型响应中断（连接/解码失败）— 可点恢复继续，或放弃后重试'
                           : code === 'controller_required'
                             ? '工作控制器未就绪 — 请点恢复继续当前任务，或放弃后重发'
-                            : '编辑任务失败：' + rawMsg.slice(0, 120);
+                            : code === 'tool_not_allowed'
+                              ? chatLane
+                                ? '对话工具环未就绪 — 请刷新后重试'
+                                : '工具不允许在当前模式使用：' + rawMsg.slice(0, 80)
+                              : code === 'tool_error' ||
+                                  code === 'timeout' ||
+                                  /tool_error|timeout/i.test(rawMsg)
+                                ? chatLane
+                                  ? '检索/工具调用中断 — 可点恢复继续，或放弃后重试'
+                                  : '工具调用中断 — 可点恢复继续，或放弃后重试'
+                                : (chatLane ? '提问失败：' : '编辑任务失败：') +
+                                  rawMsg.slice(0, 120);
+        if (/tool_error|timeout/i.test(String(code)) || /tool_error|timeout/i.test(rawMsg)) {
+          if (code !== 'timeout') code = 'tool_error';
+        }
         // start may have written activeId before drive failed — keep for timeline.
         if (A.readActiveId) {
           var sid = A.readActiveId();
@@ -2978,18 +3194,43 @@
             });
           }
         }
-        atrNotice('atr_' + code, msg, {
-          code: code,
-          actions:
-            code === 'provider_stream' || code === 'controller_required'
-              ? ['resume', 'abandon']
-              : code === 'budget_exhausted' ||
-                  code === 'drive_failed' ||
-                  code === 'format_error'
-                ? ['abandon']
-                : undefined
-        });
         return refreshAgentTask().then(function () {
+          var stLive = String(
+            (state.agentTask && state.agentTask.status) || ''
+          );
+          // atr_turn FE timeout while Rust still holds a running chat/search turn —
+          // resume drive instead of painting a dead-end 提问失败.
+          if (
+            (code === 'tool_error' || code === 'timeout') &&
+            (stLive === 'running' ||
+              stLive === 'verifying' ||
+              stLive === 'repair' ||
+              stLive === 'review')
+          ) {
+            atrNotice(
+              'atr_tool_error',
+              chatLane
+                ? '工具调用较慢，正在继续…'
+                : '工具调用较慢，正在继续…',
+              { code: 'tool_error', actions: ['abandon'] }
+            );
+            emit();
+            return driveActiveIfRunning({ force: true });
+          }
+          atrNotice('atr_' + code, msg, {
+            code: code,
+            actions:
+              code === 'provider_stream' ||
+              code === 'controller_required' ||
+              code === 'tool_error' ||
+              code === 'timeout'
+                ? ['resume', 'abandon']
+                : code === 'budget_exhausted' ||
+                    code === 'drive_failed' ||
+                    code === 'format_error'
+                  ? ['abandon']
+                  : undefined
+          });
           emit();
           return null;
         });
@@ -3319,9 +3560,33 @@
     );
     Focus.fetch();
     if (typeof Focus.startPolling === 'function') {
-      Focus.startPolling(5000);
+      var safetyMs =
+        typeof Focus.SAFETY_POLL_MS === 'number' ? Focus.SAFETY_POLL_MS : POLL_MS;
+      Focus.startPolling(safetyMs);
       state.focusPollOwned = true;
     }
+  }
+
+  function onHomeStatusPush(e) {
+    var msg = e && e.data;
+    if (!msg || msg.type !== 'home_status_changed') return;
+    if (!state.mounted || !state.visible) return;
+    scheduleRefresh(msg.reason || 'home_status_changed');
+  }
+
+  function bindHomeStatusPush() {
+    try {
+      if (global.chrome && global.chrome.webview && global.chrome.webview.addEventListener) {
+        global.chrome.webview.addEventListener('message', onHomeStatusPush);
+        unsubs.push(function () {
+          try {
+            if (global.chrome.webview.removeEventListener) {
+              global.chrome.webview.removeEventListener('message', onHomeStatusPush);
+            }
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
   }
 
   function unbindFocusStore() {
@@ -3335,6 +3600,7 @@
   function bindSubscriptions() {
     unbindSubscriptions();
     bindFocusStore();
+    bindHomeStatusPush();
     var hr = global.OneToneHabitRuntime;
     if (hr && typeof hr.subscribe === 'function') {
       unsubs.push(
@@ -3468,7 +3734,10 @@
     refreshAgentTask: refreshAgentTask,
     approveAgentPatch: approveAgentPatch,
     rejectAgentPatch: rejectAgentPatch,
+    approveAgentDeliver: approveAgentDeliver,
+    rejectAgentDeliver: rejectAgentDeliver,
     submitAgentInput: submitAgentInput,
+    ensureChatWorkspaceRoot: ensureChatWorkspaceRoot,
     resumeAgentTask: resumeAgentTask,
     resumeAndDriveAgentTask: resumeAndDriveAgentTask,
     retryFailedWorkAction: retryFailedWorkAction,
@@ -3481,9 +3750,14 @@
     clearAtrSendConflict: clearAtrSendConflict,
     keepDraftDeferAtrSend: keepDraftDeferAtrSend,
     driveActiveIfRunning: driveActiveIfRunning,
+    isAtrDriveInFlight: isAtrDriveInFlight,
+    isChatLaneTask: isChatLaneTask,
     confirmedProjectPath: confirmedProjectPath,
     isAgentTaskBlockingNew: isAgentTaskBlockingNew,
     __testOnly: {
+      ensureWorkController: ensureWorkController,
+      isAtrDriveInFlight: isAtrDriveInFlight,
+      isChatLaneTask: isChatLaneTask,
       projectAgent: projectAgent,
       resolveKind: resolveKind,
       projectNameOf: projectNameOf,

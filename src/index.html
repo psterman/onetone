@@ -136,6 +136,23 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <span data-i18n="homeWbNavHome">首页</span>
               </button>
+              <!-- 首页下：对话 / 工作并列标签（不覆盖首页与新首页） -->
+              <div class="wb-nav-acc" id="wbNowDirectory" data-wb-now-dir data-wb-now-lane="chat">
+                <div class="wb-nav-acc__tabs" role="tablist" aria-label="对话与工作">
+                  <button type="button" class="wb-nav-acc__tab is-on" role="tab" id="wbNowDirTabChat" data-wb-now-tab="chat" aria-selected="true" aria-controls="wbNowDirChatList">
+                    对话 <b class="wb-nav-acc__count" id="wbNowDirChatCount">0</b>
+                  </button>
+                  <button type="button" class="wb-nav-acc__tab" role="tab" id="wbNowDirTabWork" data-wb-now-tab="work" aria-selected="false" aria-controls="wbNowDirWorkList">
+                    工作 <b class="wb-nav-acc__count" id="wbNowDirWorkCount">0</b>
+                  </button>
+                </div>
+                <div class="wb-nav-acc__stage">
+                  <div class="wb-nav-acc__panel is-on" id="wbNowDirChatList" role="tabpanel" data-wb-acc-panel="chat" aria-labelledby="wbNowDirTabChat" aria-hidden="false"></div>
+                  <div class="wb-nav-acc__panel" id="wbNowDirWorkList" role="tabpanel" data-wb-acc-panel="work" aria-labelledby="wbNowDirTabWork" aria-hidden="true">
+                    <button type="button" class="wb-nav-acc__new" id="wbNavNewWork">+ 新工作</button>
+                  </div>
+                </div>
+              </div>
               <button type="button" class="wb-nav-item" data-wb-nav="homeV2" id="wbNavHomeV2">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/></svg>
                 <span>新首页</span>
@@ -5976,6 +5993,7 @@
   <script src="js/features/now/home-acceptance-float.js"></script>
   <script src="js/features/now/home-prompt-prep.js"></script>
   <script src="js/features/now/home-task-journal.js"></script>
+  <script src="js/features/home/home-now-directory.js"></script>
   <script src="js/features/now/cursor-work-view.js"></script>
   <script src="js/features/now/history-view.js"></script>
   <script src="js/features/now/memory-view.js"></script>
@@ -5989,12 +6007,12 @@
   <script src="js/features/now/run-contracts.js"></script>
   <script src="js/features/now/run-archive.js"></script>
   <script src="js/features/now/work-controller.js"></script>
-  <script src="js/features/now/home-research.js"></script>
+  <script type="text/plain" data-ot-defer="home-agent" src="js/features/now/home-research.js"></script>
   <script src="js/features/now/home-agent-task.js"></script>
-  <script src="js/features/now/home-agent-v2-store.js"></script>
-  <script src="js/features/now/home-agent-v2-dock.js"></script>
+  <script type="text/plain" data-ot-defer="home-agent" src="js/features/now/home-agent-v2-store.js"></script>
+  <script type="text/plain" data-ot-defer="home-agent" src="js/features/now/home-agent-v2-dock.js"></script>
   <script src="js/features/now/composer-history-panel.js"></script>
-  <script src="js/features/now/home-agent-v2.js"></script>
+  <script type="text/plain" data-ot-defer="home-agent" src="js/features/now/home-agent-v2.js"></script>
   <script src="js/features/now/now-home.js"></script>
   <script src="js/features/home/codex-smoke-feedback.js"></script>
   <script src="js/features/home/claude-smoke-feedback.js"></script>

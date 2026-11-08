@@ -42,7 +42,8 @@ pub use capability_resolver::{
 };
 pub use checkpoint::{
     atr_checkpoint_id, create_checkpoint, create_or_get_atr_checkpoint, ensure_atr_session,
-    get_checkpoint, latest_atr_checkpoint_for_project, latest_checkpoint_for_project,
+    get_checkpoint, latest_atr_checkpoint_for_project, latest_non_atr_checkpoint_for_project,
+    latest_checkpoint_for_project,
     latest_checkpoint_for_session, maybe_auto_checkpoint, resume_checkpoint, update_checkpoint,
     PROVIDER_ONETONE_ATR,
 };

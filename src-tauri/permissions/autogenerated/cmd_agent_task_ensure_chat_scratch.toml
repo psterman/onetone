@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-task-ensure-chat-scratch"
+description = "Enables the cmd_agent_task_ensure_chat_scratch command without any pre-configured scope."
+commands.allow = ["cmd_agent_task_ensure_chat_scratch"]
+
+[[permission]]
+identifier = "deny-cmd-agent-task-ensure-chat-scratch"
+description = "Denies the cmd_agent_task_ensure_chat_scratch command without any pre-configured scope."
+commands.deny = ["cmd_agent_task_ensure_chat_scratch"]

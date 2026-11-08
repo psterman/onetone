@@ -412,6 +412,8 @@
     mountMode: 'page',
     showNotFound: false,
     homeFilter: 'all',
+    /** Deep-link provider (cursor/codex/…) — AND with homeFilter; not a toolbar option. */
+    homeProvider: null,
     groupOpen: {
       needsAttention: true,
       connected: true,
@@ -1951,6 +1953,26 @@
         '</p>';
     }
 
+    // This agent's work history (scoped + unscoped) — same payload as page detail.
+    var work = []
+      .concat(agent.recentWork || [])
+      .concat(agent.unscopedRecentWork || [])
+      .slice(0, 8);
+    html += '<h3 class="har-detail-h">' + escapeHtml(t('work')) + '</h3>';
+    if (!work.length) {
+      html += '<p class="har-note">' + escapeHtml(t('noWork')) + '</p>';
+    } else {
+      html += '<ul class="har-work-list">';
+      work.forEach(function (w) {
+        if (!w) return;
+        var title = w.title || w.sessionId || w.externalSessionId || '';
+        var line = ((w.status || '') + (title ? ' · ' + title : '')).replace(/^ · /, '');
+        if (!line) return;
+        html += '<li>' + escapeHtml(line) + '</li>';
+      });
+      html += '</ul>';
+    }
+
     var badgeActs = (agent.actions || []).filter(function (act) {
       return (
         act &&
@@ -2291,8 +2313,21 @@
     }
 
     var agents = orderedHomeAgents().filter(function (a) {
-      return matchesHomeFilter(a, state.homeFilter, state.snap);
+      if (!matchesHomeFilter(a, state.homeFilter, state.snap)) return false;
+      if (!state.homeProvider) return true;
+      var want = String(state.homeProvider).toLowerCase();
+      var id = String((a && (a.agentId || a.runtimeKind || a.displayName)) || '').toLowerCase();
+      return id.indexOf(want) >= 0;
     });
+    // Deep-link provider + section (e.g. working) may AND to empty — fall back to provider-only
+    // so "查看 Agent" still shows that agent's data/history instead of a blank roster.
+    if (!agents.length && state.homeProvider) {
+      var wantOnly = String(state.homeProvider).toLowerCase();
+      agents = orderedHomeAgents().filter(function (a) {
+        var id = String((a && (a.agentId || a.runtimeKind || a.displayName)) || '').toLowerCase();
+        return id.indexOf(wantOnly) >= 0;
+      });
+    }
     if (!agents.length) {
       list.innerHTML = '<p class="har-empty">' + escapeHtml(t('readyEmpty')) + '</p>';
       return;
@@ -2310,23 +2345,8 @@
       else priority.push(a);
     });
 
-    // Provider name filter that hits view-only rows → auto-expand fold.
-    var filterKey = String(state.homeFilter || 'all');
-    var providerFilter =
-      filterKey &&
-      filterKey !== 'all' &&
-      filterKey !== 'working' &&
-      filterKey !== 'needs' &&
-      filterKey !== 'attention' &&
-      filterKey !== 'resumable' &&
-      filterKey !== 'verifiable' &&
-      filterKey !== 'confirmable' &&
-      filterKey !== 'bestEffort' &&
-      filterKey !== 'unsupported' &&
-      filterKey !== 'unknown' &&
-      filterKey !== 'notWired' &&
-      filterKey !== 'stale';
-    if (providerFilter && viewOnly.length) viewOnlyFoldOpen = true;
+    // Provider deep-link (or legacy provider-as-filter) that hits view-only → auto-expand fold.
+    if (state.homeProvider && viewOnly.length) viewOnlyFoldOpen = true;
 
     function renderRow(a) {
       var open = state.expandedId === a.agentId;
@@ -3169,7 +3189,10 @@
     if (state.mountMode !== 'overview') clearOverviewPoll();
     else ensureOverviewVisibilityBound();
     if (opts.section) state.homeFilter = mapSectionToFilter(opts.section);
-    if (opts.provider) state.homeFilter = String(opts.provider);
+    // Provider is a second axis — do not overwrite section filter (that hid categorized rows).
+    if (Object.prototype.hasOwnProperty.call(opts, 'provider')) {
+      state.homeProvider = opts.provider ? String(opts.provider) : null;
+    }
     var sameHost = homeHostEl === host && host.getAttribute('data-ac-home-mounted') === '1';
     var hasShell = !!host.querySelector('[data-har-list]');
 

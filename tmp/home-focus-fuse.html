@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Focus 首页 · 紧凑白话</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --ink2: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --line2: #f1f5f9;
+      --teal: #0284c7;
+      --teal-soft: #e0f2fe;
+      --ok: #059669;
+      --ok-sf: #ecfdf5;
+      --paper: #f8fafc;
+      --surface: #fff;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --sh: 0 10px 36px rgba(15, 23, 42, 0.07);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 50% -8%, #dbeafe 0%, transparent 55%),
+        linear-gradient(180deg, #f1f5f9 0%, var(--paper) 100%);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .app {
+      width: min(820px, 100%);
+      height: min(720px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--sh);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Chrome — slim */
+    .chrome {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 70%, white);
+      flex: 0 0 auto;
+    }
+    .ctx {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12.5px; color: var(--ink2); min-width: 0;
+    }
+    .ctx-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex: 0 0 auto; }
+    .ctx-sep { color: var(--muted); }
+    .ctx-proj {
+      border: 0; background: transparent; font: inherit; font-weight: 650;
+      color: var(--teal); cursor: pointer; padding: 0;
+    }
+    .intent {
+      display: inline-flex; gap: 2px; padding: 2px;
+      border: 1px solid var(--line); border-radius: 10px; background: white;
+    }
+    .intent button {
+      border: 0; background: transparent; border-radius: 8px;
+      padding: 5px 10px; font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer; color: var(--muted);
+    }
+    .intent button[aria-pressed="true"] {
+      background: var(--teal-soft); color: var(--teal);
+    }
+    .chrome-end { display: flex; justify-content: flex-end; }
+    .icon-btn {
+      width: 30px; height: 30px; border-radius: 8px;
+      border: 1px solid var(--line); background: white;
+      display: grid; place-items: center; cursor: pointer; color: var(--ink2);
+    }
+
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      padding: 16px 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Invite — shorter */
+    .invite { flex: 0 0 auto; }
+    .invite .kicker { margin: 0 0 4px; }
+    .invite .kicker button {
+      border: 0; background: transparent; padding: 0;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--teal); cursor: pointer;
+    }
+    .invite h1 {
+      margin: 0 0 4px;
+      font-size: 22px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.25;
+    }
+    .invite p { margin: 0; font-size: 13px; color: var(--muted); }
+
+    /* One shell */
+    .fuse {
+      flex: 0 0 auto;
+      border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--line));
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: 0 1px 0 rgba(255,255,255,.85) inset, 0 8px 22px -16px rgba(2,132,199,.32);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fuse:focus-within {
+      border-color: color-mix(in srgb, var(--teal) 55%, var(--line));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 14%, transparent),
+        0 8px 22px -16px rgba(2,132,199,.32);
+    }
+
+    /* Chips — small, ONE row, no scrollbar */
+    .chips {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 4px;
+      padding: 8px 8px 6px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 75%, white);
+      overflow: hidden; /* no scrollbar */
+    }
+    .chip {
+      flex: 1 1 0;
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 28px;
+      padding: 0 6px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .chip:hover { background: rgba(255,255,255,.8); }
+    .chip.is-on {
+      background: white;
+      border-color: color-mix(in srgb, var(--teal) 48%, var(--line));
+      box-shadow: 0 2px 8px -4px rgba(2,132,199,.4);
+    }
+    .chip__ico {
+      width: 16px; height: 16px; border-radius: 4px;
+      display: grid; place-items: center;
+      flex: 0 0 auto; color: #fff; font-size: 8px; font-weight: 700;
+      overflow: hidden;
+    }
+    .chip__ico svg { width: 10px; height: 10px; display: block; }
+    .chip__lab {
+      min-width: 0;
+      font-size: 11px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chip__dot {
+      width: 5px; height: 5px; border-radius: 50%; flex: 0 0 auto;
+      background: color-mix(in srgb, var(--muted) 40%, transparent);
+    }
+    .chip.is-run .chip__dot { background: var(--teal); }
+    .chip.is-wait .chip__dot { background: #b45309; }
+
+    /* Status — 2 lines only */
+    .status {
+      padding: 8px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+      transition: background .15s;
+    }
+    .status.is-flash { background: color-mix(in srgb, var(--teal-soft) 50%, white); }
+    .status.is-hidden { display: none; }
+    .status__row1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .status__ico {
+      width: 22px; height: 22px; border-radius: 6px;
+      display: grid; place-items: center;
+      color: #fff; font-size: 9px; font-weight: 700; flex: 0 0 auto;
+    }
+    .status__ico svg { width: 12px; height: 12px; }
+    .status__who {
+      flex: 1 1 auto; min-width: 0;
+      display: flex; align-items: baseline; gap: 6px;
+      font-size: 13px;
+    }
+    .status__who b { font-weight: 750; }
+    .status__who em {
+      font-style: normal; font-size: 12px; font-weight: 650;
+      color: var(--ok);
+      white-space: nowrap;
+    }
+    .status__who em.is-run { color: var(--teal); }
+    .status__who em.is-idle { color: var(--muted); }
+    .status__acts {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn {
+      height: 26px; padding: 0 10px; border-radius: 7px;
+      border: 0; font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-link {
+      background: transparent; color: var(--teal); padding: 0 4px;
+    }
+    .btn-link:hover { text-decoration: underline; }
+    .status__row2 {
+      margin: 0;
+      padding-left: 30px;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Compose — input + record, NO agent switcher */
+    .compose {
+      padding: 8px 10px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .compose-field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 8px 10px;
+      transition: border-color .12s, background .12s, box-shadow .12s;
+    }
+    .compose-field:focus-within {
+      border-color: color-mix(in srgb, var(--teal) 50%, var(--line));
+      background: white;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 12%, transparent);
+    }
+    .compose textarea {
+      width: 100%; min-height: 40px; max-height: 88px;
+      border: 0; resize: vertical; outline: 0;
+      font: inherit; font-size: 13.5px; line-height: 1.45;
+      color: var(--ink); background: transparent; padding: 0;
+    }
+    .compose textarea::placeholder { color: #64748b; opacity: 1; }
+
+    .rail {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .rail-left {
+      flex: 1 1 auto; min-width: 0;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .rail-right {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .rec {
+      height: 28px;
+      padding: 0 10px 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      color: var(--ink2);
+      font: inherit; font-size: 12px; font-weight: 650;
+      display: inline-flex; align-items: center; gap: 5px;
+      cursor: pointer;
+    }
+    .rec:hover { border-color: var(--teal); color: var(--teal); }
+    .rec.is-on {
+      border-color: color-mix(in srgb, #dc2626 40%, var(--line));
+      background: #fef2f2;
+      color: #dc2626;
+    }
+    .rec__dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #dc2626;
+    }
+    .rec.is-on .rec__dot { animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.35; } }
+    .model {
+      height: 28px; padding: 0 8px; border: 0; border-radius: 999px;
+      background: transparent; color: var(--muted);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .model:hover { color: var(--ink); background: var(--line2); }
+    .round {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--line); background: white;
+      display: grid; place-items: center; cursor: pointer;
+      color: var(--ink); font-size: 15px; font-weight: 600;
+    }
+    .send {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 0; background: var(--teal); color: #fff;
+      display: grid; place-items: center; cursor: pointer;
+    }
+
+    .restore-row {
+      display: none;
+      padding: 0 2px 2px;
+      font-size: 12px;
+    }
+    .restore-row.is-on { display: block; }
+    .restore-row button {
+      border: 0; background: transparent; padding: 0;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--teal); cursor: pointer;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .hint b { color: var(--ink2); font-weight: 650; }
+
+    .toast {
+      position: absolute; left: 50%; bottom: 18px;
+      transform: translateX(-50%) translateY(10px);
+      max-width: calc(100% - 36px);
+      padding: 9px 13px; border-radius: 11px;
+      background: rgba(15, 23, 42, 0.92); color: #fff;
+      font-size: 12.5px; line-height: 1.4;
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s, transform .18s; z-index: 20;
+    }
+    .toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="chrome">
+      <div class="ctx">
+        <span class="ctx-dot" aria-hidden="true"></span>
+        <span>Cursor</span>
+        <span class="ctx-sep">·</span>
+        <button type="button" class="ctx-proj" id="projBtn">voice-pilot</button>
+      </div>
+      <div class="intent" role="group" aria-label="打算做什么">
+        <button type="button" data-intent="chat" aria-pressed="true">聊聊</button>
+        <button type="button" data-intent="work" aria-pressed="false">动手改</button>
+      </div>
+      <div class="chrome-end">
+        <button type="button" class="icon-btn" id="histBtn" aria-label="以前做过的" title="以前做过的">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4.5 12a7.5 7.5 0 1 0 1.7-4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 5.5V9h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stage">
+      <section class="invite">
+        <p class="kicker"><button type="button" id="prepBtn">帮我理一理再说</button></p>
+        <h1 id="inviteTitle">写一句，开始</h1>
+        <p id="inviteFact">可以写新的；下面也有能接着做的。</p>
+      </section>
+
+      <section class="fuse" aria-label="状态与输入">
+        <!-- 一排小标签 -->
+        <div class="chips" role="listbox" aria-label="各个助手" id="chips"></div>
+
+        <!-- 两行状态：身份+按钮 / 白话说明 -->
+        <div class="status" id="status" aria-live="polite">
+          <div class="status__row1">
+            <div class="status__ico" id="stIco" aria-hidden="true"></div>
+            <div class="status__who">
+              <b id="stName">—</b>
+              <em id="stState">—</em>
+            </div>
+            <div class="status__acts" id="stActs">
+              <button type="button" class="btn btn-primary" id="ctaResume">接着做</button>
+              <button type="button" class="btn btn-link" id="ctaNew">做新的</button>
+            </div>
+          </div>
+          <p class="status__row2" id="stFact">—</p>
+        </div>
+
+        <!-- 输入 + 录制；不要下方 Agent 切换列表 -->
+        <div class="compose">
+          <div class="compose-field">
+            <textarea id="input" rows="2" placeholder="随便写：想法、问题，或想让助手帮你做的事…" aria-label="输入"></textarea>
+          </div>
+          <div class="rail">
+            <div class="rail-left">
+              <button type="button" class="rec" id="recBtn" aria-pressed="false" title="语音录制">
+                <i class="rec__dot" aria-hidden="true"></i>
+                录制
+              </button>
+              <button type="button" class="model" id="modelBtn">混元 Hy4 ▾</button>
+            </div>
+            <div class="rail-right">
+              <button type="button" class="round" id="addMat" aria-label="加入材料">+</button>
+              <button type="button" class="send" id="sendBtn" aria-label="发送">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="restore-row" id="restoreRow">
+            <button type="button" id="ctaRestore">把刚才那件事拿回来</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="hint">
+        <b>这一版：</b>标签一排变小；状态只两行白话；下面不再放 Agent 切换，换助手点上面标签即可。输入和录制留在同一栏。
+      </p>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+
+  <script>
+    var CURSOR_SVG =
+      '<svg viewBox="0 0 24 24" fill="none"><path fill="#EDECEC" d="M20.7 6.4 12.8 1.8a1.6 1.6 0 0 0-1.6 0L3.3 6.4A1.6 1.6 0 0 0 2.5 7.8v9.4c0 .6.3 1.1.8 1.4l7.9 4.6c.5.3 1.1.3 1.6 0l7.9-4.6c.5-.3.8-.8.8-1.4V7.8c0-.6-.3-1.1-.8-1.4Zm-1 1.4L12 19.8V11L4.8 7.2h14.9c.3 0 .5.3.4.6Z"/></svg>';
+
+    // 白话文案；mode: return | running | quiet
+    var AGENTS = {
+      cursor: {
+        id: "cursor", name: "Cursor", short: "Cursor",
+        chipTone: "run", icoClass: "is-cursor", icoHtml: CURSOR_SVG, bg: "#1a1a1a",
+        mode: "return",
+        state: "还能接着做", stateTone: "ok",
+        fact: "三天前做到「最近改了什么代码」，点「接着做」就能继续。",
+        step: "最近改了什么代码",
+        primary: "接着做", secondary: "做新的"
+      },
+      minimax: {
+        id: "minimax", name: "MiniMax", short: "MiniMax",
+        chipTone: "run", icoClass: "is-mm", icoHtml: "M", bg: "linear-gradient(145deg,#5b8def,#3a5fbf)",
+        mode: "running",
+        state: "正在忙", stateTone: "run",
+        fact: "在改登录页的错误提示，你可以盯着，或再补一句。",
+        step: "改登录页错误提示",
+        primary: "去看看", secondary: ""
+      },
+      codex: {
+        id: "codex", name: "Codex", short: "Codex",
+        chipTone: "idle", icoClass: "is-cx", icoHtml: "Cx", bg: "#10a37f",
+        mode: "quiet",
+        state: "空着", stateTone: "idle",
+        fact: "现在没事做。在下面写一句，发给它就行。",
+        step: "", primary: "", secondary: ""
+      },
+      claude: {
+        id: "claude", name: "Claude", short: "Claude",
+        chipTone: "idle", icoClass: "is-cl", icoHtml: "Cl", bg: "#d97757",
+        mode: "quiet",
+        state: "空着", stateTone: "idle",
+        fact: "现在没事做。写一句就可以开始聊。",
+        step: "", primary: "", secondary: ""
+      },
+      workbuddy: {
+        id: "workbuddy", name: "WorkBuddy", short: "本机",
+        chipTone: "idle", icoClass: "is-wb", icoHtml: "WB", bg: "linear-gradient(145deg,#3ecf8e,#1f9d63)",
+        mode: "quiet",
+        state: "待命", stateTone: "idle",
+        fact: "适合随口问、理步骤。写一句就开始。",
+        step: "", primary: "开始聊", secondary: ""
+      },
+      qoder: {
+        id: "qoder", name: "Qoder", short: "Qoder",
+        chipTone: "idle", icoClass: "is-qd", icoHtml: "Q", bg: "#4f46e5",
+        mode: "quiet",
+        state: "空着", stateTone: "idle",
+        fact: "点中它，写一句就能发。",
+        step: "", primary: "", secondary: ""
+      }
+    };
+    var ORDER = ["cursor", "minimax", "codex", "claude", "workbuddy", "qoder"];
+    var selected = "cursor";
+    var dismissed = {};
+    var recording = false;
+    var toastTimer = 0;
+
+    var chipsEl = document.getElementById("chips");
+    var statusEl = document.getElementById("status");
+    var stIco = document.getElementById("stIco");
+    var stName = document.getElementById("stName");
+    var stState = document.getElementById("stState");
+    var stFact = document.getElementById("stFact");
+    var stActs = document.getElementById("stActs");
+    var ctaResume = document.getElementById("ctaResume");
+    var ctaNew = document.getElementById("ctaNew");
+    var restoreRow = document.getElementById("restoreRow");
+    var input = document.getElementById("input");
+    var toastEl = document.getElementById("toast");
+    var inviteFact = document.getElementById("inviteFact");
+    var recBtn = document.getElementById("recBtn");
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("is-on");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove("is-on"); }, 3000);
+    }
+
+    function renderChips() {
+      chipsEl.innerHTML = ORDER.map(function (id) {
+        var a = AGENTS[id];
+        return (
+          '<button type="button" class="chip is-' + a.chipTone + (id === selected ? " is-on" : "") +
+          '" data-id="' + id + '" role="option" aria-selected="' + (id === selected) +
+          '" title="' + a.name + '">' +
+          '<span class="chip__ico" style="background:' + a.bg + '" aria-hidden="true">' + a.icoHtml + "</span>" +
+          '<span class="chip__lab">' + a.short + "</span>" +
+          '<i class="chip__dot" aria-hidden="true"></i></button>'
+        );
+      }).join("");
+      Array.prototype.forEach.call(chipsEl.querySelectorAll(".chip"), function (btn) {
+        btn.addEventListener("click", function () {
+          selectAgent(btn.getAttribute("data-id"));
+        });
+      });
+    }
+
+    function paintStatus() {
+      var a = AGENTS[selected];
+      var hid = !!dismissed[selected] && a.mode === "return";
+
+      if (hid) {
+        statusEl.classList.add("is-hidden");
+        restoreRow.classList.add("is-on");
+        inviteFact.textContent = "刚才那件事先收起来了。写新的，或点下面把它拿回来。";
+      } else {
+        statusEl.classList.remove("is-hidden");
+        restoreRow.classList.remove("is-on");
+        inviteFact.textContent =
+          a.mode === "return" || a.mode === "running"
+            ? "可以写新的；下面也有能接着做的。"
+            : "没有正在做的事。问一句或让助手干活都可以。";
+      }
+
+      stIco.style.background = a.bg;
+      stIco.innerHTML = a.icoHtml.indexOf("<svg") === 0 ? a.icoHtml : a.icoHtml;
+      stName.textContent = a.name;
+      stState.textContent = a.state;
+      stState.className =
+        a.stateTone === "run" ? "is-run" : a.stateTone === "idle" ? "is-idle" : "";
+      stFact.textContent = a.fact;
+
+      var hasPrimary = !!a.primary;
+      var hasSecondary = a.mode === "return" && !!a.secondary;
+      stActs.style.display = hasPrimary || hasSecondary ? "inline-flex" : "none";
+      ctaResume.hidden = !hasPrimary;
+      ctaResume.textContent = a.primary || "";
+      ctaNew.hidden = !hasSecondary;
+      ctaNew.textContent = a.secondary || "";
+
+      statusEl.classList.remove("is-flash");
+      void statusEl.offsetWidth;
+      if (!hid) {
+        statusEl.classList.add("is-flash");
+        setTimeout(function () { statusEl.classList.remove("is-flash"); }, 220);
+      }
+    }
+
+    function selectAgent(id) {
+      if (!AGENTS[id]) return;
+      selected = id;
+      renderChips();
+      paintStatus();
+      toast("换成 " + AGENTS[id].name + " 了");
+    }
+
+    // 产品语义：接着做 = resume checkpoint；做新的 = 收起可恢复卡，不删进度
+    ctaResume.addEventListener("click", function () {
+      var a = AGENTS[selected];
+      if (a.mode === "return") {
+        a.mode = "running";
+        a.chipTone = "run";
+        a.state = "正在忙";
+        a.stateTone = "run";
+        a.fact = "已经接上了，正在让 " + a.name + " 继续「" + a.step + "」。";
+        a.primary = "去看看";
+        a.secondary = "";
+        if (a.step) input.value = "继续：" + a.step;
+        renderChips();
+        paintStatus();
+        toast("接着做：已接上上次进度，正在送到 " + a.name);
+      } else if (a.mode === "running") {
+        toast("去看看：打开 " + a.name + " 看进度（原型）");
+      } else {
+        input.focus();
+        toast("在输入框写一句，发给 " + a.name + " 即可");
+      }
+    });
+
+    ctaNew.addEventListener("click", function () {
+      if (AGENTS[selected].mode !== "return") return;
+      dismissed[selected] = true;
+      paintStatus();
+      input.value = "";
+      input.focus();
+      toast("做新的：状态卡收起了。上次进度还在，随时能拿回来。");
+    });
+
+    document.getElementById("ctaRestore").addEventListener("click", function () {
+      dismissed[selected] = false;
+      paintStatus();
+      toast("好了，又能接着做了");
+    });
+
+    recBtn.addEventListener("click", function () {
+      recording = !recording;
+      recBtn.classList.toggle("is-on", recording);
+      recBtn.setAttribute("aria-pressed", recording ? "true" : "false");
+      recBtn.lastChild.textContent = recording ? "录音中…" : "录制";
+      toast(recording ? "开始录音：说完再点一次结束" : "录音结束，文字会填进输入框（原型）");
+      if (!recording && !input.value.trim()) {
+        input.value = "（录音转写示例）帮我看看最近改了哪些代码";
+      }
+    });
+
+    document.querySelectorAll(".intent button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".intent button").forEach(function (b) {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+        var work = btn.getAttribute("data-intent") === "work";
+        document.getElementById("inviteTitle").textContent = work ? "写一句，开始改" : "写一句，开始";
+        toast(work ? "模式：动手改文件" : "模式：只聊不动手");
+      });
+    });
+
+    document.getElementById("prepBtn").addEventListener("click", function () {
+      toast("帮你把材料和步骤理一理，再交给助手（原型）");
+    });
+    document.getElementById("histBtn").addEventListener("click", function () {
+      toast("打开以前做过的事（原型）");
+    });
+    document.getElementById("projBtn").addEventListener("click", function () {
+      toast("换一个项目文件夹（原型）");
+    });
+    document.getElementById("addMat").addEventListener("click", function () {
+      toast("加入材料：有材料后才会出现整理按钮");
+    });
+    document.getElementById("sendBtn").addEventListener("click", function () {
+      var t = input.value.trim();
+      toast(t ? "发给 " + AGENTS[selected].name + "：「" + t.slice(0, 22) + (t.length > 22 ? "…" : "") + "」" : "先写一句或录一段");
+    });
+    document.getElementById("modelBtn").addEventListener("click", function () {
+      toast("换模型（原型）");
+    });
+
+    renderChips();
+    paintStatus();
+  </script>
+</body>
+</html>

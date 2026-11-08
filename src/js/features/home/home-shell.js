@@ -116,6 +116,9 @@
     if(navMore){
       navMore.hidden=!focusMode;
     }
+    if(global.OneToneHomeNowDirectory&&global.OneToneHomeNowDirectory.paint){
+      try{ global.OneToneHomeNowDirectory.paint(); }catch(_){}
+    }
 
     const keyMapCard=$('homeKeyMapCard');
     if(keyMapCard) keyMapCard.hidden=!showKeyEntry;

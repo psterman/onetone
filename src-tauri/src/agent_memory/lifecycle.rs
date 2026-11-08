@@ -36,7 +36,17 @@ pub fn transition_allowed(from_status: &str, event_type: &str) -> Result<&'stati
         .ok_or_else(|| format!("unknown lifecycle event_type: {event_type}"))?;
     let from = normalize_status(from_status);
     let ok = match from {
-        "discovered" => matches!(event_type, "task_started" | "task_resumed"),
+        // Soft Pad may only see stop (complete/error) when submit lacked session_id —
+        // allow terminal edges from discovered so Home can leave sticky「可恢复」.
+        "discovered" => matches!(
+            event_type,
+            "task_started"
+                | "task_resumed"
+                | "task_completed"
+                | "task_failed"
+                | "session_aborted"
+                | "task_cancelled"
+        ),
         "running" => matches!(
             event_type,
             "waiting_approval"
@@ -244,6 +254,18 @@ mod tests {
         assert_eq!(
             transition_allowed("created", "task_resumed").unwrap(),
             "running"
+        );
+    }
+
+    #[test]
+    fn transition_discovered_accepts_terminal_stop() {
+        assert_eq!(
+            transition_allowed("discovered", "task_completed").unwrap(),
+            "completed"
+        );
+        assert_eq!(
+            transition_allowed("discovered", "task_failed").unwrap(),
+            "failed"
         );
     }
 

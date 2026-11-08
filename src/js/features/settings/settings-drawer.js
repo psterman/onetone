@@ -1604,6 +1604,9 @@
         }
         leftNav.classList.toggle('is-focus-mode',!!(focusHome&&isWorkbenchShell()));
       }
+      if(global.OneToneHomeNowDirectory&&global.OneToneHomeNowDirectory.syncVisibility){
+        global.OneToneHomeNowDirectory.syncVisibility();
+      }
     }catch(_){}
 
     if(ui.drawerOpen) resetSettingsLayoutScroll({resetPanel:true});

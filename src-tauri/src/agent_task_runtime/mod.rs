@@ -28,7 +28,7 @@ pub use engine::{
 };
 pub use providers::{parse_provider_id, probe_workbuddy_edit, provider_ready_snapshot};
 pub use resume::{abandon_task, on_process_start, resume_task};
-pub use verify_accept::{ensure_verify_sandbox, evaluate_verify};
+pub use verify_accept::{ensure_chat_scratch, ensure_verify_sandbox, evaluate_verify};
 
 use engine::{approve_patch as eng_approve, reject_patch as eng_reject, start_task, StartOpts};
 use store::{get_task, list_events, with_conn_at, with_write};
@@ -118,8 +118,12 @@ pub fn api_cancel(task_id: &str) -> Result<TaskDto, String> {
         if task.status == TaskStatus::Running.as_str()
             || task.status == TaskStatus::Verifying.as_str()
             || task.status == TaskStatus::Repair.as_str()
+            || task.status == TaskStatus::Waiting.as_str()
         {
             task.status = TaskStatus::Cancelled.as_str().into();
+            task.waiting_reason = None;
+            task.pending_approval_token = None;
+            task.pending_patch_json = None;
             let ev = store::append_event_and_update_task(
                 conn,
                 &task,
@@ -135,6 +139,18 @@ pub fn api_cancel(task_id: &str) -> Result<TaskDto, String> {
         get_task(conn, task_id)?
             .map(|t| t.to_dto())
             .ok_or_else(|| "not_found".into())
+    })
+}
+
+pub fn api_approve_deliver(req: ApprovePatchRequest) -> Result<TaskDto, String> {
+    with_write(|conn| {
+        engine::approve_deliver(conn, &req.task_id, &req.approval_token).map(|t| t.to_dto())
+    })
+}
+
+pub fn api_reject_deliver(req: ApprovePatchRequest) -> Result<TaskDto, String> {
+    with_write(|conn| {
+        engine::reject_deliver(conn, &req.task_id, &req.approval_token).map(|t| t.to_dto())
     })
 }
 
@@ -195,11 +211,16 @@ pub fn api_drive(
     max_steps: Option<u32>,
 ) -> Result<TaskDto, String> {
     // Bind + admit under the same write lock; no driver until admitted.
-    with_write(|conn| {
+    let admit = with_write(|conn| {
         let task = bind_provider_locked(conn, task_id, provider, "real")?;
         assert_drive_admitted(conn, &task, provider)?;
         Ok(())
-    })?;
+    });
+    if let Err(e) = admit {
+        // Don't leave chat/work stuck at running · turn 0 after a gate reject.
+        let _ = with_write(|conn| engine::fail_task_public(conn, task_id, &e));
+        return Err(e);
+    }
     let mut driver = providers::make_driver(provider)?;
     let dto = drive_releasing(task_id, driver.as_mut(), max_steps)?;
     if dto.status == "done" {
@@ -259,9 +280,27 @@ fn drive_releasing(
             });
         }
 
-        let updated = with_write(|conn| {
-            engine::apply_raw_tool_turn(conn, task_id, &raw, &mut recent)
+        // Begin under write lock; run web_search/fetch_url OFF the lock so a hung
+        // provider cannot freeze ATR poll / FE atr_turn (symptoms: 提问失败 tool_error).
+        let outcome = with_write(|conn| {
+            engine::begin_raw_tool_turn(conn, task_id, &raw, &mut recent)
         })?;
+        let updated = match outcome {
+            engine::RawTurnOutcome::Applied(row) => row,
+            engine::RawTurnOutcome::PendingNetwork { call, streak } => {
+                if cancel_tok.is_cancelled() {
+                    return with_write(|conn| {
+                        engine::mark_cancelled_public(conn, task_id).map(|t| t.to_dto())
+                    });
+                }
+                let payload = engine::network_tool_payload(&call);
+                with_write(|conn| {
+                    engine::finish_network_tool(
+                        conn, task_id, &call, payload, &mut recent, streak,
+                    )
+                })?
+            }
+        };
 
         steps = steps.saturating_add(1);
         if is_idle(&updated.status) {
@@ -999,6 +1038,104 @@ mod tests {
             check_results.len() >= 2,
             "expected fail then ok run_check, got {}",
             check_results.len()
+        );
+        store::set_test_db_path(None);
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_file(&db);
+    }
+
+    #[test]
+    fn deliver_waits_for_approval_before_tool_result() {
+        let db = tmp_db();
+        store::set_test_db_path(Some(db.clone()));
+        let (root, _) = prep_ws();
+        let dto = api_start(StartTaskRequest {
+            goal: "paste to agent".into(),
+            workspace_root: root.display().to_string(),
+            permission_mode: Some("read_only".into()),
+            materials_summary: Some("user: prior\nassistant: hi".into()),
+            use_fake_driver: true,
+            ..Default::default()
+        })
+        .unwrap();
+        let mut driver = FakeDriver {
+            steps: vec![
+                r#"{"tool":"deliver_to_agent","arguments":{"text":"hello agent","kind":"soft_pad"}}"#
+                    .into(),
+                r#"{"tool":"finish","arguments":{"summary":"delivered"}}"#.into(),
+            ],
+            idx: 0,
+        };
+        let waiting = api_drive_fake(&dto.task_id, &mut driver).unwrap();
+        assert_eq!(waiting.status, "waiting");
+        assert_eq!(
+            waiting.waiting_reason.as_deref(),
+            Some("deliver_approval")
+        );
+        let events_before = api_events(&dto.task_id).unwrap();
+        assert!(events_before.iter().any(|e| e.kind == "waiting_deliver"));
+        assert!(!events_before.iter().any(|e| {
+            e.kind == "tool_result" && e.tool_name.as_deref() == Some("deliver_to_agent")
+        }));
+        let mats = super::prompts::materials_summary_from_events(&events_before);
+        assert!(mats.contains("prior"), "{mats}");
+        let token = waiting.pending_approval_token.clone().unwrap();
+        let after = api_approve_deliver(ApprovePatchRequest {
+            task_id: dto.task_id.clone(),
+            approval_token: token,
+            persist_autonomous: false,
+        })
+        .unwrap();
+        assert_eq!(after.status, "running");
+        let events_after = api_events(&dto.task_id).unwrap();
+        assert!(events_after.iter().any(|e| {
+            e.kind == "tool_result" && e.tool_name.as_deref() == Some("deliver_to_agent")
+        }));
+        let done = api_drive_fake(&dto.task_id, &mut driver).unwrap();
+        assert_eq!(done.status, "done");
+        store::set_test_db_path(None);
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_file(&db);
+    }
+
+    #[test]
+    fn reject_deliver_resumes_without_waiting() {
+        let db = tmp_db();
+        store::set_test_db_path(Some(db.clone()));
+        let (root, _) = prep_ws();
+        let dto = api_start(StartTaskRequest {
+            goal: "paste".into(),
+            workspace_root: root.display().to_string(),
+            permission_mode: Some("read_only".into()),
+            materials_summary: None,
+            use_fake_driver: true,
+            ..Default::default()
+        })
+        .unwrap();
+        let mut driver = FakeDriver {
+            steps: vec![
+                r#"{"tool":"deliver_to_agent","arguments":{"text":"nope"}}"#.into(),
+                r#"{"tool":"finish","arguments":{"summary":"skipped"}}"#.into(),
+            ],
+            idx: 0,
+        };
+        let waiting = api_drive_fake(&dto.task_id, &mut driver).unwrap();
+        let token = waiting.pending_approval_token.clone().unwrap();
+        let after = api_reject_deliver(ApprovePatchRequest {
+            task_id: dto.task_id.clone(),
+            approval_token: token,
+            persist_autonomous: false,
+        })
+        .unwrap();
+        assert_eq!(after.status, "running");
+        let events = api_events(&dto.task_id).unwrap();
+        let deliver = events
+            .iter()
+            .find(|e| e.kind == "tool_result" && e.tool_name.as_deref() == Some("deliver_to_agent"))
+            .expect("deliver tool_result");
+        assert_eq!(
+            deliver.payload["result"]["code"].as_str(),
+            Some("rejected")
         );
         store::set_test_db_path(None);
         let _ = fs::remove_dir_all(&root);

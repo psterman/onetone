@@ -14,7 +14,12 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const SRC_CURSOR_LOCAL: &str = "cursor_local_activity";
 pub const CURSOR_USAGE_CONSOLE: &str = "https://cursor.com/settings";
 const REFRESH_SECS: u64 = 10 * 60;
+/// High Cursor builds hold WAL longer — retry sooner after a busy miss.
+const REFRESH_BUSY_SECS: u64 = 45;
 const SCHEMA_CACHE_MS: u64 = 10 * 60 * 1000;
+/// Keep a detected schema for aggregate even after TTL while live detect flaps under lock.
+const SCHEMA_STALE_MAX_MS: u64 = 24 * 60 * 60 * 1000;
+const OPEN_BUSY_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Debug, Clone)]
 struct HeadersLayout {
@@ -47,8 +52,18 @@ struct BubbleLayout {
 struct SchemaBundle {
     headers: HeadersLayout,
     composer: ComposerDataLayout,
-    bubble: BubbleLayout,
+    /// None → count user headers against composer day (newer Cursor / lock flakes).
+    bubble: Option<BubbleLayout>,
     detected_at_ms: u64,
+}
+
+fn last_busy_flag() -> &'static AtomicBool {
+    static FLAG: OnceLock<AtomicBool> = OnceLock::new();
+    FLAG.get_or_init(|| AtomicBool::new(false))
+}
+
+fn note_refresh_busy(busy: bool) {
+    last_busy_flag().store(busy, Ordering::SeqCst);
 }
 
 #[derive(Debug, Clone, Default)]
@@ -99,20 +114,243 @@ fn global_vscdb_path() -> Option<PathBuf> {
     }
 }
 
-fn open_ro(path: &Path) -> Result<Connection, String> {
-    // URI mode=ro matches Cursor's live WAL readers (plain READ_ONLY can stall on Windows).
-    let uri = format!(
-        "file:///{}?mode=ro",
-        path.to_string_lossy().replace('\\', "/")
-    );
+fn vscdb_uri(path: &Path, query: &str) -> String {
+    format!(
+        "file:///{}?{}",
+        path.to_string_lossy().replace('\\', "/"),
+        query
+    )
+}
+
+fn wal_path(db: &Path) -> PathBuf {
+    PathBuf::from(format!("{}-wal", db.display()))
+}
+
+fn shm_path(db: &Path) -> PathBuf {
+    PathBuf::from(format!("{}-shm", db.display()))
+}
+
+fn has_wal_sidecars(db: &Path) -> bool {
+    wal_path(db).is_file() || shm_path(db).is_file()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FileMarks {
+    db_mtime_ms: u64,
+    db_size: u64,
+    wal_mtime_ms: u64,
+    wal_size: u64,
+    shm_mtime_ms: u64,
+    shm_size: u64,
+}
+
+fn file_mtime_size(p: &Path) -> (u64, u64) {
+    match std::fs::metadata(p) {
+        Ok(m) => {
+            let size = m.len();
+            let mtime = m
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            (mtime, size)
+        }
+        Err(_) => (0, 0),
+    }
+}
+
+fn collect_marks(db: &Path) -> FileMarks {
+    let (db_mtime_ms, db_size) = file_mtime_size(db);
+    let (wal_mtime_ms, wal_size) = file_mtime_size(&wal_path(db));
+    let (shm_mtime_ms, shm_size) = file_mtime_size(&shm_path(db));
+    FileMarks {
+        db_mtime_ms,
+        db_size,
+        wal_mtime_ms,
+        wal_size,
+        shm_mtime_ms,
+        shm_size,
+    }
+}
+
+struct SnapshotCache {
+    marks: FileMarks,
+    dir: PathBuf,
+}
+
+fn snapshot_cache() -> &'static Mutex<Option<SnapshotCache>> {
+    static CACHE: OnceLock<Mutex<Option<SnapshotCache>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn err_is_busy(err: &str) -> bool {
+    let e = err.to_ascii_lowercase();
+    e.contains("busy")
+        || e.contains("locked")
+        || e.contains("unable to open")
+        || e.contains("disk i/o")
+}
+
+fn open_uri(uri: &str, query_only: bool) -> Result<Connection, String> {
     let conn = Connection::open_with_flags(
-        &uri,
+        uri,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )
     .map_err(|e| format!("open vscdb: {e}"))?;
-    // ponytail: short busy wait — upgrade to snapshot-copy if Cursor holds exclusive locks longer
-    let _ = conn.busy_timeout(Duration::from_secs(3));
+    let _ = conn.busy_timeout(OPEN_BUSY_TIMEOUT);
+    if query_only {
+        let _ = conn.execute_batch("PRAGMA query_only=ON;");
+    }
     Ok(conn)
+}
+
+/// Community ladder (carryover / ccopy / vscode): live RO → WAL-trio copy → VACUUM INTO.
+/// Never use immutable=1 while -wal/-shm exist (moraine).
+pub fn open_vscdb_ro(path: &Path) -> Result<Connection, String> {
+    open_ro(path)
+}
+
+fn open_ro(path: &Path) -> Result<Connection, String> {
+    let live_uri = vscdb_uri(path, "mode=ro");
+    match open_uri(&live_uri, true) {
+        Ok(c) => return Ok(c),
+        Err(e) => {
+            crate::app_log::sync_emergency_line(
+                "cursor_activity",
+                &format!("open: live failed ({e})"),
+            );
+            if !err_is_busy(&e) && !has_wal_sidecars(path) {
+                // Cleanly closed DB on RO media — immutable is safe only without sidecars.
+                match open_uri(&vscdb_uri(path, "mode=ro&immutable=1"), true) {
+                    Ok(c) => {
+                        crate::app_log::sync_emergency_line(
+                            "cursor_activity",
+                            "open: live miss → immutable (no sidecars)",
+                        );
+                        return Ok(c);
+                    }
+                    Err(ie) => {
+                        crate::app_log::sync_emergency_line(
+                            "cursor_activity",
+                            &format!("open: immutable failed ({ie})"),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    match open_via_wal_trio_copy(path) {
+        Ok(c) => {
+            crate::app_log::sync_emergency_line("cursor_activity", "open: WAL-trio snapshot ok");
+            return Ok(c);
+        }
+        Err(e) => {
+            crate::app_log::sync_emergency_line(
+                "cursor_activity",
+                &format!("open: WAL-trio failed ({e})"),
+            );
+        }
+    }
+
+    match open_via_vacuum_into(path) {
+        Ok(c) => {
+            crate::app_log::sync_emergency_line("cursor_activity", "open: VACUUM INTO ok");
+            Ok(c)
+        }
+        Err(e) => {
+            crate::app_log::sync_emergency_line(
+                "cursor_activity",
+                &format!("open: VACUUM INTO failed ({e})"),
+            );
+            Err(e)
+        }
+    }
+}
+
+fn copy_wal_trio_to_dir(path: &Path, dir: &Path) -> Result<PathBuf, String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("snapshot mkdir: {e}"))?;
+    let dest = dir.join("state.vscdb");
+    std::fs::copy(path, &dest).map_err(|e| format!("snapshot copy db: {e}"))?;
+    let wal = wal_path(path);
+    if wal.is_file() {
+        std::fs::copy(&wal, dir.join("state.vscdb-wal"))
+            .map_err(|e| format!("snapshot copy wal: {e}"))?;
+    }
+    let shm = shm_path(path);
+    if shm.is_file() {
+        let _ = std::fs::copy(&shm, dir.join("state.vscdb-shm"));
+    }
+    Ok(dest)
+}
+
+fn open_via_wal_trio_copy(path: &Path) -> Result<Connection, String> {
+    let marks = collect_marks(path);
+    {
+        let guard = snapshot_cache().lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(c) = guard.as_ref() {
+            if c.marks == marks {
+                let dest = c.dir.join("state.vscdb");
+                if dest.is_file() {
+                    return open_uri(&vscdb_uri(&dest, "mode=ro"), true);
+                }
+            }
+        }
+    }
+
+    let dir = std::env::temp_dir().join(format!(
+        "onetone-vscdb-{}-{}",
+        std::process::id(),
+        now_ms() % 1_000_000
+    ));
+    let dest = copy_wal_trio_to_dir(path, &dir)?;
+    let conn = open_uri(&vscdb_uri(&dest, "mode=ro"), true)?;
+    *snapshot_cache().lock().unwrap_or_else(|e| e.into_inner()) = Some(SnapshotCache { marks, dir });
+    Ok(conn)
+}
+
+fn sql_path_literal(path: &Path) -> String {
+    path.to_string_lossy()
+        .replace('\\', "/")
+        .replace('\'', "''")
+}
+
+/// Consistent single-file snapshot (ccb). Source opened RO without query_only.
+fn open_via_vacuum_into(path: &Path) -> Result<Connection, String> {
+    let live = open_uri(&vscdb_uri(path, "mode=ro"), false)?;
+    let dir = std::env::temp_dir().join(format!(
+        "onetone-vscdb-vac-{}-{}",
+        std::process::id(),
+        now_ms() % 1_000_000
+    ));
+    std::fs::create_dir_all(&dir).map_err(|e| format!("vacuum mkdir: {e}"))?;
+    let dest = dir.join("state.vscdb");
+    if dest.exists() {
+        let _ = std::fs::remove_file(&dest);
+    }
+    let lit = sql_path_literal(&dest);
+    live.execute(&format!("VACUUM INTO '{lit}'"), [])
+        .map_err(|e| format!("VACUUM INTO: {e}"))?;
+    drop(live);
+    open_uri(&vscdb_uri(&dest, "mode=ro"), true)
+}
+
+fn prior_ready_snap() -> Option<AgentUsageSnapshot> {
+    let prev = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor);
+    if prev.status == "ready" && prev.source == SRC_CURSOR_LOCAL {
+        Some(prev)
+    } else if prev.source == SRC_CURSOR_LOCAL
+        && (prev.local_today_requests.is_some() || prev.local_today_sessions.is_some())
+    {
+        Some(prev)
+    } else {
+        None
+    }
+}
+
+fn keep_prior_ready_snap() -> bool {
+    prior_ready_snap().is_some()
 }
 
 fn kv_get(conn: &Connection, table: &str, key: &str) -> Option<Value> {
@@ -286,6 +524,14 @@ fn local_utc_offset_secs() -> i64 {
     }
 }
 
+/// Newer Cursor dropped ItemTable `composer.composerHeaders`; composers live only under
+/// `cursorDiskKV` keys `composerData:<id>`. Aggregate synthesizes the list from that scan.
+const COMPOSER_DATA_SCAN_KEY: &str = "__composerData_scan__";
+
+fn is_composer_data_scan(headers: &HeadersLayout) -> bool {
+    headers.key == COMPOSER_DATA_SCAN_KEY
+}
+
 fn detect_composer_headers(conn: &Connection) -> Option<HeadersLayout> {
     // Candidate keys — validate shape, don't assume name alone means schema.
     let candidates = ["composer.composerHeaders", "composer.composerData"];
@@ -334,7 +580,43 @@ fn detect_composer_headers(conn: &Connection) -> Option<HeadersLayout> {
     None
 }
 
+fn composer_data_layout_from_obj(obj: &serde_json::Map<String, Value>) -> Option<ComposerDataLayout> {
+    let headers_field = [
+        "fullConversationHeadersOnly",
+        "conversationHeaders",
+        "headers",
+    ]
+    .into_iter()
+    .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
+    let hdrs = obj.get(headers_field)?.as_array()?;
+    let (bubble_id_field, type_field) = match hdrs.iter().find_map(|h| h.as_object()) {
+        Some(sample) => {
+            let bubble_id_field = ["bubbleId", "id"]
+                .into_iter()
+                .find(|f| sample.get(*f).and_then(|x| x.as_str()).is_some())
+                .unwrap_or("bubbleId");
+            let type_field = ["type", "bubbleType"]
+                .into_iter()
+                .find(|f| sample.get(*f).is_some())
+                .unwrap_or("type");
+            (bubble_id_field, type_field)
+        }
+        None => ("bubbleId", "type"),
+    };
+    Some(ComposerDataLayout {
+        table: "cursorDiskKV".into(),
+        key_prefix: "composerData:".into(),
+        headers_field: headers_field.into(),
+        bubble_id_field: bubble_id_field.into(),
+        type_field: type_field.into(),
+        user_type: 1,
+    })
+}
+
 fn detect_composer_data(conn: &Connection, headers: &HeadersLayout) -> Option<ComposerDataLayout> {
+    if is_composer_data_scan(headers) {
+        return None; // filled by detect_schema_from_composer_data
+    }
     let index = kv_get(conn, &headers.table, &headers.key)?;
     let list = index
         .get(&headers.list_field)
@@ -346,43 +628,61 @@ fn detect_composer_data(conn: &Connection, headers: &HeadersLayout) -> Option<Co
             .and_then(|x| x.as_str())
             .map(|s| s.to_string())
     })?;
-    let prefix = "composerData:";
-    let key = format!("{prefix}{sample_id}");
+    let key = format!("composerData:{sample_id}");
     let data = kv_get(conn, "cursorDiskKV", &key)?;
-    let obj = data.as_object()?;
-    let headers_field = [
-        "fullConversationHeadersOnly",
-        "conversationHeaders",
-        "headers",
-    ]
-    .into_iter()
-    .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
-    let hdrs = obj.get(headers_field)?.as_array()?;
-    let sample = hdrs.iter().find_map(|h| h.as_object())?;
-    let bubble_id_field = ["bubbleId", "id"]
-        .into_iter()
-        .find(|f| sample.get(*f).and_then(|x| x.as_str()).is_some())?;
-    let type_field = ["type", "bubbleType"]
-        .into_iter()
-        .find(|f| sample.get(*f).is_some())?;
-    // User turns historically type==1
-    let user_type = 1i64;
-    let has_user = hdrs.iter().any(|h| {
-        h.get(type_field)
-            .and_then(|t| t.as_i64().or_else(|| t.as_u64().map(|u| u as i64)))
-            == Some(user_type)
-    });
-    if !has_user && !hdrs.is_empty() {
-        // Still accept layout if type field exists — empty chat edge case.
-        let _ = has_user;
+    composer_data_layout_from_obj(data.as_object()?)
+}
+
+/// ItemTable index gone — sample `composerData:*` rows for layout.
+fn detect_schema_from_composer_data(conn: &Connection) -> Option<SchemaBundle> {
+    let mut stmt = conn
+        .prepare("SELECT key FROM cursorDiskKV WHERE key LIKE 'composerData:%' LIMIT 32")
+        .ok()?;
+    let keys: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .ok()?
+        .filter_map(|r| r.ok())
+        .collect();
+    if keys.is_empty() {
+        return None;
     }
-    Some(ComposerDataLayout {
+    let mut composer = None;
+    for key in &keys {
+        let Some(data) = kv_get(conn, "cursorDiskKV", key) else {
+            continue;
+        };
+        let Some(obj) = data.as_object() else {
+            continue;
+        };
+        if let Some(layout) = composer_data_layout_from_obj(obj) {
+            composer = Some(layout);
+            break;
+        }
+    }
+    let composer = composer.unwrap_or(ComposerDataLayout {
         table: "cursorDiskKV".into(),
-        key_prefix: prefix.into(),
-        headers_field: headers_field.into(),
-        bubble_id_field: bubble_id_field.into(),
-        type_field: type_field.into(),
-        user_type,
+        key_prefix: "composerData:".into(),
+        headers_field: "fullConversationHeadersOnly".into(),
+        bubble_id_field: "bubbleId".into(),
+        type_field: "type".into(),
+        user_type: 1,
+    });
+    let headers = HeadersLayout {
+        table: "cursorDiskKV".into(),
+        key: COMPOSER_DATA_SCAN_KEY.into(),
+        list_field: "allComposers".into(),
+        id_field: "composerId".into(),
+        ts_fields: vec!["lastUpdatedAt".into(), "createdAt".into()],
+    };
+    crate::app_log::sync_emergency_line(
+        "cursor_activity",
+        "schema: ItemTable headers miss → composerData scan",
+    );
+    Some(SchemaBundle {
+        headers,
+        composer,
+        bubble: None, // light-first; bubble upgrade optional via later sample
+        detected_at_ms: now_ms(),
     })
 }
 
@@ -391,8 +691,7 @@ fn detect_bubble_schema(
     headers: &HeadersLayout,
     composer: &ComposerDataLayout,
 ) -> Option<BubbleLayout> {
-    let index = kv_get(conn, &headers.table, &headers.key)?;
-    let list = index.get(&headers.list_field)?.as_array()?;
+    let list = composer_list_values(conn, headers).ok()?;
     for c in list.iter().take(8) {
         let cid = c.get(&headers.id_field)?.as_str()?;
         let data = kv_get(
@@ -429,29 +728,165 @@ fn detect_bubble_schema(
 }
 
 fn detect_schema(conn: &Connection) -> Option<SchemaBundle> {
-    let headers = detect_composer_headers(conn)?;
-    let composer = detect_composer_data(conn, &headers)?;
-    let bubble = detect_bubble_schema(conn, &headers, &composer)?;
-    Some(SchemaBundle {
-        headers,
-        composer,
-        bubble,
-        detected_at_ms: now_ms(),
-    })
+    if let Some(headers) = detect_composer_headers(conn) {
+        if let Some(composer) = detect_composer_data(conn, &headers) {
+            let bubble = detect_bubble_schema(conn, &headers, &composer);
+            return Some(SchemaBundle {
+                headers,
+                composer,
+                bubble,
+                detected_at_ms: now_ms(),
+            });
+        }
+    }
+    detect_schema_from_composer_data(conn)
+}
+
+/// Build the composer index list: ItemTable JSON or synthesized from `composerData:*`.
+fn composer_list_values(
+    conn: &Connection,
+    headers: &HeadersLayout,
+) -> Result<Vec<Value>, String> {
+    if is_composer_data_scan(headers) {
+        return scan_composer_data_index(conn);
+    }
+    let index = kv_get(conn, &headers.table, &headers.key)
+        .ok_or_else(|| "headers missing".to_string())?;
+    index
+        .get(&headers.list_field)
+        .and_then(|x| x.as_array())
+        .cloned()
+        .ok_or_else(|| "composer list missing".to_string())
+}
+
+fn scan_composer_data_index(conn: &Connection) -> Result<Vec<Value>, String> {
+    // json_extract keeps cost ~seconds on multi-GB DBs vs full-blob scan.
+    let sql = "SELECT key,
+            json_extract(value, '$.composerId'),
+            json_extract(value, '$.createdAt'),
+            json_extract(value, '$.lastUpdatedAt'),
+            json_extract(value, '$.conversationCheckpointLastUpdatedAt')
+         FROM cursorDiskKV WHERE key LIKE 'composerData:%'";
+    let mut stmt = match conn.prepare(sql) {
+        Ok(s) => s,
+        Err(_) => {
+            // JSON1 unavailable — fall back to key-only + full kv_get (slower).
+            return scan_composer_data_index_fallback(conn);
+        }
+    };
+    let rows = stmt
+        .query_map([], |row| {
+            let key: String = row.get(0)?;
+            let cid: Option<String> = row.get(1)?;
+            let created: Option<f64> = row.get(2)?;
+            let updated: Option<f64> = row.get(3)?;
+            let checkpoint: Option<f64> = row.get(4)?;
+            Ok((key, cid, created, updated, checkpoint))
+        })
+        .map_err(|e| format!("composerData scan: {e}"))?;
+    let mut out = Vec::new();
+    for row in rows.flatten() {
+        let (key, cid, created, updated, checkpoint) = row;
+        let id = cid
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                key.strip_prefix("composerData:")
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty())
+            })
+            .unwrap_or_default();
+        if id.is_empty() {
+            continue;
+        }
+        let created_ms = created.and_then(|n| if n > 0.0 { Some(n as u64) } else { None });
+        let updated_ms = updated
+            .and_then(|n| if n > 0.0 { Some(n as u64) } else { None })
+            .or_else(|| {
+                checkpoint.and_then(|n| if n > 0.0 { Some(n as u64) } else { None })
+            })
+            .or(created_ms);
+        let mut obj = serde_json::Map::new();
+        obj.insert("composerId".into(), Value::String(id));
+        if let Some(ms) = created_ms {
+            obj.insert("createdAt".into(), Value::Number(ms.into()));
+        }
+        if let Some(ms) = updated_ms {
+            obj.insert("lastUpdatedAt".into(), Value::Number(ms.into()));
+        }
+        out.push(Value::Object(obj));
+    }
+    Ok(out)
+}
+
+fn scan_composer_data_index_fallback(conn: &Connection) -> Result<Vec<Value>, String> {
+    let mut stmt = conn
+        .prepare("SELECT key FROM cursorDiskKV WHERE key LIKE 'composerData:%'")
+        .map_err(|e| format!("composerData keys: {e}"))?;
+    let keys: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| format!("composerData keys: {e}"))?
+        .filter_map(|r| r.ok())
+        .collect();
+    let mut out = Vec::new();
+    for key in keys {
+        let Some(data) = kv_get(conn, "cursorDiskKV", &key) else {
+            continue;
+        };
+        let id = data
+            .get("composerId")
+            .and_then(|x| x.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                key.strip_prefix("composerData:")
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty())
+            })
+            .unwrap_or_default();
+        if id.is_empty() {
+            continue;
+        }
+        let mut obj = serde_json::Map::new();
+        obj.insert("composerId".into(), Value::String(id));
+        if let Some(ms) = data.get("createdAt").and_then(as_ms) {
+            obj.insert("createdAt".into(), Value::Number(ms.into()));
+        }
+        if let Some(ms) = data
+            .get("lastUpdatedAt")
+            .and_then(as_ms)
+            .or_else(|| data.get("conversationCheckpointLastUpdatedAt").and_then(as_ms))
+        {
+            obj.insert("lastUpdatedAt".into(), Value::Number(ms.into()));
+        }
+        out.push(Value::Object(obj));
+    }
+    Ok(out)
 }
 
 fn cached_schema(conn: &Connection) -> Option<SchemaBundle> {
-    {
+    let stale = {
         let guard = schema_cache().lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(s) = guard.as_ref() {
-            if now_ms().saturating_sub(s.detected_at_ms) < SCHEMA_CACHE_MS {
-                return Some(s.clone());
-            }
+        guard.clone()
+    };
+    if let Some(ref s) = stale {
+        if now_ms().saturating_sub(s.detected_at_ms) < SCHEMA_CACHE_MS {
+            return Some(s.clone());
         }
     }
-    let fresh = detect_schema(conn)?;
-    *schema_cache().lock().unwrap_or_else(|e| e.into_inner()) = Some(fresh.clone());
-    Some(fresh)
+    if let Some(fresh) = detect_schema(conn) {
+        *schema_cache().lock().unwrap_or_else(|e| e.into_inner()) = Some(fresh.clone());
+        return Some(fresh);
+    }
+    // Live detect failed (often WAL busy) — reuse stale schema up to a day.
+    if let Some(s) = stale {
+        if now_ms().saturating_sub(s.detected_at_ms) < SCHEMA_STALE_MAX_MS {
+            crate::app_log::sync_emergency_line(
+                "cursor_activity",
+                "schema: detect miss → reuse stale layout",
+            );
+            return Some(s);
+        }
+    }
+    None
 }
 
 fn session_ts(c: &Value, layout: &HeadersLayout) -> u64 {
@@ -474,16 +909,21 @@ fn bubble_created_at(
     as_ms(v.get(&layout.created_at_field)?)
 }
 
+/// Headers-only KPI: force no bubble lookups (composer-day attribution).
+pub fn aggregate_activity_light(
+    conn: &Connection,
+    schema: &SchemaBundle,
+) -> Result<ActivityTotals, String> {
+    let mut light = schema.clone();
+    light.bubble = None;
+    aggregate_activity(conn, &light)
+}
+
 pub fn aggregate_activity(
     conn: &Connection,
     schema: &SchemaBundle,
 ) -> Result<ActivityTotals, String> {
-    let index = kv_get(conn, &schema.headers.table, &schema.headers.key)
-        .ok_or_else(|| "headers missing".to_string())?;
-    let list = index
-        .get(&schema.headers.list_field)
-        .and_then(|x| x.as_array())
-        .ok_or_else(|| "composer list missing".to_string())?;
+    let list = composer_list_values(conn, &schema.headers)?;
 
     let now = now_ms();
     let (today_start, yest_start) = local_day_bounds_ms(now);
@@ -491,7 +931,7 @@ pub fn aggregate_activity(
     let mut totals = ActivityTotals::default();
     let mut spans: Vec<(u64, u64)> = Vec::new();
 
-    for c in list {
+    for c in &list {
         let ts = session_ts(c, &schema.headers);
         let active_today = ts >= today_start;
         if !active_today {
@@ -538,9 +978,24 @@ pub fn aggregate_activity(
                 Some(s) => s,
                 None => continue,
             };
-            let ca = match bubble_created_at(conn, &schema.bubble, cid, bid) {
+            let ca = schema
+                .bubble
+                .as_ref()
+                .and_then(|b| bubble_created_at(conn, b, cid, bid));
+            let ca = match ca {
                 Some(ms) => ms,
-                None => continue,
+                None => {
+                    // Degraded / light: attribute user header to composer session day.
+                    if active_today {
+                        totals.turns_today = totals.turns_today.saturating_add(1);
+                        if ts > 0 {
+                            day_ts.push(ts);
+                        }
+                    } else if ts >= yest_start {
+                        totals.turns_yesterday = totals.turns_yesterday.saturating_add(1);
+                    }
+                    continue;
+                }
             };
             if ca >= today_start {
                 totals.turns_today = totals.turns_today.saturating_add(1);
@@ -559,11 +1014,13 @@ pub fn aggregate_activity(
     Ok(totals)
 }
 
-fn disabled_snap(message: &str) -> AgentUsageSnapshot {
+fn disabled_snap(status: &str, message: &str) -> AgentUsageSnapshot {
     let now = now_ms();
     AgentUsageSnapshot {
         source: SRC_CURSOR_LOCAL.into(),
-        status: "unavailable".into(),
+        // consent_off | busy | unavailable — never collapse busy into unavailable
+        // (home strip treated unavailable as「未开启」and showed a dead 开启 CTA).
+        status: status.into(),
         confidence: "local_only".into(),
         message: message.into(),
         console_url: CURSOR_USAGE_CONSOLE.into(),
@@ -591,12 +1048,68 @@ fn ready_snap(t: &ActivityTotals) -> AgentUsageSnapshot {
     }
 }
 
+fn put_busy_preserving_totals(detail: &str) {
+    note_refresh_busy(true);
+    let mut snap = disabled_snap(
+        "busy",
+        "Cursor 本地统计暂时读不到（库正忙），稍后自动重试",
+    );
+    if let Some(prev) = prior_ready_snap() {
+        snap.local_today_requests = prev.local_today_requests;
+        snap.local_today_sessions = prev.local_today_sessions;
+        snap.local_today_active_ms = prev.local_today_active_ms;
+        snap.local_yesterday_requests = prev.local_yesterday_requests;
+        snap.last_success_at = prev.last_success_at;
+        if prev.local_today_requests.is_some() {
+            snap.message = format!(
+                "今日 {} 次 · 刷新暂缓（库忙）",
+                prev.local_today_requests.unwrap_or(0)
+            );
+        }
+        crate::app_log::sync_emergency_line(
+            "cursor_activity",
+            &format!("busy keep prior totals ({detail})"),
+        );
+    } else {
+        crate::app_log::sync_emergency_line(
+            "cursor_activity",
+            &format!("busy no prior ({detail})"),
+        );
+    }
+    agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Cursor, snap);
+}
+
+fn put_schema_unknown() {
+    note_refresh_busy(false);
+    // Distinct from busy — never paint schema miss as「库正忙」.
+    // Prior totals may ride along for the strip, but status is schema_unknown (not ready).
+    let mut snap = disabled_snap(
+        "schema_unknown",
+        "Cursor 本地库结构暂时无法识别，稍后重试",
+    );
+    if let Some(prev) = prior_ready_snap() {
+        snap.local_today_requests = prev.local_today_requests;
+        snap.local_today_sessions = prev.local_today_sessions;
+        snap.local_today_active_ms = prev.local_today_active_ms;
+        snap.local_yesterday_requests = prev.local_yesterday_requests;
+        snap.last_success_at = prev.last_success_at;
+        crate::app_log::sync_emergency_line(
+            "cursor_activity",
+            "schema_unknown (totals kept if any)",
+        );
+    } else {
+        crate::app_log::sync_emergency_line("cursor_activity", "schema_unknown");
+    }
+    agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Cursor, snap);
+}
+
 /// Refresh Cursor activity snapshot. Gated by consent only (not ONETONE_AGENT_USAGE).
 pub fn refresh_once() {
     if !consent_enabled() {
+        note_refresh_busy(false);
         agent_usage::put_snapshot(
             crate::soft_pad_runtime::AgentKind::Cursor,
-            disabled_snap("未启用 Cursor 活动统计"),
+            disabled_snap("consent_off", "未启用 Cursor 活动统计"),
         );
         crate::app_log::sync_emergency_line("cursor_activity", "refresh skipped: consent off");
         return;
@@ -604,77 +1117,112 @@ pub fn refresh_once() {
     let path = match global_vscdb_path() {
         Some(p) => p,
         None => {
+            note_refresh_busy(false);
             agent_usage::put_snapshot(
                 crate::soft_pad_runtime::AgentKind::Cursor,
-                disabled_snap("未找到本机 Cursor 使用记录"),
+                disabled_snap("unavailable", "未找到本机 Cursor 使用记录"),
             );
             crate::app_log::sync_emergency_line("cursor_activity", "refresh: no vscdb");
             return;
         }
     };
-    let conn = match open_ro(&path) {
-        Ok(c) => c,
-        Err(e) => {
-            agent_usage::put_snapshot(
-                crate::soft_pad_runtime::AgentKind::Cursor,
-                disabled_snap(&format!("无法读取本地记录（{e}）")),
-            );
-            crate::app_log::sync_emergency_line(
-                "cursor_activity",
-                &format!("refresh: open failed {e}"),
-            );
-            return;
+
+    for attempt in 0..2u32 {
+        if attempt > 0 {
+            std::thread::sleep(Duration::from_millis(500));
         }
-    };
-    let schema = match cached_schema(&conn) {
-        Some(s) => s,
-        None => {
-            // ponytail: 11GB+ vscdb under Cursor WAL often fails one probe; retry once.
-            std::thread::sleep(Duration::from_millis(400));
-            match cached_schema(&conn) {
-                Some(s) => s,
-                None => {
-                    crate::app_log::sync_emergency_line(
-                        "cursor_activity",
-                        "refresh: schema detect failed (keeping prior snapshot if ready)",
-                    );
-                    // Don't clobber a recent ready pill with a false "结构无法识别".
-                    if let prev = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor)
-                    {
-                        if prev.status == "ready" && prev.source == SRC_CURSOR_LOCAL {
-                            return;
-                        }
-                    }
+        let conn = match open_ro(&path) {
+            Ok(c) => c,
+            Err(e) => {
+                crate::app_log::sync_emergency_line(
+                    "cursor_activity",
+                    &format!("refresh: open failed attempt={attempt} {e}"),
+                );
+                if attempt == 0 {
+                    continue;
+                }
+                if err_is_busy(&e) {
+                    put_busy_preserving_totals(&e);
+                } else if !keep_prior_ready_snap() {
+                    note_refresh_busy(false);
                     agent_usage::put_snapshot(
                         crate::soft_pad_runtime::AgentKind::Cursor,
-                        disabled_snap("Cursor 本地统计暂时读不到（库正忙），稍后自动重试"),
+                        disabled_snap("unavailable", &format!("无法读取本地记录（{e}）")),
                     );
-                    return;
+                }
+                return;
+            }
+        };
+
+        let schema = match cached_schema(&conn) {
+            Some(s) => s,
+            None => {
+                crate::app_log::sync_emergency_line(
+                    "cursor_activity",
+                    &format!("refresh: schema miss attempt={attempt}"),
+                );
+                if attempt == 0 {
+                    continue;
+                }
+                put_schema_unknown();
+                return;
+            }
+        };
+
+        // Light probe first — enough for KPI under WAL contention.
+        let light = match aggregate_activity_light(&conn, &schema) {
+            Ok(t) => t,
+            Err(e) => {
+                crate::app_log::sync_emergency_line(
+                    "cursor_activity",
+                    &format!("refresh: light aggregate failed attempt={attempt} {e}"),
+                );
+                if attempt == 0 {
+                    continue;
+                }
+                if err_is_busy(&e) {
+                    put_busy_preserving_totals(&e);
+                } else if !keep_prior_ready_snap() {
+                    note_refresh_busy(false);
+                    agent_usage::put_snapshot(
+                        crate::soft_pad_runtime::AgentKind::Cursor,
+                        disabled_snap("unavailable", &format!("活动统计失败（{e}）")),
+                    );
+                }
+                return;
+            }
+        };
+
+        note_refresh_busy(false);
+        let mut best = light;
+        // Upgrade with bubble timestamps only when calm.
+        if schema.bubble.is_some() {
+            match aggregate_activity(&conn, &schema) {
+                Ok(full) => best = full,
+                Err(e) => {
+                    crate::app_log::sync_emergency_line(
+                        "cursor_activity",
+                        &format!("refresh: full aggregate skipped ({e}); keeping light"),
+                    );
                 }
             }
         }
-    };
-    match aggregate_activity(&conn, &schema) {
-        Ok(t) => {
-            crate::app_log::sync_emergency_line(
-                "cursor_activity",
-                &format!(
-                    "ready turns={} sessions={} active_ms={}",
-                    t.turns_today, t.sessions_today, t.active_ms
-                ),
-            );
-            agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Cursor, ready_snap(&t));
-        }
-        Err(e) => {
-            agent_usage::put_snapshot(
-                crate::soft_pad_runtime::AgentKind::Cursor,
-                disabled_snap(&format!("活动统计失败（{e}）")),
-            );
-            crate::app_log::sync_emergency_line(
-                "cursor_activity",
-                &format!("refresh: aggregate failed {e}"),
-            );
-        }
+
+        crate::app_log::sync_emergency_line(
+            "cursor_activity",
+            &format!(
+                "ready turns={} sessions={} active_ms={} bubble={}",
+                best.turns_today,
+                best.sessions_today,
+                best.active_ms,
+                schema.bubble.is_some()
+            ),
+        );
+        agent_usage::put_snapshot(
+            crate::soft_pad_runtime::AgentKind::Cursor,
+            ready_snap(&best),
+        );
+        return;
     }
 }
 
@@ -695,7 +1243,12 @@ pub fn start_cursor_activity_poll(app: tauri::AppHandle, state: std::sync::Arc<c
                 refresh_once();
             }));
             crate::codex_micro_overlay::request_overlay_push(&app, state.as_ref(), false);
-            std::thread::sleep(Duration::from_secs(REFRESH_SECS));
+            let secs = if last_busy_flag().load(Ordering::SeqCst) {
+                REFRESH_BUSY_SECS
+            } else {
+                REFRESH_SECS
+            };
+            std::thread::sleep(Duration::from_secs(secs));
         });
     if spawned.is_ok() {
         STARTED.store(true, Ordering::SeqCst);
@@ -751,5 +1304,293 @@ mod tests {
         assert_eq!(ms, 1_786_154_549_170);
         let ms2 = as_ms(&Value::String("2026-08-08T10:02:29.170+08:00".into())).unwrap();
         assert_eq!(ms2, ms);
+    }
+
+    #[test]
+    fn vscdb_uri_uses_ro_and_immutable_query() {
+        let p = PathBuf::from(r"C:\Users\x\AppData\Roaming\Cursor\User\globalStorage\state.vscdb");
+        let live = vscdb_uri(&p, "mode=ro");
+        assert!(live.starts_with("file:///C:/Users/"));
+        assert!(live.contains("mode=ro"));
+        assert!(!live.contains("immutable"));
+        let imm = vscdb_uri(&p, "mode=ro&immutable=1");
+        assert!(imm.contains("immutable=1"));
+    }
+
+    #[test]
+    fn stale_schema_survives_empty_db_detect_miss() {
+        let bundle = SchemaBundle {
+            headers: HeadersLayout {
+                table: "ItemTable".into(),
+                key: "composer.composerHeaders".into(),
+                list_field: "allComposers".into(),
+                id_field: "composerId".into(),
+                ts_fields: vec!["lastUpdatedAt".into()],
+            },
+            composer: ComposerDataLayout {
+                table: "cursorDiskKV".into(),
+                key_prefix: "composerData:".into(),
+                headers_field: "fullConversationHeadersOnly".into(),
+                bubble_id_field: "bubbleId".into(),
+                type_field: "type".into(),
+                user_type: 1,
+            },
+            bubble: None,
+            // Just outside fresh TTL, inside stale window.
+            detected_at_ms: now_ms().saturating_sub(SCHEMA_CACHE_MS + 1_000),
+        };
+        *schema_cache().lock().unwrap() = Some(bundle.clone());
+        let conn = Connection::open_in_memory().unwrap();
+        let got = cached_schema(&conn).expect("stale schema reused");
+        assert_eq!(got.headers.key, bundle.headers.key);
+        assert!(got.bubble.is_none());
+        *schema_cache().lock().unwrap() = None;
+    }
+
+    #[test]
+    fn aggregate_without_bubble_uses_composer_day() {
+        let schema = SchemaBundle {
+            headers: HeadersLayout {
+                table: "ItemTable".into(),
+                key: "composer.composerHeaders".into(),
+                list_field: "allComposers".into(),
+                id_field: "composerId".into(),
+                ts_fields: vec!["lastUpdatedAt".into()],
+            },
+            composer: ComposerDataLayout {
+                table: "cursorDiskKV".into(),
+                key_prefix: "composerData:".into(),
+                headers_field: "fullConversationHeadersOnly".into(),
+                bubble_id_field: "bubbleId".into(),
+                type_field: "type".into(),
+                user_type: 1,
+            },
+            bubble: None,
+            detected_at_ms: now_ms(),
+        };
+        let now = now_ms();
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);
+             CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
+        )
+        .unwrap();
+        let headers = serde_json::json!({
+            "allComposers": [{ "composerId": "c1", "lastUpdatedAt": now }]
+        });
+        conn.execute(
+            "INSERT INTO ItemTable(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composer.composerHeaders", headers.to_string()],
+        )
+        .unwrap();
+        let data = serde_json::json!({
+            "fullConversationHeadersOnly": [
+                { "bubbleId": "b1", "type": 1 },
+                { "bubbleId": "b2", "type": 2 }
+            ]
+        });
+        conn.execute(
+            "INSERT INTO cursorDiskKV(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composerData:c1", data.to_string()],
+        )
+        .unwrap();
+        let totals = aggregate_activity(&conn, &schema).unwrap();
+        assert_eq!(totals.sessions_today, 1);
+        assert_eq!(totals.turns_today, 1);
+    }
+
+    #[test]
+    fn composer_data_scan_when_itemtable_headers_gone() {
+        let now = now_ms();
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);
+             CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
+        )
+        .unwrap();
+        // Mimic new Cursor: version key only, no composer.composerHeaders.
+        conn.execute(
+            "INSERT INTO ItemTable(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composer.composerHeaders.version", "1"],
+        )
+        .unwrap();
+        let data = serde_json::json!({
+            "composerId": "c-scan",
+            "createdAt": now,
+            "fullConversationHeadersOnly": [
+                { "bubbleId": "b1", "type": 1 },
+                { "bubbleId": "b2", "type": 1 },
+                { "bubbleId": "b3", "type": 2 }
+            ]
+        });
+        conn.execute(
+            "INSERT INTO cursorDiskKV(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composerData:c-scan", data.to_string()],
+        )
+        .unwrap();
+        let schema = detect_schema(&conn).expect("composerData scan schema");
+        assert_eq!(schema.headers.key, COMPOSER_DATA_SCAN_KEY);
+        let totals = aggregate_activity_light(&conn, &schema).unwrap();
+        assert_eq!(totals.sessions_today, 1);
+        assert_eq!(totals.turns_today, 2);
+    }
+
+    #[test]
+    fn err_is_busy_classifies_locks_only() {
+        assert!(err_is_busy("database is locked"));
+        assert!(err_is_busy("SQLITE_BUSY"));
+        assert!(err_is_busy("unable to open database file"));
+        assert!(!err_is_busy("schema detect failed"));
+        assert!(!err_is_busy("headers missing"));
+    }
+
+    #[test]
+    fn light_probe_ignores_bubble_layout() {
+        let now = now_ms();
+        let schema = SchemaBundle {
+            headers: HeadersLayout {
+                table: "ItemTable".into(),
+                key: "composer.composerHeaders".into(),
+                list_field: "allComposers".into(),
+                id_field: "composerId".into(),
+                ts_fields: vec!["lastUpdatedAt".into()],
+            },
+            composer: ComposerDataLayout {
+                table: "cursorDiskKV".into(),
+                key_prefix: "composerData:".into(),
+                headers_field: "fullConversationHeadersOnly".into(),
+                bubble_id_field: "bubbleId".into(),
+                type_field: "type".into(),
+                user_type: 1,
+            },
+            bubble: Some(BubbleLayout {
+                table: "cursorDiskKV".into(),
+                key_prefix: "bubbleId:".into(),
+                created_at_field: "createdAt".into(),
+            }),
+            detected_at_ms: now,
+        };
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);
+             CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
+        )
+        .unwrap();
+        let headers = serde_json::json!({
+            "allComposers": [{ "composerId": "c1", "lastUpdatedAt": now }]
+        });
+        conn.execute(
+            "INSERT INTO ItemTable(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composer.composerHeaders", headers.to_string()],
+        )
+        .unwrap();
+        let data = serde_json::json!({
+            "fullConversationHeadersOnly": [
+                { "bubbleId": "b1", "type": 1 },
+                { "bubbleId": "b2", "type": 1 }
+            ]
+        });
+        conn.execute(
+            "INSERT INTO cursorDiskKV(key,value) VALUES (?1,?2)",
+            rusqlite::params!["composerData:c1", data.to_string()],
+        )
+        .unwrap();
+        // No bubble rows — full aggregate would still fall back; light must not look them up.
+        let light = aggregate_activity_light(&conn, &schema).unwrap();
+        assert_eq!(light.sessions_today, 1);
+        assert_eq!(light.turns_today, 2);
+    }
+
+    #[test]
+    fn wal_trio_copy_and_marks_reuse() {
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-vscdb-test-{}-{}",
+            std::process::id(),
+            now_ms() % 1_000_000
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("state.vscdb");
+        // Keep writer open — SQLite drops -wal/-shm on clean close/checkpoint.
+        let writer = Connection::open(&db).unwrap();
+        writer
+            .execute_batch(
+                "PRAGMA journal_mode=WAL;
+                 CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);
+                 INSERT INTO ItemTable(key,value) VALUES ('k','v');",
+            )
+            .unwrap();
+        assert!(has_wal_sidecars(&db), "WAL mode should create sidecars");
+        let snap_dir = dir.join("snap");
+        let dest = copy_wal_trio_to_dir(&db, &snap_dir).unwrap();
+        assert!(dest.is_file());
+        assert!(
+            snap_dir.join("state.vscdb-wal").is_file(),
+            "trio copy must include -wal while writer holds it"
+        );
+
+        let marks = collect_marks(&db);
+        *snapshot_cache().lock().unwrap() = Some(SnapshotCache {
+            marks: marks.clone(),
+            dir: snap_dir.clone(),
+        });
+        let again = open_via_wal_trio_copy(&db).expect("reuse cached WAL trio");
+        drop(again);
+        let marks2 = collect_marks(&db);
+        assert_eq!(marks, marks2);
+        drop(writer);
+        *snapshot_cache().lock().unwrap() = None;
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn open_ro_never_needs_immutable_with_sidecars() {
+        // With WAL sidecars present, live RO or trio/vacuum must succeed — immutable skipped.
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-vscdb-open-{}-{}",
+            std::process::id(),
+            now_ms() % 1_000_000
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("state.vscdb");
+        let writer = Connection::open(&db).unwrap();
+        writer
+            .execute_batch(
+                "PRAGMA journal_mode=WAL;
+                 CREATE TABLE t (x INTEGER);
+                 INSERT INTO t VALUES (1);",
+            )
+            .unwrap();
+        assert!(has_wal_sidecars(&db));
+        let opened = open_ro(&db).expect("open_ro with WAL sidecars");
+        drop(opened);
+        drop(writer);
+        *snapshot_cache().lock().unwrap() = None;
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn busy_snap_preserves_totals_schema_unknown_is_distinct() {
+        agent_usage::put_snapshot(
+            crate::soft_pad_runtime::AgentKind::Cursor,
+            ready_snap(&ActivityTotals {
+                turns_today: 9,
+                turns_yesterday: 2,
+                sessions_today: 1,
+                active_ms: 0,
+            }),
+        );
+        put_busy_preserving_totals("test");
+        let busy = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor);
+        assert_eq!(busy.status, "busy");
+        assert_eq!(busy.local_today_requests, Some(9));
+        assert!(busy.message.contains("9") || busy.message.contains("库正忙"));
+
+        put_schema_unknown();
+        let unknown = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor);
+        assert_eq!(unknown.status, "schema_unknown");
+        assert_ne!(unknown.status, "busy");
+        assert_eq!(unknown.local_today_requests, Some(9));
     }
 }

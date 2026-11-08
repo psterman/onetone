@@ -95,15 +95,31 @@ pub fn web_search(query: &str, limit: Option<u32>, provider: Option<&str>) -> Va
             "results": [],
             "diagnostics": diag_json
         }),
-        Ok(hits) => json!({
-            "ok": true,
-            "provider": provider,
-            "results": hits,
-            "diagnostics": diag_json
-        }),
+        Ok(hits) => {
+            let hits = filter_char_dict_noise(q, hits);
+            if hits.is_empty() {
+                json!({
+                    "ok": false,
+                    "code": "char_dict_noise",
+                    "message": "search returned only single-character dictionary pages; answer from prior knowledge or finish with what you know",
+                    "provider": provider,
+                    "results": [],
+                    "diagnostics": diag_json
+                })
+            } else {
+                json!({
+                    "ok": true,
+                    "provider": provider,
+                    "results": hits,
+                    "diagnostics": diag_json
+                })
+            }
+        }
         Err(msg) => {
             let code = if msg.contains("429") || msg.contains("rate") {
                 "rate_limited"
+            } else if msg.contains("char_dict_noise") {
+                "char_dict_noise"
             } else {
                 "search_unavailable"
             };
@@ -168,6 +184,23 @@ fn search_auto_with_diag(
     let mut errors: Vec<String> = Vec::new();
     let mut diagnostics: Vec<ProviderDiag> = Vec::new();
     let q = normalize_search_query(query);
+    // Hard ceiling across providers — reqwest per-request timeout alone still let
+    // auto fan-out pin ATR for minutes when DNS/connect hung past HTTP_TIMEOUT_SECS.
+    let deadline =
+        std::time::Instant::now() + std::time::Duration::from_secs(HTTP_TIMEOUT_SECS.saturating_add(6));
+    let budget_left = |errors: &mut Vec<String>, diagnostics: &mut Vec<ProviderDiag>| -> bool {
+        if std::time::Instant::now() < deadline {
+            return true;
+        }
+        errors.push("search_budget_exhausted".into());
+        diagnostics.push(ProviderDiag {
+            provider: "budget",
+            ok: false,
+            hits: 0,
+            error: Some("wall_clock_budget".into()),
+        });
+        false
+    };
 
     // Bing first: DDG often serves bot-challenge pages (HTTP 200, 0 parseable hits) on desktop/CN nets.
     let bing = search_bing(&q, limit);
@@ -177,7 +210,7 @@ fn search_auto_with_diag(
         Err(e) => errors.push(format!("bing:{e}")),
     }
 
-    if hits.len() < limit {
+    if hits.len() < limit && budget_left(&mut errors, &mut diagnostics) {
         let ddg = search_duckduckgo(&q, limit.saturating_sub(hits.len()).max(3));
         diagnostics.push(diag_from_result("duckduckgo", &ddg));
         match ddg {
@@ -185,7 +218,7 @@ fn search_auto_with_diag(
             Err(e) => errors.push(format!("ddg:{e}")),
         }
     }
-    if hits.len() < limit {
+    if hits.len() < limit && budget_left(&mut errors, &mut diagnostics) {
         let ia = search_ddg_instant(&q, limit.saturating_sub(hits.len()).max(3));
         diagnostics.push(diag_from_result("ddg_instant", &ia));
         match ia {
@@ -193,7 +226,7 @@ fn search_auto_with_diag(
             Err(e) => errors.push(format!("ddg_ia:{e}")),
         }
     }
-    if hits.len() < 2 {
+    if hits.len() < 2 && budget_left(&mut errors, &mut diagnostics) {
         let wiki_q = wikipedia_query(&q);
         let wiki = search_wikipedia(&wiki_q, limit.saturating_sub(hits.len()).max(4));
         diagnostics.push(diag_from_result("wikipedia", &wiki));
@@ -203,6 +236,7 @@ fn search_auto_with_diag(
         }
     }
 
+    let hits = filter_char_dict_noise(&q, hits);
     if hits.is_empty() {
         if errors.is_empty() {
             let empty_notes: Vec<String> = diagnostics
@@ -212,7 +246,11 @@ fn search_auto_with_diag(
             if !empty_notes.is_empty() {
                 return (Err(empty_notes.join("; ")), diagnostics);
             }
-            return (Ok(vec![]), diagnostics);
+            // Filtered-only empty: tell the model hits were character-dict noise.
+            return (
+                Err("char_dict_noise:no_relevant_entity_hits".into()),
+                diagnostics,
+            );
         }
         return (Err(errors.join("; ")), diagnostics);
     }
@@ -256,6 +294,57 @@ fn merge_hits(into: &mut Vec<SearchHit>, extra: Vec<SearchHit>, limit: usize) {
         }
         into.push(h);
     }
+}
+
+/// Multi-token CJK person/topic queries often get Bing single-character 汉语文字 hits
+/// ("戴（汉语文字）", "异（汉语文字）") — junk that spun ATR into 20+ empty web_search turns.
+fn is_char_dict_noise(hit: &SearchHit) -> bool {
+    let title = hit.title.trim();
+    let url = hit.url.to_ascii_lowercase();
+    if title.contains("汉语文字") || title.contains("汉字") && title.contains("一级") {
+        return true;
+    }
+    // Baike single-glyph pages: /item/%E6%88%B4/… with title like "戴（…）"
+    let cjk: String = title
+        .chars()
+        .filter(|c| ('\u{4e00}'..='\u{9fff}').contains(c))
+        .collect();
+    if cjk.chars().count() <= 1
+        && (url.contains("baike.baidu.com/item/") || title.contains('（') || title.contains('('))
+    {
+        return true;
+    }
+    false
+}
+
+fn query_has_multi_cjk_token(q: &str) -> bool {
+    let mut runs = 0u32;
+    let mut cur = 0u32;
+    for c in q.chars() {
+        if ('\u{4e00}'..='\u{9fff}').contains(&c) {
+            cur = cur.saturating_add(1);
+        } else if cur > 0 {
+            if cur >= 2 {
+                runs = runs.saturating_add(1);
+            }
+            cur = 0;
+        }
+    }
+    if cur >= 2 {
+        runs = runs.saturating_add(1);
+    }
+    runs >= 2 || q.chars().filter(|c| ('\u{4e00}'..='\u{9fff}').contains(c)).count() >= 4
+}
+
+fn filter_char_dict_noise(query: &str, hits: Vec<SearchHit>) -> Vec<SearchHit> {
+    if !query_has_multi_cjk_token(query) {
+        return hits;
+    }
+    let kept: Vec<SearchHit> = hits
+        .into_iter()
+        .filter(|h| !is_char_dict_noise(h))
+        .collect();
+    kept
 }
 
 fn looks_like_bot_wall(html: &str) -> bool {
@@ -310,9 +399,15 @@ fn search_duckduckgo(query: &str, limit: usize) -> Result<Vec<SearchHit>, String
 }
 
 fn search_bing(query: &str, limit: usize) -> Result<Vec<SearchHit>, String> {
+    // Quote multi-token CJK so Bing doesn't tokenize into single-character dict pages.
+    let q = if query_has_multi_cjk_token(query) && !query.contains('"') {
+        format!("\"{query}\"")
+    } else {
+        query.to_string()
+    };
     let url = format!(
         "https://www.bing.com/search?q={}&setlang=zh-hans",
-        urlencoding_encode(query)
+        urlencoding_encode(&q)
     );
     let body = http_get_text(&url)?;
     let hits = parse_bing_html(&body, limit)?;
@@ -364,8 +459,11 @@ fn extract_bing_snippet(chunk: &str) -> String {
         let after = &chunk[p..];
         if let Some(gt) = after.find('>') {
             let body = &after[gt + 1..];
-            let end = body.find("</p>").unwrap_or(body.len().min(400));
-            let t = decode_basic_entities(&strip_tags(&body[..end]))
+            let body = body
+                .find("</p>")
+                .map(|end| &body[..end])
+                .unwrap_or_else(|| utf8_prefix(body, 400));
+            let t = decode_basic_entities(&strip_tags(body))
                 .trim()
                 .to_string();
             if t.len() >= 8 {
@@ -409,8 +507,11 @@ pub fn parse_bing_html(html: &str, limit: usize) -> Result<Vec<SearchHit>, Strin
         let title_tail = &href_tail[href_end + 1..];
         let title = if let Some(gt) = title_tail.find('>') {
             let body = &title_tail[gt + 1..];
-            let end = body.find("</a>").unwrap_or(body.len().min(160));
-            strip_tags(&body[..end])
+            let body = body
+                .find("</a>")
+                .map(|end| &body[..end])
+                .unwrap_or_else(|| utf8_prefix(body, 160));
+            strip_tags(body)
         } else {
             raw_href.clone()
         };
@@ -420,7 +521,7 @@ pub fn parse_bing_html(html: &str, limit: usize) -> Result<Vec<SearchHit>, Strin
             continue;
         }
         // Snippet lives in the following ~2KB of the result card.
-        let window = &after[..after.len().min(2500)];
+        let window = utf8_prefix(after, 2500);
         let snippet = extract_bing_snippet(window);
         push_hit(&mut hits, title, &raw_href, snippet, limit);
         rest = &after[3..];
@@ -599,13 +700,16 @@ pub fn parse_duckduckgo_lite(html: &str, limit: usize) -> Result<Vec<SearchHit>,
         let title_tail = &after[href_end + 1..];
         let title = if let Some(gt) = title_tail.find('>') {
             let body = &title_tail[gt + 1..];
-            let end = body.find("</a>").unwrap_or(body.len().min(120));
-            strip_tags(&body[..end])
+            let body = body
+                .find("</a>")
+                .map(|end| &body[..end])
+                .unwrap_or_else(|| utf8_prefix(body, 120));
+            strip_tags(body)
         } else {
             url.clone()
         };
         // Lite often puts a short description in the next table cell / class result-snippet.
-        let window = &after[..after.len().min(1200)];
+        let window = utf8_prefix(after, 1200);
         let snippet = extract_class_text(window, "result-snippet")
             .or_else(|| extract_class_text(window, "result__snippet"))
             .map(|s| decode_basic_entities(&s).trim().chars().take(400).collect())
@@ -702,6 +806,20 @@ fn urlencoding_decode(s: &str) -> Result<String, ()> {
     String::from_utf8(out).map_err(|_| ())
 }
 
+/// Return at most `max_bytes` without ever splitting a UTF-8 code point.
+/// Search-provider HTML is byte-sized, but Rust string slices must end on a
+/// character boundary (CJK snippets frequently cross the old fixed limits).
+fn utf8_prefix(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
+}
+
 fn extract_tag_text(chunk: &str, class: &str) -> Option<String> {
     let marker = format!("class=\"{class}");
     let i = chunk.find(&marker)?;
@@ -718,8 +836,11 @@ fn extract_class_text(chunk: &str, class: &str) -> Option<String> {
     let after = &chunk[i..];
     let gt = after.find('>')?;
     let body = &after[gt + 1..];
-    let end = body.find("</").unwrap_or(body.len().min(400));
-    Some(strip_tags(&body[..end]))
+    let body = body
+        .find("</")
+        .map(|end| &body[..end])
+        .unwrap_or_else(|| utf8_prefix(body, 400));
+    Some(strip_tags(body))
 }
 
 fn strip_tags(s: &str) -> String {
@@ -748,6 +869,29 @@ fn decode_basic_entities(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn utf8_prefix_never_splits_cjk_or_symbols() {
+        let cjk = format!("{}中尾", "x".repeat(2499));
+        let cut = utf8_prefix(&cjk, 2500);
+        assert_eq!(cut.len(), 2499);
+        assert!(cut.is_char_boundary(cut.len()));
+
+        let symbol = format!("{}›尾", "x".repeat(1199));
+        let cut = utf8_prefix(&symbol, 1200);
+        assert_eq!(cut.len(), 1199);
+        assert!(cut.is_char_boundary(cut.len()));
+    }
+
+    #[test]
+    fn class_fallback_truncates_multibyte_text_safely() {
+        let html = format!(
+            "<div class=\"result-snippet\">{}中文摘要",
+            "x".repeat(399)
+        );
+        let text = extract_class_text(&html, "result-snippet").unwrap();
+        assert_eq!(text.len(), 399);
+    }
 
     #[test]
     fn parses_ddg_fixture() {
@@ -800,6 +944,29 @@ mod tests {
         assert_eq!(hits[0].url, "https://example.com/beijing-food");
         assert!(hits[0].title.contains("北京"));
         assert!(hits[0].snippet.contains("下饭"));
+    }
+
+    #[test]
+    fn filters_chinese_char_dict_noise() {
+        let q = "戴佳伟 异灵术 狗贼 驴哥 关系";
+        assert!(query_has_multi_cjk_token(q));
+        let junk = SearchHit {
+            title: "戴（汉语文字）_百度百科".into(),
+            url: "https://baike.baidu.com/item/%E6%88%B4/1870322".into(),
+            snippet: "戴是汉语一级通用规范汉字".into(),
+            published_at: None,
+        };
+        let good = SearchHit {
+            title: "异灵术_百度百科".into(),
+            url: "https://baike.baidu.com/item/%E5%BC%82%E7%81%B5%E6%9C%AF/66685626".into(),
+            snippet: "异灵术，本名戴佳伟，炉石传说主播".into(),
+            published_at: None,
+        };
+        assert!(is_char_dict_noise(&junk));
+        assert!(!is_char_dict_noise(&good));
+        let kept = filter_char_dict_noise(q, vec![junk, good.clone()]);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].url, good.url);
     }
 
     #[test]

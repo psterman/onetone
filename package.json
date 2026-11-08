@@ -18,6 +18,8 @@
     "test:habit-profile": "node scripts/reconcile-habit-profile.js",
     "test:home-alerts": "node scripts/test-home-workbench-alerts.js",
     "test:now-home": "node scripts/smoke-now-home.mjs",
+    "test:home-status-push": "node scripts/test-home-status-push.mjs",
+    "test:home-resume-honesty": "node scripts/test-home-resume-honesty.mjs",
     "test:codex-smoke": "node scripts/test-codex-smoke-feedback.mjs && cargo test --manifest-path src-tauri/Cargo.toml --lib codex_smoke -- --nocapture",
     "test:claude-smoke": "node scripts/test-claude-smoke-feedback.mjs && cargo test --manifest-path src-tauri/Cargo.toml --lib claude_smoke -- --nocapture",
     "test:home-default-surface": "node scripts/test-home-default-surface.mjs",

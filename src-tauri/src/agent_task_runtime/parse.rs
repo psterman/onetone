@@ -11,7 +11,22 @@ pub const TOOL_NAMES: &[&str] = &[
     "export_to_desktop",
     "run_check",
     "inspect_diff",
+    "web_search",
+    "fetch_url",
     "request_user_input",
+    "deliver_to_agent",
+    "finish",
+];
+
+/// Chat / read_only lane — no write/check tools.
+pub const CHAT_TOOL_NAMES: &[&str] = &[
+    "inspect_workspace",
+    "search_code",
+    "read_file",
+    "web_search",
+    "fetch_url",
+    "request_user_input",
+    "deliver_to_agent",
     "finish",
 ];
 

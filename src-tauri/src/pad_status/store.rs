@@ -75,11 +75,15 @@ pub fn apply_candidate_at(candidate: PadStatusCandidate, now: u64) -> ProposeRes
     } else {
         arbiter::settle(&mut g, now);
     }
-    ProposeResult {
+    let out = ProposeResult {
         accepted: result.accepted,
         winner: g.clone(),
         reject_reason: result.reject_reason,
+    };
+    if out.accepted {
+        crate::home_status_notify::schedule("pad_status");
     }
+    out
 }
 
 /// Local key-run inferred status (overlay / pad fire).

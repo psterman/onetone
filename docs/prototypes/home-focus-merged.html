@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 首页终稿 · 合并 + 视觉集中</title>
+  <!--
+    视觉集中原则：首屏只留「一块输入表面 + 一张任务卡」。
+    监视默认收成输入卡内一行摘要；展开才见 3×2；不另起工作区行（角标+全部进抽屉）。
+    交互仍：watch ≠ send；observedStatus + freshUntil；已填入 ≠ 已发送。
+  -->
+  <style>
+    :root {
+      --page: #f5f7fa;
+      --surface: #ffffff;
+      --ink: #152238;
+      --muted: #5d7186;
+      --faint: #8b96a5;
+      --line: rgba(21, 34, 56, 0.10);
+      --line-strong: rgba(21, 34, 56, 0.18);
+      --hover: rgba(21, 34, 56, 0.035);
+      --accent: #2b8fd4;
+      --accent-soft: rgba(43, 143, 212, 0.10);
+      --ok: #1a9b5f;
+      --wait: #c97820;
+      --fail: #c44;
+      --unknown: #8b96a5;
+      --w: 560px;
+      --r: 14px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    html { overflow-y: hidden; }
+    body {
+      overflow-y: auto;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--page);
+      -webkit-font-smoothing: antialiased;
+    }
+    /* 滚动条统一：细、浅、无轨道；主舞台本身不产生滚动条 */
+    * { scrollbar-width: thin; scrollbar-color: rgba(21, 34, 56, 0.16) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(21, 34, 56, 0.16); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(21, 34, 56, 0.30); }
+
+    .shell { min-height: 100%; display: grid; grid-template-rows: auto 1fr; }
+    .top {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      gap: 12px; padding: 16px 20px 0; max-width: 980px; width: 100%; margin: 0 auto;
+    }
+    .ctx { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+    .ctx .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .ctx .sep { color: var(--faint); }
+    .ctx button {
+      border: 0; background: none; padding: 0; color: var(--ink);
+      font: inherit; font-weight: 650; cursor: pointer;
+    }
+    .intent { display: inline-flex; gap: 20px; }
+    .intent button {
+      border: 0; background: none; padding: 4px 0 6px; color: var(--muted);
+      font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .intent button[aria-pressed="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+    .top-end { justify-self: end; }
+    .icon-btn {
+      border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+      width: 30px; height: 30px; border-radius: 9px; cursor: pointer;
+      display: grid; place-items: center; position: relative;
+    }
+    .icon-btn .badge {
+      position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px;
+      padding: 0 3px; border-radius: 999px; background: var(--ink); color: #fff;
+      font-size: 9px; font-weight: 700; line-height: 15px; text-align: center;
+    }
+
+    .stage {
+      width: min(100%, var(--w)); margin: 0 auto;
+      display: flex; flex-direction: column; gap: 14px;
+      padding: clamp(28px, 7vh, 56px) 0 20px;
+    }
+
+    /* 邀请：尽量短，不抢输入 */
+    .invite { padding: 0 2px; }
+    .invite .kicker { margin: 0 0 4px; font-size: 12px; font-weight: 650; color: var(--accent); }
+    .invite .kicker button {
+      border: 0; background: none; color: inherit; font: inherit; font-weight: inherit;
+      padding: 0; cursor: pointer; border-bottom: 1px solid rgba(43, 143, 212, 0.35);
+    }
+    .invite h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+    .invite .fact { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; max-width: 36ch; }
+
+    /* 表面：输入卡 / 任务卡。全页只允许这两块白 */
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r); padding: 14px;
+    }
+    .card.compose { padding-bottom: 0; }
+    .compose textarea {
+      width: 100%; min-height: 56px; max-height: 130px; resize: vertical;
+      border: 0; outline: 0; background: transparent; color: var(--ink);
+      font: inherit; font-size: 14px; line-height: 1.5; padding: 0 2px 8px;
+    }
+    .compose textarea::placeholder { color: var(--faint); }
+    .rail { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      height: 28px; padding: 0 9px 0 6px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); font-size: 12px; font-weight: 650;
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .chip:hover { background: var(--hover); }
+    .chip .ai {
+      width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center;
+      font-size: 8px; font-weight: 800; color: #fff; background: #1a1d24; flex: 0 0 auto;
+    }
+    .chip.model { border-color: transparent; background: transparent; color: var(--muted); }
+    .chip.aim { width: 28px; padding: 0; justify-content: center; color: var(--muted); }
+    .rail .spacer { flex: 1; min-width: 6px; }
+    .rail .link {
+      border: 0; background: none; color: var(--muted); font: inherit;
+      font-size: 12px; font-weight: 650; cursor: pointer; padding: 0 4px;
+    }
+    .rail .link:hover, .rail .more:hover, .rail .add:hover { color: var(--accent); }
+    .rail .more, .rail .add {
+      width: 28px; height: 28px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    }
+    .send {
+      width: 30px; height: 30px; border-radius: 50%; border: 0;
+      background: var(--accent); color: #fff; cursor: pointer; display: grid; place-items: center;
+    }
+    .send:hover { filter: brightness(1.06); }
+
+    /* 监视：默认收在输入卡底部一行，不另起区域 */
+    .watch {
+      margin: 10px -14px 0; padding: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0 0 var(--r) var(--r);
+      background: color-mix(in srgb, var(--page) 55%, white);
+    }
+    .watch-sum {
+      width: 100%; display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; border: 0; background: transparent;
+      font: inherit; text-align: left; cursor: pointer; color: var(--muted);
+    }
+    .watch-sum:hover { background: var(--hover); }
+    .watch-sum .faces { display: inline-flex; align-items: center; }
+    .watch-sum .faces .ai {
+      width: 18px; height: 18px; border-radius: 5px; margin-right: -5px;
+      display: grid; place-items: center; font-size: 7px; font-weight: 800; color: #fff;
+      border: 1.5px solid var(--surface); box-sizing: content-box;
+    }
+    .watch-sum .faces .ai:last-child { margin-right: 0; }
+    .watch-sum .txt { flex: 1; min-width: 0; font-size: 12px; font-weight: 650; color: var(--ink); }
+    .watch-sum .txt small { display: block; margin-top: 1px; font-size: 11px; font-weight: 500; color: var(--faint); }
+    .watch-sum .chev {
+      font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
+    }
+    .watch.is-open .watch-sum .chev { color: var(--muted); }
+
+    .watch-panel { display: none; padding: 0 8px 10px; }
+    .watch.is-open .watch-panel { display: block; }
+    .watch-tools {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 6px 6px; font-size: 11.5px;
+    }
+    .watch-tools .sum { flex: 1; color: var(--faint); }
+    .watch-tools button {
+      border: 0; background: none; padding: 0; color: var(--accent);
+      font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer;
+    }
+    .watch-tools button:hover { text-decoration: underline; }
+
+    .watch-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+    }
+    .witem {
+      display: flex; align-items: center; gap: 7px; min-width: 0;
+      height: 34px; padding: 0 8px; border: 0; border-radius: 10px;
+      background: transparent; font: inherit; text-align: left; cursor: pointer;
+    }
+    .witem:hover { background: var(--hover); }
+    .witem.is-on { background: var(--accent-soft); }
+    .witem .ai {
+      width: 20px; height: 20px; border-radius: 6px; flex: 0 0 auto;
+      display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff;
+    }
+    .witem .body { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+    .witem .body b { font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .witem .body span { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .witem .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; margin-left: auto; background: var(--faint); }
+    .witem.is-working .dot { background: var(--ok); }
+    .witem.is-needs_input .dot { background: var(--wait); }
+    .witem.is-failed .dot { background: var(--fail); }
+    .witem.is-completed .dot { background: var(--accent); }
+    .witem.is-unknown .body span { color: var(--unknown); }
+
+    .restore { display: none; padding: 8px 2px 0; font-size: 12px; }
+    .restore.is-on { display: block; }
+    .restore button {
+      border: 0; background: none; padding: 0; color: var(--accent);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+
+    /* 表面 2／2：任务卡。与输入卡同一套表面 */
+    .hero-hd { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+    .hero-hd .ai {
+      width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+      display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; background: #1a1d24;
+    }
+    .hero-hd .who { flex: 1; min-width: 0; }
+    .hero-hd .who b { display: block; font-size: 13px; font-weight: 700; }
+    .hero-hd .who span { display: block; margin-top: 1px; font-size: 11.5px; color: var(--muted); }
+    .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 650; color: var(--ok); }
+    .pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+    .hero h1 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.4; }
+    .hero .fact { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .hero .src { margin: 5px 0 0; font-size: 11.5px; color: var(--faint); }
+    .hero .src b { color: var(--muted); font-weight: 650; }
+    .hero-acts { margin-top: 12px; display: flex; align-items: center; gap: 16px; }
+    .btn {
+      height: 34px; padding: 0 16px; border-radius: 999px; border: 0;
+      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); color: #fff; }
+    .btn.primary:hover { filter: brightness(1.06); }
+    .btn.link { background: none; padding: 0; height: auto; color: var(--accent); font-weight: 650; font-size: 12.5px; }
+
+    /* 浮层：唯一允许有阴影的表面 */
+    .input-group { position: relative; }
+    .flyout, .pop {
+      position: absolute; z-index: 25; display: none;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 12px; box-shadow: 0 10px 28px rgba(21, 34, 56, 0.10);
+    }
+    .flyout.is-on, .pop.is-on { display: block; }
+    .flyout { min-width: 168px; padding: 5px; }
+    .flyout button {
+      width: 100%; border: 0; background: none; border-radius: 8px; padding: 7px 9px;
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+      font: inherit; font-size: 12.5px; font-weight: 650; color: var(--ink); text-align: left;
+    }
+    .flyout button:hover { background: var(--hover); }
+    .flyout .ai { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff; }
+    .pop { width: 268px; padding: 13px 14px; }
+    .pop h3 { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
+    .pop .who { margin: 0 0 9px; font-size: 12px; color: var(--muted); }
+    .pop .kv { margin: 0 0 11px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); line-height: 1.65; }
+    .pop .kv b { color: var(--ink); font-weight: 650; }
+    .pop__acts { display: flex; gap: 8px; }
+    .pop__acts button {
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+      font: inherit; font-size: 12px; font-weight: 650; padding: 6px 11px; border-radius: 9px; cursor: pointer;
+    }
+    .pop__acts button.write { border-color: rgba(43, 143, 212, 0.4); background: var(--accent-soft); color: var(--accent); }
+    .pop__hint { margin: 9px 0 0; font-size: 10.5px; color: var(--faint); line-height: 1.5; }
+
+    /* 抽屉：无卡片墙，行之间只用细分隔线 */
+    .scrim { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.24); opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 30; }
+    .scrim.is-on { opacity: 1; pointer-events: auto; }
+    .scrim[hidden], .drawer[hidden] { display: none !important; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 100%);
+      background: var(--surface); border-left: 1px solid var(--line);
+      transform: translateX(100%); transition: transform .2s ease; z-index: 31;
+      display: grid; grid-template-rows: auto auto 1fr;
+    }
+    .drawer.is-on { transform: translateX(0); }
+    .drawer header { display: flex; align-items: center; padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+    .drawer header h2 { margin: 0; flex: 1; font-size: 15px; font-weight: 700; }
+    .drawer-tabs { display: flex; gap: 18px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+    .drawer-tabs button {
+      border: 0; background: none; padding: 11px 0 10px; color: var(--muted);
+      font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .drawer-tabs button.is-on { color: var(--accent); border-bottom-color: var(--accent); }
+    .drawer-body { overflow-y: auto; padding: 4px 18px 20px; }
+    .drawer-note { margin: 10px 0 4px; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
+    .drow { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .drow .ai { width: 26px; height: 26px; border-radius: 7px; flex: 0 0 auto; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; }
+    .drow .txt { min-width: 0; flex: 1; }
+    .drow .txt b { font-size: 12.5px; font-weight: 700; }
+    .drow .txt .state { margin-left: 7px; font-size: 11.5px; color: var(--muted); }
+    .drow .txt .detail { margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .drow .txt .meta { margin-top: 3px; font-size: 11px; color: var(--faint); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(8px);
+      max-width: min(460px, calc(100% - 32px)); padding: 9px 14px; border-radius: 11px;
+      background: rgba(15, 23, 42, 0.93); color: #fff; font-size: 12.5px; line-height: 1.45;
+      opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 40;
+    }
+    .toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 原型条：默认折叠，不抢主舞台 */
+    .proto {
+      width: min(100%, var(--w)); margin: 8px auto 0; padding: 8px 0 20px;
+      border-top: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      opacity: 0.72;
+    }
+    .proto:focus-within, .proto:hover { opacity: 1; }
+    .proto > span { font-size: 11px; font-weight: 650; color: var(--faint); margin-right: 4px; }
+    .proto button {
+      border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+      font: inherit; font-size: 11px; font-weight: 650; padding: 4px 9px;
+      border-radius: 8px; cursor: pointer;
+    }
+    .proto button:hover { color: var(--accent); border-color: rgba(43, 143, 212, 0.4); }
+    .proto details { width: 100%; margin-top: 6px; }
+    .proto summary { font-size: 11px; color: var(--faint); cursor: pointer; }
+    .proto details p { margin: 6px 0 0; font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .proto code { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; color: var(--accent); }
+
+    .hidden { display: none !important; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 620px) {
+      .stage { width: calc(100% - 28px); }
+      .watch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .intent { gap: 12px; }
+      .top { padding-inline: 14px; }
+    }
+    /* 矮窗口：整屏收进视口，主舞台不产生任何滚动条 */
+    @media (max-height: 760px) {
+      .stage { padding-top: 16px; padding-bottom: 4px; gap: 10px; }
+      .invite h1 { font-size: 21px; }
+      .invite .fact { font-size: 12px; }
+      .card { padding: 11px 12px; }
+      .card.compose { padding-bottom: 0; }
+      .compose textarea { min-height: 42px; padding-bottom: 6px; }
+      .watch { margin-left: -12px; margin-right: -12px; }
+      .watch-sum { padding: 8px 12px; }
+      .witem { height: 29px; }
+      .hero-hd { margin-bottom: 7px; }
+      .hero h1 { font-size: 15px; }
+      .hero-acts { margin-top: 9px; }
+      .btn { height: 31px; }
+      .proto { padding-top: 6px; padding-bottom: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="ctx">
+        <span class="dot" aria-hidden="true"></span><span>Cursor</span>
+        <span class="sep">·</span><button type="button" id="projBtn">voice-pilot</button>
+      </div>
+      <div class="intent" role="group" aria-label="下一步意图">
+        <button type="button" aria-pressed="true" data-intent="chat">对话</button>
+        <button type="button" aria-pressed="false" data-intent="work">工作</button>
+      </div>
+      <div class="top-end">
+        <button type="button" class="icon-btn" id="openWs" title="工作区" aria-label="工作区">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+          <span class="badge" id="wsBadge">2</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="invite">
+        <p class="kicker"><button type="button" id="handoff">帮我理一理再说</button></p>
+        <h1 id="inviteTitle">写一句，开始</h1>
+        <p class="fact" id="inviteFact">先写新的，或继续下面这件事。</p>
+      </section>
+
+      <div class="input-group" id="inputGroup">
+        <!-- 表面 1：输入 + 收起的监视（同一块卡，首屏只看见一行摘要） -->
+        <form class="card compose" id="compose" onsubmit="return false;">
+          <textarea id="q" rows="2" placeholder="聊思路、读代码，或写给桌面应用的话…"></textarea>
+          <div class="rail">
+            <button type="button" class="chip aim" title="框选窗口" aria-label="框选窗口">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="chip" id="agentChip" title="选择发送目标（与监视分开）" aria-expanded="false" aria-haspopup="listbox">
+              <span class="ai" id="sendIco">Cu</span> <span id="sendName">Cursor</span>
+            </button>
+            <button type="button" class="chip model">混元 Hy4 ▾</button>
+            <span class="spacer"></span>
+            <button type="button" class="link" id="organize">整理草稿</button>
+            <button type="button" class="more" title="更多" aria-label="更多">···</button>
+            <button type="button" class="add" title="加入材料" aria-label="加入材料">+</button>
+            <button type="button" class="send" id="sendBtn" title="填入目标" aria-label="填入">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <section class="watch" id="watch" aria-label="各 Agent 现在的状态">
+            <button type="button" class="watch-sum" id="watchToggle" aria-expanded="false">
+              <span class="faces" id="watchFaces" aria-hidden="true"></span>
+              <span class="txt" id="watchSumTxt">—<small>点开看各家 · 不改发送目标</small></span>
+              <span class="chev" id="watchChev">展开</span>
+            </button>
+            <div class="watch-panel" id="watchPanel">
+              <div class="watch-tools">
+                <span class="sum" id="watchSum">—</span>
+                <button type="button" id="refreshBtn">刷新</button>
+                <button type="button" id="watchAll">工作区</button>
+              </div>
+              <div class="watch-grid" id="watchGrid"></div>
+            </div>
+          </section>
+        </form>
+        <div class="flyout" id="sendFlyout" role="listbox" aria-label="发送目标"></div>
+
+        <div class="pop" id="pop" role="dialog" aria-label="Agent 状态详情">
+          <h3 id="popTitle">—</h3>
+          <p class="who" id="popState">—</p>
+          <p class="kv" id="popKv">—</p>
+          <div class="pop__acts">
+            <button type="button" id="popView">看详情</button>
+            <button type="button" class="write" id="popSend">发给它</button>
+          </div>
+          <p class="pop__hint">「看详情」只读；只有「发给它」改发送目标，草稿保留。</p>
+        </div>
+
+        <div class="restore" id="restoreRow">
+          <button type="button" id="ctaRestore">把刚才那件事拿回来</button>
+        </div>
+      </div>
+
+      <!-- 表面 2：唯一任务卡 -->
+      <section class="card hero" id="hero">
+        <div class="hero-hd">
+          <span class="ai" aria-hidden="true">Cu</span>
+          <div class="who"><b>Cursor</b><span>voice-pilot · 已记下的进度</span></div>
+          <span class="pill"><i aria-hidden="true"></i>还能接着做</span>
+        </div>
+        <h1>上次停在「最近改了什么代码」</h1>
+        <p class="fact">有已记下的进度，可以从停下的地方继续。</p>
+        <p class="src"><b>来源</b> · ATR · 约 2 分钟前 · 可用</p>
+        <div class="hero-acts">
+          <button type="button" class="btn primary" id="heroPrimary">接着做</button>
+          <button type="button" class="btn link" id="heroSecondary">做新的</button>
+        </div>
+      </section>
+
+      <div class="proto">
+        <span>原型</span>
+        <button type="button" id="demoHook">hook 到达</button>
+        <button type="button" id="demoStale">全部过期</button>
+        <button type="button" id="demoReset">重置</button>
+        <button type="button" id="demoDrawer">工作区</button>
+        <details>
+          <summary>视觉与落地</summary>
+          <p>
+            首屏只留输入卡 + 任务卡。监视默认一行摘要，展开才见 3×2；工作区只走角标 /「工作区」按钮。<br />
+            落地：<code>agentStatusRowHtml</code> + <code>embedCompose</code>；点击拆「看详情 / 发给它」；
+            数据 <code>observedStatus</code> + <code>freshUntil</code>。
+          </p>
+        </details>
+      </div>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" aria-labelledby="drawerTitle" aria-hidden="true" hidden>
+    <header>
+      <h2 id="drawerTitle">工作区</h2>
+      <button type="button" class="icon-btn" id="closeWs" aria-label="关闭">×</button>
+    </header>
+    <div class="drawer-tabs" role="tablist">
+      <button type="button" class="is-on" data-tab="now">此刻</button>
+      <button type="button" data-tab="resume">可恢复</button>
+      <button type="button" data-tab="recent">最近</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      'use strict';
+      var LABEL = {
+        working: '在忙', needs_input: '等你拍板', completed: '刚做完',
+        failed: '出问题了', idle: '空着', unknown: '暂时接不上'
+      };
+      var SOURCE = {
+        OfficialHook: 'Hook 事件', AppServer: 'AppServer', Native: '本机读取',
+        OneToneAsk: '一处问', Inferred: '推断'
+      };
+      var TTL = { OfficialHook: 120000, AppServer: 120000, Native: 60000, OneToneAsk: 60000, Inferred: 60000 };
+      var ORDER = { needs_input: 0, failed: 1, working: 2, completed: 3, idle: 4, unknown: 5 };
+      var now = Date.now();
+
+      function seed(id, name, short, ico, bg, value, source, age, task) {
+        var at = now - age;
+        return {
+          id: id, name: name, short: short, ico: ico, bg: bg, task: task,
+          observed: {
+            value: value, source: source, observedAt: at,
+            freshUntil: at + TTL[source],
+            confidence: (source === 'OfficialHook' || source === 'AppServer') ? 'high' : 'medium'
+          }
+        };
+      }
+      var INITIAL = [
+        seed('cursor', 'Cursor', 'Cursor', 'Cu', '#1a1a1a', 'completed', 'OfficialHook', 30000, '最近改了什么代码'),
+        seed('minimax', 'MiniMax', 'MiniMax', 'M', '#3a5fbf', 'working', 'Inferred', 18000, '登录页错误提示'),
+        seed('codex', 'Codex', 'Codex', 'Cx', '#10a37f', 'working', 'OfficialHook', 9000, '导出命令'),
+        seed('claude', 'Claude', 'Claude', 'Cl', '#d97757', 'needs_input', 'Inferred', 20000, '等你确认改法'),
+        seed('workbuddy', 'WorkBuddy', '本机', 'WB', '#1f9d63', 'idle', 'Native', 25000, ''),
+        seed('qoder', 'Qoder', 'Qoder', 'Q', '#4f46e5', 'unknown', 'Inferred', 180000, '')
+      ];
+      var agents = clone(INITIAL);
+      var sendTarget = 'cursor';
+      var watchFocus = '';
+      var watchOpen = false;
+      var dismissed = false;
+      var drawerTab = 'now';
+      var toastTimer = 0;
+
+      function clone(x) { return JSON.parse(JSON.stringify(x)); }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+      function byId(id) { return agents.filter(function (a) { return a.id === id; })[0] || agents[0]; }
+      function valueOf(a) { return Date.now() > a.observed.freshUntil ? 'unknown' : a.observed.value; }
+      function ago(ts) {
+        var d = Math.max(0, Date.now() - Number(ts || 0));
+        if (d < 60000) return '刚刚';
+        if (d < 3600000) return Math.floor(d / 60000) + ' 分钟前';
+        return Math.floor(d / 3600000) + ' 小时前';
+      }
+      function remain(ts) {
+        var d = Number(ts || 0) - Date.now();
+        if (d <= 0) return '已过期';
+        if (d < 60000) return Math.round(d / 1000) + ' 秒后';
+        return Math.round(d / 60000) + ' 分钟后';
+      }
+      function toast(msg) {
+        var el = document.getElementById('toast');
+        el.textContent = msg; el.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove('is-on'); }, 3000);
+      }
+      function icoHtml(a, cls) {
+        return '<span class="' + cls + '" style="background:' + a.bg + '">' + esc(a.ico) + '</span>';
+      }
+
+      var grid = document.getElementById('watchGrid');
+      var pop = document.getElementById('pop');
+      var flyout = document.getElementById('sendFlyout');
+      var group = document.getElementById('inputGroup');
+
+      function sorted() {
+        return agents.slice().sort(function (x, y) {
+          var ox = ORDER[valueOf(x)], oy = ORDER[valueOf(y)];
+          return (ox == null ? 9 : ox) - (oy == null ? 9 : oy);
+        });
+      }
+      function counts() {
+        var c = { working: 0, needs_input: 0, unknown: 0, failed: 0, completed: 0 };
+        agents.forEach(function (a) {
+          var v = valueOf(a);
+          if (c[v] != null) c[v]++;
+        });
+        return c;
+      }
+      function hotAgents() {
+        return sorted().filter(function (a) {
+          var v = valueOf(a);
+          return v === 'needs_input' || v === 'failed' || v === 'working' || v === 'completed';
+        });
+      }
+      function setWatchOpen(on) {
+        watchOpen = !!on;
+        var watch = document.getElementById('watch');
+        var toggle = document.getElementById('watchToggle');
+        watch.classList.toggle('is-open', watchOpen);
+        toggle.setAttribute('aria-expanded', watchOpen ? 'true' : 'false');
+        document.getElementById('watchChev').textContent = watchOpen ? '收起' : '展开';
+      }
+      function renderWatch() {
+        var c = counts();
+        var hot = hotAgents();
+        var line =
+          (c.needs_input ? c.needs_input + ' 等你' : '') +
+          (c.working ? (c.needs_input ? ' · ' : '') + c.working + ' 在忙' : '') +
+          (c.completed ? ((c.needs_input || c.working) ? ' · ' : '') + c.completed + ' 可继续' : '') +
+          (c.failed ? ((c.needs_input || c.working || c.completed) ? ' · ' : '') + c.failed + ' 出错' : '');
+        if (!line) line = c.unknown ? c.unknown + ' 暂时接不上' : '此刻都安静';
+        document.getElementById('watchSumTxt').innerHTML =
+          esc(line) + '<small>点开看各家 · 不改发送目标</small>';
+        document.getElementById('watchSum').textContent =
+          c.working + ' 在忙 · ' + c.needs_input + ' 等你 · ' + c.unknown + ' 接不上 · 共 ' + agents.length + ' 家';
+        document.getElementById('watchFaces').innerHTML = (hot.length ? hot : agents).slice(0, 4).map(function (a) {
+          return icoHtml(a, 'ai');
+        }).join('');
+        grid.innerHTML = sorted().map(function (a) {
+          var v = valueOf(a);
+          return '<button type="button" class="witem is-' + v + (a.id === watchFocus ? ' is-on' : '') +
+            '" data-watch="' + esc(a.id) + '" aria-label="' + esc(a.name + ' · ' + LABEL[v]) + '">' +
+            icoHtml(a, 'ai') +
+            '<span class="body"><b>' + esc(a.short) + '</b><span>' + LABEL[v] + '</span></span>' +
+            '<i class="dot" aria-hidden="true"></i></button>';
+        }).join('');
+        Array.prototype.forEach.call(grid.querySelectorAll('[data-watch]'), function (btn) {
+          btn.onclick = function (e) {
+            e.stopPropagation();
+            openPop(btn.getAttribute('data-watch'), btn);
+          };
+        });
+      }
+      function renderSend() {
+        var a = byId(sendTarget);
+        document.getElementById('sendIco').textContent = a.ico;
+        document.getElementById('sendIco').style.background = a.bg;
+        document.getElementById('sendName').textContent = a.name;
+        flyout.innerHTML = agents.map(function (x) {
+          return '<button type="button" role="option" data-send="' + esc(x.id) + '">' +
+            icoHtml(x, 'ai') + '<span>' + esc(x.name) + (x.id === sendTarget ? ' · 当前' : '') + '</span></button>';
+        }).join('');
+      }
+      function renderBadge() {
+        var n = hotAgents().length || 2;
+        document.getElementById('wsBadge').textContent = String(n);
+      }
+      function render() { renderWatch(); renderSend(); renderBadge(); }
+
+      function openPop(id, btn) {
+        var a = byId(id), o = a.observed, v = valueOf(a);
+        watchFocus = id;
+        if (!watchOpen) setWatchOpen(true);
+        document.getElementById('popTitle').textContent = a.name + ' · ' + LABEL[v];
+        document.getElementById('popState').textContent = a.task ? '正在做：' + a.task : '当前没有记下具体任务';
+        document.getElementById('popKv').innerHTML =
+          '来源：<b>' + esc(SOURCE[o.source] || o.source) + '</b> · 置信度：<b>' +
+          (o.confidence === 'high' ? '高' : '中') + '</b><br />' +
+          '观测于：<b>' + ago(o.observedAt) + '</b> · 保鲜至：<b>' + remain(o.freshUntil) + '</b>' +
+          (v === 'unknown' ? '<br />没有新鲜信号，所以不猜它「空着」' : '');
+        pop.classList.add('is-on');
+        var r = btn.getBoundingClientRect(), g = group.getBoundingClientRect();
+        pop.style.left = Math.min(Math.max(0, r.left - g.left), Math.max(0, g.width - 268)) + 'px';
+        pop.style.top = (r.bottom - g.top + 8) + 'px';
+        renderWatch();
+      }
+      function closePop() { pop.classList.remove('is-on'); watchFocus = ''; renderWatch(); }
+
+      document.getElementById('popView').onclick = function () {
+        var a = byId(watchFocus);
+        toast('看详情：打开工作区「此刻」，定位到 ' + a.name + '（只读，不改发送目标）');
+        closePop(); openDrawer();
+      };
+      document.getElementById('popSend').onclick = function () {
+        var a = byId(watchFocus);
+        sendTarget = a.id;
+        closePop(); renderSend();
+        toast('发送目标 → ' + a.name + '。输入框草稿保留，未发送');
+      };
+
+      var agentChip = document.getElementById('agentChip');
+      function openFlyout() {
+        var r = agentChip.getBoundingClientRect(), g = group.getBoundingClientRect();
+        flyout.style.left = (r.left - g.left) + 'px';
+        flyout.style.top = (r.bottom - g.top + 6) + 'px';
+        flyout.classList.add('is-on');
+        agentChip.setAttribute('aria-expanded', 'true');
+      }
+      function closeFlyout() {
+        flyout.classList.remove('is-on');
+        agentChip.setAttribute('aria-expanded', 'false');
+      }
+      agentChip.onclick = function (e) {
+        e.stopPropagation();
+        if (flyout.classList.contains('is-on')) closeFlyout(); else openFlyout();
+      };
+      flyout.onclick = function (e) {
+        var b = e.target.closest && e.target.closest('[data-send]');
+        if (!b) return;
+        sendTarget = b.getAttribute('data-send');
+        closeFlyout(); renderSend();
+        toast('发送目标 → ' + byId(sendTarget).name + '（监视条不变）');
+      };
+      document.addEventListener('click', function (e) {
+        if (flyout.classList.contains('is-on')) closeFlyout();
+        if (pop.classList.contains('is-on') && !(e.target.closest && e.target.closest('#pop')) &&
+            !(e.target.closest && e.target.closest('[data-watch]'))) closePop();
+      });
+
+      document.getElementById('sendBtn').onclick = function () {
+        var t = document.getElementById('q').value.trim();
+        if (!t) { document.getElementById('q').focus(); toast('先写一句再填入'); return; }
+        toast('已填入 ' + byId(sendTarget).name + '（insert_text_no_enter · 未按 Enter）· 尚未发送');
+      };
+      document.getElementById('heroPrimary').onclick = function () {
+        toast('接着做：将调用 resume checkpoint（原型未接 IPC）');
+      };
+      document.getElementById('heroSecondary').onclick = function () {
+        dismissed = true;
+        document.getElementById('hero').classList.add('hidden');
+        document.getElementById('restoreRow').classList.add('is-on');
+        document.getElementById('inviteFact').textContent = '先写新的；进度还在，草稿没动。';
+        document.getElementById('q').focus();
+      };
+      document.getElementById('ctaRestore').onclick = function () {
+        dismissed = false;
+        document.getElementById('hero').classList.remove('hidden');
+        document.getElementById('restoreRow').classList.remove('is-on');
+        document.getElementById('inviteFact').textContent = '先写新的，或继续下面这件事。';
+      };
+      document.getElementById('watchToggle').onclick = function (e) {
+        e.stopPropagation();
+        setWatchOpen(!watchOpen);
+      };
+      document.querySelectorAll('.intent [data-intent]').forEach(function (b) {
+        b.onclick = function () {
+          document.querySelectorAll('.intent [data-intent]').forEach(function (x) {
+            x.setAttribute('aria-pressed', String(x === b));
+          });
+          document.getElementById('inviteTitle').textContent =
+            b.getAttribute('data-intent') === 'work' ? '写一句，开始改' : '写一句，开始';
+        };
+      });
+      document.getElementById('handoff').onclick = function () { toast('整理并交接：进入准备台（原型）'); };
+      document.getElementById('organize').onclick = function () { toast('整理草稿：data-ha2-organize（原型）'); };
+      document.getElementById('projBtn').onclick = function () { toast('确认项目（原型）'); };
+
+      function openDrawer() {
+        var rows = drawerTab === 'now' ? sorted()
+          : drawerTab === 'resume' ? agents.filter(function (a) { return valueOf(a) === 'completed' || valueOf(a) === 'working'; })
+          : agents.filter(function (a) { return valueOf(a) === 'idle' || valueOf(a) === 'unknown'; });
+        document.getElementById('drawerBody').innerHTML =
+          '<p class="drawer-note">完整监视名单。改发送目标请回输入卡的 Agent chip。</p>' +
+          rows.map(function (a) {
+            var o = a.observed, v = valueOf(a);
+            return '<div class="drow">' + icoHtml(a, 'ai') +
+              '<div class="txt"><b>' + esc(a.name) + '</b><span class="state">' + LABEL[v] + '</span>' +
+              '<div class="detail">' + esc(a.task || '没有记下具体任务') + '</div>' +
+              '<div class="meta">' + esc(SOURCE[o.source] || o.source) + ' · ' + ago(o.observedAt) +
+              ' · 保鲜 ' + remain(o.freshUntil) + '</div></div></div>';
+          }).join('');
+        document.querySelectorAll('.drawer-tabs button').forEach(function (x) {
+          x.classList.toggle('is-on', x.getAttribute('data-tab') === drawerTab);
+        });
+        var d = document.getElementById('drawer'), s = document.getElementById('scrim');
+        d.hidden = false; s.hidden = false;
+        requestAnimationFrame(function () { d.classList.add('is-on'); s.classList.add('is-on'); });
+      }
+      function closeDrawer() {
+        var d = document.getElementById('drawer'), s = document.getElementById('scrim');
+        d.classList.remove('is-on'); s.classList.remove('is-on');
+        setTimeout(function () { d.hidden = true; s.hidden = true; }, 200);
+      }
+      document.getElementById('openWs').onclick = openDrawer;
+      document.getElementById('watchAll').onclick = openDrawer;
+      document.getElementById('demoDrawer').onclick = openDrawer;
+      document.getElementById('closeWs').onclick = closeDrawer;
+      document.getElementById('scrim').onclick = closeDrawer;
+      document.querySelectorAll('.drawer-tabs button').forEach(function (b) {
+        b.onclick = function () { drawerTab = b.getAttribute('data-tab'); openDrawer(); };
+      });
+
+      document.getElementById('refreshBtn').onclick = function () {
+        var mm = byId('minimax');
+        mm.observed.value = 'needs_input';
+        mm.observed.source = 'OfficialHook';
+        mm.observed.observedAt = Date.now();
+        mm.observed.freshUntil = Date.now() + TTL.OfficialHook;
+        mm.observed.confidence = 'high';
+        mm.task = '登录页文案要你确认';
+        toast('hook 事件到达：MiniMax 从「在忙」变为「等你拍板」');
+        render();
+      };
+      document.getElementById('demoHook').onclick = function () { document.getElementById('refreshBtn').click(); };
+      document.getElementById('demoStale').onclick = function () {
+        agents = clone(INITIAL).map(function (a) { a.observed.freshUntil = Date.now() - 1000; return a; });
+        toast('观测全部过期：一律「暂时接不上」，不伪装成空闲');
+        closePop(); render();
+      };
+      document.getElementById('demoReset').onclick = function () {
+        agents = clone(INITIAL); sendTarget = 'cursor'; dismissed = false;
+        document.getElementById('hero').classList.remove('hidden');
+        document.getElementById('restoreRow').classList.remove('is-on');
+        document.getElementById('inviteFact').textContent = '先写新的，或继续下面这件事。';
+        closePop(); closeFlyout(); setWatchOpen(false); render();
+        toast('已重置');
+      };
+
+      setWatchOpen(false);
+      render();
+    })();
+  </script>
+</body>
+</html>

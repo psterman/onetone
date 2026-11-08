@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 首页稿 · 居中 · 简单 Hero</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e9eef3;
+      --bg2: #dfe7ee;
+      --surface: #fbfcfd;
+      --ink: #152238;
+      --muted: #5d7186;
+      --line: rgba(21, 34, 56, 0.1);
+      --accent: #2b8fd4;
+      --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+      --ok: #1a9b5f;
+      --warn: #c97820;
+      --compose-max: 560px;
+      --card-max: 520px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 50% 18%, #f6f9fb 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 整页：顶栏固定高度，舞台占满剩余并垂直居中 */
+    .shell {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px 0;
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .ctx {
+      display: inline-flex; align-items: center; gap: 6px;
+      min-width: 0;
+    }
+    .ctx-app {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--muted); font-size: 12.5px; font-weight: 600;
+    }
+    .ctx-app .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent);
+    }
+    .ctx-sep { color: color-mix(in srgb, var(--muted) 55%, transparent); }
+    .ctx-proj {
+      border: 0; background: none; padding: 0;
+      color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer; max-width: 140px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ctx-proj.is-empty { color: var(--muted); font-weight: 600; }
+
+    .intent {
+      display: inline-flex; padding: 4px; border-radius: 14px;
+      background: color-mix(in srgb, var(--ink) 5%, white);
+      border: 1px solid color-mix(in srgb, var(--ink) 14%, var(--line)); gap: 4px;
+      box-shadow: 0 1px 0 color-mix(in srgb, white 70%, transparent);
+    }
+    .intent button {
+      border: 1px solid transparent; background: transparent; color: var(--muted);
+      font: inherit; font-weight: 700; font-size: 14px;
+      padding: 9px 16px; border-radius: 11px; cursor: pointer;
+      min-width: 104px;
+    }
+    .intent button small {
+      display: block; margin-top: 2px;
+      font-size: 10.5px; font-weight: 650; color: color-mix(in srgb, var(--muted) 88%, white);
+      line-height: 1.1;
+    }
+    .intent button[aria-pressed="true"] {
+      background: var(--accent); color: #fff;
+      border-color: color-mix(in srgb, var(--accent) 70%, #0b4f5c);
+      box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+    }
+    .intent button[aria-pressed="true"] small {
+      color: color-mix(in srgb, #fff 78%, var(--accent));
+    }
+    .intent button[data-intent="work"][aria-pressed="true"] {
+      background: #1f3a5f; border-color: #152a45;
+      box-shadow: 0 6px 16px -8px rgba(31, 58, 95, 0.55);
+    }
+    .intent button[data-intent="work"][aria-pressed="true"] small {
+      color: color-mix(in srgb, #fff 72%, #1f3a5f);
+    }
+
+    .top-end { justify-self: end; display: flex; gap: 6px; }
+    .icon-btn {
+      width: 32px; height: 32px; border-radius: 9px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      color: var(--ink); cursor: pointer;
+      display: grid; place-items: center; position: relative;
+    }
+    .icon-btn svg { opacity: 0.8; }
+    .icon-btn .badge {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px;
+      background: var(--ink); color: #fff; font-size: 9px; font-weight: 700;
+      line-height: 14px; text-align: center; font-family: Sora, sans-serif;
+    }
+
+    /* 舞台：真正居中，避免贴顶 */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* Top-anchored so a card below does not shove the compose upward. */
+      justify-content: flex-start;
+      gap: 18px;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: clamp(48px, 14vh, 120px) 20px clamp(28px, 5vh, 48px);
+      min-height: 0;
+    }
+
+    /* —— 空闲：轻邀请，无大卡 —— */
+    .invite {
+      width: min(100%, var(--card-max));
+      text-align: center;
+      padding: 4px 8px 2px;
+    }
+    .invite .kicker {
+      margin: 0 0 10px;
+      font-size: 12.5px; font-weight: 650; color: var(--accent);
+    }
+    .invite .kicker button {
+      border: 0; background: none; color: inherit; font: inherit; font-weight: inherit;
+      padding: 0; cursor: pointer;
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+    .invite h1 {
+      margin: 0;
+      font-family: Sora, "Noto Sans SC", sans-serif;
+      font-size: clamp(24px, 3.4vw, 30px);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.25;
+    }
+    .invite .fact {
+      margin: 10px auto 0;
+      max-width: 34ch;
+      color: var(--muted); font-size: 14px; line-height: 1.55;
+    }
+
+    /* —— 有任务：简单 Hero —— */
+    .hero {
+      width: min(100%, var(--card-max));
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 85%, transparent) inset,
+        0 16px 36px -22px color-mix(in srgb, var(--ink) 20%, transparent);
+      padding: 16px 18px 16px;
+      text-align: left;
+    }
+    .hero-hd {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .hero-hd .ai {
+      width: 34px; height: 34px; border-radius: 10px;
+      display: grid; place-items: center;
+      font-family: Sora, sans-serif; font-size: 11px; font-weight: 700; color: #fff;
+      background: #1a1d24; flex: 0 0 auto;
+    }
+    .hero-hd .who { flex: 1; min-width: 0; }
+    .hero-hd .who b {
+      display: block; font-size: 13.5px; font-weight: 700;
+    }
+    .hero-hd .who span {
+      display: block; margin-top: 2px;
+      font-size: 12px; color: var(--muted);
+    }
+    .pill {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+      border: 1px solid color-mix(in srgb, var(--ok) 28%, var(--line));
+      background: color-mix(in srgb, var(--ok) 8%, white);
+      color: var(--ok);
+    }
+    .pill.is-wait {
+      border-color: color-mix(in srgb, var(--warn) 32%, var(--line));
+      background: color-mix(in srgb, var(--warn) 9%, white);
+      color: var(--warn);
+    }
+    .hero h1 {
+      margin: 0;
+      font-family: Sora, "Noto Sans SC", sans-serif;
+      font-size: 17px; font-weight: 700;
+      letter-spacing: -0.015em; line-height: 1.35;
+    }
+    .hero .fact {
+      margin: 8px 0 0;
+      color: var(--muted); font-size: 13px; line-height: 1.5;
+    }
+    /* 故意不放 probe / 来源码 / 证据 pill 行 */
+    .hero-acts {
+      margin-top: 14px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    }
+    .btn {
+      height: 36px; padding: 0 16px; border-radius: 999px;
+      border: 1px solid transparent;
+      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .btn.primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+    }
+    .btn.primary:hover { filter: brightness(1.04); }
+    .btn.link {
+      background: none; border: 0; padding: 0;
+      color: var(--accent); font-weight: 650; font-size: 13px;
+    }
+
+    .ws-teaser {
+      width: min(100%, var(--compose-max));
+      display: none; align-items: center; gap: 8px;
+      padding: 9px 12px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--line));
+      background: color-mix(in srgb, var(--accent) 4%, white);
+      color: var(--muted); font-size: 12.5px; cursor: pointer; text-align: left;
+    }
+    .stage[data-task="resume"] .ws-teaser,
+    .stage[data-task="decide"] .ws-teaser { display: flex; }
+    .ws-teaser b { color: var(--ink); }
+    .ws-teaser .go {
+      margin-left: auto; color: var(--accent); font-weight: 700; font-size: 12px;
+    }
+
+    /* compose：始终在光心附近，与主内容成组 */
+    .compose-wrap {
+      width: min(100%, var(--compose-max));
+    }
+    .other-label {
+      margin: 0 0 8px;
+      font-size: 12px; font-weight: 650; color: var(--muted);
+      display: none; /* 输入在上：不必再标「发起另一项」 */
+    }
+    .compose {
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow:
+        0 1px 0 color-mix(in srgb, white 80%, transparent) inset,
+        0 18px 40px -24px color-mix(in srgb, var(--ink) 18%, transparent);
+      padding: 12px 12px 10px;
+    }
+    .compose:focus-within {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent),
+        0 18px 40px -24px color-mix(in srgb, var(--ink) 18%, transparent);
+    }
+    .compose textarea {
+      width: 100%; min-height: 72px; max-height: 140px; resize: vertical;
+      border: 0; outline: 0; background: transparent;
+      color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5;
+      padding: 2px 4px 8px;
+    }
+    .compose textarea::placeholder { color: color-mix(in srgb, var(--muted) 80%, white); }
+    .rail {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding-top: 2px;
+    }
+    .chip {
+      height: 28px; padding: 0 9px 0 7px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 45%, white);
+      color: var(--ink); font-size: 12px; font-weight: 650;
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .chip .ai {
+      width: 18px; height: 18px; border-radius: 5px;
+      display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff;
+      background: #1a1d24;
+    }
+    .chip.model {
+      border: 0; background: transparent; color: var(--muted); padding-left: 4px;
+    }
+    .chip.aim {
+      width: 28px; height: 28px; padding: 0; justify-content: center;
+      color: var(--muted);
+    }
+    .rail .spacer { flex: 1; min-width: 8px; }
+    .rail .link {
+      border: 0; background: none; color: var(--muted);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; padding: 0 4px;
+    }
+    .rail .more, .rail .add {
+      width: 28px; height: 28px; border-radius: 999px;
+      border: 1px solid var(--line); background: transparent;
+      color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    }
+    .send {
+      width: 32px; height: 32px; border-radius: 999px; border: 0;
+      background: var(--accent); color: #fff; cursor: pointer;
+      display: grid; place-items: center;
+      box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--accent) 65%, transparent);
+    }
+
+    /* 演示条 */
+    .demo {
+      position: fixed; left: 12px; bottom: 12px; z-index: 20;
+      display: flex; flex-wrap: wrap; gap: 6px; max-width: min(420px, calc(100% - 24px));
+      padding: 8px; border-radius: 12px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 10%, transparent);
+    }
+    .demo span {
+      width: 100%; font-size: 10px; font-weight: 700; color: var(--muted);
+    }
+    .demo button {
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+      font: inherit; font-size: 11px; font-weight: 650; padding: 5px 8px;
+      border-radius: 8px; cursor: pointer;
+    }
+    .demo button.is-on {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      background: var(--accent-soft);
+    }
+    .demo a {
+      font-size: 11px; font-weight: 650; color: var(--accent);
+      align-self: center; margin-left: 4px; text-decoration: none;
+    }
+
+    .note {
+      position: fixed; right: 12px; bottom: 12px; z-index: 20;
+      max-width: min(280px, calc(100% - 24px));
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      font-size: 11.5px; color: var(--muted); line-height: 1.45;
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
+    }
+    .note b { color: var(--ink); }
+    .note code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10.5px; color: var(--accent);
+    }
+
+    .hidden { display: none !important; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    @media (max-width: 720px) {
+      .top { grid-template-columns: auto 1fr auto; padding-inline: 14px; }
+      .ctx-proj { max-width: 88px; }
+      .intent button { min-width: 0; padding: 7px 10px; font-size: 12px; }
+      .intent button small { display: none; }
+      .note { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .compose, .hero, .btn.primary { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="ctx" aria-label="当前应用与项目">
+        <span class="ctx-app"><span class="dot" aria-hidden="true"></span>Cursor</span>
+        <span class="ctx-sep" aria-hidden="true">·</span>
+        <button type="button" class="ctx-proj" id="projBtn" title="项目">voice-pilot</button>
+      </div>
+      <div class="intent" role="group" aria-label="下一步意图">
+        <button type="button" aria-pressed="true" data-intent="chat">对话<small>讨论 · 不改文件</small></button>
+        <button type="button" aria-pressed="false" data-intent="work">工作<small>可改项目文件</small></button>
+      </div>
+      <div class="top-end">
+        <button type="button" class="icon-btn" id="openWs" title="工作区" aria-label="工作区">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4.5 12a7.5 7.5 0 1 0 1.7-4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 5.5V9h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="badge" id="wsBadge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage" data-task="idle">
+      <!-- 空闲邀请（有任务时也保留短标题，输入始终在上） -->
+      <section class="invite" id="invite" aria-labelledby="inviteTitle">
+        <p class="kicker"><button type="button" id="handoff">整理并交接</button></p>
+        <h1 id="inviteTitle">写一句，开始</h1>
+        <p class="fact" id="inviteFact">没有正在推进的任务。问一句，或送到桌面 Agent。</p>
+      </section>
+
+      <div class="compose-wrap">
+        <p class="other-label">发起另一项任务</p>
+        <form class="compose" id="compose" onsubmit="return false;">
+          <label class="sr-only" for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">草稿</label>
+          <textarea id="q" rows="3" placeholder="聊思路、读代码，或写给桌面应用的话…"></textarea>
+          <div class="rail">
+            <button type="button" class="chip aim" title="框选窗口" aria-label="框选窗口">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="chip" id="agentChip" title="选择 Agent">
+              <span class="ai">Cu</span> Cursor
+            </button>
+            <button type="button" class="chip model" title="模型">混元 Hy4 ▾</button>
+            <span class="spacer"></span>
+            <button type="button" class="link" id="organize">整理</button>
+            <button type="button" class="more" title="更多" aria-label="更多">···</button>
+            <button type="button" class="add" title="加入材料" aria-label="加入材料">+</button>
+            <button type="button" class="send" title="发送" aria-label="发送">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <button type="button" class="ws-teaser" id="wsTeaser">
+        <span><b>工作区</b> · 还有可恢复记录</span>
+        <span class="go">查看 →</span>
+      </button>
+
+      <!-- 可恢复卡：在输入框 + 工作区之下 -->
+      <section class="hero hidden" id="hero" aria-labelledby="heroTitle">
+        <div class="hero-hd">
+          <span class="ai" id="heroIco" aria-hidden="true">Cu</span>
+          <div class="who">
+            <b id="heroAgent">Cursor</b>
+            <span id="heroSub">voice-pilot</span>
+          </div>
+          <span class="pill" id="heroPill">可恢复</span>
+        </div>
+        <h1 id="heroTitle">上次停在「最近修改了什么代码？」</h1>
+        <p class="fact" id="heroFact">3 天前有进度，可以从停下的地方继续。</p>
+        <div class="hero-acts">
+          <button type="button" class="btn primary" id="heroPrimary">继续上次工作</button>
+          <button type="button" class="btn link" id="heroSecondary">开始新任务</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="demo" aria-label="稿态切换">
+    <span>状态 · 对照现网：去掉探针标签，舞台垂直居中</span>
+    <button type="button" class="is-on" data-task="idle">空闲</button>
+    <button type="button" data-task="resume">可恢复</button>
+    <button type="button" data-task="decide">等你决定</button>
+    <a href="home-focus-vs-proto-compare.html">对齐对照</a>
+    <a href="../mock-home-hero-center.html">旧原型</a>
+  </div>
+
+  <aside class="note">
+    <b>相对现网改动</b><br />
+    1. 顺序：邀请 → <b>输入框</b> → 工作区 → <b>任务卡</b>。<br />
+    2. 可恢复卡不再压在输入上方。<br />
+    3. Hero 只留：谁 · 一句人话 · 何时 · 主按钮；无探针 pill。
+  </aside>
+
+  <script>
+    (function () {
+      var stage = document.getElementById('stage');
+      var invite = document.getElementById('invite');
+      var hero = document.getElementById('hero');
+      var badge = document.getElementById('wsBadge');
+      var intent = 'chat';
+
+      var TASKS = {
+        idle: {
+          hasCard: false,
+          badge: 0,
+          inviteTitle: '写一句，开始',
+          inviteFactChat: '没有正在推进的任务。问一句，或送到桌面 Agent。',
+          inviteFactWork: '没有正在推进的任务。写清要改什么，再送到桌面。'
+        },
+        resume: {
+          hasCard: true,
+          badge: 3,
+          ico: 'Cu',
+          agent: 'Cursor',
+          sub: 'voice-pilot',
+          pill: '可恢复',
+          pillTone: '',
+          title: '上次停在「最近修改了什么代码？」',
+          fact: '3 天前有进度，可以从停下的地方继续。',
+          primary: '继续上次工作',
+          secondary: '开始新任务'
+        },
+        decide: {
+          hasCard: true,
+          badge: 1,
+          ico: 'WB',
+          agent: 'WorkBuddy',
+          sub: '等你确认后再改文件',
+          pill: '等你决定',
+          pillTone: 'is-wait',
+          title: '登录页文案还差一处确认',
+          fact: '批准后才会写入文件。',
+          primary: '批准并执行',
+          secondary: '稍后再说'
+        }
+      };
+
+      function setTask(id) {
+        var t = TASKS[id] || TASKS.idle;
+        stage.dataset.task = id;
+        stage.classList.toggle('has-task', !!t.hasCard);
+        invite.classList.remove('hidden');
+        hero.classList.toggle('hidden', !t.hasCard);
+
+        // 邀请始终在输入上方；有任务时文案变短，卡沉到输入与工作区之下
+        document.getElementById('inviteTitle').textContent =
+          intent === 'work' ? '写一句，开始改' : '写一句，开始';
+        document.getElementById('inviteFact').textContent = t.hasCard
+          ? '先写新的，或继续下面的任务。'
+          : intent === 'work'
+            ? TASKS.idle.inviteFactWork
+            : TASKS.idle.inviteFactChat;
+
+        if (t.hasCard) {
+          document.getElementById('heroIco').textContent = t.ico;
+          document.getElementById('heroAgent').textContent = t.agent;
+          document.getElementById('heroSub').textContent = t.sub;
+          var pill = document.getElementById('heroPill');
+          pill.textContent = t.pill;
+          pill.className = 'pill' + (t.pillTone ? ' ' + t.pillTone : '');
+          document.getElementById('heroTitle').textContent = t.title;
+          document.getElementById('heroFact').textContent = t.fact;
+          document.getElementById('heroPrimary').textContent = t.primary;
+          document.getElementById('heroSecondary').textContent = t.secondary;
+        }
+
+        if (t.badge > 0) {
+          badge.hidden = false;
+          badge.textContent = String(t.badge);
+        } else {
+          badge.hidden = true;
+        }
+
+        document.querySelectorAll('.demo [data-task]').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-task') === id);
+        });
+      }
+
+      document.querySelectorAll('[data-intent]').forEach(function (b) {
+        b.onclick = function () {
+          intent = b.getAttribute('data-intent') === 'work' ? 'work' : 'chat';
+          document.querySelectorAll('[data-intent]').forEach(function (x) {
+            x.setAttribute('aria-pressed', x.getAttribute('data-intent') === intent ? 'true' : 'false');
+          });
+          if (stage.dataset.task === 'idle') setTask('idle');
+        };
+      });
+
+      document.querySelectorAll('.demo [data-task]').forEach(function (b) {
+        b.onclick = function () { setTask(b.getAttribute('data-task')); };
+      });
+
+      document.getElementById('heroSecondary').onclick = function () {
+        setTask('resume');
+        document.getElementById('q').focus();
+      };
+      document.getElementById('heroPrimary').onclick = function () {
+        if (stage.dataset.task === 'resume') setTask('decide');
+      };
+      document.getElementById('wsTeaser').onclick = function () {
+        alert('落地：打开工作区抽屉（挂 ha2 listHtml，不堆回 Hero）');
+      };
+      document.getElementById('openWs').onclick = function () {
+        document.getElementById('wsTeaser').click();
+      };
+      document.getElementById('handoff').onclick = function () {
+        alert('落地：整理并交接（Prep）');
+      };
+      document.getElementById('organize').onclick = function () {
+        alert('落地：data-ha2-organize');
+      };
+
+      setTask('resume');
+    })();
+  </script>
+</body>
+</html>

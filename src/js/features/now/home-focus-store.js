@@ -1,13 +1,16 @@
 /**
  * Home Focus store — cmd_home_focus_snapshot / retry only (no title→PathBuf).
+ * Hot path: to_js `home_status_changed` push. Poll is 30s safety net only.
  */
 (function (global) {
   'use strict';
 
+  var SAFETY_POLL_MS = 30000;
   var cache = null;
   var lastKey = '';
   var pollTimer = 0;
   var listeners = [];
+  var statusListenBound = false;
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -92,11 +95,20 @@
     });
   }
 
+  function pageVisible() {
+    try {
+      if (typeof document !== 'undefined' && document.hidden) return false;
+    } catch (_) {}
+    return true;
+  }
+
   function startPolling(ms) {
     stopPolling();
+    var interval = typeof ms === 'number' && ms > 0 ? ms : SAFETY_POLL_MS;
     pollTimer = setInterval(function () {
+      if (!pageVisible()) return;
       fetchSnapshot();
-    }, ms || 5000);
+    }, interval);
   }
 
   function stopPolling() {
@@ -106,14 +118,33 @@
     }
   }
 
+  function onStatusPush(e) {
+    var msg = e && e.data;
+    if (!msg || msg.type !== 'home_status_changed') return;
+    fetchSnapshot();
+  }
+
+  function bindStatusPush() {
+    if (statusListenBound) return;
+    try {
+      if (global.chrome && global.chrome.webview && global.chrome.webview.addEventListener) {
+        global.chrome.webview.addEventListener('message', onStatusPush);
+        statusListenBound = true;
+      }
+    } catch (_) {}
+  }
+
   function subscribe(fn) {
     if (typeof fn === 'function') listeners.push(fn);
+    bindStatusPush();
     return function () {
       listeners = listeners.filter(function (x) {
         return x !== fn;
       });
     };
   }
+
+  bindStatusPush();
 
   global.OneToneHomeFocusStore = {
     fetch: fetchSnapshot,
@@ -126,6 +157,7 @@
     },
     subscribe: subscribe,
     startPolling: startPolling,
-    stopPolling: stopPolling
+    stopPolling: stopPolling,
+    SAFETY_POLL_MS: SAFETY_POLL_MS
   };
 })(typeof window !== 'undefined' ? window : globalThis);

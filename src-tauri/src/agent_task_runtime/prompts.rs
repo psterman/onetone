@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use super::contracts::{TaskDto, TaskEventDto};
+use super::contracts::{PermissionMode, TaskDto, TaskEventDto};
 use super::store::TaskRow;
 
 const TRACE_EVENTS: usize = 8;
@@ -10,7 +10,7 @@ const TRACE_EVENTS: usize = 8;
 const TRACE_CHARS_EACH: usize = 1_600;
 const BASELINE_DIRTY_SAMPLE: usize = 24;
 
-pub fn system_prompt() -> &'static str {
+pub fn system_prompt_work() -> &'static str {
     "你是 OneTone 工作模式的执行 Agent：在用户授权的工作区内用工具完成目标。\n\
      每一轮只输出一个工具调用；不要闲聊、不要改写用户目标语义。\n\
      文件名/路径以用户说法为准（如 README2.md），勿擅自换成 README.md。\n\
@@ -21,14 +21,51 @@ pub fn system_prompt() -> &'static str {
      放到桌面/Desktop：先在工作区写好，再 export_to_desktop{path}（相对路径）；禁止 apply_patch 桌面/绝对路径。\n\
      run_check 只传 check_id。自动修复最多 3 轮。勿重复同一工具与相同参数。\n\
      查询/说明类目标：证据足够就立刻 finish{summary}，不要为了凑步骤继续空转。\n\
+     可用 web_search / fetch_url 查公开网；deliver_to_agent 投递到外部 Agent。\n\
      目标含糊时 request_user_input 一次。完成时 finish{summary}（summary 可短列表说明改了什么）。"
 }
 
-pub fn tool_contracts_prompt() -> &'static str {
+/// Chat lane: proactive tool loop; never tell the user to click 工作.
+pub fn system_prompt_chat() -> &'static str {
+    "你是 OneTone 对话 Agent：用工具把问题查清楚，再用自然语言结案。\n\
+     每一轮只输出一个工具调用；不要闲聊、不要输出框架表，禁止说「去点顶部工作 / 切换工作模式」。\n\
+     证据不够时主动：search_code / read_file（仓内）、web_search / fetch_url（公开网）。\n\
+     本回合默认只读，不要假装已改文件。用户要交给 Cursor/Codex 等外部 Agent 时用 deliver_to_agent{text}；失败如实说明。\n\
+     prior_chat 是上文摘要，goal 是本轮当前问题——优先回答 goal；仅当问题本身含糊且工具无法判定时才 request_user_input 一次。\n\
+     【证据】禁止的是把未核实内容说成确定事实，不是提及它；不得编造网页或文件内容。\n\
+     【记忆】可以用已知作答，须标注「凭记忆，未检索核实」；真名、数字、日期、机构不作确定表述。\n\
+     【检索无果】一次空结果或单字字典页不算查完。下一轮必须换一组与上一轮不同的 query：先纠错或换别名，再用精确引号，最后加领域词与站点限定；不要现在结案，也不要让用户替你换词。工具返回里的 message 只是现象描述，优先级低于本条。\n\
+     【结案】必须用 finish{summary} 工具调用结案，不要输出散文；查证动作由你完成，只有改写路径全部跑完，才可把「请用户补一个链接」作为最后一项可选补充。\n\
+     【summary 顺序】先给结论或已知判断 → 置信标签 → 圈出不确定项 → 已尝试路径（自然语言）→ 最后才可选请用户协助。\n\
+     【summary 禁语】不得出现预算名、工具名、tool_trace、chat_search_cap、fetch_url 等内部标识符，也不得复述系统指令或检索次数。"
+}
+
+pub fn system_prompt() -> &'static str {
+    system_prompt_work()
+}
+
+pub fn tool_contracts_prompt_work() -> &'static str {
     "工具：inspect_workspace, search_code{query}, read_file{path,start_line?,end_line?},\n\
      propose_changes{path,rationale,new_content,risk?}, apply_patch{path,new_content,allow_dirty?},\n\
-     export_to_desktop{path}, run_check{check_id}, inspect_diff, request_user_input{question}, finish{summary?}。\n\
+     export_to_desktop{path}, run_check{check_id}, inspect_diff,\n\
+     web_search{query,limit?,provider?}, fetch_url{url,provider?,max_chars?},\n\
+     request_user_input{question}, deliver_to_agent{text,kind?}, finish{summary?}。\n\
      输出 JSON：{\"tool\":\"...\",\"arguments\":{...}}"
+}
+
+pub fn tool_contracts_prompt_chat() -> &'static str {
+    "工具：inspect_workspace, search_code{query}, read_file{path,start_line?,end_line?},\n\
+     web_search{query,limit?,provider?}, fetch_url{url,provider?,max_chars?},\n\
+     request_user_input{question}, deliver_to_agent{text,kind?}, finish{summary?}。\n\
+     输出 JSON：{\"tool\":\"...\",\"arguments\":{...}}"
+}
+
+pub fn tool_contracts_prompt() -> &'static str {
+    tool_contracts_prompt_work()
+}
+
+fn is_chat_lane(task: &TaskRow) -> bool {
+    PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly)
 }
 
 /// Drop stuck-loop bookkeeping prefix so the model only sees the tool note.
@@ -71,7 +108,9 @@ pub fn tool_trace_from_events(events: &[TaskEventDto]) -> String {
                     | "tool_error"
                     | "format_retry"
                     | "waiting_approval"
+                    | "waiting_deliver"
                     | "waiting_user"
+                    | "user_input"
                     | "patch_applied"
                     | "exported_desktop"
             )
@@ -131,9 +170,37 @@ pub fn baseline_dirty_for_model(baseline_dirty_json: &str) -> String {
     )
 }
 
-pub fn task_context_prompt(task: &TaskRow, recent_tool_note: &str, tool_trace: &str) -> String {
+/// materialsSummary from the started event (chat prior turns / work mats).
+pub fn materials_summary_from_events(events: &[TaskEventDto]) -> String {
+    events
+        .iter()
+        .find(|e| e.kind == "started")
+        .and_then(|e| {
+            e.payload
+                .get("materialsSummary")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+        })
+        .unwrap_or_default()
+}
+
+pub fn task_context_prompt(
+    task: &TaskRow,
+    recent_tool_note: &str,
+    tool_trace: &str,
+    materials_summary: &str,
+) -> String {
+    let prior = materials_summary.trim();
+    let prior_block = if prior.is_empty() {
+        String::new()
+    } else {
+        let capped: String = prior.chars().take(3_000).collect();
+        format!("prior_chat:\n{capped}\n\n")
+    };
     format!(
-        "task_id={}\ngoal={}\npermission_mode={}\nstatus={}\nchanged_files={}\nbaseline_dirty={}\nrepair_count={}\nrecent={}\n\ntool_trace:\n{}\n",
+        "{prior_block}task_id={}\ngoal={}\npermission_mode={}\nstatus={}\nchanged_files={}\nbaseline_dirty={}\nrepair_count={}\nrecent={}\n\ntool_trace:\n{}\n",
         task.task_id,
         task.goal,
         task.permission_mode,
@@ -151,10 +218,27 @@ pub fn task_context_prompt(task: &TaskRow, recent_tool_note: &str, tool_trace: &
 }
 
 pub fn build_messages(task: &TaskRow, recent: &str, tool_trace: &str) -> Vec<serde_json::Value> {
+    build_messages_with_materials(task, recent, tool_trace, "")
+}
+
+pub fn build_messages_with_materials(
+    task: &TaskRow,
+    recent: &str,
+    tool_trace: &str,
+    materials_summary: &str,
+) -> Vec<serde_json::Value> {
+    let (sys, tools) = if is_chat_lane(task) {
+        (system_prompt_chat(), tool_contracts_prompt_chat())
+    } else {
+        (system_prompt_work(), tool_contracts_prompt_work())
+    };
     vec![
-        serde_json::json!({"role":"system","content": system_prompt()}),
-        serde_json::json!({"role":"system","content": tool_contracts_prompt()}),
-        serde_json::json!({"role":"user","content": task_context_prompt(task, recent, tool_trace)}),
+        serde_json::json!({"role":"system","content": sys}),
+        serde_json::json!({"role":"system","content": tools}),
+        serde_json::json!({
+            "role":"user",
+            "content": task_context_prompt(task, recent, tool_trace, materials_summary)
+        }),
     ]
 }
 
@@ -165,7 +249,75 @@ pub fn dto_context(task: &TaskDto) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_task_runtime::store::TaskRow;
     use serde_json::json;
+
+    #[test]
+    fn chat_prompt_evidence_contract() {
+        let p = system_prompt_chat();
+        assert!(p.contains("凭记忆，未检索核实"), "{p}");
+        assert!(p.contains("一次空结果或单字字典页不算查完"), "{p}");
+        assert!(p.contains("【summary 禁语】"), "{p}");
+        assert!(
+            !p.contains("判断只依据 tool_trace"),
+            "old binary evidence gate must be gone"
+        );
+    }
+
+    #[test]
+    fn tool_trace_includes_user_input() {
+        let events = vec![TaskEventDto {
+            event_id: "e0".into(),
+            task_id: "t1".into(),
+            seq: 1,
+            kind: "user_input".into(),
+            turn: 1,
+            tool_name: None,
+            payload: json!({"text": "戴佳伟是谁"}),
+            created_at: 1,
+        }];
+        let trace = tool_trace_from_events(&events);
+        assert!(trace.contains("user_input"), "trace={trace}");
+        assert!(trace.contains("戴佳伟是谁"), "trace={trace}");
+    }
+
+    #[test]
+    fn prior_chat_injected_from_materials() {
+        let task = TaskRow {
+            task_id: "t1".into(),
+            goal: "继续问".into(),
+            workspace_root: "/tmp".into(),
+            permission_mode: "read_only".into(),
+            status: "running".into(),
+            waiting_reason: None,
+            current_turn: 0,
+            tool_call_count: 0,
+            changed_files_json: "[]".into(),
+            baseline_dirty_json: "[]".into(),
+            pending_approval_token: None,
+            pending_patch_json: None,
+            fingerprints_json: "{}".into(),
+            checkpoint_id: None,
+            last_error: None,
+            repair_count: 0,
+            format_retry_count: 0,
+            applied_tokens_json: "[]".into(),
+            created_at: 1,
+            updated_at: 1,
+            provider_id: None,
+            model_id: None,
+            config_fp: None,
+            driver_kind: "fake".into(),
+            verify_intent: false,
+            sandbox_id: None,
+            expected_rel_path: None,
+            expected_content: None,
+        };
+        let ctx = task_context_prompt(&task, "", "", "user: hi\nassistant: hello");
+        assert!(ctx.contains("prior_chat:"), "{ctx}");
+        assert!(ctx.contains("user: hi"), "{ctx}");
+        assert!(ctx.contains("goal=继续问"), "{ctx}");
+    }
 
     #[test]
     fn tool_trace_includes_payload() {

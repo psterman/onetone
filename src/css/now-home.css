@@ -1952,8 +1952,27 @@
   position: relative;
   z-index: 6;
 }
+.now-home .hn-compose-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+/* ha2 delivery / work-confirm under compose; empty = no gap */
+.now-home .hn-home-notice {
+  width: 100%;
+  margin: 8px 0 0;
+}
+.now-home .hn-home-notice:empty {
+  display: none;
+  margin: 0;
+}
 .now-home .hn-ha2-compose-host {
   width: 100%;
+}
+/* Watch sits under the dock as one surface (merged.html). */
+.now-home .hn-compose-stack:has(.hn-agent-watch) .ha2-compose {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .now-home .hn-ha2-compose-host .ha2-dock-zone {
   position: relative;
@@ -2017,6 +2036,17 @@
   display: none !important;
   pointer-events: none !important;
 }
+/* Exclusive dialogue window (left-nav「对话」) — cover home stage, not dock inline list. */
+.now-home.is-hf-ha2-compose.is-wb-chat-page .ha2-wb-page-host:not([hidden]) {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: 240;
+}
+.now-home.is-hf-ha2-compose.is-wb-chat-page .hn-stage {
+  visibility: hidden;
+  pointer-events: none;
+}
 /* Ready strip + dock WB login banner: use 提供方 sheet instead. */
 .now-home.is-hf-ha2-compose .ha2-cap-panel,
 .now-home.is-hf-ha2-compose .ha2-atr-wb-login,
@@ -2039,8 +2069,8 @@
   font: inherit;
   font-weight: 700;
   font-size: 14px;
-  min-width: 104px;
-  padding: 9px 16px;
+  min-width: 118px;
+  padding: 9px 14px;
   border-radius: 11px;
   cursor: pointer;
   line-height: 1.15;
@@ -2109,10 +2139,11 @@
 }
 .now-home .hn-invite {
   width: min(100%, 640px);
-  text-align: center;
+  text-align: left;
+  padding: 0 2px;
 }
 .now-home .hn-kicker {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: var(--hn-teal);
   font-size: 12px;
   font-weight: 650;
@@ -2129,17 +2160,18 @@
 }
 .now-home .hn-invite h1 {
   margin: 0;
-  font-size: clamp(22px, 3.2vw, 28px);
+  font-size: clamp(21px, 3vw, 24px);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--hn-ink);
 }
 .now-home .hn-invite-fact {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: var(--hn-muted);
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 12.5px;
+  line-height: 1.45;
+  max-width: 36ch;
 }
 .now-home .hn-evidence {
   margin: 10px 0 0;
@@ -2697,6 +2729,274 @@
   background: color-mix(in srgb, #c44 8%, white);
   color: #c44;
 }
+/* Collapsed watch under compose — default one summary row (merged.html). */
+.now-home .hn-agent-watch {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hn-line);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: color-mix(in srgb, var(--hn-paper, #f5f7fa) 55%, #fff);
+}
+.now-home .hn-watch-sum {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--hn-muted);
+  border-radius: 0 0 14px 14px;
+}
+.now-home .hn-agent-watch.is-open .hn-watch-sum {
+  border-radius: 0;
+}
+.now-home .hn-watch-sum:hover {
+  background: color-mix(in srgb, var(--hn-ink) 3.5%, transparent);
+}
+.now-home .hn-watch-faces {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.now-home .hn-watch-face {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  margin-right: -5px;
+  display: grid;
+  place-items: center;
+  font-size: 7px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(145deg, #5b8def, #3a5fbf);
+  border: 1.5px solid #fff;
+  box-sizing: content-box;
+  overflow: hidden;
+}
+.now-home .hn-watch-face:last-child {
+  margin-right: 0;
+}
+.now-home .hn-watch-face.is-cursor {
+  background: #1a1a1a;
+}
+.now-home .hn-watch-face.is-wb {
+  background: linear-gradient(145deg, #3ecf8e, #1f9d63);
+}
+.now-home .hn-watch-face .hn-task-card__ico-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.now-home .hn-watch-sum__txt {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--hn-ink);
+}
+.now-home .hn-watch-sum__txt small {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--hn-muted) 70%, transparent);
+}
+.now-home .hn-watch-sum__chev {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hn-teal);
+  white-space: nowrap;
+}
+.now-home .hn-agent-watch.is-open .hn-watch-sum__chev {
+  color: var(--hn-muted);
+}
+.now-home .hn-watch-panel {
+  padding: 0 8px 10px;
+}
+.now-home .hn-watch-panel[hidden] {
+  display: none !important;
+}
+.now-home .hn-watch-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 6px;
+  font-size: 11.5px;
+}
+.now-home .hn-watch-tools__sum {
+  flex: 1;
+  color: color-mix(in srgb, var(--hn-muted) 75%, transparent);
+}
+.now-home .hn-watch-tools button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--hn-teal);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.now-home .hn-watch-tools button:hover {
+  text-decoration: underline;
+}
+/* Expanded grid — 3×N, no card chrome per chip. */
+.now-home .hn-agent-status-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+.now-home .hn-agent-chip {
+  min-width: 0;
+  max-width: none;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--hn-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.now-home .hn-agent-chip:hover {
+  background: color-mix(in srgb, var(--hn-ink) 3.5%, transparent);
+}
+.now-home .hn-agent-chip.is-on {
+  background: color-mix(in srgb, var(--hn-teal) 10%, transparent);
+}
+.now-home .hn-agent-chip__ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #5b8def, #3a5fbf);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.now-home .hn-agent-chip__ico.is-cursor {
+  background: #1a1a1a;
+}
+.now-home .hn-agent-chip__ico.is-wb {
+  background: linear-gradient(145deg, #3ecf8e, #1f9d63);
+}
+.now-home .hn-agent-chip__ico .hn-task-card__ico-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.now-home .hn-agent-chip__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.now-home .hn-agent-chip__body b {
+  font-size: 11.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.now-home .hn-agent-chip__body span {
+  font-size: 10.5px;
+  color: var(--hn-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.now-home .hn-agent-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  margin-left: auto;
+  background: color-mix(in srgb, var(--hn-muted) 55%, transparent);
+}
+.now-home .hn-agent-chip.is-wait .hn-agent-chip__dot {
+  background: #c97820;
+}
+.now-home .hn-agent-chip.is-run .hn-agent-chip__dot {
+  background: var(--hn-teal);
+}
+.now-home .hn-agent-chip.is-fail .hn-agent-chip__dot {
+  background: #c44;
+}
+/* Peek pop — only surface allowed a shadow. */
+.now-home .hn-watch-pop {
+  position: fixed;
+  z-index: 40;
+  width: 268px;
+  padding: 13px 14px;
+  background: #fff;
+  border: 1px solid var(--hn-line);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(21, 34, 56, 0.10);
+}
+.now-home .hn-watch-pop[hidden] {
+  display: none !important;
+}
+.now-home .hn-watch-pop h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hn-ink);
+}
+.now-home .hn-watch-pop__state {
+  margin: 0 0 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--hn-line);
+  font-size: 11.5px;
+  color: var(--hn-muted);
+  line-height: 1.65;
+}
+.now-home .hn-watch-pop__acts {
+  display: flex;
+  gap: 8px;
+}
+.now-home .hn-watch-pop__acts button {
+  border: 1px solid var(--hn-line);
+  background: #fff;
+  color: var(--hn-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 6px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.now-home .hn-watch-pop__acts button.is-write {
+  border-color: color-mix(in srgb, var(--hn-teal) 40%, transparent);
+  background: color-mix(in srgb, var(--hn-teal) 10%, transparent);
+  color: var(--hn-teal);
+}
+.now-home .hn-watch-pop__hint {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  color: color-mix(in srgb, var(--hn-muted) 70%, transparent);
+  line-height: 1.5;
+}
 .now-home .hn-task-card__title {
   margin: 2px 0 0;
   font-size: 18px;
@@ -2709,6 +3009,46 @@
   font-size: 13.5px;
   line-height: 1.45;
   color: var(--hn-muted);
+}
+.now-home .hn-task-card__local {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 2px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--hn-line) 70%, transparent);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--hn-muted);
+}
+.now-home .hn-task-card__local-k {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--hn-muted) 78%, transparent);
+}
+.now-home .hn-task-card__local-line {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--hn-ink);
+}
+.now-home .hn-task-card__local.is-off .hn-task-card__local-line {
+  color: var(--hn-muted);
+}
+.now-home .hn-task-card__local-act {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--hn-teal);
+  cursor: pointer;
 }
 .now-home .hn-task-card__acts {
   margin-top: 4px;

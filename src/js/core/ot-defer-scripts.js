@@ -101,7 +101,9 @@
   }
 
   /**
-   * Only camera-ui + debug are deferred (habit-heavy stays sync for left nav).
+   * Panel-gated groups: camera-ui + debug (habit-heavy stays sync for left nav).
+   * Homepage also defers group "home-agent" (research/store/dock/ha2) via loadGroup
+   * from now-home — not mapped here (no settings panel).
    * Callers should skip the Promise hop when panelNeedsDefer is false.
    */
   function ensureForPanel(panel) {

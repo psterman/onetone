@@ -1,7 +1,28 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
     "beforeSubmitPrompt": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "preToolUse": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "postToolUse": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "postToolUseFailure": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "afterFileEdit": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "subagentStart": [
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
+    ],
+    "subagentStop": [
       { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ],
     "afterAgentResponse": [
@@ -10,7 +31,7 @@
     "stop": [
       { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ],
-    "subagentStart": [
+    "sessionEnd": [
       { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ]
   }

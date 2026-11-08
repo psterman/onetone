@@ -50,6 +50,8 @@
   var wbDeltaUnsub = null;
   /** In-app chat page (left meta + right streaming Q&A). Also hosts ATR edit progress. */
   var wbChatPageOpen = false;
+  /** Page compose is not store-backed — keep across Focus remount / full page rebuild. */
+  var wbPageDraftText = '';
   /** Last ATR taskId we auto-opened the page for. */
   var atrWbAutoTaskId = '';
   /** Send → force ATR page open even before agentTask lands (paint-only open was unreliable). */
@@ -62,6 +64,22 @@
   var atrChatSinceMs = 0;
   /** ATR step log: collapsed shows last sentence only (per taskId). */
   var atrLogExpandedById = {};
+  /** Chat tool-loop ATR task id (read_only lane) — keep transcript chrome, not edit page. */
+  var chatLoopTaskId = '';
+  /** Event ids already mirrored into wbChatTurns for the active chat loop. */
+  var chatLoopSyncedEv = {};
+  /** Soft-stop: ignore busy re-stick from poll until ATR leaves running for this id. */
+  var chatStopPendingId = '';
+  /** taskId → already tried one watchdog redrive (avoid paint thrash). */
+  var chatHealTried = Object.create(null);
+  /** taskId → recovery/conflict turn already appended for interrupt/heal. */
+  var chatRecoveryEmitted = Object.create(null);
+  /** Wall clock when chat ATR entered busy (stall watchdog). */
+  var chatBusySinceMs = 0;
+  /** taskId → stall heal already fired (first-turn hang). */
+  var chatStallTried = Object.create(null);
+  /** First model turn can hang inside next_tool_json; FE cancel only helps between turns / after HTTP timeout. */
+  var CHAT_STALL_MS = 45000;
   var wbStreamingText = '';
   var wbStreamingTurnId = '';
   var wbPollTimer = 0;
@@ -302,37 +320,133 @@
 
   function appendWbChatTurn(turn) {
     turn = turn || {};
+    var kind = String(turn.kind || '') || undefined;
     var row = {
       id: turn.id || 't_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
-      role: turn.role === 'assistant' ? 'assistant' : 'user',
+      role: turn.role === 'assistant' || kind ? 'assistant' : 'user',
       text: String(turn.text || ''),
       model: turn.model ? String(turn.model) : '',
       providerId: turn.providerId ? String(turn.providerId) : '',
       fallbackFrom: turn.fallbackFrom ? String(turn.fallbackFrom) : '',
       accountId: turn.accountId ? String(turn.accountId) : '',
-      at: turn.at || Date.now()
+      at: turn.at || Date.now(),
+      kind: kind,
+      toolName: turn.toolName ? String(turn.toolName) : '',
+      toolOk: turn.toolOk,
+      detail: turn.detail ? String(turn.detail) : '',
+      collapsed: turn.collapsed !== false,
+      approvalToken: turn.approvalToken ? String(turn.approvalToken) : ''
     };
-    if (!row.text) return null;
-    wbChatTurns.push(row);
+    if (
+      !row.text &&
+      !row.toolName &&
+      kind !== 'tool_step' &&
+      kind !== 'needs_input' &&
+      kind !== 'deliver_approval'
+    ) {
+      return null;
+    }
+    // Upsert by id so ATR event mirrors stay stable across polls.
+    var replaced = false;
+    for (var ui = 0; ui < wbChatTurns.length; ui++) {
+      if (wbChatTurns[ui] && String(wbChatTurns[ui].id) === String(row.id)) {
+        wbChatTurns[ui] = row;
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced) wbChatTurns.push(row);
     if (wbChatTurns.length > WB_CHAT_MAX) wbChatTurns = wbChatTurns.slice(-WB_CHAT_MAX);
     saveWbChatTurns();
     var J = global.OneToneHomeTaskJournal;
-    if (J && typeof J.appendChatTurn === 'function') {
+    if (J) {
       try {
-        J.appendChatTurn({
-          id: row.id,
-          at: row.at,
-          role: row.role,
-          text: row.text,
-          model: row.model,
-          providerId: row.providerId,
-          fallbackFrom: row.fallbackFrom,
-          accountId: row.accountId,
-          agentKind: row.providerId === 'softpad_our_freemodel' ? 'softpad' : 'workbuddy'
-        });
+        if (
+          kind === 'tool_step' ||
+          kind === 'needs_input' ||
+          kind === 'deliver_approval' ||
+          kind === 'finish'
+        ) {
+          if (typeof J.appendToolEvent === 'function') {
+            J.appendToolEvent({
+              id: row.id,
+              at: row.at,
+              kind: kind,
+              text: row.text,
+              toolName: row.toolName,
+              toolOk: row.toolOk,
+              detail: row.detail,
+              collapsed: row.collapsed,
+              atrTaskId: chatLoopTaskId || '',
+              approvalToken: row.approvalToken || ''
+            });
+          }
+        } else if (typeof J.appendChatTurn === 'function') {
+          J.appendChatTurn({
+            id: row.id,
+            at: row.at,
+            role: row.role,
+            text: row.text,
+            model: row.model,
+            providerId: row.providerId,
+            fallbackFrom: row.fallbackFrom,
+            accountId: row.accountId,
+            agentKind: row.providerId === 'softpad_our_freemodel' ? 'softpad' : 'workbuddy'
+          });
+        }
       } catch (_) {}
     }
     return row;
+  }
+
+  function loadChatTaskTurns(taskId) {
+    var J = global.OneToneHomeTaskJournal;
+    if (J && typeof J.listChatTurns === 'function') {
+      try {
+        var rows = J.listChatTurns(taskId) || [];
+        wbChatTurns = rows.map(function (r) {
+          return {
+            id: r.id,
+            role: r.role === 'user' ? 'user' : 'assistant',
+            text: String(r.text || ''),
+            model: r.model || '',
+            providerId: r.providerId || '',
+            accountId: r.accountId || '',
+            at: r.at || Date.now(),
+            kind: r.kind,
+            toolName: r.toolName || '',
+            toolOk: r.toolOk,
+            detail: r.detail || '',
+            collapsed: r.collapsed !== false
+          };
+        });
+        saveWbChatTurns();
+        paintWbTranscript();
+        return wbChatTurns;
+      } catch (_) {}
+    }
+    return wbChatTurns;
+  }
+
+  function startNewChatSession() {
+    var J = global.OneToneHomeTaskJournal;
+    chatLoopTaskId = '';
+    chatLoopSyncedEv = {};
+    chatStopPendingId = '';
+    chatHealTried = Object.create(null);
+    chatRecoveryEmitted = Object.create(null);
+    chatStallTried = Object.create(null);
+    chatBusySinceMs = 0;
+    wbChatBusy = false;
+    wbStreamingText = '';
+    wbChatTurns = [];
+    saveWbChatTurns();
+    if (J && typeof J.createTask === 'function') {
+      try {
+        J.createTask({ title: '本机对话', lane: 'chat', activate: true });
+      } catch (_) {}
+    }
+    paintWbTranscript();
   }
 
   function wbLocalPromptInput(snap) {
@@ -1423,47 +1537,124 @@
     return '<pre class="ha2-wb-page-turn-text is-plain">' + esc(text || '') + '</pre>';
   }
 
-  function wbTranscriptHtml(kind) {
-    if (String(kind || '') !== 'workbuddy') return '';
-    if (!wbChatTurns.length) return '';
-    var collapsed = wbTranscriptCollapsed;
-    var body = collapsed
-      ? ''
-      : '<div class="ha2-wb-transcript-body" data-ha2-wb-transcript-body>' +
-        wbChatTurns
-          .slice(-16)
-          .map(function (turn) {
-            var role = turn.role === 'assistant' ? 'assistant' : 'user';
-            return (
-              '<div class="ha2-wb-turn ha2-wb-turn--' +
-              role +
-              '"><span class="ha2-wb-turn-role">' +
-              wbTurnRoleHtml(role, turn.model, turn.providerId, turn.fallbackFrom) +
-              '</span><pre class="ha2-wb-turn-text">' +
-              esc(turn.text) +
-              '</pre></div>'
-            );
-          })
-          .join('') +
-        '</div>';
+  function wbToolStepHtml(turn) {
+    turn = turn || {};
+    var tool = turn.toolName || '';
+    // Thinking steps: show live progress in the summary badge (collapsed-visible).
+    var label =
+      tool === 'thinking'
+        ? turn.text || chatToolStepLabel(tool)
+        : chatToolStepLabel(tool) || turn.text || tool;
+    var open = turn.collapsed === false;
+    var ok = turn.toolOk !== false;
+    var detail = String(turn.detail || '');
+    if (turn.kind === 'needs_input') {
+      return (
+        '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool is-needs-input" data-ha2-tool-step>' +
+        '<div class="ha2-tool-step-hd">' +
+        '<span class="ha2-tool-step-badge">' +
+        esc(t('ha2NeedsInput', 'Needs input')) +
+        '</span>' +
+        '<span class="ha2-tool-step-label">' +
+        esc(turn.text || label) +
+        '</span></div>' +
+        '<div class="ha2-chat-needs-row">' +
+        '<input type="text" class="ha2-chat-needs-input" data-ha2-chat-needs-input' +
+        ' placeholder="' +
+        esc(t('ha2ChatNeedsPh', '在此回复…')) +
+        '" />' +
+        '<button type="button" class="ha2-btn primary ha2-chat-needs-go" data-ha2-chat-needs-reply>' +
+        esc(t('ha2ChatNeedsGo', '继续')) +
+        '</button></div></div>'
+      );
+    }
+    if (turn.kind === 'deliver_approval') {
+      return (
+        '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool is-deliver-approval" data-ha2-tool-step' +
+        ' data-ha2-deliver-token="' +
+        esc(turn.approvalToken || '') +
+        '">' +
+        '<div class="ha2-tool-step-hd">' +
+        '<span class="ha2-tool-step-badge">' +
+        esc(t('ha2DeliverApprove', '投递确认')) +
+        '</span>' +
+        '<span class="ha2-tool-step-label">' +
+        esc(turn.text || label) +
+        '</span></div>' +
+        (detail
+          ? '<pre class="ha2-tool-step-detail">' + esc(detail) + '</pre>'
+          : '') +
+        '<div class="ha2-chat-deliver-actions">' +
+        '<button type="button" class="ha2-btn primary" data-ha2-chat-deliver-approve>' +
+        esc(t('ha2DeliverOk', '批准投递')) +
+        '</button>' +
+        '<button type="button" class="ha2-btn" data-ha2-chat-deliver-reject>' +
+        esc(t('ha2DeliverNo', '取消')) +
+        '</button></div></div>'
+      );
+    }
+    if (turn.kind === 'finish') {
+      return (
+        '<div class="ha2-wb-page-turn ha2-wb-page-turn--assistant ha2-wb-page-turn--finish">' +
+        '<span class="ha2-wb-page-turn-role">' +
+        wbTurnRoleHtml('assistant', turn.model, turn.providerId, turn.fallbackFrom) +
+        '</span>' +
+        wbTurnBodyHtml(turn.text || '', false) +
+        '</div>'
+      );
+    }
     return (
-      '<div class="ha2-wb-transcript' +
-      (collapsed ? ' is-collapsed' : '') +
-      '" data-ha2-wb-transcript>' +
-      '<div class="ha2-wb-transcript-head">' +
-      '<button type="button" class="ha2-link" data-ha2-wb-transcript-toggle>' +
-      esc(
-        collapsed
-          ? t('ha2WbTranscriptExpand', '展开对话') + ' · ' + wbChatTurns.length
-          : t('ha2WbTranscriptCollapse', '收起对话')
-      ) +
-      '</button>' +
-      '<button type="button" class="ha2-link ha2-wb-transcript-clear" data-ha2-wb-chat-clear>' +
-      esc(t('ha2WbChatClear', '清空')) +
-      '</button></div>' +
-      body +
+      '<details class="ha2-wb-page-turn ha2-wb-page-turn--tool' +
+      (ok ? '' : ' is-err') +
+      '" data-ha2-tool-step' +
+      (open ? ' open' : '') +
+      '>' +
+      '<summary class="ha2-tool-step-hd">' +
+      '<span class="ha2-tool-step-badge">' +
+      esc(label) +
+      '</span>' +
+      (ok ? '' : '<span class="ha2-tool-step-err">!</span>') +
+      '</summary>' +
+      (detail
+        ? '<pre class="ha2-tool-step-detail">' + esc(detail) + '</pre>'
+        : '') +
+      '</details>'
+    );
+  }
+
+  function wbChatTurnHtml(turn, model) {
+    turn = turn || {};
+    if (turn.kind === 'chat_conflict') {
+      return chatConflictTurnHtml(turn);
+    }
+    if (
+      turn.kind === 'tool_step' ||
+      turn.kind === 'needs_input' ||
+      turn.kind === 'deliver_approval' ||
+      turn.kind === 'finish'
+    ) {
+      return wbToolStepHtml(turn);
+    }
+    var role = turn.role === 'assistant' ? 'assistant' : 'user';
+    return (
+      '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
+      role +
+      (turn.streaming ? ' is-streaming' : '') +
+      '"><span class="ha2-wb-page-turn-role">' +
+      wbTurnRoleHtml(role, turn.model || model, turn.providerId, turn.fallbackFrom) +
+      '</span>' +
+      wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
       '</div>'
     );
+  }
+
+  /**
+   * Home dock no longer embeds the dialogue list — exclusive right window only
+   * (openWbChatPage). Kept as a no-op so syncWbChatChrome / dockStaticHtml stay stable.
+   */
+  function wbTranscriptHtml(kind) {
+    void kind;
+    return '';
   }
 
   function syncWbChatChrome(kind) {
@@ -2666,7 +2857,16 @@
   }
 
   /** Page chrome for live ATR or forced-open-after-send. */
+  function atrIsChatLoopTask(task) {
+    if (!task) return false;
+    var id = String(task.taskId || task.task_id || '');
+    if (chatLoopTaskId && id && id === String(chatLoopTaskId)) return true;
+    var pm = String(task.permissionMode || task.permission_mode || '').toLowerCase();
+    return pm === 'read_only' || pm === 'readonly';
+  }
+
   function atrWbPageMode(snap) {
+    if (atrIsChatLoopTask(snap && snap.agentTask)) return false;
     if (atrWbPageForced) return true;
     if (!atrTaskShouldSurface(snap)) return false;
     // Dialogue mode: don't keep ATR chrome for finished tasks — it buries the chat reply.
@@ -3396,16 +3596,16 @@
   }
 
   function sessionModeLabel(mode) {
-    if (mode === 'edit') return t('ha2ModeWork', '工作');
+    if (mode === 'edit') return t('ha2ModeWork', '投递');
     if (mode === 'research') return t('ha2ModeResearch', '调研');
-    return t('ha2ModeChat', '对话');
+    return t('ha2ModeChat', '提问');
   }
 
   function modeBoundaryCopy(mode) {
     if (mode === 'edit') {
       return t(
         'ha2ModeBoundaryWork',
-        '工作模式会读取并可能修改项目文件；开始前先确认，写入前再批准。'
+        '投递模式会把任务转发到各桌面 Agent；开始前先确认，写入前再批准。'
       );
     }
     if (mode === 'research') {
@@ -3416,7 +3616,7 @@
     }
     return t(
       'ha2ModeBoundaryChat',
-      '对话模式只讨论与出方案，不会读写项目文件。'
+      '提问模式只向大模型提问与出方案，不会读写项目文件。'
     );
   }
 
@@ -3505,10 +3705,30 @@
   function clearResearchComposeInputs() {
     var pageTa = root && root.querySelector('[data-ha2-wb-page-draft]');
     if (pageTa) pageTa.value = '';
+    wbPageDraftText = '';
     var dockTa = root && root.querySelector('.ha2-compose [data-ha2-draft]');
     if (dockTa) dockTa.value = '';
     var S = store();
     if (S && S.setDraft) S.setDraft('', { silent: true });
+  }
+
+  /**
+   * Flush live compose into durable slots before Focus/innerHTML remounts.
+   * Page draft is not in ha2 store — without this, Shift+Enter / poll remount wipes it.
+   */
+  function stashLiveComposeDrafts() {
+    if (!root) return;
+    var dockTa = root.querySelector('.ha2-compose [data-ha2-draft]');
+    if (dockTa) {
+      var S = store();
+      if (S && S.setDraft) S.setDraft(dockTa.value, { lock: true, silent: true });
+      try {
+        var D = dock();
+        if (D && D.syncDraftToPrep) D.syncDraftToPrep(dockTa.value);
+      } catch (_) {}
+    }
+    var pageTa = root.querySelector('[data-ha2-wb-page-draft]');
+    if (pageTa) wbPageDraftText = String(pageTa.value || '');
   }
 
   function resolveResearchTopic(snap) {
@@ -3940,7 +4160,7 @@
     return head + body + '</div>';
   }
 
-  /** Codex-style 对话|工作 segment — research mode hidden from chrome. */
+  /** Codex-style 提问|投递 segment — research mode hidden from chrome. */
   function workModeSegmentHtml(snap, opts) {
     opts = opts || {};
     var session = (snap && snap.session) || {};
@@ -3963,14 +4183,14 @@
       {
         id: 'think',
         label: sessionModeLabel('think'),
-        title: t('ha2ModeChatHint', '本机对话：讨论、方案、给其他模型的步骤说明'),
+        title: t('ha2ModeChatHint', '向大模型提问：讨论、方案，不改项目文件'),
         disabled: false
       },
       {
         id: 'edit',
         label: sessionModeLabel('edit'),
         title: editOk
-          ? t('ha2ModeWorkHint', '工作：在项目里读文件、改代码（需确认时会停下）')
+          ? t('ha2ModeWorkHint', '向各 Agent 转发投递：送到桌面 Agent 执行（需确认时会停下）')
           : t('ha2ModeNotWired', '暂未接入') +
             ' · ' +
             ((session.capabilities &&
@@ -4009,7 +4229,7 @@
       '<div class="ha2-mode-row ha2-mode-row--segment ha2-mode-row--tabs' +
       (opts.compact ? ' is-compact' : '') +
       '" role="radiogroup" aria-label="' +
-      esc(t('ha2WorkMode', '对话 / 工作')) +
+      esc(t('ha2WorkMode', '提问 / 投递')) +
       '">' +
       modeBtns +
       '</div>'
@@ -4685,24 +4905,37 @@
         paidApiOpts;
     }
 
-    html += modelRouteOptHtml(
-      '__add__',
-      t('ha2ModelAddProvider', '开通免费模型…'),
-      MODEL_BRAND_ICON_BASE + 'workbuddy.png',
-      false,
-      null
-    );
+    // Empty / all-unconfigured: primary CTA opens provider sheet (Focus + full page).
+    var modelListEmpty = !String(html || '').trim();
+    if (modelListEmpty) {
+      html +=
+        '<button type="button" class="ha2-btn primary ha2-model-empty-cta" data-ha2-open-model-providers>' +
+        esc(t('ha2ModelOpenProviders', '开通模型')) +
+        '</button>';
+    } else {
+      html += modelRouteOptHtml(
+        '__add__',
+        t('ha2ModelAddProvider', '开通免费模型…'),
+        MODEL_BRAND_ICON_BASE + 'workbuddy.png',
+        false,
+        null
+      );
+    }
 
     if (!currentLabel) {
       var fallback = modelRouteDisplay(currentProvider, currentProvider);
-      currentLabel = fallback.label;
+      currentLabel = modelListEmpty
+        ? t('ha2ModelOpenProviders', '开通模型')
+        : fallback.label;
       currentIcon = fallback.icon;
     }
 
-    var hint = t(
-      'ha2ModelMixHint',
-      '只列已可用模型；未开通请点「开通免费模型」'
-    );
+    var hint = modelListEmpty
+      ? t('ha2ModelEmptyHint', '还没有可用模型，点这里开通')
+      : t(
+          'ha2ModelMixHint',
+          '只列已可用模型；未开通请点「开通免费模型」'
+        );
     return (
       '<div class="ha2-model-route-label" data-ha2-model-route-label>' +
       '<span class="ha2-model-route-caption">' +
@@ -4855,13 +5088,17 @@
     return t('ha2WorkStartCta', '开始执行');
   }
 
-  function openWorkConfirm(goal, matSum) {
+  function openWorkConfirm(goal, matSum, opts) {
+    opts = opts || {};
     workConfirmOpen = true;
     workConfirmGoal = String(goal || '').trim();
     workConfirmMatSum = String(matSum || '');
     if (workConfirmGoal) atrWbPagePendingGoal = workConfirmGoal;
-    atrWbPageForced = true;
-    atrWbPageUserClosed = false;
+    // Focus/embed must not auto-cover with ATR page; full-page home still may force.
+    if (opts.forcePage === true) {
+      atrWbPageForced = true;
+      atrWbPageUserClosed = false;
+    }
   }
 
   /** Keep draft/send chrome aligned with 对话|工作 after mode flips. */
@@ -4941,6 +5178,8 @@
       }
     }
     if (atrProvHost) atrProvHost.hidden = !atrEdit;
+    if (askModeOn(snap)) clearAskModeTargetChrome();
+    else if (!atrEdit) syncAgentStrip(snap);
     syncAtrWbLoginHost(snap);
   }
 
@@ -4948,6 +5187,8 @@
     workConfirmOpen = false;
     workConfirmGoal = '';
     workConfirmMatSum = '';
+    // Cancel must not leave a forced ATR cover pending.
+    atrWbPageForced = false;
   }
 
   /**
@@ -6171,7 +6412,15 @@
   function atrOwnsHomeChrome(snap) {
     if (atrEditPathOn(snap)) return true;
     if (snap && snap.atrSendConflict) return true;
-    if (snap && snap.agentTask && atrTaskShouldSurface(snap)) return true;
+    // Chat tool-loop owns transcript chrome — don't treat it as edit ATR home ownership.
+    if (
+      snap &&
+      snap.agentTask &&
+      atrTaskShouldSurface(snap) &&
+      !atrIsChatLoopTask(snap.agentTask)
+    ) {
+      return true;
+    }
     var n = snap && snap.validationNotice;
     if (n && String(n.kind || '').indexOf('atr_') === 0) return true;
     return false;
@@ -8595,6 +8844,10 @@
   }
 
   function syncAgentStrip(snap) {
+    if (askModeOn(snap) || atrEditPathOn(snap)) {
+      if (askModeOn(snap)) clearAskModeTargetChrome();
+      return false;
+    }
     var pick = root && root.querySelector('[data-ha2-agent-pick],[data-ha2-agent-strip]');
     if (!pick) return false;
     var selected = String((snap && snap.selectedKind) || '');
@@ -8664,6 +8917,25 @@
       A.featureEnabled &&
       A.featureEnabled()
     );
+  }
+
+  /** 提问（think/research）：本机大模型，不显示对准准星与桌面 Agent 图标. */
+  function askModeOn(snap) {
+    return String((snap && snap.workMode) || '') !== 'edit';
+  }
+
+  function clearAskModeTargetChrome() {
+    if (!root) return;
+    var pick = root.querySelector('[data-ha2-agent-pick],[data-ha2-agent-strip]');
+    if (pick) pick.remove();
+    var fly = agentFlyoutEl();
+    if (fly) fly.remove();
+    var fuse = root.querySelector('[data-ha2-agent-fuse]');
+    if (!fuse) return;
+    var aim = fuse.querySelector('[data-ha2-aim]');
+    if (aim) aim.remove();
+    var clear = fuse.querySelector('[data-ha2-aim-clear]');
+    if (clear) clear.remove();
   }
 
   /** Edit mode: project context only — not a desktop Agent send target. */
@@ -8901,11 +9173,14 @@
     var draftPh = atrEdit
       ? t('ha2AtrDraftPlaceholder', '例如：把 README 复制到桌面 / 给登录页加错误提示…')
       : t('ha2DraftPlaceholderChat', '聊思路、读代码疑问，或生成给其他模型的步骤…');
-    // Project name is Focus chrome — fused aim+agent; flyout lives inside compose.
+    // 提问：无对准 / Agent 图标。投递：桌面 Agent 条。ATR 编辑：项目芯片。
+    var askMode = askModeOn(snap);
     var targetChip = atrEdit
       ? atrEditTargetChipHtml(snap)
-      : agentStripHtml(snap, hasAim);
-    var agentFly = atrEdit ? '' : agentFlyoutHtml(snap);
+      : askMode
+        ? ''
+        : agentStripHtml(snap, hasAim);
+    var agentFly = atrEdit || askMode ? '' : agentFlyoutHtml(snap);
     var providerDue = (function () {
       var fm = freemodelChannelsApi();
       var n =
@@ -8950,16 +9225,6 @@
       '<div class="ha2-compose-rail" data-ha2-compose-rail>' +
       '<div class="ha2-compose-rail-left">' +
       '<div class="ha2-agent-fuse" data-ha2-agent-fuse>' +
-      (atrEdit
-        ? aimChipHtml(hasAim) +
-          '<button type="button" class="ha2-link ha2-aim-clear" data-ha2-aim-clear' +
-          (hasAim ? '' : ' hidden') +
-          ' title="' +
-          esc(t('ha2AimClear', '清除')) +
-          '">' +
-          esc(t('ha2AimClear', '清除')) +
-          '</button>'
-        : '') +
       targetChip +
       '<span class="ha2-model-route-host" data-ha2-model-route-host' +
       (atrEdit ? ' hidden' : '') +
@@ -9272,6 +9537,20 @@
     el.innerHTML = snap.view === 'agent' ? detailContentHtml(snap) : homeContentHtml(snap);
   }
 
+  /** Focus embed: delivery / work-confirm under compose (no full-page content). */
+  function patchFocusNotice(snap) {
+    if (!root) return;
+    var host = root.querySelector('[data-hf-home-notice]');
+    if (!host) return;
+    var html = '';
+    if (workConfirmOpen && atrEditPathOn(snap)) {
+      html = workConfirmGateHtml(snap) || '';
+    } else {
+      html = homeNoticeHtml(snap) || '';
+    }
+    if (host.innerHTML !== html) host.innerHTML = html;
+  }
+
   function patchDockMeta(snap) {
     if (!root) return;
     var dockHost = root.querySelector('[data-ha2-dock-host]');
@@ -9300,10 +9579,11 @@
 
     var c = currentCat(snap);
     var atrEdit = atrEditPathOn(snap);
+    var askMode = askModeOn(snap);
     var fuse = root.querySelector('[data-ha2-agent-fuse]');
     var composeEl = root.querySelector('[data-ha2-compose]');
     var flyNow = agentFlyoutEl();
-    if (atrEdit) {
+    if (atrEdit || askMode) {
       closeAgentFlyout();
       if (flyNow) flyNow.remove();
     }
@@ -9312,19 +9592,17 @@
       var chipNow = fuse.querySelector('.ha2-chip.target, [data-ha2-atr-edit-chip]');
       var aimHas =
         !!(snap.aimByAppId && snap.aimByAppId[c.appId || ''] && snap.aimByAppId[c.appId || ''].hasActive);
-      if (atrEdit) {
+      if (askMode) {
+        clearAskModeTargetChrome();
+        if (chipNow && chipNow.hasAttribute('data-ha2-atr-edit-chip')) chipNow.remove();
+      } else if (atrEdit) {
         if (stripNow) stripNow.remove();
         if (!chipNow || !chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
           var wrapAtr = document.createElement('div');
           wrapAtr.innerHTML = atrEditTargetChipHtml(snap);
           var nextAtr = wrapAtr.firstChild;
           if (chipNow && nextAtr) chipNow.replaceWith(nextAtr);
-          else if (nextAtr) {
-            var aimClear = fuse.querySelector('[data-ha2-aim-clear]');
-            if (aimClear && aimClear.nextSibling) {
-              fuse.insertBefore(nextAtr, aimClear.nextSibling);
-            } else fuse.appendChild(nextAtr);
-          }
+          else if (nextAtr) fuse.appendChild(nextAtr);
         }
       } else {
         if (chipNow && chipNow.hasAttribute('data-ha2-atr-edit-chip')) {
@@ -9454,7 +9732,9 @@
     if (modelRouteMenuOpen) return;
     if (composing || (store() && store().isComposing())) {
       // IME: skip dock rebuild, but still refresh ATR steps (failure / tool results).
-      maybeOpenAtrWbPage(store().getSnapshot() || snap);
+      var snapIme = store().getSnapshot() || snap;
+      syncChatLoopFromAtr(snapIme);
+      maybeOpenAtrWbPage(snapIme);
       return;
     }
     // Silent sync — never emit from inside a store subscriber paint.
@@ -9462,12 +9742,15 @@
       dock().syncCapabilityStates({ silent: true });
     }
     snap = store().getSnapshot();
+    syncChatLoopFromAtr(snap);
     ensureShell(snap);
     if (embedMode) {
       // No maybeOpenAtrWbPage — Focus must not get an unsolicited full-page cover.
       // Always patchDockMeta: skipping while pickerOpen/matMenuOpen left Agent/+ dead
       // (menus never got HTML). modelRouteMenuOpen already returns above.
       patchDockMeta(snap);
+      patchFocusNotice(snap);
+      paintWbTranscript();
       return;
     }
     var viewChanged = lastView !== snap.view;
@@ -9478,6 +9761,7 @@
     ensureDockReserveObserver();
     syncDockReserve();
     maybeOpenAtrWbPage(snap);
+    paintWbTranscript();
   }
 
   function refreshAimForSelected() {
@@ -9577,13 +9861,24 @@
   function wbPageTurnsForPaint() {
     var list = wbChatTurns.slice();
     if (wbChatBusy) {
-      var last = list[list.length - 1];
       var streamText = wbStreamingText || '…';
-      if (last && last.role === 'assistant' && last.id === wbStreamingTurnId) {
-        list[list.length - 1] = Object.assign({}, last, { text: streamText, streaming: true });
+      var sid = wbStreamingTurnId || 'stream_live';
+      var found = -1;
+      var i;
+      for (i = 0; i < list.length; i++) {
+        if (list[i] && String(list[i].id) === String(sid)) {
+          found = i;
+          break;
+        }
+      }
+      if (found >= 0) {
+        list[found] = Object.assign({}, list[found], {
+          text: streamText,
+          streaming: true
+        });
       } else {
         list.push({
-          id: wbStreamingTurnId || 'stream_live',
+          id: sid,
           role: 'assistant',
           text: streamText,
           streaming: true
@@ -9878,21 +10173,9 @@
       '<div class="ha2-atr-chat-sep">' +
       esc(t('ha2AtrChatSep', '本次任务后的讨论')) +
       '</div>' +
-      turns
-        .map(function (turn) {
-          var role = turn.role === 'assistant' ? 'assistant' : 'user';
-          return (
-            '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
-            role +
-            (turn.streaming ? ' is-streaming' : '') +
-              '"><span class="ha2-wb-page-turn-role">' +
-            wbTurnRoleHtml(role, turn.model || model, turn.providerId, turn.fallbackFrom) +
-            '</span>' +
-            wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
-            '</div>'
-          );
-        })
-        .join('')
+      turns.map(function (turn) {
+        return wbChatTurnHtml(turn, model);
+      }).join('')
     );
   }
 
@@ -9953,21 +10236,9 @@
     var turns = wbPageTurnsForPaint();
     var body = atrMode
       ? atrWbPageTranscriptHtml(snap)
-      : turns
-          .map(function (turn) {
-            var role = turn.role === 'assistant' ? 'assistant' : 'user';
-            return (
-              '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
-              role +
-              (turn.streaming ? ' is-streaming' : '') +
-              '"><span class="ha2-wb-page-turn-role">' +
-              wbTurnRoleHtml(role, turn.model || model, turn.providerId, turn.fallbackFrom) +
-              '</span>' +
-              wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
-              '</div>'
-            );
-          })
-          .join('') ||
+      : turns.map(function (turn) {
+          return wbChatTurnHtml(turn, model);
+        }).join('') ||
         '<div class="ha2-wb-page-empty">' +
           esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
           '</div>';
@@ -10498,9 +10769,17 @@
 
   function maybeOpenAtrWbPage(snap) {
     var live = atrTaskShouldSurface(snap);
+    var chatLoop = atrIsChatLoopTask(snap && snap.agentTask);
     var id = live ? String((snap.agentTask && snap.agentTask.taskId) || '') : '';
     // Real task bound — drop the synthetic 「正在启动」placeholder goal.
     if (id && atrWbPagePendingGoal) atrWbPagePendingGoal = '';
+    // Chat tool-loop stays on chat transcript chrome (never force ATR edit page).
+    if (chatLoop) {
+      if (id) atrWbAutoTaskId = id;
+      if (!wbChatPageOpen) openWbChatPage({ chatOnly: true });
+      else paintWbChatPage();
+      return;
+    }
     // New task after user closed → reopen once.
     if (live && id && atrWbPageUserClosed && id !== atrWbAutoTaskId) {
       atrWbPageUserClosed = false;
@@ -10542,21 +10821,9 @@
       ? atrWbPageTranscriptHtml(snap)
       : researchMode
         ? researchPageBodyHtml(snap)
-        : turns
-            .map(function (turn) {
-              var role = turn.role === 'assistant' ? 'assistant' : 'user';
-              return (
-                '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
-                role +
-                (turn.streaming ? ' is-streaming' : '') +
-                '"><span class="ha2-wb-page-turn-role">' +
-                wbTurnRoleHtml(role, turn.model || model, turn.providerId, turn.fallbackFrom) +
-                '</span>' +
-                wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
-                '</div>'
-              );
-            })
-            .join('') ||
+        : turns.map(function (turn) {
+            return wbChatTurnHtml(turn, model);
+          }).join('') ||
           '<div class="ha2-wb-page-empty">' +
             esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
             '</div>';
@@ -10734,7 +11001,7 @@
 
   function paintWbChatPage() {
     if (!root) return;
-    var host = root.querySelector('[data-ha2-wb-page-host]');
+    var host = ensureChatPageHost();
     if (!host) return;
     if (!wbChatPageOpen) {
       host.innerHTML = '';
@@ -10750,10 +11017,21 @@
     var draftEl = host.querySelector('[data-ha2-wb-page-draft]');
     // ATR poll / stream: never rebuild textarea (IME 「自动回车」/ 卡顿).
     if (page && draftEl) {
+      if (document.activeElement === draftEl) {
+        wbPageDraftText = String(draftEl.value || '');
+      } else if (wbPageDraftText && !String(draftEl.value || '')) {
+        draftEl.value = wbPageDraftText;
+      } else if (draftEl.value) {
+        wbPageDraftText = String(draftEl.value || '');
+      }
       patchWbChatPageLive(host, snap);
       return;
     }
+    // Stash before wipe — Focus remount recreates an empty host.
+    if (draftEl) wbPageDraftText = String(draftEl.value || wbPageDraftText || '');
     host.innerHTML = wbChatPageHtml();
+    var restored = host.querySelector('[data-ha2-wb-page-draft]');
+    if (restored && wbPageDraftText) restored.value = wbPageDraftText;
     var transcript = host.querySelector('[data-ha2-wb-page-transcript]');
     if (transcript) {
       try {
@@ -10762,8 +11040,16 @@
     }
   }
 
-  function openWbChatPage() {
+  function openWbChatPage(opts) {
+    opts = opts || {};
     wbChatPageOpen = true;
+    atrWbPageUserClosed = false;
+    // Left-nav「对话」: force chat transcript chrome, not ATR edit.
+    if (opts.chatOnly) {
+      atrWbPageForced = false;
+      atrWbPagePendingGoal = '';
+    }
+    ensureChatPageHost();
     paintWbChatPage();
   }
 
@@ -10773,6 +11059,23 @@
     atrWbPageUserClosed = true;
     atrWbPagePendingGoal = '';
     paintWbChatPage();
+  }
+
+  /** Focus embed: page host lives on #nowHomeRoot canvas, not inside the dock. */
+  function ensureChatPageHost() {
+    if (!root) return null;
+    var host = root.querySelector('[data-ha2-wb-page-host]');
+    if (host) return host;
+    host = document.createElement('div');
+    host.className = 'ha2-wb-page-host';
+    host.setAttribute('data-ha2-wb-page-host', '');
+    host.hidden = true;
+    var shell =
+      root.querySelector('.hn-canvas') ||
+      root.querySelector('.ha2-shell') ||
+      root;
+    shell.appendChild(host);
+    return host;
   }
 
   function promoteWorkModeForEditGoal(S, snap, text) {
@@ -10816,6 +11119,19 @@
     if (!g) return true;
     if (t === g) return false;
     if (g.indexOf(t) >= 0 || t.indexOf(g) >= 0) return false;
+    return true;
+  }
+
+  /**
+   * Chat waiting on request_user_input: short answers ("1"/"了解") continue;
+   * a clearly new question ("iphone duo有没有降价?") must start a new loop —
+   * otherwise it is swallowed as clarify text and the user sees「不回复」.
+   */
+  function chatShouldStartNewWhileWaiting(text, task) {
+    var t = String(text || '').trim();
+    if (!t || !atrTextIsNewGoal(t, task)) return false;
+    if (t.length <= 8) return false;
+    if (/^[1-9]([\s.、)）]|[、.].*)?$/.test(t)) return false;
     return true;
   }
 
@@ -10936,7 +11252,8 @@
 
     if (typeof opts.clearInput === 'function') opts.clearInput();
     // Product gate: editable plan confirm before any ATR write path.
-    openWorkConfirm(text, matSum);
+    // Focus embed: confirm in-place (no atrWbPageForced). Full-page home may force.
+    openWorkConfirm(text, matSum, { forcePage: !embedMode });
     if (S) paint(S.getSnapshot());
   }
 
@@ -10951,6 +11268,7 @@
       dispatchEditModeSend(S, snap, '', materialsSummaryLine(snap), {
         clearInput: function () {
           if (ta) ta.value = '';
+          wbPageDraftText = '';
         }
       });
       return;
@@ -10982,6 +11300,7 @@
       dispatchEditModeSend(S, snap, text, materialsSummaryLine(snap), {
         clearInput: function () {
           if (ta) ta.value = '';
+          wbPageDraftText = '';
         }
       });
       return;
@@ -10989,6 +11308,7 @@
     // ATR still running while UI is on 对话 — don't divert into local chat.
     if (
       atrTask &&
+      !atrIsChatLoopTask(atrTask) &&
       (atrSt === 'running' ||
         atrSt === 'verifying' ||
         atrSt === 'repair' ||
@@ -10998,7 +11318,11 @@
       // Non-edit chat can still proceed; edit-like waits.
       if (!looksLikeEditGoalText(text)) {
         if (ta) ta.value = '';
-        sendWbLocal(text, currentCat(snap || {}));
+        wbPageDraftText = '';
+        dispatchChatModeSend(S, snap, text, {
+          clearInput: function () {},
+          materialsSummary: materialsSummaryLine(snap)
+        });
         return;
       }
       toast(
@@ -11010,11 +11334,51 @@
       return;
     }
     if (ta) ta.value = '';
-    var c = currentCat(snap || {});
-    sendWbLocal(text, c);
+    wbPageDraftText = '';
+    dispatchChatModeSend(S, snap, text, {
+      clearInput: function () {},
+      materialsSummary: materialsSummaryLine(snap)
+    });
   }
 
   function stopWbLocalStream() {
+    var atrId = chatLoopTaskId;
+    var S = store();
+    var snap = S && S.getSnapshot ? S.getSnapshot() : null;
+    var task = snap && snap.agentTask;
+    if (!atrId && atrIsChatLoopTask(task)) {
+      atrId = String((task && task.taskId) || '');
+    }
+    if (atrId) {
+      var A = global.OneToneHomeAgentTask;
+      // Keep chatLoopTaskId until cancel settles — else poll sync re-sticks busy.
+      chatStopPendingId = String(atrId);
+      chatLoopSyncedEv = {};
+      finalizeChatLoopProgressTurn(atrId);
+      wbChatBusy = false;
+      wbStreamingText = '';
+      wbStreamingTurnId = '';
+      if (A && typeof A.cancel === 'function') {
+        A.cancel(atrId)
+          .catch(function () {})
+          .then(function () {
+            if (String(chatStopPendingId) === String(atrId)) {
+              chatStopPendingId = '';
+              chatLoopTaskId = '';
+            }
+          });
+      } else {
+        chatStopPendingId = '';
+        chatLoopTaskId = '';
+      }
+      appendWbChatTurn({
+        role: 'assistant',
+        kind: 'finish',
+        text: t('ha2WbChatCancelled', '已停止'),
+        toolOk: false
+      });
+      paintWbTranscript();
+    }
     if (global.OneToneModelGateway && global.OneToneModelGateway.cancel) {
       global.OneToneModelGateway.cancel();
       return;
@@ -11846,6 +12210,1139 @@
     });
   }
 
+  /** Map compose picker wb:/sp:/api: → ATR make_driver provider id. */
+  function resolveAtrProviderForChat() {
+    var gateway = global.OneToneModelGateway;
+    var purpose = 'synthesis';
+    var current =
+      gateway && gateway.resolveProvider ? gateway.resolveProvider(purpose) : null;
+    var softPref = softPadPreferredProvider();
+    var def = wbDefaultAccount(wbLocalCache);
+    var selectedModel = def ? String(def.selectedModel || '') : '';
+    // Prefer soft-pad lane id when Soft Pad freemodel is selected.
+    if (current && current.id === 'softpad_our_freemodel' && softPref) {
+      return softPref;
+    }
+    if (current && current.id && current.id !== 'softpad_our_freemodel') {
+      return String(current.id);
+    }
+    if (softPref) return softPref;
+    if (selectedModel || (def && def.id)) return 'workbuddy';
+    var A = global.OneToneHomeAgentTask;
+    return (A && A.readProvider && A.readProvider()) || 'workbuddy';
+  }
+
+  function chatToolStepLabel(tool) {
+    tool = String(tool || '');
+    if (tool === 'thinking') return t('ha2ToolThinking', '思考中');
+    if (tool === 'process_trace') return t('ha2ToolProcessTrace', '查询过程');
+    if (tool === 'web_search') return t('ha2ToolWebSearch', '联网搜索');
+    if (tool === 'fetch_url') return t('ha2ToolFetch', '打开网页');
+    if (tool === 'search_code') return t('ha2ToolSearchCode', '搜代码');
+    if (tool === 'read_file') return t('ha2ToolReadFile', '读文件');
+    if (tool === 'inspect_workspace') return t('ha2ToolInspect', '查看工作区');
+    if (tool === 'deliver_to_agent') return t('ha2ToolDeliver', '投递到 Agent');
+    if (tool === 'request_user_input') return t('ha2ToolAsk', '需要你补充');
+    if (tool === 'finish') return t('ha2ToolFinish', '结案');
+    return tool || t('ha2ToolStep', '工具');
+  }
+
+  /** Pack recent journal/chat turns into materialsSummary for ATR prior_chat. */
+  function chatHistoryMaterialsSummary(extra) {
+    var lines = [];
+    var turns = [];
+    var J = global.OneToneHomeTaskJournal;
+    if (J && typeof J.listChatTurns === 'function') {
+      try {
+        turns = J.listChatTurns() || [];
+      } catch (_) {
+        turns = [];
+      }
+    }
+    if (!turns.length && wbChatTurns && wbChatTurns.length) {
+      turns = wbChatTurns;
+    }
+    var i;
+    var start = Math.max(0, turns.length - 12);
+    for (i = start; i < turns.length; i++) {
+      var row = turns[i] || {};
+      var role = row.role === 'user' ? 'user' : 'assistant';
+      var kind = String(row.kind || '');
+      if (kind === 'tool_step' || kind === 'needs_input' || kind === 'deliver_approval') {
+        continue;
+      }
+      var body = String(row.text || '').replace(/\s+/g, ' ').trim();
+      if (!body) continue;
+      if (body.length > 220) body = body.slice(0, 220) + '…';
+      lines.push(role + ': ' + body);
+    }
+    var out = lines.join('\n');
+    if (extra) {
+      out = (out ? out + '\n' : '') + String(extra);
+    }
+    if (out.length > 2800) out = out.slice(out.length - 2800);
+    return out;
+  }
+
+  function chatLoopHonestFailText(code, fallback) {
+    code = String(code || '');
+    fallback = String(fallback || '');
+    if (code === 'cancelled' || /^cancelled$/i.test(fallback)) {
+      return t('ha2WbChatCancelled', '已停止');
+    }
+    if (
+      code === 'tool_not_allowed' ||
+      /tool_not_allowed/i.test(code) ||
+      /tool_not_allowed/i.test(fallback)
+    ) {
+      return t(
+        'ha2ChatToolNotAllowed',
+        '对话工具环配置异常 — 请刷新后再问一次；若仍失败请换引擎'
+      );
+    }
+    if (code === 'format_error' || /format_error|parse_|not_json|no_tool_calls/i.test(code)) {
+      return t(
+        'ha2ChatFormatFail',
+        '模型未按工具格式行动 — 请换引擎或换更强模型后再试'
+      );
+    }
+    if (/_unconfigured|provider_unconfigured|not_ready/i.test(code)) {
+      return t(
+        'ha2ChatNeedEngine',
+        '对话引擎未就绪 — 请登录 WorkBuddy，或配置 Soft Pad / API 密钥后再试'
+      );
+    }
+    if (code === 'need_project' || code === 'scratch_failed') {
+      return t(
+        'ha2ChatScratchFail',
+        '无法准备对话工作区 — 请确认数据目录可用，或换引擎后再试'
+      );
+    }
+    if (
+      code === 'interrupted' ||
+      code === 'busy' ||
+      code === 'waiting' ||
+      /atr_interrupted|atr_busy|atr_waiting/i.test(code)
+    ) {
+      return t(
+        'ha2ChatBlockedByWork',
+        '有未结束的编辑任务挡住了提问 — 请点「放弃并发送」或直接再发一次问题'
+      );
+    }
+    if (
+      code === 'abandon_start_failed' ||
+      /abandon_start_failed|provider_not_edit_capable|edit_not_admitted/i.test(code)
+    ) {
+      return t(
+        'ha2ChatAbandonStartFail',
+        '提问未能启动 — 请再发一次原问题；若仍失败请换引擎或确认已登录 WorkBuddy'
+      );
+    }
+    if (
+      code === 'tool_error' ||
+      code === 'timeout' ||
+      /tool_error|timeout/i.test(code) ||
+      /提问失败\s*[:：]?\s*tool_error/i.test(fallback) ||
+      /^tool_error$/i.test(fallback)
+    ) {
+      return t(
+        'ha2ChatToolError',
+        '检索/工具调用中断 — 可点恢复继续，或放弃后换引擎再问'
+      );
+    }
+    // Never surface edit-lane wording ("编辑任务失败") in chat transcript.
+    if (/编辑任务失败|提问失败/i.test(fallback)) {
+      return t(
+        'ha2ChatLoopNeedReady',
+        '未能启动对话工具循环 — 请换引擎或配置密钥后再试'
+      );
+    }
+    return (
+      fallback ||
+      t(
+        'ha2ChatLoopNeedReady',
+        '未能启动对话工具循环 — 请换引擎或配置密钥后再试'
+      )
+    );
+  }
+
+  /** Inline triage when chat still hits a work conflict (buttons live in transcript). */
+  function chatConflictTurnHtml(turn) {
+    turn = turn || {};
+    return (
+      '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool is-needs-input" data-ha2-tool-step>' +
+      '<div class="ha2-tool-step-hd">' +
+      '<span class="ha2-tool-step-badge">' +
+      esc(t('ha2ChatConflict', '需处理')) +
+      '</span>' +
+      '<span class="ha2-tool-step-label">' +
+      esc(turn.text || '') +
+      '</span></div>' +
+      '<div class="ha2-chat-deliver-actions">' +
+      '<button type="button" class="ha2-btn primary" data-ha2-atr-abandon-send>' +
+      esc(t('ha2AtrAbandonSend', '放弃并发送')) +
+      '</button>' +
+      '<button type="button" class="ha2-btn" data-ha2-atr-abandon>' +
+      esc(t('ha2AtrAbandon', '放弃旧任务')) +
+      '</button>' +
+      '<button type="button" class="ha2-btn" data-ha2-atr-resume>' +
+      esc(t('ha2AtrResume', '恢复旧任务')) +
+      '</button></div></div>'
+    );
+  }
+
+  function chatAtrBusyPhase(st) {
+    st = String(st || '');
+    return (
+      st === 'running' ||
+      st === 'verifying' ||
+      st === 'repair' ||
+      st === 'review'
+    );
+  }
+
+  function chatDriveAlive(taskId) {
+    var S = store();
+    if (S && typeof S.isAtrDriveInFlight === 'function') {
+      return !!S.isAtrDriveInFlight(taskId);
+    }
+    return false;
+  }
+
+  /**
+   * Busy line for the chat bubble — short status only.
+   * Never dump liveThinking / CoT here: truncated reasoning was being painted
+   * as the final answer when the model stalled mid-thought.
+   */
+  function chatLiveProjection(task) {
+    var raw = String(
+      (task && (task.liveThinking || task.live_thinking)) || ''
+    );
+    if (raw.indexOf('answer|') === 0) {
+      return { kind: 'answer', text: raw.slice(7) };
+    }
+    if (raw.indexOf('status|') === 0) {
+      return { kind: 'status', text: raw.slice(7) };
+    }
+    // Legacy/raw provider text may contain private or incomplete reasoning.
+    return { kind: raw ? 'legacy' : 'empty', text: '' };
+  }
+
+  function chatLoopProgressText(task) {
+    var live = chatLiveProjection(task);
+    var turn = task && task.currentTurn != null ? Number(task.currentTurn) : 0;
+    if (live.kind === 'answer' && live.text) return live.text;
+    if (live.kind === 'status' && live.text) {
+      return live.text + (turn ? ' · 第 ' + turn + ' 步' : '');
+    }
+    if (!turn) {
+      return t(
+        'ha2ChatLoopWaitingModel',
+        '正在等待模型回应（第 0 步）… — 可点停止'
+      );
+    }
+    if (live.kind === 'legacy') {
+      return t('ha2ChatLoopThinking', '模型思考中 · 第 {n} 步… — 可点停止').replace(
+        '{n}',
+        String(turn)
+      );
+    }
+    return t('ha2ChatLoopBusyStep', '工具循环中 · 第 {n} 步…')
+      .replace('{n}', String(turn));
+  }
+
+  /** Persist collapsible progress chip — must survive cancel (streaming alone evaporates). */
+  function upsertChatLoopProgressTurn(task) {
+    var tid = String((task && task.taskId) || chatLoopTaskId || '');
+    if (!tid) return null;
+    var text = chatLoopProgressText(task);
+    if (!text) return null;
+    var live = chatLiveProjection(task);
+    if (live.kind === 'answer' && live.text) {
+      var answerId = 'answer_' + tid;
+      var answerRow = appendWbChatTurn({
+        id: answerId,
+        role: 'assistant',
+        text: live.text,
+        streaming: true
+      });
+      wbStreamingTurnId = answerId;
+      wbStreamingText = live.text;
+      return answerRow;
+    }
+    var row = appendWbChatTurn({
+      id: 'think_' + tid,
+      role: 'assistant',
+      kind: 'tool_step',
+      toolName: 'thinking',
+      text: text,
+      detail: live.kind === 'status' ? live.text : '',
+      collapsed: true,
+      toolOk: true
+    });
+    wbStreamingTurnId = 'think_' + tid;
+    wbStreamingText = text;
+    return row;
+  }
+
+  /** Convert the in-flight answer bubble into the one terminal transcript row. */
+  function settleStreamedChatAnswer(tid, finalId, text, options) {
+    tid = String(tid || chatLoopTaskId || '');
+    if (!tid) return false;
+    var answerId = 'answer_' + tid;
+    var opts = options || {};
+    var i;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && String(wbChatTurns[i].id) === answerId) {
+        wbChatTurns[i] = Object.assign({}, wbChatTurns[i], {
+          id: String(finalId || answerId),
+          role: 'assistant',
+          kind: String(opts.kind || 'finish'),
+          toolName: String(opts.toolName || ''),
+          text: String(text || ''),
+          streaming: false,
+          collapsed: false,
+          toolOk: opts.toolOk !== false
+        });
+        wbStreamingTurnId = '';
+        wbStreamingText = '';
+        saveWbChatTurns();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Persist a safe action trace at terminal state. It records observable ATR
+   * actions only (tool, query/path, result state), never provider reasoning/CoT.
+   */
+  function persistChatProcessTrace(tid, evs, terminalKind) {
+    tid = String(tid || chatLoopTaskId || '');
+    if (!tid) return null;
+    evs = Array.isArray(evs) ? evs : [];
+    var lines = [t('ha2ChatTraceUnderstand', '理解问题并规划查询')];
+    var toolSteps = 0;
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i] || {};
+      var kind = String(e.kind || '');
+      var tool = String(e.toolName || e.tool_name || '');
+      var p = e.payload || {};
+      if (kind === 'tool_call') {
+        toolSteps += 1;
+        var args = p.arguments && typeof p.arguments === 'object' ? p.arguments : p;
+        var subject = String(
+          (args && (args.query || args.url || args.path || args.question)) || ''
+        )
+          .replace(/\s+/g, ' ')
+          .slice(0, 160);
+        lines.push(
+          chatToolStepLabel(tool) + (subject ? '：' + subject : '')
+        );
+      } else if (kind === 'tool_error') {
+        lines.push(chatToolStepLabel(tool) + '：' + t('ha2ChatTraceFailed', '失败'));
+      }
+    }
+    if (toolSteps) {
+      lines.push(t('ha2ChatTraceSynthesize', '汇总工具结果并核对答案'));
+    }
+    lines.push(
+      terminalKind === 'done'
+        ? t('ha2ChatTraceAnswered', '生成最终回复')
+        : t('ha2ChatTraceStopped', '查询未正常完成')
+    );
+    var rowId = 'think_' + tid;
+    var label = t('ha2ToolProcessTrace', '查询过程') + ' · ' + lines.length + ' 步';
+    var row = appendWbChatTurn({
+      id: rowId,
+      role: 'assistant',
+      kind: 'tool_step',
+      toolName: 'process_trace',
+      text: label,
+      detail: lines.join('\n'),
+      collapsed: true,
+      toolOk: terminalKind === 'done'
+    });
+    if (wbStreamingTurnId === rowId) wbStreamingTurnId = '';
+    return row;
+  }
+
+  /** Keep the progress chip after stop/cancel — do not delete it. */
+  function finalizeChatLoopProgressTurn(tid, label) {
+    tid = String(tid || chatLoopTaskId || '');
+    if (!tid) return;
+    var id = 'think_' + tid;
+    var turn = 0;
+    var i;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && String(wbChatTurns[i].id) === id) {
+        var prev = String(wbChatTurns[i].text || '');
+        var m = prev.match(/第\s*(\d+)\s*步/);
+        if (m) turn = Number(m[1]) || 0;
+        var stopped =
+          label ||
+          (turn
+            ? t('ha2ChatLoopStoppedStep', '已停止（第 {n} 步）').replace(
+                '{n}',
+                String(turn)
+              )
+            : t('ha2WbChatCancelled', '已停止'));
+        wbChatTurns[i] = Object.assign({}, wbChatTurns[i], {
+          text: stopped,
+          detail: wbChatTurns[i].detail || '',
+          toolOk: false,
+          collapsed: true
+        });
+        saveWbChatTurns();
+        return;
+      }
+    }
+  }
+
+  /**
+   * Model hang (any turn): no new ATR events for CHAT_STALL_MS while busy.
+   * Covers turn0 first call AND post-user_input second call (log: iphone stuck running@turn1).
+   */
+  function maybeStallChatDrive(snap, task) {
+    var tid = String((task && task.taskId) || '');
+    if (!tid || chatStallTried[tid] || chatStopPendingId === tid) return;
+    var evs = (snap && snap.agentTaskEvents) || [];
+    var lastMs = 0;
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var em =
+        typeof atrEventMs === 'function'
+          ? atrEventMs(evs[i])
+          : Number(
+              (evs[i] && (evs[i].createdAtMs || evs[i].created_at_ms)) || 0
+            );
+      if (em > lastMs) lastMs = em;
+    }
+    if (!chatBusySinceMs) chatBusySinceMs = Date.now();
+    var since = Math.max(lastMs || 0, chatBusySinceMs || 0);
+    if (!since || Date.now() - since < CHAT_STALL_MS) return;
+    chatStallTried[tid] = true;
+    chatHealTried[tid] = true;
+    finalizeChatLoopProgressTurn(tid);
+    wbChatBusy = false;
+    wbStreamingText = '';
+    chatStopPendingId = tid;
+    var A = global.OneToneHomeAgentTask;
+    if (A && typeof A.cancel === 'function') {
+      A.cancel(tid).catch(function () {});
+    }
+    emitChatRecoveryTurn(
+      tid,
+      t(
+        'ha2ChatLoopStall',
+        '等模型太久没有新步骤 — 可恢复重试，或放弃后换引擎/重发'
+      )
+    );
+    var S = store();
+    if (S && S.getSnapshot) paint(S.getSnapshot());
+  }
+
+  function emitChatRecoveryTurn(tid, text) {
+    tid = String(tid || '');
+    if (!tid || chatRecoveryEmitted[tid]) return;
+    chatRecoveryEmitted[tid] = true;
+    var recoveryText =
+      text ||
+      t(
+        'ha2ChatLoopInterrupted',
+        '工具循环已中断 — 可恢复、放弃旧任务，或放弃并发送新问题'
+      );
+    if (
+      settleStreamedChatAnswer(tid, 'recover_' + tid, recoveryText, {
+        kind: 'chat_conflict',
+        toolOk: false
+      })
+    ) {
+      return;
+    }
+    appendWbChatTurn({
+      id: 'recover_' + tid,
+      role: 'assistant',
+      kind: 'chat_conflict',
+      text: recoveryText,
+      toolOk: false
+    });
+  }
+
+  /**
+   * Watchdog: ATR busy but JS drive dropped → one redrive, else surface recovery.
+   * Leaves task running so「恢复」can call driveActiveIfRunning (cancel is not resumable).
+   */
+  function maybeHealChatDrive(snap, task) {
+    var tid = String((task && task.taskId) || '');
+    if (!tid || chatHealTried[tid] || chatStopPendingId === tid) return;
+    if (chatDriveAlive(tid)) return;
+    chatHealTried[tid] = true;
+    var S = store();
+    if (!S || typeof S.driveActiveIfRunning !== 'function') {
+      wbChatBusy = false;
+      wbStreamingText = '';
+      emitChatRecoveryTurn(tid);
+      return;
+    }
+    S.driveActiveIfRunning({ force: true })
+      .then(function () {
+        if (!mounted) return;
+        var next = S.getSnapshot && S.getSnapshot();
+        var t2 = next && next.agentTask;
+        var st2 = String((t2 && t2.status) || '');
+        if (chatAtrBusyPhase(st2) && !chatDriveAlive(tid)) {
+          wbChatBusy = false;
+          wbStreamingText = '';
+          emitChatRecoveryTurn(
+            tid,
+            t(
+              'ha2ChatLoopDriveDropped',
+              '工具循环驱动已断开 — 可恢复继续，或放弃后重发'
+            )
+          );
+        }
+        paint(next || snap);
+      })
+      .catch(function () {
+        if (!mounted) return;
+        wbChatBusy = false;
+        wbStreamingText = '';
+        emitChatRecoveryTurn(
+          tid,
+          t(
+            'ha2ChatLoopDriveDropped',
+            '工具循环驱动已断开 — 可恢复继续，或放弃后重发'
+          )
+        );
+        paint(S.getSnapshot());
+      });
+  }
+
+  function syncChatLoopFromAtr(snap) {
+    var task = snap && snap.agentTask;
+    if (!atrIsChatLoopTask(task)) return;
+    var tid = String(task.taskId || '');
+    var stBind = String((task && task.status) || '');
+    // Never rebind the live chat loop to a terminal abandoned/cancelled leftover.
+    if (
+      tid &&
+      tid !== chatLoopTaskId &&
+      !chatStopPendingId &&
+      stBind !== 'cancelled' &&
+      stBind !== 'done' &&
+      stBind !== 'failed'
+    ) {
+      chatLoopTaskId = tid;
+      chatLoopSyncedEv = {};
+    }
+    if (chatStopPendingId && tid && tid === String(chatStopPendingId)) {
+      // Soft-stop in flight — never re-stick busy from poll.
+      wbChatBusy = false;
+      wbStreamingText = '';
+    }
+    var evs = (snap && snap.agentTaskEvents) || [];
+    var i;
+    for (i = 0; i < evs.length; i++) {
+      var e = evs[i] || {};
+      var eid = String(e.eventId || e.event_id || e.id || i);
+      if (chatLoopSyncedEv[eid]) continue;
+      var kind = String(e.kind || '');
+      var tool = String(e.toolName || e.tool_name || '');
+      var payload = e.payload || {};
+      if (kind === 'tool_call') {
+        // Persist call chip immediately — cancel mid-think must leave a foldable step.
+        var callDetail = '';
+        try {
+          callDetail = JSON.stringify(payload).slice(0, 280);
+        } catch (_) {
+          callDetail = String(payload || '').slice(0, 280);
+        }
+        appendWbChatTurn({
+          id: 'toolcall_' + eid,
+          role: 'assistant',
+          kind: 'tool_step',
+          toolName: tool,
+          toolOk: null,
+          text: chatToolStepLabel(tool),
+          detail: callDetail,
+          collapsed: true
+        });
+        chatLoopSyncedEv[eid] = true;
+      } else if (kind === 'tool_result' || kind === 'tool_error') {
+        var ok = kind !== 'tool_error';
+        var detail = '';
+        try {
+          detail = JSON.stringify(payload).slice(0, 480);
+        } catch (_) {
+          detail = String(payload || '').slice(0, 480);
+        }
+        if (
+          tool === 'deliver_to_agent' &&
+          payload &&
+          payload.result &&
+          payload.approved === true
+        ) {
+          var Sdel = store();
+          if (Sdel && Sdel.setDeliveryReceipt) {
+            try {
+              Sdel.setDeliveryReceipt({
+                phase: payload.result.ok ? 'done' : 'failed',
+                outcome: payload.result.ok ? 'pasted_confirmed' : 'paste_failed',
+                detail: payload.result.message || ''
+              });
+            } catch (_) {}
+          }
+        }
+        appendWbChatTurn({
+          id: 'tool_' + eid,
+          role: 'assistant',
+          kind: 'tool_step',
+          toolName: tool,
+          toolOk: ok && !(payload && payload.result && payload.result.ok === false),
+          text: chatToolStepLabel(tool),
+          detail: detail,
+          collapsed: true
+        });
+        chatLoopSyncedEv[eid] = true;
+      } else if (kind === 'waiting_user' || kind === 'waiting_user_input') {
+        var q =
+          (payload && (payload.question || payload.prompt)) ||
+          t('ha2AtrAskInput', '回复 Agent 任务');
+        appendWbChatTurn({
+          id: 'need_' + eid,
+          role: 'assistant',
+          kind: 'needs_input',
+          toolName: 'request_user_input',
+          text: String(q),
+          collapsed: false
+        });
+        chatLoopSyncedEv[eid] = true;
+        wbChatBusy = false;
+      } else if (kind === 'waiting_deliver') {
+        var preview =
+          (payload && (payload.preview || payload.text)) ||
+          t('ha2ToolDeliver', '投递到 Agent');
+        appendWbChatTurn({
+          id: 'deliv_' + eid,
+          role: 'assistant',
+          kind: 'deliver_approval',
+          toolName: 'deliver_to_agent',
+          text: String(preview).slice(0, 280),
+          detail: String((payload && payload.text) || '').slice(0, 800),
+          approvalToken:
+            (payload && (payload.approvalToken || payload.approval_token)) || '',
+          collapsed: false
+        });
+        chatLoopSyncedEv[eid] = true;
+        wbChatBusy = false;
+      } else if (kind === 'interrupted' || kind === 'task_interrupted') {
+        chatLoopSyncedEv[eid] = true;
+        wbChatBusy = false;
+        wbStreamingText = '';
+        persistChatProcessTrace(tid, evs, 'interrupted');
+        emitChatRecoveryTurn(
+          tid,
+          (payload && (payload.message || payload.summary || payload.error)) ||
+            t(
+              'ha2ChatLoopInterrupted',
+              '工具循环已中断 — 可恢复、放弃旧任务，或放弃并发送新问题'
+            )
+        );
+      } else if (kind === 'done' || kind === 'task_done') {
+        var summary =
+          (payload && payload.summary) ||
+          t('ha2ToolFinishDone', '已完成');
+        persistChatProcessTrace(tid, evs, 'done');
+        if (
+          !settleStreamedChatAnswer(tid, 'fin_' + eid, summary, {
+            kind: 'finish',
+            toolName: 'finish',
+            toolOk: true
+          })
+        ) {
+          appendWbChatTurn({
+            id: 'fin_' + eid,
+            role: 'assistant',
+            kind: 'finish',
+            toolName: 'finish',
+            text: String(summary),
+            collapsed: false
+          });
+        }
+        chatLoopSyncedEv[eid] = true;
+        wbChatBusy = false;
+        chatLoopTaskId = '';
+        chatStopPendingId = '';
+        chatBusySinceMs = 0;
+        if (tid) {
+          delete chatHealTried[tid];
+          delete chatRecoveryEmitted[tid];
+          delete chatStallTried[tid];
+        }
+      } else if (
+        kind === 'failed' ||
+        kind === 'task_failed' ||
+        kind === 'cancelled' ||
+        kind === 'model_error' ||
+        kind === 'format_error'
+      ) {
+        var cancelReason = String(
+          (payload && (payload.reason || payload.message)) || ''
+        );
+        // Auto-abandon when starting a new question — not a user Stop.
+        if (
+          kind === 'cancelled' &&
+          (/abandoned/i.test(cancelReason) || chatDriveAlive(''))
+        ) {
+          chatLoopSyncedEv[eid] = true;
+          continue;
+        }
+        // Event for a different task while this chat loop is bound elsewhere.
+        if (
+          chatLoopTaskId &&
+          tid &&
+          String(chatLoopTaskId) !== String(tid) &&
+          kind === 'cancelled'
+        ) {
+          chatLoopSyncedEv[eid] = true;
+          continue;
+        }
+        var rawErr =
+          (payload && (payload.error || payload.message || payload.summary)) ||
+          (task && (task.lastError || task.last_error)) ||
+          kind;
+        var err =
+          kind === 'format_error'
+            ? chatLoopHonestFailText('format_error', String(rawErr))
+            : kind === 'cancelled'
+              ? t('ha2WbChatCancelled', '已停止')
+              : chatLoopHonestFailText(String(rawErr), String(rawErr));
+        if (kind === 'cancelled') finalizeChatLoopProgressTurn(tid);
+        persistChatProcessTrace(tid, evs, kind);
+        if (
+          !settleStreamedChatAnswer(tid, 'err_' + eid, err, {
+            kind: 'finish',
+            toolOk: false
+          })
+        ) {
+          appendWbChatTurn({
+            id: 'err_' + eid,
+            role: 'assistant',
+            kind: 'finish',
+            text: String(err),
+            toolOk: false
+          });
+        }
+        chatLoopSyncedEv[eid] = true;
+        if (!chatDriveAlive('')) {
+          wbChatBusy = false;
+          chatLoopTaskId = '';
+          chatStopPendingId = '';
+          chatBusySinceMs = 0;
+          if (tid) {
+            delete chatHealTried[tid];
+            delete chatRecoveryEmitted[tid];
+            delete chatStallTried[tid];
+          }
+        }
+      }
+    }
+    var st = String((task && task.status) || '');
+    if (chatStopPendingId && tid && tid === String(chatStopPendingId)) {
+      if (
+        st === 'done' ||
+        st === 'failed' ||
+        st === 'cancelled' ||
+        st === 'interrupted' ||
+        st === 'waiting'
+      ) {
+        chatStopPendingId = '';
+        if (st !== 'interrupted' && st !== 'waiting') chatLoopTaskId = '';
+      }
+      return;
+    }
+    if (chatAtrBusyPhase(st)) {
+      if (!chatBusySinceMs) chatBusySinceMs = Date.now();
+      if (chatDriveAlive(tid)) {
+        wbChatBusy = true;
+        upsertChatLoopProgressTurn(task);
+        maybeStallChatDrive(snap, task);
+      } else {
+        wbChatBusy = false;
+        wbStreamingText = '';
+        maybeHealChatDrive(snap, task);
+      }
+    } else if (st === 'waiting') {
+      wbChatBusy = false;
+      chatBusySinceMs = 0;
+      if (tid) {
+        delete chatHealTried[tid];
+        delete chatStallTried[tid];
+      }
+    } else if (
+      st === 'done' ||
+      st === 'failed' ||
+      st === 'cancelled' ||
+      st === 'interrupted'
+    ) {
+      // New chat send already in flight — ignore leftover cancelled/interrupted dto.
+      if (chatDriveAlive('') || chatDriveAlive(tid)) {
+        return;
+      }
+      if (st === 'cancelled' || st === 'failed') {
+        finalizeChatLoopProgressTurn(tid);
+      }
+      wbChatBusy = false;
+      wbStreamingText = '';
+      chatBusySinceMs = 0;
+      if (st === 'interrupted') {
+        emitChatRecoveryTurn(tid);
+      } else if (st === 'cancelled') {
+        // Silent if auto-abandoned; user Stop still paints via cancel event / stopWbLocalStream.
+        chatLoopTaskId = '';
+        if (tid) {
+          delete chatHealTried[tid];
+          delete chatRecoveryEmitted[tid];
+          delete chatStallTried[tid];
+        }
+      } else {
+        chatLoopTaskId = '';
+        if (tid) {
+          delete chatHealTried[tid];
+          delete chatRecoveryEmitted[tid];
+          delete chatStallTried[tid];
+        }
+      }
+    }
+  }
+
+  /**
+   * Chat send → ATR read_only tool loop (same engine as work; different tools/prompt).
+   * Freemodel / Soft Pad / custom API all via ATR provider.
+   */
+  function dispatchChatModeSend(S, snap, text, opts) {
+    opts = opts || {};
+    text = String(text || '').trim();
+    if (!text) return;
+    snap = snap || (S && S.getSnapshot && S.getSnapshot()) || {};
+
+    // Weather stays on dedicated IPC (not ATR).
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.looksLikeWeatherAsk === 'function' && Caps.looksLikeWeatherAsk(text)) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      if (!tryHandleWeatherLocal(text, currentCat(snap))) {
+        // Fall through to ATR if weather handler declines.
+      } else {
+        return;
+      }
+    }
+
+    if (!S || !S.startAndDriveAgentTask || !atrRuntimeOn()) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      appendWbChatTurn({ role: 'user', text: text });
+      openWbChatPage({ chatOnly: true });
+      appendWbChatTurn({
+        role: 'assistant',
+        kind: 'finish',
+        text: chatLoopHonestFailText(
+          'not_ready',
+          t(
+            'ha2ChatAtrOff',
+            '对话工具循环未开启 — 请开启 Agent Task Runtime，并换引擎/配置密钥后再试'
+          )
+        ),
+        toolOk: false
+      });
+      paintWbTranscript();
+      return;
+    }
+
+    // Continue chat loop when waiting on user_input.
+    var task = snap.agentTask;
+    var st = task ? String(task.status || '') : '';
+    var reason = atrTaskWaitingReason(task);
+    if (
+      atrIsChatLoopTask(task) &&
+      st === 'waiting' &&
+      reason === 'deliver_approval'
+    ) {
+      toast(t('ha2ChatWaitDeliver', '请先批准或取消投递'));
+      return;
+    }
+    if (
+      atrIsChatLoopTask(task) &&
+      st === 'waiting' &&
+      reason === 'user_input' &&
+      S.submitAgentInput
+    ) {
+      // New unrelated question → abandon waiting clarify and start fresh chat.
+      if (chatShouldStartNewWhileWaiting(text, task) && S.abandonAgentTask) {
+        if (typeof opts.clearInput === 'function') opts.clearInput();
+        appendWbChatTurn({ role: 'user', text: text });
+        openWbChatPage({ chatOnly: true });
+        wbChatBusy = true;
+        wbStreamingText = t('ha2ChatLoopStarting', '正在启动工具循环…');
+        wbStreamingTurnId = 'chat_loop_live';
+        chatBusySinceMs = Date.now();
+        chatHealTried = Object.create(null);
+        chatStallTried = Object.create(null);
+        chatRecoveryEmitted = Object.create(null);
+        paintWbTranscript();
+        S.abandonAgentTask()
+          .catch(function (err) {
+            if (String((err && err.message) || err) === 'no_task') return null;
+            return Promise.reject(err);
+          })
+          .then(function () {
+            return S.startAndDriveAgentTask({
+              goal: text,
+              materialsSummary:
+                chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
+                opts.materialsSummary ||
+                '',
+              permissionMode: 'read_only',
+              lane: 'chat',
+              skipPlanConfirm: true,
+              skipBlockingCheck: true,
+              provider: resolveAtrProviderForChat()
+            });
+          })
+          .then(function (dto) {
+            if (!mounted) return;
+            if (dto && dto.taskId) chatLoopTaskId = String(dto.taskId);
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            wbChatBusy = false;
+            wbStreamingText = '';
+            appendWbChatTurn({
+              role: 'assistant',
+              kind: 'finish',
+              text: chatLoopHonestFailText(
+                String((err && (err.code || err.message)) || err || ''),
+                String((err && err.message) || err || 'chat_loop_failed')
+              ),
+              toolOk: false
+            });
+            paintWbTranscript();
+          });
+        return;
+      }
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      appendWbChatTurn({ role: 'user', text: text });
+      openWbChatPage({ chatOnly: true });
+      wbChatBusy = true;
+      upsertChatLoopProgressTurn(task);
+      chatBusySinceMs = Date.now();
+      if (task && task.taskId) {
+        delete chatHealTried[String(task.taskId)];
+        delete chatStallTried[String(task.taskId)];
+      }
+      paintWbTranscript();
+      S.submitAgentInput(text)
+        .then(function () {
+          if (!mounted) return;
+          wbChatBusy = true;
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          wbChatBusy = false;
+          wbStreamingText = '';
+          appendWbChatTurn({
+            role: 'assistant',
+            kind: 'finish',
+            text: chatLoopHonestFailText(
+              String((err && (err.code || err.message)) || err || ''),
+              String((err && err.message) || err || 'input_failed')
+            ),
+            toolOk: false
+          });
+          paintWbTranscript();
+          toast(String((err && err.message) || err || 'input_failed'));
+        });
+      return;
+    }
+
+    // 「继续」在冲突/失败后应重发上一句真实问题，不要把「继续」当 goal。
+    if (typeof atrLooksLikeContinueInput === 'function' && atrLooksLikeContinueInput(text)) {
+      var conflictGoal =
+        (snap.atrSendConflict && snap.atrSendConflict.goal) || '';
+      var priorQ = '';
+      var ti;
+      for (ti = wbChatTurns.length - 1; ti >= 0; ti--) {
+        var prev = wbChatTurns[ti];
+        if (
+          prev &&
+          prev.role === 'user' &&
+          String(prev.text || '').trim() &&
+          !atrLooksLikeContinueInput(prev.text)
+        ) {
+          priorQ = String(prev.text).trim();
+          break;
+        }
+      }
+      text = String(conflictGoal || priorQ || text).trim();
+    }
+
+    var provider = resolveAtrProviderForChat();
+    if (typeof opts.clearInput === 'function') opts.clearInput();
+    appendWbChatTurn({
+      role: 'user',
+      text: text,
+      model: provider,
+      providerId: provider
+    });
+    chatLoopSyncedEv = {};
+    chatLoopTaskId = '';
+    chatStopPendingId = '';
+    chatHealTried = Object.create(null);
+    chatRecoveryEmitted = Object.create(null);
+    chatStallTried = Object.create(null);
+    chatBusySinceMs = Date.now();
+    wbChatBusy = true;
+    wbStreamingText = t('ha2ChatLoopStarting', '正在启动工具循环…');
+    wbStreamingTurnId = 'chat_loop_live';
+    openWbChatPage({ chatOnly: true });
+    paintWbTranscript();
+
+    var matSum =
+      chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
+      opts.materialsSummary ||
+      '';
+
+    function clearChatLoopBusy() {
+      wbChatBusy = false;
+      wbStreamingText = '';
+      wbStreamingTurnId = '';
+    }
+
+    S.startAndDriveAgentTask({
+      goal: text,
+      materialsSummary: matSum,
+      permissionMode: 'read_only',
+      lane: 'chat',
+      skipPlanConfirm: true,
+      provider: provider
+    })
+      .then(function (dto) {
+        if (!mounted) return;
+        var stDone = dto ? String(dto.status || '') : '';
+        if (dto && dto.taskId && stDone !== 'failed' && stDone !== 'cancelled') {
+          chatLoopTaskId = String(dto.taskId);
+          if (stDone === 'done') clearChatLoopBusy();
+          else if (!chatAtrBusyPhase(stDone) && stDone !== 'waiting') {
+            clearChatLoopBusy();
+          }
+        } else {
+          var snapAfter =
+            (S.getSnapshot && S.getSnapshot()) || {};
+          var live = snapAfter.agentTask || dto;
+          var liveId = String((live && live.taskId) || '');
+          var liveSt = String((live && live.status) || '');
+          var vn = snapAfter.validationNotice || {};
+          var vnCode = String(vn.code || vn.kind || '');
+          // FE atr_turn timeout / tool_error while Rust still finishing web_search —
+          // keep the loop alive and redrive instead of painting opaque 提问失败.
+          if (
+            liveId &&
+            chatAtrBusyPhase(liveSt) &&
+            (/tool_error|timeout/i.test(vnCode) ||
+              /tool_error|timeout/i.test(String(vn.message || '')))
+          ) {
+            chatLoopTaskId = liveId;
+            wbChatBusy = true;
+            wbStreamingText =
+              chatLoopProgressText(live) ||
+              t('ha2ChatLoopBusy', '工具循环中…');
+            wbStreamingTurnId = 'chat_loop_live';
+            chatBusySinceMs = Date.now();
+            delete chatHealTried[liveId];
+            if (typeof S.driveActiveIfRunning === 'function') {
+              S.driveActiveIfRunning({ force: true }).catch(function () {});
+            }
+            paint(snapAfter);
+            return;
+          }
+          finalizeChatLoopProgressTurn(
+            chatLoopTaskId || (dto && dto.taskId) || liveId
+          );
+          clearChatLoopBusy();
+          chatLoopTaskId = '';
+          var failText =
+            (dto && (dto.lastError || dto.last_error)) ||
+            vn.message ||
+            '';
+          if (
+            vnCode === 'interrupted' ||
+            vnCode === 'busy' ||
+            vnCode === 'waiting' ||
+            vnCode === 'abandon_start_failed' ||
+            /atr_interrupted|atr_busy|atr_waiting|abandon_start_failed/i.test(
+              vnCode
+            )
+          ) {
+            appendWbChatTurn({
+              role: 'assistant',
+              kind: 'chat_conflict',
+              text: chatLoopHonestFailText(vnCode, failText),
+              toolOk: false
+            });
+          } else {
+            appendWbChatTurn({
+              role: 'assistant',
+              kind: 'finish',
+              text: chatLoopHonestFailText(
+                vnCode || stDone || 'chat_loop_failed',
+                failText || String(stDone || 'chat_loop_failed')
+              ),
+              toolOk: false
+            });
+          }
+        }
+        paint(S.getSnapshot());
+      })
+      .catch(function (err) {
+        var code = String((err && (err.code || err.message)) || err || '');
+        var snapAfter = (S.getSnapshot && S.getSnapshot()) || {};
+        var live = snapAfter.agentTask;
+        var liveId = String((live && live.taskId) || '');
+        var liveSt = String((live && live.status) || '');
+        if (
+          liveId &&
+          chatAtrBusyPhase(liveSt) &&
+          /tool_error|timeout/i.test(code)
+        ) {
+          chatLoopTaskId = liveId;
+          wbChatBusy = true;
+          wbStreamingText =
+            chatLoopProgressText(live) ||
+            t('ha2ChatLoopBusy', '工具循环中…');
+          wbStreamingTurnId = 'chat_loop_live';
+          chatBusySinceMs = Date.now();
+          delete chatHealTried[liveId];
+          if (typeof S.driveActiveIfRunning === 'function') {
+            S.driveActiveIfRunning({ force: true }).catch(function () {});
+          }
+          paint(snapAfter);
+          return;
+        }
+        clearChatLoopBusy();
+        chatLoopTaskId = '';
+        appendWbChatTurn({
+          role: 'assistant',
+          kind: 'finish',
+          text: chatLoopHonestFailText(
+            code,
+            String((err && err.message) || err || 'chat_loop_failed')
+          ),
+          toolOk: false
+        });
+        paintWbTranscript();
+      });
+  }
+
   function send() {
     var S = store();
     var D = dock();
@@ -11889,7 +13386,7 @@
       return;
     }
 
-    // Gateway chat (WB freemodel / Soft Pad / API) — no desktop Agent required.
+    // Chat → ATR tool loop (freemodel / Soft Pad / API). Gateway plain-text is no longer primary.
     if (gatewayChatEligible(snap)) {
       if (!draftRemember) {
         S.setValidationNotice({
@@ -11898,23 +13395,25 @@
         });
         return;
       }
-      var localCat =
-        c && c.id
-          ? c
-          : {
-              id: 'workbuddy',
-              name: 'WorkBuddy',
-              appId: '',
-              icon: WB_CHAT_ICON
-            };
+      var clearChat = function () {
+        S.setDraft('', { silent: true });
+        syncDraftMirrors('');
+        if (dockTa) dockTa.value = '';
+      };
+      var bootChat = function () {
+        dispatchChatModeSend(S, snap, draftRemember, {
+          clearInput: clearChat,
+          materialsSummary: materialsSummaryLine(snap)
+        });
+      };
       if (!wbLocalCache) {
         refreshWbLocal(true).then(function () {
           if (!mounted) return;
-          sendWbLocal(draftRemember, localCat);
+          bootChat();
         });
         return;
       }
-      sendWbLocal(draftRemember, localCat);
+      bootChat();
       return;
     }
 
@@ -12130,10 +13629,13 @@
   function syncDraftMirrors(text) {
     if (!root) return;
     var active = document.activeElement;
+    var next = text == null ? '' : String(text);
     var nodes = root.querySelectorAll('[data-ha2-draft]');
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i] === active) continue;
-      if (nodes[i].value !== text) nodes[i].value = text;
+      // Remount race: never clobber non-empty live text with empty store.
+      if (!next && String(nodes[i].value || '')) continue;
+      if (nodes[i].value !== next) nodes[i].value = next;
     }
   }
 
@@ -12200,6 +13702,33 @@
       });
   }
 
+  // The compose can become visible before the deferred home-agent group has
+  // finished registering its store/controller. Serialize the first send behind
+  // that load so the user's draft is not lost during cold start.
+  var homeAgentSendInFlight = null;
+  function ensureHomeAgentReadyThenSend() {
+    var Defer = global.OneToneDefer;
+    if (!Defer || typeof Defer.loadGroup !== 'function') {
+      send();
+      return;
+    }
+    if (homeAgentSendInFlight) return homeAgentSendInFlight;
+    homeAgentSendInFlight = Promise.resolve()
+      .then(function () { return Defer.loadGroup('home-agent'); })
+      .then(function () {
+        if (mounted) send();
+      })
+      .catch(function (err) {
+        var msg = String((err && err.message) || err || 'home_agent_load_failed');
+        toast('首页 Agent 模块加载失败：' + msg.slice(0, 120));
+      })
+      .then(function (result) {
+        homeAgentSendInFlight = null;
+        return result;
+      });
+    return homeAgentSendInFlight;
+  }
+
   function onInput(e) {
     var D = dock();
     if (e.target.matches && e.target.matches('[data-ha2-model-route-search]')) {
@@ -12211,6 +13740,11 @@
       var mid = e.target.getAttribute('data-ha2-mat-text');
       if (!mid || !D || !D.updateMaterialContent) return;
       D.updateMaterialContent(mid, { content: e.target.value }, { skipSync: true });
+      return;
+    }
+    if (e.target.matches && e.target.matches('[data-ha2-wb-page-draft]')) {
+      if (composing) return;
+      wbPageDraftText = String(e.target.value || '');
       return;
     }
     if (!e.target.matches || !e.target.matches('[data-ha2-draft]')) return;
@@ -12250,8 +13784,7 @@
     if (!isHa2ComposeTarget(e.target)) return;
     composing = false;
     if (store() && store().setComposing) store().setComposing(false);
-    // Page draft is not mirrored to store draft — skip onInput for it.
-    if (e.target.matches && e.target.matches('[data-ha2-wb-page-draft]')) return;
+    // Page draft still needs stash (not store-backed); dock goes through onInput.
     onInput(e);
   }
 
@@ -12535,7 +14068,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-chat-needs-reply],[data-ha2-chat-deliver-approve],[data-ha2-chat-deliver-reject],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -12661,8 +14194,32 @@
     }
     if (tEl.hasAttribute('data-ha2-atr-resume')) {
       if (S && S.clearAtrSendConflict) S.clearAtrSendConflict({ silent: true });
-      if (S && S.resumeAndDriveAgentTask) {
-        S.resumeAndDriveAgentTask()
+      if (S && S.setValidationNotice) S.setValidationNotice(null);
+      var snapResume = S && S.getSnapshot ? S.getSnapshot() : null;
+      var taskResume = snapResume && snapResume.agentTask;
+      var stResume = String((taskResume && taskResume.status) || '');
+      var tidResume = String((taskResume && taskResume.taskId) || '');
+      if (tidResume) {
+        delete chatHealTried[tidResume];
+        delete chatRecoveryEmitted[tidResume];
+      }
+      // Chat heal may leave status running — resume IPC only accepts interrupted/waiting/failed.
+      var chatRedrive =
+        atrIsChatLoopTask(taskResume) &&
+        chatAtrBusyPhase(stResume) &&
+        S &&
+        typeof S.driveActiveIfRunning === 'function';
+      var resumeP = chatRedrive
+        ? (function () {
+            wbChatBusy = true;
+            wbStreamingText = t('ha2ChatLoopBusy', '工具循环中…');
+            return S.driveActiveIfRunning({ force: true });
+          })()
+        : S && S.resumeAndDriveAgentTask
+          ? S.resumeAndDriveAgentTask()
+          : null;
+      if (resumeP) {
+        resumeP
           .then(function () {
             toast(t('ha2AtrResumed', '已恢复任务'));
             paint(S.getSnapshot());
@@ -12694,14 +14251,18 @@
       if (S && S.abandonAgentTask) {
         S.abandonAgentTask()
           .then(function () {
-            openWorkConfirm(goalP, materialsSummaryLine(snapP));
+            openWorkConfirm(goalP, materialsSummaryLine(snapP), {
+              forcePage: !embedMode
+            });
             paint(S.getSnapshot());
           })
           .catch(function (err) {
             toast(String((err && err.message) || err || 'replan_failed'));
           });
       } else {
-        openWorkConfirm(goalP, materialsSummaryLine(snapP));
+        openWorkConfirm(goalP, materialsSummaryLine(snapP), {
+          forcePage: !embedMode
+        });
         if (S) paint(S.getSnapshot());
       }
       return;
@@ -12738,16 +14299,33 @@
             }
           } catch (_) {}
         }
-        openAtrEditPage(draftSend);
+        var chatCtx = String((snapSend && snapSend.workMode) || '') !== 'edit';
+        if (!chatCtx) openAtrEditPage(draftSend);
+        else openWbChatPage({ chatOnly: true });
         S.abandonAndStartAgentTask({
           goal: draftSend,
-          materialsSummary: matSumSend
+          materialsSummary: matSumSend,
+          permissionMode: chatCtx ? 'read_only' : undefined,
+          lane: chatCtx ? 'chat' : undefined,
+          skipPlanConfirm: !!chatCtx,
+          planConfirmed: true
         })
           .then(function (dto) {
             if (!mounted) return;
             var snapAfter = S.getSnapshot();
             var n = snapAfter && snapAfter.validationNotice;
             if (n && n.code === 'abandon_start_failed') {
+              if (chatCtx) {
+                appendWbChatTurn({
+                  role: 'assistant',
+                  kind: 'chat_conflict',
+                  text: chatLoopHonestFailText(
+                    'abandon_start_failed',
+                    n.message || ''
+                  ),
+                  toolOk: false
+                });
+              }
               toast(
                 t(
                   'ha2AtrAbandonStartFailed',
@@ -12756,6 +14334,9 @@
               );
             } else if (!dto && n && n.abandoned === false) {
               toast(n.message || t('ha2AtrPreflightFail', '未放弃旧任务：启动条件未满足'));
+            } else if (chatCtx && dto && dto.taskId) {
+              chatLoopTaskId = String(dto.taskId);
+              wbChatBusy = true;
             }
             paint(snapAfter);
           })
@@ -12819,7 +14400,62 @@
       }
       return;
     }
+    if (tEl.hasAttribute('data-ha2-chat-needs-reply')) {
+      var needWrap = tEl.closest('[data-ha2-tool-step]');
+      var needInp =
+        needWrap && needWrap.querySelector('[data-ha2-chat-needs-input]');
+      var needText = needInp ? String(needInp.value || '').trim() : '';
+      if (!needText) return;
+      appendWbChatTurn({ role: 'user', text: needText });
+      if (needInp) needInp.value = '';
+      if (S && S.submitAgentInput) {
+        wbChatBusy = true;
+        S.submitAgentInput(needText)
+          .then(function () {
+            if (!mounted) return;
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            wbChatBusy = false;
+            toast(String((err && err.message) || err || 'input_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-chat-deliver-approve')) {
+      if (S && S.approveAgentDeliver) {
+        wbChatBusy = true;
+        S.approveAgentDeliver()
+          .then(function () {
+            toast(t('ha2DeliverApproved', '已批准投递'));
+            if (!mounted) return;
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            wbChatBusy = false;
+            toast(String((err && err.message) || err || 'deliver_approve_failed'));
+          });
+      }
+      return;
+    }
+    if (tEl.hasAttribute('data-ha2-chat-deliver-reject')) {
+      if (S && S.rejectAgentDeliver) {
+        wbChatBusy = true;
+        S.rejectAgentDeliver()
+          .then(function () {
+            toast(t('ha2DeliverRejected', '已取消投递'));
+            if (!mounted) return;
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            wbChatBusy = false;
+            toast(String((err && err.message) || err || 'deliver_reject_failed'));
+          });
+      }
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-atr-input')) {
+      // Work ATR page only — chat uses inline needs_input (data-ha2-chat-needs-reply).
       var answer = global.prompt(t('ha2AtrAskInput', '回复 Agent 任务'), '');
       if (answer == null) return;
       if (S && S.submitAgentInput) {
@@ -12838,8 +14474,17 @@
       return;
     }
     if (tEl.hasAttribute('data-ha2-wb-page-clear')) {
+      var Jclear = global.OneToneHomeTaskJournal;
+      var clearId = Jclear && Jclear.getActiveTaskId ? Jclear.getActiveTaskId() : '';
+      if (Jclear && typeof Jclear.clearChatTurns === 'function') {
+        try {
+          Jclear.clearChatTurns(clearId);
+        } catch (_) {}
+      }
       wbChatTurns = [];
       saveWbChatTurns();
+      chatLoopTaskId = '';
+      chatLoopSyncedEv = {};
       wbStreamingText = '';
       wbStreamingTurnId = '';
       paintWbTranscript();
@@ -12881,6 +14526,13 @@
       // Research chrome is hidden — ignore stray research switches.
       if (nextMode === 'research') nextMode = 'think';
       if (S && S.setWorkMode) S.setWorkMode(nextMode);
+      // Keep home chrome 提问/投递 in sync with compose segment.
+      var HomePaint = global.OneToneNowHome;
+      if (HomePaint && typeof HomePaint.paint === 'function' && HomePaint.isVisible && HomePaint.isVisible()) {
+        try {
+          HomePaint.paint();
+        } catch (_) {}
+      }
       if (wbChatPageOpen) paintWbChatPage();
       return;
     }
@@ -13224,6 +14876,7 @@
       return;
     }
     if (tEl.hasAttribute('data-ha2-open-model-providers')) {
+      closeModelRouteMenu();
       openModelProviderModal();
       return;
     }
@@ -13295,7 +14948,7 @@
       return;
     }
     if (tEl.hasAttribute('data-ha2-send') || tEl.hasAttribute('data-ha2-retry')) {
-      send();
+      ensureHomeAgentReadyThenSend();
       return;
     }
     if (tEl.hasAttribute('data-ha2-pcx')) {
@@ -13668,6 +15321,19 @@
     }
     var snap = S.getSnapshot();
     ensureShell(snap);
+    // Focus remount (innerHTML) destroys [data-ha2-wb-page-host] but can leave
+    // is-wb-chat-page on root → hn-stage stays visibility:hidden → blank home.
+    if (wbChatPageOpen) {
+      ensureChatPageHost();
+      paintWbChatPage();
+    } else {
+      root.classList.remove('is-wb-chat-page');
+      var orphanHost = root.querySelector('[data-ha2-wb-page-host]');
+      if (orphanHost) {
+        orphanHost.innerHTML = '';
+        orphanHost.hidden = true;
+      }
+    }
     // Do not maybeOpenAtrWbPage here — auto ATR/wb full-page was covering Focus
     // and eating clicks. sendWbLocal may still open the page on purpose.
     // Never skip patch while Agent picker / + menu open — that was the "no reaction" bug.
@@ -13793,12 +15459,52 @@
     });
   }
 
+  function openAtrHistory(taskId) {
+    var histId = String(taskId || '').trim();
+    if (!histId) return;
+    var S = store();
+    var snapH = S && S.getSnapshot ? S.getSnapshot() : null;
+    var stackH = (snapH && snapH.agentTaskStack) || [];
+    var goalH = '';
+    var hi;
+    for (hi = 0; hi < stackH.length; hi++) {
+      if (
+        stackH[hi] &&
+        stackH[hi].task &&
+        String(stackH[hi].task.taskId) === histId
+      ) {
+        goalH = String(stackH[hi].task.goal || '');
+        break;
+      }
+    }
+    if (
+      S &&
+      S.setActiveAgentTask &&
+      !(snapH && snapH.agentTask && String(snapH.agentTask.taskId) === histId)
+    ) {
+      S.setActiveAgentTask(histId, { grant: true }).catch(function () {});
+    }
+    atrWbPageUserClosed = false;
+    atrLogExpandedById[histId] = true;
+    openAtrEditPage(goalH || atrWbPagePendingGoal || '');
+    if (S) paint(S.getSnapshot());
+  }
+
   global.OneToneHomeAgentV2 = {
     mount: mount,
     embedCompose: embedCompose,
+    stashLiveComposeDrafts: stashLiveComposeDrafts,
     show: show,
     hide: hide,
     refresh: refresh,
+    openAtrHistory: openAtrHistory,
+    openWbChatPage: openWbChatPage,
+    closeWbChatPage: closeWbChatPage,
+    loadChatTaskTurns: loadChatTaskTurns,
+    startNewChatSession: startNewChatSession,
+    isWbChatPageOpen: function () {
+      return !!wbChatPageOpen;
+    },
     /** Shared entry for Focus / other surfaces — opens freemodel connect sheet. */
     openModelProviders: function (opts) {
       openModelProviderModal(opts || {});

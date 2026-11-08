@@ -46,6 +46,18 @@
       localStorage.setItem(HOME_INTENT_KEY, next === 'work' ? 'work' : 'chat');
     } catch (_) {}
   }
+
+  /** Keep HA2 think/edit aligned with chrome 提问/投递. */
+  function syncHomeIntentToHa2() {
+    var Store = global.OneToneHomeAgentV2Store;
+    if (!Store || typeof Store.setWorkMode !== 'function') return;
+    var want = readHomeIntent() === 'work' ? 'edit' : 'think';
+    try {
+      var snap = typeof Store.getSnapshot === 'function' ? Store.getSnapshot() : null;
+      if (snap && snap.workMode === want) return;
+      Store.setWorkMode(want, { silent: true });
+    } catch (_) {}
+  }
   var contextOpen = false;
   var contextRows = [];
   var contextFetchGen = 0;
@@ -74,6 +86,10 @@
   var hfView = 'focus';
   var homeFocusUnsub = null;
   var homeFocusCache = null;
+  /** Cursor usage for task-card local strip only (Soft Pad keeps full stats). */
+  var cursorUsageCache = null;
+  var cursorUsageFetchTimer = 0;
+  var cursorUsageFetchGen = 0;
 
   function readInventorySessionCache() {
     try {
@@ -1307,13 +1323,51 @@
         // Project root may become available after confirm — refresh home snapshot filter.
         scheduleAgentHomeRefresh();
         scheduleAgentCenterRefresh();
+        scheduleCursorLocalUsageRefresh({ refresh: false });
         paint();
       }
     });
-    S.fetch();
-    S.startPolling(5000);
-    fetchAgentCenter();
-    refreshHomeAimMemory(homeAimKind || 'cursor', { repaint: false });
+    // First fetch / agent-center / aim memory: show()'s post-paint batch only.
+    // Hot path: to_js home_status_changed; 30s is safety net only.
+    var safetyMs =
+      typeof S.SAFETY_POLL_MS === 'number' ? S.SAFETY_POLL_MS : 30000;
+    S.startPolling(safetyMs);
+  }
+
+  function ensureHomeAgentScripts() {
+    var Defer = global.OneToneDefer;
+    if (Defer && typeof Defer.loadGroup === 'function') {
+      return Defer.loadGroup('home-agent');
+    }
+    return Promise.resolve();
+  }
+
+  function tryEmbedHa2Compose() {
+    if (!root || !useHomeFocusSurface()) return;
+    var composeHost = root.querySelector(
+      '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
+    );
+    if (!composeHost || composeHost.querySelector('[data-ha2-compose]')) return;
+    var HA2 = global.OneToneHomeAgentV2;
+    if (HA2 && typeof HA2.embedCompose === 'function') {
+      try {
+        HA2.embedCompose(root);
+      } catch (_) {}
+      return;
+    }
+    ensureHomeAgentScripts().then(function () {
+      if (!visible || !root || !useHomeFocusSurface()) return;
+      var host = root.querySelector(
+        '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
+      );
+      if (!host || host.querySelector('[data-ha2-compose]')) return;
+      var H = global.OneToneHomeAgentV2;
+      if (H && typeof H.embedCompose === 'function') {
+        try {
+          H.embedCompose(root);
+        } catch (_) {}
+      }
+    });
   }
 
   /** In-memory dismiss of return Hero so Quiet Composer / agent jump can run. */
@@ -1358,6 +1412,55 @@
     return vm;
   }
 
+  function pickCursorUsageFromOverlay(snap) {
+    var agents = (snap && snap.agents) || [];
+    for (var i = 0; i < agents.length; i++) {
+      var row = agents[i];
+      if (!row) continue;
+      if (String(row.kind || '').toLowerCase() === 'cursor') {
+        return row.usage || row.usageStats || row.usage_stats || null;
+      }
+    }
+    return null;
+  }
+
+  function fetchCursorLocalUsage(opts) {
+    opts = opts || {};
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return;
+    var gen = ++cursorUsageFetchGen;
+    var cmd = opts.refresh
+      ? 'cmd_codex_micro_overlay_refresh_usage'
+      : 'cmd_codex_micro_overlay_get_state';
+    var args = opts.refresh ? { kind: 'cursor' } : {};
+    ipc
+      .invoke(cmd, args)
+      .then(function (snap) {
+        if (gen !== cursorUsageFetchGen) return;
+        var next = pickCursorUsageFromOverlay(snap);
+        var prevKey = '';
+        var nextKey = '';
+        try {
+          prevKey = JSON.stringify(cursorUsageCache || null);
+          nextKey = JSON.stringify(next || null);
+        } catch (_) {}
+        cursorUsageCache = next;
+        if (prevKey !== nextKey && mounted && visible && useHomeFocusSurface()) {
+          lastPaintHtml = '';
+          paint();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function scheduleCursorLocalUsageRefresh(opts) {
+    if (cursorUsageFetchTimer) return;
+    cursorUsageFetchTimer = setTimeout(function () {
+      cursorUsageFetchTimer = 0;
+      fetchCursorLocalUsage(opts || { refresh: true });
+    }, 350);
+  }
+
   function buildHomeFocusVm() {
     var A = global.OneToneHomeFocusAdapter;
     if (!A || !A.toViewModel) return null;
@@ -1373,7 +1476,17 @@
     if (vm && A.enrichFromInventory) {
       vm = A.enrichFromInventory(vm, inventoryCache, attentionCache);
     }
-    if (vm && vm.mode === 'return' && isReturnDismissed(vm)) {
+    if (vm && A.enrichWithCursorLocal) {
+      vm = A.enrichWithCursorLocal(vm, cursorUsageCache);
+    }
+    // start_new_task dismiss: return / empty-step attention / completed Hero.
+    if (
+      vm &&
+      isReturnDismissed(vm) &&
+      (vm.mode === 'return' ||
+        vm.mode === 'attention' ||
+        vm.mode === 'completed')
+    ) {
       vm = forceQuietStart(vm);
     }
     return vm;
@@ -1723,11 +1836,93 @@
       });
   }
 
+  function closeWatchPop() {
+    var pop = root && root.querySelector('#hnWatchPop');
+    if (pop) pop.hidden = true;
+  }
+
+  function openWatchPop(kindId, name, anchorEl) {
+    var pop = root && root.querySelector('#hnWatchPop');
+    if (!pop) return;
+    var titleEl = pop.querySelector('#hnWatchPopTitle');
+    var stateEl = pop.querySelector('#hnWatchPopState');
+    var sendBtn = pop.querySelector('#hnWatchPopSend');
+    var tip =
+      (anchorEl && anchorEl.getAttribute && anchorEl.getAttribute('data-ot-tip')) || '';
+    var line = tip.indexOf(' · ') >= 0 ? tip.split(' · ').slice(1).join(' · ') : tip;
+    if (titleEl) {
+      titleEl.textContent =
+        (name || kindId || 'Agent') +
+        (line ? ' · ' + line.replace(/ · 点开看详情$/, '') : '');
+    }
+    if (stateEl) stateEl.textContent = '只读查看。改发送目标请点「发给它」。';
+    if (sendBtn) {
+      sendBtn.setAttribute('data-hf-agent-kind', kindId || '');
+      sendBtn.setAttribute('data-hf-agent-name', name || kindId || '');
+      sendBtn.setAttribute('data-hf-agent-mode', 'send');
+    }
+    var watch = root.querySelector('[data-hn-watch]');
+    if (watch && !watch.classList.contains('is-open')) {
+      watch.classList.add('is-open');
+      var panel = watch.querySelector('.hn-watch-panel');
+      if (panel) panel.hidden = false;
+      var sumBtn = watch.querySelector('[data-hf-act="toggle_watch"]');
+      if (sumBtn) {
+        sumBtn.setAttribute('aria-expanded', 'true');
+        var chev = sumBtn.querySelector('.hn-watch-sum__chev');
+        if (chev) chev.textContent = '收起';
+      }
+    }
+    pop.hidden = false;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      var ar = anchorEl.getBoundingClientRect();
+      var left = Math.min(Math.max(12, ar.left), Math.max(12, window.innerWidth - 292));
+      pop.style.left = left + 'px';
+      pop.style.top = Math.min(ar.bottom + 8, window.innerHeight - 160) + 'px';
+    }
+  }
+
   function handleHomeFocusAct(kind, el) {
     var vm = buildHomeFocusVm() || {};
     var Policy = global.OneToneHomeActionPolicy;
     var S = global.OneToneHomeFocusStore;
 
+    if (kind === 'toggle_watch') {
+      var watch = root && root.querySelector('[data-hn-watch]');
+      if (watch) {
+        var open = !watch.classList.contains('is-open');
+        watch.classList.toggle('is-open', open);
+        var panel = watch.querySelector('.hn-watch-panel');
+        if (panel) panel.hidden = !open;
+        var sumBtn = watch.querySelector('[data-hf-act="toggle_watch"]');
+        if (sumBtn) {
+          sumBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          var chev = sumBtn.querySelector('.hn-watch-sum__chev');
+          if (chev) chev.textContent = open ? '收起' : '展开';
+        }
+      }
+      return;
+    }
+    if (kind === 'select_agent') {
+      var pickKind =
+        (el && el.getAttribute && el.getAttribute('data-hf-agent-kind')) || '';
+      var pickName =
+        (el && el.getAttribute && el.getAttribute('data-hf-agent-name')) || pickKind;
+      var pickMode =
+        (el && el.getAttribute && el.getAttribute('data-hf-agent-mode')) || 'peek';
+      var Store = global.OneToneHomeAgentV2Store;
+      // mode=send: change ha2 send target. Default peek: watch only (merged.html).
+      if (pickMode === 'send' && pickKind && Store && typeof Store.setSelected === 'function') {
+        Store.setSelected(pickKind, { lock: true, closePicker: true });
+        closeWatchPop();
+        toastQuiet('发送目标 → ' + (pickName || pickKind) + '（草稿保留）');
+        lastPaintHtml = '';
+        paint();
+        return;
+      }
+      if (pickKind) openWatchPop(pickKind, pickName, el);
+      return;
+    }
     if (kind === 'quiet_collect') {
       quietCollectMaterial((el && el.getAttribute('data-hf-collect')) || '');
       return;
@@ -1743,9 +1938,10 @@
       return;
     }
 
-    // Leave return Hero → Quiet Composer (agent jump). Checkpoint stays.
+    // Leave return / empty-step attention → Quiet Composer. Checkpoint stays.
     if (kind === 'start_new_task') {
       dismissReturnFor(vm);
+      toastQuiet('可以开始新任务 · 上次进度仍保留');
       lastPaintHtml = '';
       paint();
       return;
@@ -1758,6 +1954,7 @@
     }
 
     if (kind === 'close_pick' || kind === 'close_progress' || kind === 'close_drawer') {
+      closeWatchPop();
       if (kind === 'close_drawer' && root) {
         var drawerClose = root.querySelector('#hnRecallDrawer');
         if (drawerClose) {
@@ -1785,6 +1982,27 @@
       var nextIntent =
         (el && el.getAttribute && el.getAttribute('data-hf-intent')) || 'chat';
       writeHomeIntent(nextIntent);
+      // chat → ask LLM (think); work → forward/deliver to agents (edit).
+      var Ha2Intent = global.OneToneHomeAgentV2Store;
+      if (Ha2Intent && typeof Ha2Intent.setWorkMode === 'function') {
+        try {
+          Ha2Intent.setWorkMode(nextIntent === 'work' ? 'edit' : 'think');
+        } catch (_) {}
+      }
+      var Dir = global.OneToneHomeNowDirectory;
+      if (Dir && typeof Dir.paint === 'function') {
+        try {
+          Dir.paint();
+        } catch (_) {}
+      }
+      // 提问/投递 only flip intent. Empty exclusive page was blanking Focus —
+      // openWbChatPage stays for chat rows / after send, not for chrome toggles.
+      var HA2IntentUi = global.OneToneHomeAgentV2;
+      if (HA2IntentUi && HA2IntentUi.closeWbChatPage) {
+        try {
+          HA2IntentUi.closeWbChatPage();
+        } catch (_) {}
+      }
       lastPaintHtml = '';
       paint();
       return;
@@ -1911,6 +2129,89 @@
     if (kind === 'decide') kind = 'view_progress';
     if (kind === 'continue') kind = 'resume';
     if (kind === 'restore') kind = (vm.primary && vm.primary.id) || 'confirm_project';
+
+    // User opt-in: read Cursor local activity so resume can show a real step.
+    if (kind === 'enable_cursor_activity') {
+      var inv =
+        global.OneToneIpc && typeof global.OneToneIpc.invoke === 'function'
+          ? global.OneToneIpc.invoke.bind(global.OneToneIpc)
+          : null;
+      if (!inv) {
+        toastQuiet('无法开启 Cursor 活动');
+        return;
+      }
+      // Already on + DB busy: don't pretend 开启 failed — refresh and say so.
+      var localSt =
+        (vm.cursorLocal && vm.cursorLocal.state) ||
+        (cursorUsageCache && cursorUsageCache.status) ||
+        '';
+      var localMsg =
+        (vm.cursorLocal && vm.cursorLocal.line) ||
+        (cursorUsageCache && cursorUsageCache.message) ||
+        '';
+      if (
+        localSt === 'busy' ||
+        /库正忙|稍后自动重试/i.test(String(localMsg || ''))
+      ) {
+        toastQuiet('已开启 · 库正忙，稍后自动重试');
+        scheduleCursorLocalUsageRefresh({ refresh: true });
+        return;
+      }
+      toastQuiet('正在开启 Cursor 活动…');
+      inv('cmd_cursor_activity_pref_set', { enabled: true })
+        .then(function () {
+          if (S && typeof S.retry === 'function') return S.retry();
+          if (S && typeof S.fetch === 'function') return S.fetch();
+          return null;
+        })
+        .then(function () {
+          toastQuiet('已开启 · 正在读取停在哪一步');
+          scheduleCursorLocalUsageRefresh({ refresh: true });
+          lastPaintHtml = '';
+          paint();
+          // Discover is async — refresh again shortly.
+          setTimeout(function () {
+            scheduleCursorLocalUsageRefresh({ refresh: true });
+            if (S && typeof S.fetch === 'function') {
+              S.fetch().then(function () {
+                lastPaintHtml = '';
+                paint();
+              });
+            }
+          }, 1200);
+        })
+        .catch(function () {
+          toastQuiet('开启失败，可在 Soft Pad / Agent 设置里重试');
+        });
+      return;
+    }
+
+    // Permission primary: open the waiting Agent (ha2 go-agent equivalent).
+    if (kind === 'go_handle') {
+      var needsYou = (vm.desk && vm.desk.needsYou) || {};
+      var goProvider =
+        needsYou.agentKind ||
+        (vm.dto && vm.dto.provider && vm.dto.provider.id) ||
+        null;
+      if (goProvider) {
+        var gp = String(goProvider).toLowerCase();
+        if (gp.indexOf('claude') >= 0) goProvider = 'claude';
+        else if (gp.indexOf('codex') >= 0) goProvider = 'codex';
+        else if (gp.indexOf('workbuddy') >= 0) goProvider = 'workbuddy';
+        else if (gp.indexOf('cursor') >= 0) goProvider = 'cursor';
+      }
+      var NavHandle = global.OneToneAgentNavTarget;
+      if (NavHandle && NavHandle.open) {
+        NavHandle.open({
+          view: 'overview',
+          section: 'attention',
+          provider: goProvider || undefined,
+          agentId: needsYou.agentId || undefined,
+          projectId: vm.projectName || vm.projectId || null
+        });
+      }
+      return;
+    }
 
     if (!Policy || !Policy.execute) return;
 
@@ -2057,6 +2358,31 @@
         }
         if (res && res.ok === false && res.error && res.outcome !== 'failed') {
           toastQuiet(String(res.error));
+        }
+        // Cursor resume is soft: brief + Soft Pad; do not leave empty-step Hero up.
+        // (Rust no longer writes task_resumed for Cursor — avoids fake「执行中」.)
+        if (kind === 'resume' && !(res && res.ok === false)) {
+          var briefRaw = res && (res.brief || res);
+          var brief =
+            typeof briefRaw === 'string'
+              ? briefRaw
+              : briefRaw && typeof briefRaw.brief === 'string'
+                ? briefRaw.brief
+                : '';
+          dismissReturnFor(vm);
+          toastQuiet(
+            String(brief || '').trim() ||
+              '已记下续作点 · 请到 Soft Pad / Cursor 继续（不会自动接管）'
+          );
+          try {
+            if (global.OneToneSoftPadHub && typeof global.OneToneSoftPadHub.openPanel === 'function') {
+              global.OneToneSoftPadHub.openPanel();
+            } else {
+              openAgentOverview();
+            }
+          } catch (_) {
+            openAgentOverview();
+          }
         }
         if (kind === 'confirm_project' || kind === 'pick_project') {
           migrateQuietDraft(buildHomeFocusVm() || vm);
@@ -2336,22 +2662,9 @@
         global.OneToneHomePromptPrep.ensureMounted();
       } catch (_) {}
     }
-    // Embed ha2 compose once per mount. Re-calling on every Focus paint rebuilt
-    // the dock under open menus → flicker + dead clicks.
-    var HA2 = global.OneToneHomeAgentV2;
-    var composeHost =
-      root && root.querySelector('[data-hf-ha2-compose-host],[data-ha2-dock-host]');
-    if (
-      HA2 &&
-      typeof HA2.embedCompose === 'function' &&
-      root &&
-      composeHost &&
-      !composeHost.querySelector('[data-ha2-compose]')
-    ) {
-      try {
-        HA2.embedCompose(root);
-      } catch (_) {}
-    }
+    // Embed ha2 compose once per mount (may load deferred home-agent scripts first).
+    // Re-calling on every Focus paint rebuilt the dock under open menus → flicker.
+    tryEmbedHa2Compose();
   }
 
   function paint() {
@@ -2364,6 +2677,7 @@
     // Home Focus thin desk: do not hard-depend on legacy Now model/ui.
     // Missing model used to early-return with an empty root while smoke/dashboard were hidden → blank home.
     if (useHomeFocusSurface()) {
+      syncHomeIntentToHa2();
       ensureHomeFocusStore();
       if (isDemo && U && U.renderDemoBar) {
         html += U.renderDemoBar({
@@ -2379,6 +2693,13 @@
         bindQuietComposer();
         return;
       }
+      // Flush live ha2 drafts before wiping the host (Shift+Enter / poll remount).
+      try {
+        var HA2stash = global.OneToneHomeAgentV2;
+        if (HA2stash && typeof HA2stash.stashLiveComposeDrafts === 'function') {
+          HA2stash.stashLiveComposeDrafts();
+        }
+      } catch (_) {}
       lastPaintHtml = html;
       root.innerHTML = html;
       syncVoiceStrip(voice);
@@ -2954,6 +3275,9 @@
       }
       return;
     }
+    if (!(t.closest && t.closest('#hnWatchPop')) && !(t.closest && t.closest('[data-hf-act="select_agent"]'))) {
+      closeWatchPop();
+    }
     var hfAct = t.closest('[data-hf-act]');
     if (hfAct) {
       handleHomeFocusAct(hfAct.getAttribute('data-hf-act') || '', hfAct);
@@ -3252,8 +3576,8 @@
     if (mounted) return;
     root = $(ROOT_ID);
     if (!root) return;
-    if (detectHomeAgentV2() && global.OneToneHomeAgentV2) {
-      global.OneToneHomeAgentV2.mount(root);
+    // Pure agentV2: shell scripts may still be deferred — HA2.mount happens in show().
+    if (detectHomeAgentV2()) {
       mounted = true;
       return;
     }
@@ -3270,30 +3594,33 @@
     bindRuntime();
     bindHistoryEvents();
     mounted = true;
-    if (useRuntime()) {
-      fetchAttention();
-      fetchInventory();
-      fetchAgentCenter();
-      refreshToday();
-      startFgPoll();
-      fetchAgentHomeSnapshot();
-    }
+    // Shell paint only — heavy IPC runs once from show()'s post-paint batch.
     if (useHomeFocusSurface()) ensureHomeFocusStore();
     paint();
+  }
+
+  function showAgentV2Surface() {
+    if (!root) return;
+    var HA2 = global.OneToneHomeAgentV2;
+    if (!HA2 || typeof HA2.mount !== 'function') return;
+    var v2Stack = dashboardStack();
+    if (v2Stack) {
+      v2Stack.hidden = true;
+      v2Stack.setAttribute('aria-hidden', 'true');
+    }
+    setSmokeFeedbackHidden(true);
+    HA2.mount(root);
+    HA2.show();
+    visible = true;
   }
 
   function show() {
     mount();
     if (!root) return;
-    if (detectHomeAgentV2() && global.OneToneHomeAgentV2) {
-      var v2Stack = dashboardStack();
-      if (v2Stack) {
-        v2Stack.hidden = true;
-        v2Stack.setAttribute('aria-hidden', 'true');
-      }
-      setSmokeFeedbackHidden(true);
-      global.OneToneHomeAgentV2.show();
-      visible = true;
+    if (detectHomeAgentV2()) {
+      ensureHomeAgentScripts().then(function () {
+        showAgentV2Surface();
+      });
       return;
     }
     root.hidden = false;
@@ -3316,17 +3643,24 @@
           var warm = S0.get();
           if (warm) homeFocusCache = warm;
         }
-        if (S0 && S0.fetch) S0.fetch();
       } catch (_) {}
-      scheduleAgentHomeRefresh();
-      fetchAgentCenter();
-      probeHomeAccountReady();
     }
     paint();
     syncVoiceStrip();
-    // Heavier IPC after first paint (title-bar drag / nav feel).
+    // Single post-paint IPC batch (title-bar drag / nav feel).
     setTimeout(function () {
       if (!visible) return;
+      if (useHomeFocusSurface()) {
+        try {
+          var S1 = global.OneToneHomeFocusStore;
+          if (S1 && S1.fetch) S1.fetch();
+        } catch (_) {}
+        scheduleAgentHomeRefresh();
+        fetchAgentCenter();
+        scheduleCursorLocalUsageRefresh({ refresh: true });
+        probeHomeAccountReady();
+        refreshHomeAimMemory(homeAimKind || 'cursor', { repaint: false });
+      }
       if (useRuntime()) {
         fetchAttention();
         fetchInventory();
@@ -3401,12 +3735,15 @@
   };
 
   function bootHomeSurface() {
-    mount();
     // Prefer Now before workbench paints; syncNavActiveState will re-affirm.
     try {
       var st = global.OneToneState && global.OneToneState.ui;
-      if (st && st.drawerOpen) return;
+      if (st && st.drawerOpen) {
+        mount();
+        return;
+      }
     } catch (_) {}
+    // show() calls mount() — do not mount+show (was double IPC / paint).
     show();
   }
 
