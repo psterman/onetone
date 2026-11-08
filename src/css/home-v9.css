@@ -25,68 +25,39 @@
    ===================================================================== */
 
 
-/* ========== 1. 品牌色升级（覆盖现有 --primary 体系） ========== */
-/* 浅色模式（原清澈风格）：#2a9cc4 → #00A3FF（纯蓝） */
+/* ========== 1. v9 tokens over --ot-* (no longer override global --primary) ========== */
 :root{
-  --primary:         #00A3FF;
-  --primary-strong:  #0085DB;
-  --primary-muted:   #4DB6FF;
-  --primary-soft:    rgba(0,163,255,.10);
-  --primary-glow:    rgba(0,163,255,.45);
-  --key-soft:        #00A3FF;
-  --success:         #00A3FF;
-  --outline:         rgba(0,163,255,.28);
-
-  /* v9 新增 token · 给新组件用 */
-  --vp-blue:         #00A3FF;
-  --vp-blue-2:       #0085DB;
-  --vp-blue-soft:    rgba(0,163,255,.10);
-  --vp-blue-glow:    rgba(0,163,255,.45);
+  --vp-blue:         var(--ot-accent);
+  --vp-blue-2:       var(--ot-accent-hover);
+  --vp-blue-soft:    var(--ot-accent-soft);
+  --vp-blue-glow:    color-mix(in srgb, var(--ot-accent) 45%, transparent);
   --vp-blue-ink:     #003E80;
-  --vp-orb-shadow:   0 0 28px rgba(0,163,255,.45);
+  --vp-orb-shadow:   0 0 28px color-mix(in srgb, var(--ot-accent) 45%, transparent);
 
-  --vp-success:      #34D399;
-  --vp-success-soft: rgba(52,211,153,.14);
-  --vp-warn:         #FBBF24;
-  --vp-warn-soft:    rgba(251,191,36,.14);
-  --vp-error:        #FF4D6A;
-  --vp-error-soft:   rgba(255,77,106,.14);
+  --vp-success:      var(--ot-success);
+  --vp-success-soft: color-mix(in srgb, var(--ot-success) 14%, transparent);
+  --vp-warn:         var(--ot-warning);
+  --vp-warn-soft:    color-mix(in srgb, var(--ot-warning) 14%, transparent);
+  --vp-error:        var(--ot-error);
+  --vp-error-soft:   color-mix(in srgb, var(--ot-error) 14%, transparent);
 
   --vp-radius-pill:  999px;
-  --vp-radius:       10px;
-  --vp-radius-lg:    14px;
+  --vp-radius:       var(--ot-radius-control, 10px);
+  --vp-radius-lg:    var(--ot-radius-card, 14px);
   --vp-shadow:       0 12px 32px -12px rgba(0,0,0,.32), 0 2px 6px rgba(0,0,0,.16);
 
-  /* 浅色模式默认背景（如果当前是浅色主题） */
-  --vp-bg:           #F2F2F7;
-  --vp-surface:      #FFFFFF;
-  --vp-surface-2:    #FAFAFC;
-  --vp-text:         rgba(0,0,0,.88);
-  --vp-text-2:       rgba(60,60,67,.60);
-  --vp-text-3:       rgba(60,60,67,.30);
-  --vp-border:       rgba(60,60,67,.10);
-  --vp-border-2:     rgba(60,60,67,.18);
+  --vp-bg:           var(--ot-bg);
+  --vp-surface:      var(--ot-surface);
+  --vp-surface-2:    var(--ot-surface-raised);
+  --vp-text:         var(--ot-text);
+  --vp-text-2:       var(--ot-text-muted);
+  --vp-text-3:       var(--ot-text-tertiary);
+  --vp-border:       var(--ot-border);
+  --vp-border-2:     var(--ot-border-strong);
 }
 
-/* 深色模式（原石墨风格）：保留深色调，主色提亮一档 */
 html[data-theme="dark"]{
-  --primary:         #00A3FF;
-  --primary-strong:  #4DB6FF;
-  --primary-muted:   #66CFFF;
-  --primary-soft:    rgba(0,163,255,.14);
-  --primary-glow:    rgba(0,163,255,.50);
-  --key-soft:        #4DB6FF;
-  --success:         #00A3FF;
-
-  --vp-bg:           #0F1419;
-  --vp-surface:      #1A2436;
-  --vp-surface-2:    #243042;
-  --vp-surface-3:    #2C3A4F;
-  --vp-text:         #E6EDF3;
-  --vp-text-2:       #9CA9BC;
-  --vp-text-3:       #6B7A91;
-  --vp-border:       rgba(255,255,255,.06);
-  --vp-border-2:     rgba(255,255,255,.10);
+  --vp-surface-3:    var(--ot-surface-muted);
 }
 
 

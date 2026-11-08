@@ -1,25 +1,17 @@
 :root {
-  --wb-bg: #f4f7fa;
-  --wb-surface: #ffffff;
-  --wb-ink: #152238;
-  --wb-muted: #5a7086;
-  --wb-line: rgba(26, 45, 74, 0.12);
-  --wb-accent: #2a9cc4;
-  --wb-user: #e8f4fa;
-  --wb-danger: #dc2626;
+  --wb-bg: var(--ot-bg, #edf2f8);
+  --wb-surface: var(--ot-surface, #ffffff);
+  --wb-ink: var(--ot-text, #152238);
+  --wb-muted: var(--ot-text-muted, #5a7086);
+  --wb-line: var(--ot-border, rgba(26, 45, 74, 0.12));
+  --wb-accent: var(--ot-accent, #2a9cc4);
+  --wb-user: var(--ot-accent-soft, #e8f4fa);
+  --wb-danger: var(--ot-error, #dc2626);
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --wb-bg: #121820;
-    --wb-surface: #1c2430;
-    --wb-ink: #e8f0f8;
-    --wb-muted: #9aa8b8;
-    --wb-line: rgba(148, 163, 184, 0.18);
-    --wb-accent: #5ec8e8;
-    --wb-user: #243040;
-  }
+html[data-theme="dark"] {
+  --wb-user: color-mix(in srgb, var(--ot-accent) 18%, var(--ot-surface));
 }
 
 * {
@@ -131,10 +123,8 @@ body {
   color: #3a556e;
 }
 
-@media (prefers-color-scheme: dark) {
-  .wb-turn--assistant .wb-turn-role {
-    color: #b8c6d6;
-  }
+html[data-theme="dark"] .wb-turn--assistant .wb-turn-role {
+  color: var(--ot-text-muted, #b8c6d6);
 }
 
 .wb-turn-role img {
@@ -238,10 +228,8 @@ body {
   box-shadow: 0 1px 2px rgba(21, 34, 56, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  .wb-turn--assistant .wb-turn-body {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  }
+html[data-theme="dark"] .wb-turn--assistant .wb-turn-body {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .wb-turn.is-streaming .wb-turn-body::after {

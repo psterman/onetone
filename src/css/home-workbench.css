@@ -40,22 +40,20 @@
 }
 
 .home-workbench {
-  --wb-success: #10B981;
+  --wb-success: var(--ot-success, #10B981);
   --wb-cyan: #06B6D4;
-  --wb-icon-green: #10B981;
-  --wb-icon-amber: #F59E0B;
-  --wb-icon-cyan: #0EA5E9;
-  --wb-border-strong: rgba(26, 45, 74, 0.16);
+  --wb-icon-green: var(--ot-success, #10B981);
+  --wb-icon-amber: var(--ot-warning, #F59E0B);
+  --wb-icon-cyan: var(--ot-accent, #0EA5E9);
+  --wb-border-strong: var(--ot-border-strong, rgba(26, 45, 74, 0.16));
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
   overflow: hidden;
-}
-
-html[data-theme="dark"] .home-workbench {
-  --wb-border-strong: rgba(148, 163, 184, 0.22);
+  color: var(--ot-text);
+  background: var(--ot-bg);
 }
 
 .home-workbench-body {
@@ -71,9 +69,9 @@ html[data-theme="dark"] .home-workbench {
   flex-direction: column;
   gap: 2px;
   padding: 12px 10px;
-  border-right: 1px solid var(--outline-variant);
+  border-right: 1px solid var(--ot-border, var(--outline-variant));
   /* Opaque surface — no backdrop-filter (main-window drag paint cost). */
-  background: var(--surface-high, #f1f5f9);
+  background: var(--ot-surface-raised, var(--surface-high, #f1f5f9));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   min-height: 0;

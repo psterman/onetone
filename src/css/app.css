@@ -1,33 +1,34 @@
     :root{
-      --primary:#2a9cc4;
-      --primary-strong:#1f8fb8;
+      /* Compat aliases → theme-tokens.css (--ot-*) */
+      --primary:var(--ot-accent);
+      --primary-strong:var(--ot-accent-hover);
       --primary-muted:#45b0d4;
-      --primary-soft:#e6f7fc;
+      --primary-soft:var(--ot-accent-soft);
       --primary-glow:#5ec8e8;
       --indigo:#1a2d4a;
-      --indigo-muted:#5a7086;
-      --key-soft:#2a9cc4;
+      --indigo-muted:var(--ot-text-muted);
+      --key-soft:var(--ot-accent);
       --on-primary:#ffffff;
-      --surface:rgba(255,255,255,.9);
-      --surface-high:rgba(255,255,255,.97);
-      --surface-soft:#f0f7fb;
-      --surface-2:#e8eef5;
-      --on-surface:#152238;
-      --on-surface-muted:#5a7086;
-      --btn-label:#1a2d4a;
-      --btn-label-muted:#5a7086;
-      --outline:rgba(42,156,196,.24);
-      --outline-variant:rgba(26,45,74,.10);
-      --success:#2a9cc4;
+      --surface:var(--ot-surface);
+      --surface-high:var(--ot-surface-raised);
+      --surface-soft:var(--ot-surface-muted);
+      --surface-2:var(--ot-surface-muted);
+      --on-surface:var(--ot-text);
+      --on-surface-muted:var(--ot-text-muted);
+      --btn-label:var(--ot-text);
+      --btn-label-muted:var(--ot-text-muted);
+      --outline:color-mix(in srgb, var(--ot-accent) 24%, transparent);
+      --outline-variant:var(--ot-border);
+      --success:var(--ot-success);
       --toggle-off:#c5d3de;
-      --warning:#f97316;
-      --error:#dc2626;
-      --radius-card:28px;
+      --warning:var(--ot-warning);
+      --error:var(--ot-error);
+      --radius-card:var(--ot-radius-card);
       --radius-inner:20px;
       --radius-row:16px;
       --radius-pill:999px;
       --shadow-card:0 14px 34px rgba(26,45,74,.07);
-      --shadow-button:0 10px 22px rgba(42,156,196,.20);
+      --shadow-button:0 10px 22px color-mix(in srgb, var(--ot-accent) 20%, transparent);
       --dur-fast:160ms;
       --dur-med:260ms;
       --ease-standard:cubic-bezier(.2,.8,.2,1);
@@ -62,39 +63,28 @@
       outline-offset:2px;
     }
     html[data-theme="dark"]{
-      --primary:#5ec8e8;
-      --primary-strong:#3eb8dc;
       --primary-muted:#7ed4ef;
-      --primary-soft:rgba(94,200,232,.14);
       --primary-glow:#8ee0f4;
       --indigo:#dce8f5;
-      --indigo-muted:#8b97a8;
+      --indigo-muted:var(--ot-text-muted);
       --key-soft:#8ee0f4;
       --on-primary:#0b1220;
-      --surface:rgba(22,30,44,.94);
-      --surface-high:rgba(28,38,54,.97);
-      --surface-soft:rgba(94,200,232,.08);
-      --surface-2:rgba(36,48,68,.96);
-      --on-surface:#e8f0f8;
-      --on-surface-muted:#9aa8b8;
-      --btn-label:#dce8f5;
-      --btn-label-muted:#8b97a8;
-      --outline:rgba(94,200,232,.22);
-      --outline-variant:rgba(148,163,184,.14);
-      --success:#5ec8e8;
+      --btn-label:var(--ot-text);
+      --btn-label-muted:var(--ot-text-muted);
+      --outline:color-mix(in srgb, var(--ot-accent) 22%, transparent);
       --toggle-off:#3d4d62;
       --shadow-card:0 12px 36px rgba(0,0,0,.32);
-      --shadow-button:0 8px 20px rgba(94,200,232,.18);
+      --shadow-button:0 8px 20px color-mix(in srgb, var(--ot-accent) 18%, transparent);
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;overflow:hidden;overflow-x:hidden}
-    body{background:#edf2f8;color:var(--on-surface)}
+    body{background:var(--ot-bg);color:var(--on-surface)}
     .app{
       height:100vh;display:flex;flex-direction:column;overflow:hidden;
       background:
-        radial-gradient(circle at 14% 0%,rgba(94,200,232,.12),transparent 36%),
+        radial-gradient(circle at 14% 0%,color-mix(in srgb, var(--ot-accent) 12%, transparent),transparent 36%),
         radial-gradient(circle at 88% 8%,rgba(26,45,74,.05),transparent 28%),
-        linear-gradient(180deg,#f9fbfd 0%,#edf2f8 100%);
+        linear-gradient(180deg,var(--ot-surface-raised) 0%,var(--ot-bg) 100%);
     }
     .app,.editor-zone,.home-zone,.home-main-grid,.home-live-panel,
     .home-voice-map-card,.home-key-map-card,
@@ -103,11 +93,11 @@
     }
     html[data-theme="dark"] .app{
       background:
-        radial-gradient(circle at 18% 0%,rgba(94,200,232,.16),transparent 38%),
+        radial-gradient(circle at 18% 0%,color-mix(in srgb, var(--ot-accent) 16%, transparent),transparent 38%),
         radial-gradient(circle at 82% 10%,rgba(26,45,74,.28),transparent 32%),
-        linear-gradient(180deg,#0f1419 0%,#151d2b 100%);
+        linear-gradient(180deg,var(--ot-bg) 0%,var(--ot-surface) 100%);
     }
-    html[data-theme="dark"] body{background:#0f1419}
+    html[data-theme="dark"] body{background:var(--ot-bg)}
     html[data-theme="dark"] .welcome-overlay{background:rgba(15,20,25,.88)}
     html[data-theme="dark"] .welcome-modal,
     html[data-theme="dark"] .test-modal,

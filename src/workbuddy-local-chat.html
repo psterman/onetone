@@ -4,6 +4,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WorkBuddy 本机对话</title>
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('ot_theme_state');
+        var mode = 'light';
+        var style = 'blue';
+        var density = 'comfortable';
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            mode = parsed.mode === 'dark' || parsed.mode === 'system' ? parsed.mode : 'light';
+            style = parsed.style === 'graphite' ? 'graphite' : 'blue';
+            density = parsed.density === 'compact' ? 'compact' : 'comfortable';
+          }
+        } else {
+          var legacy = localStorage.getItem('vp_theme');
+          if (legacy === 'dark' || legacy === 'light') mode = legacy;
+        }
+        var resolved = mode;
+        if (mode === 'system') {
+          resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.setAttribute('data-style', style);
+        document.documentElement.setAttribute('data-density', density);
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.setAttribute('data-style', 'blue');
+        document.documentElement.setAttribute('data-density', 'comfortable');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="css/theme-tokens.css" />
   <link rel="stylesheet" href="css/workbuddy-local-chat.css" />
   <script src="js/core/ipc.js"></script>
   <script src="js/features/now/home-agent-capabilities.js"></script>

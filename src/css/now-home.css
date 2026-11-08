@@ -1,16 +1,16 @@
 /* Now home — scoped under .now-home (personal state cockpit) */
 .now-home {
-  --now-ink: #0f172a;
-  --now-ink2: #334155;
-  --now-ink3: #64748b;
-  --now-ink4: #cbd5e1;
-  --now-line: #e2e8f0;
-  --now-line2: #f1f5f9;
-  --now-pri: #0284c7;
-  --now-pri-sf: #e0f2fe;
-  --now-ok: #059669;
-  --now-ok-sf: #ecfdf5;
-  --now-wa: #b45309;
+  --now-ink: var(--ot-text, #152238);
+  --now-ink2: var(--ot-text-muted, #5a7086);
+  --now-ink3: var(--ot-text-tertiary, #8b97a8);
+  --now-ink4: var(--ot-text-tertiary, #8b97a8);
+  --now-line: var(--ot-border, rgba(26, 45, 74, 0.12));
+  --now-line2: var(--ot-surface-muted, #f7f8fa);
+  --now-pri: var(--ot-accent, #2a9cc4);
+  --now-pri-sf: var(--ot-accent-soft, #e6f7fc);
+  --now-ok: var(--ot-success, #059669);
+  --now-ok-sf: color-mix(in srgb, var(--ot-success, #059669) 12%, var(--ot-surface, #fff));
+  --now-wa: var(--ot-warning, #f97316);
   --now-wa-sf: #fffbeb;
   --now-wa-bd: #fde68a;
   --now-sh: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -27,9 +27,9 @@
 .now-home[hidden] { display: none !important; }
 
 .now-home .now-shell {
-  background: #fff;
+  background: var(--ot-surface, #fff);
   border: 1px solid var(--now-line);
-  border-radius: 16px;
+  border-radius: var(--ot-radius-dialog, 16px);
   overflow: hidden;
   box-shadow: var(--now-sh2);
   display: flex;
@@ -55,7 +55,7 @@
 
 .now-home .now-demo button {
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 999px;
   padding: 4px 11px;
   font: inherit;
@@ -73,7 +73,7 @@
 
 .now-home .now-btn {
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 8px;
   padding: 6px 11px;
   font: inherit;
@@ -196,7 +196,7 @@
   margin-top: 12px;
   border: 1px solid var(--now-line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--ot-surface);
   overflow: hidden;
 }
 
@@ -283,7 +283,7 @@
   border: 1px solid var(--now-line);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--ot-surface);
 }
 
 .now-home .now-fact-row {
@@ -393,7 +393,7 @@
   border: 1px solid var(--now-line);
   border-radius: 12px;
   padding: 12px;
-  background: #fafbfc;
+  background: var(--ot-surface-muted);
   text-align: left;
   cursor: pointer;
   font: inherit;
@@ -436,7 +436,7 @@
 
 .now-home .now-ctx-panel {
   width: min(420px, 100%);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 14px;
   box-shadow: var(--now-sh2);
   padding: 16px 16px 14px;
@@ -457,7 +457,7 @@
 
 .now-home .now-ctx-hd button {
   border: 1px solid var(--now-line);
-  background: #f8fafc;
+  background: var(--ot-surface-muted);
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 12px;
@@ -552,7 +552,7 @@
   border: 1px solid var(--now-line);
   border-radius: 14px;
   padding: 10px 12px;
-  background: #fafbfc;
+  background: var(--ot-surface-muted);
 }
 .now-home .now-agent-ledger .now-help-k {
   margin: 0 0 8px;
@@ -617,10 +617,10 @@
   border: 1px solid var(--now-line);
   border-radius: 14px;
   padding: 14px 14px 12px;
-  background: #fff;
+  background: var(--ot-surface);
 }
 .now-home .now-agent-card.is-idle {
-  background: #fafbfc;
+  background: var(--ot-surface-muted);
 }
 .now-home .now-agent-title {
   margin: 0 0 6px;
@@ -711,7 +711,7 @@
   border: 1px solid var(--now-line);
   border-radius: 12px;
   padding: 12px;
-  background: #fff;
+  background: var(--ot-surface);
 }
 .now-home .now-agent-act-item {
   display: flex;
@@ -904,7 +904,7 @@
 .now-home .now-maybe-chip {
   appearance: none;
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 999px;
   padding: 6px 14px;
   font: inherit;
@@ -919,7 +919,7 @@
 }
 
 .now-home .now-scenes-strip {
-  background: #fff;
+  background: var(--ot-surface);
   border: 1px solid var(--now-line);
   border-radius: 14px;
   padding: 14px 16px 16px;
@@ -1027,7 +1027,7 @@
 }
 
 .now-home .now-today-box {
-  background: #fff;
+  background: var(--ot-surface);
   border: 1px solid var(--now-line);
   border-radius: 13px;
   box-shadow: var(--now-sh);
@@ -1141,7 +1141,7 @@
 }
 
 .now-home .now-block {
-  background: #fff;
+  background: var(--ot-surface);
   border: 1px solid var(--now-line);
   border-radius: 14px;
   padding: 18px 20px;
@@ -1201,7 +1201,7 @@
 .now-home .now-act {
   appearance: none;
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 10px;
   padding: 12px 18px;
   font: inherit;
@@ -1249,7 +1249,7 @@
   justify-self: start;
   appearance: none;
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 999px;
   padding: 10px 16px;
   font: inherit;
@@ -1330,7 +1330,7 @@
 .now-home .now-mgmt-card {
   border: 1px solid var(--now-line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--ot-surface);
   padding: 16px 18px;
   box-shadow: var(--now-sh);
 }
@@ -1424,7 +1424,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--ot-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
   transition: left 0.2s;
 }
@@ -1475,7 +1475,7 @@
   max-height: min(92%, 560px);
   overflow: auto;
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
   padding: 18px 18px 14px;
 }
@@ -1568,7 +1568,7 @@
 .now-home .now-gate-opt {
   appearance: none;
   border: 1px solid var(--now-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
@@ -1578,7 +1578,7 @@
 }
 .now-home .now-gate-opt:hover {
   border-color: #cbd5e1;
-  background: #f8fafc;
+  background: var(--ot-surface-muted);
 }
 .now-home .now-gate-opt.is-rec {
   border-color: transparent;
@@ -1589,7 +1589,7 @@
   background: #0369a1;
 }
 .now-home .now-gate-opt.is-quiet {
-  background: #f8fafc;
+  background: var(--ot-surface-muted);
 }
 .now-home .now-gate-opt__t {
   display: block;
@@ -2018,7 +2018,7 @@
 .ha2-model-dd-menu.is-portaled,
 .ha2-picker.is-portaled {
   z-index: 12050;
-  background: #ffffff !important;
+  background: var(--ot-surface) !important;
   opacity: 1 !important;
   isolation: isolate;
   -webkit-backdrop-filter: none !important;
@@ -2949,7 +2949,7 @@
   z-index: 40;
   width: 268px;
   padding: 13px 14px;
-  background: #fff;
+  background: var(--ot-surface);
   border: 1px solid var(--hn-line);
   border-radius: 12px;
   box-shadow: 0 10px 28px rgba(21, 34, 56, 0.10);
@@ -2977,7 +2977,7 @@
 }
 .now-home .hn-watch-pop__acts button {
   border: 1px solid var(--hn-line);
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hn-ink);
   font: inherit;
   font-size: 12px;
@@ -3145,7 +3145,7 @@
   overflow: hidden;
   border: 1px solid var(--hn-line, #d7dcda);
   border-radius: 16px;
-  background: #fff;
+  background: var(--ot-surface);
   box-shadow: 0 12px 34px rgba(24, 38, 33, 0.08);
 }
 .now-home .hn-composer-input {
@@ -3188,7 +3188,7 @@
   padding: 5px 9px;
   border: 1px solid var(--hn-line, #d7dcda);
   border-radius: 8px;
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hn-ink2);
   font-size: 12px;
   font-weight: 700;
@@ -3233,7 +3233,7 @@
   padding: 2px 4px 2px 8px;
   border: 1px solid var(--hn-line, #d7dcda);
   border-radius: 8px;
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hn-ink2);
   font-size: 12px;
 }
@@ -3344,7 +3344,7 @@
   padding: 6px 4px 5px;
   border: 1px solid var(--hn-line, #d7dcda);
   border-radius: 10px;
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hn-ink2);
   cursor: pointer;
   font: inherit;
@@ -3588,7 +3588,7 @@
 }
 .now-home .hn-prep-go {
   border: 1px solid var(--hn-line);
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hn-ink);
   border-radius: 10px;
   padding: 9px 13px;
@@ -4273,7 +4273,7 @@
 }
 .now-home .hf-secondary {
   border: 1px solid var(--hf-line);
-  background: #fff;
+  background: var(--ot-surface);
   color: var(--hf-ink);
   border-radius: 9px;
   padding: 9px 12px;
@@ -4301,7 +4301,7 @@
 .now-home .hf-say p { margin: 0; color: #c9e4df; font-size: 13px; }
 .now-home .hf-say-btn {
   border: 0;
-  background: #fff;
+  background: var(--ot-surface);
   color: #075e58;
   border-radius: 10px;
   padding: 10px 14px;
@@ -4345,7 +4345,7 @@
   width: 100%;
   text-align: left;
   border: 1px solid var(--hf-line);
-  background: #fff;
+  background: var(--ot-surface);
   border-radius: 10px;
   padding: 10px 12px;
   margin: 8px 0;
@@ -4366,7 +4366,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 11.5px;
-  background: #f8fafc;
+  background: var(--ot-surface-muted);
   padding: 10px;
   border-radius: 8px;
   color: var(--hf-muted);
@@ -4457,7 +4457,7 @@
   border: 1px solid var(--hn-line);
   border-radius: 16px;
   overflow: hidden;
-  background: #fff;
+  background: var(--ot-surface);
   box-shadow: 0 24px 64px rgba(20, 35, 58, 0.22);
 }
 .now-home .home-prompt-prep-host[data-hpp-expanded='1'][data-hpp-surface='sheet'] .hpp-root {
