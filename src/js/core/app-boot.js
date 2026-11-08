@@ -55,12 +55,15 @@
     if(window.OneToneImePresets) window.OneToneImePresets.init();
     if(window.OneToneAppTargetPresets) window.OneToneAppTargetPresets.init();
     try{
-      var savedTheme=localStorage.getItem('vp_theme');
       var savedLang=localStorage.getItem('vp_lang');
       var savedFontScale=localStorage.getItem('vp_font_scale');
       var dismissedUpdate=localStorage.getItem('vp_update_dismissed_version');
       state.firstSuccess=hooks.isFirstSuccessDone();
-      if(savedTheme==='dark'||savedTheme==='light') hooks.setTheme(savedTheme);
+      if(window.OneToneTheme&&typeof window.OneToneTheme.load==='function'){
+        window.OneToneTheme.load();
+      }else if(hooks.applyTheme){
+        hooks.applyTheme();
+      }
       if(savedLang==='zh'||savedLang==='en') hooks.setAppLang(savedLang);
       if(savedFontScale&&hooks.fontScaleValues()[savedFontScale]) hooks.setFontScale(savedFontScale);
       if(window.OneToneOnboarding&&window.OneToneOnboarding.shouldAutoOpen()) hooks.setWelcomeOpen(true);

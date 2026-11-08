@@ -4,9 +4,14 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   var state=function(){ return global.OneToneState.state; };
   function hooks(){ return global.__vp_app_theme_prefs_hooks__ || {}; }
-  var theme='light';
   var fontScale='md';
   var FONT_SCALE_VALUES={sm:0.88,md:1,lg:1.12,xl:1.24};
+  function themeApi(){ return global.OneToneTheme; }
+  function resolvedTheme(){
+    var api=themeApi();
+    if(api&&api.resolveMode&&api.getState) return api.resolveMode(api.getState().mode);
+    return document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';
+  }
   var SOUND_CATALOG=[
     {id:'tiny-tick',labelKey:'soundNameTinyTick'},
     {id:'input-ready-soft',labelKey:'soundNameInputReady'},
@@ -150,28 +155,29 @@
     audio.play().catch(function(){});
   }
 
+  // Compat: setTheme only toggles mode (light|dark). Style is OneToneTheme.setStyle.
   function setTheme(next){
-    theme=next==='dark'?'dark':'light';
-    applyTheme();
+    var api=themeApi();
+    if(api&&typeof api.setMode==='function'){
+      api.setMode(next==='dark'?'dark':'light');
+      return;
+    }
+    document.documentElement.setAttribute('data-theme',next==='dark'?'dark':'light');
   }
 
   function syncBrandLogos(){
     var fav=document.querySelector('link[rel="icon"]');
+    var theme=resolvedTheme();
     if(fav) fav.setAttribute('href',theme==='dark'?'icon-dark.png':'icon-light.png');
   }
 
   function applyTheme(){
-    document.documentElement.setAttribute('data-theme',theme);
-    document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
-      btn.classList.toggle('is-active',btn.getAttribute('data-theme-pick')===theme);
-    });
-    document.querySelectorAll('[data-style-pick]').forEach(function(btn){
-      btn.classList.toggle('is-active',btn.getAttribute('data-style-pick')===theme);
-    });
+    var api=themeApi();
+    if(api&&typeof api.apply==='function'){
+      api.apply();
+      return;
+    }
     syncBrandLogos();
-    try{ localStorage.setItem('vp_theme',theme); }catch(_){}
-    try{ window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme}); }catch(_){}
-    if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
   }
 
   function applyFontScale(){
