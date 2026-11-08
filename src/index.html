@@ -778,40 +778,41 @@
               <div class="basic-split-grid">
                 <section class="basic-subcard" aria-labelledby="themeLabel">
                   <div class="basic-subcard-head">
-                    <p class="pref-row-label" id="themeLabel">主题</p>
-                    <p class="pref-row-desc" id="themeDesc">仅本机保存，与应用窗口同步</p>
+                    <p class="pref-row-label" id="themeLabel">主题模式</p>
+                    <p class="pref-row-desc" id="themeDesc">浅色、深色或跟随系统；仅本机保存</p>
                   </div>
                   <div class="pref-row-control basic-subcard-control">
-                    <div class="pref-segmented" id="themeSegmented" role="radiogroup" aria-labelledby="themeLabel">
-                      <button type="button" class="pref-segmented-btn" data-theme-pick="dark" id="themePickDark">深色</button>
+                    <div class="pref-segmented is-wide" id="themeSegmented" role="radiogroup" aria-labelledby="themeLabel">
                       <button type="button" class="pref-segmented-btn" data-theme-pick="light" id="themePickLight">浅色</button>
+                      <button type="button" class="pref-segmented-btn" data-theme-pick="dark" id="themePickDark">深色</button>
+                      <button type="button" class="pref-segmented-btn" data-theme-pick="system" id="themePickSystem">跟随系统</button>
                     </div>
                   </div>
                 </section>
                 <section class="basic-subcard" aria-labelledby="styleLabel">
                   <div class="basic-subcard-head">
-                    <p class="pref-row-label" id="styleLabel">风格</p>
-                    <p class="pref-row-desc" id="styleDesc">为界面选择具体视觉配色</p>
+                    <p class="pref-row-label" id="styleLabel">视觉风格</p>
+                    <p class="pref-row-desc" id="styleDesc">强调色与中性配色，独立于明暗模式</p>
                   </div>
                   <div class="pref-row-control basic-subcard-control">
                     <div class="pref-style-grid" id="styleCardGrid" role="radiogroup" aria-labelledby="styleLabel">
-                      <button type="button" class="pref-style-card" data-style-pick="light" id="styleCardClear">
+                      <button type="button" class="pref-style-card" data-style-pick="blue" id="styleCardClear">
                         <span class="pref-style-swatches" aria-hidden="true">
                           <span style="background:#f9fbfd"></span>
                           <span style="background:#2a9cc4"></span>
                           <span style="background:#e6f7fc"></span>
                         </span>
-                        <span class="pref-style-name" id="styleClearName">清澈</span>
-                        <span class="pref-style-desc" id="styleClearDesc">明亮浅色，青蓝强调色</span>
+                        <span class="pref-style-name" id="styleClearName">OneTone Blue</span>
+                        <span class="pref-style-desc" id="styleClearDesc">青蓝品牌强调色</span>
                       </button>
-                      <button type="button" class="pref-style-card" data-style-pick="dark" id="styleCardGraphite">
+                      <button type="button" class="pref-style-card" data-style-pick="graphite" id="styleCardGraphite">
                         <span class="pref-style-swatches" aria-hidden="true">
                           <span style="background:#1a2436"></span>
-                          <span style="background:#5ec8e8"></span>
+                          <span style="background:#64748b"></span>
                           <span style="background:#0f1419"></span>
                         </span>
-                        <span class="pref-style-name" id="styleGraphiteName">石墨</span>
-                        <span class="pref-style-desc" id="styleGraphiteDesc">中性深色，适合夜间使用</span>
+                        <span class="pref-style-name" id="styleGraphiteName">Graphite</span>
+                        <span class="pref-style-desc" id="styleGraphiteDesc">中性石板强调色</span>
                       </button>
                     </div>
                   </div>

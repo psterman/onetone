@@ -33,6 +33,7 @@ const OneToneI18n = () => w.OneToneI18n;
 const OneToneState = () => w.OneToneState;
 const OneToneConfigPersist = () => w.OneToneConfigPersist;
 const OneToneAppThemePrefs = () => w.OneToneAppThemePrefs;
+const OneToneTheme = () => w.OneToneTheme;
 const OneToneAppHomeRuntime = () => w.OneToneAppHomeRuntime;
 const OneToneDebugAbout = () => w.OneToneDebugAbout;
 const OneToneUpdate = () => w.OneToneUpdate;
@@ -51,13 +52,17 @@ function toast(msg: string, kind?: string) {
   }
 }
 
-type ThemeName = 'light' | 'dark';
+type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeStyle = 'blue' | 'graphite';
+type ThemeDensity = 'comfortable' | 'compact';
 type FontScale = 'sm' | 'md' | 'lg' | 'xl';
 type Lang = 'zh' | 'en';
 type CommitKey = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter';
 
 interface BasicState {
-  theme: ThemeName;
+  mode: ThemeMode;
+  style: ThemeStyle;
+  density: ThemeDensity;
   fontScale: FontScale;
   lang: Lang;
   autostart: boolean;
@@ -118,17 +123,34 @@ function readUpdateUi(): UpdateUi {
   };
 }
 
-function readInitial(): BasicState {
+function readThemeSlice(): Pick<BasicState, 'mode' | 'style' | 'density'> {
+  const api = OneToneTheme();
+  if (api && typeof api.getState === 'function') {
+    const s = api.getState() || {};
+    const mode: ThemeMode =
+      s.mode === 'dark' || s.mode === 'system' ? s.mode : 'light';
+    const style: ThemeStyle = s.style === 'graphite' ? 'graphite' : 'blue';
+    const density: ThemeDensity = s.density === 'compact' ? 'compact' : 'comfortable';
+    return { mode, style, density };
+  }
   const doc = document.documentElement;
-  const theme: ThemeName = doc.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  const fontScale = (doc.getAttribute('data-font-scale') as FontScale) || 'md';
+  return {
+    mode: doc.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+    style: doc.getAttribute('data-style') === 'graphite' ? 'graphite' : 'blue',
+    density: doc.getAttribute('data-density') === 'compact' ? 'compact' : 'comfortable',
+  };
+}
+
+function readInitial(): BasicState {
+  const fontScale =
+    (document.documentElement.getAttribute('data-font-scale') as FontScale) || 'md';
   const i18n = OneToneI18n();
   const lang: Lang = (i18n && i18n.getLang && i18n.getLang()) === 'en' ? 'en' : 'zh';
   const st = OneToneState();
   const cfg = st && st.state ? st.state.config : undefined;
   const runtime = st && st.state ? st.state.runtime : undefined;
   return {
-    theme,
+    ...readThemeSlice(),
     fontScale,
     lang,
     autostart: false,
@@ -199,10 +221,26 @@ export function BasicSettingsIsland(): JSX.Element {
     };
   }, []);
 
-  const setTheme = useCallback((next: ThemeName) => {
-    setState((s) => ({ ...s, theme: next }));
-    const prefs = OneToneAppThemePrefs();
-    if (prefs && typeof prefs.setTheme === 'function') prefs.setTheme(next);
+  const setMode = useCallback((next: ThemeMode) => {
+    setState((s) => ({ ...s, mode: next }));
+    const theme = OneToneTheme();
+    if (theme && typeof theme.setMode === 'function') theme.setMode(next);
+    else {
+      const prefs = OneToneAppThemePrefs();
+      if (prefs && typeof prefs.setTheme === 'function' && next !== 'system') prefs.setTheme(next);
+    }
+  }, []);
+
+  const setStyle = useCallback((next: ThemeStyle) => {
+    setState((s) => ({ ...s, style: next }));
+    const theme = OneToneTheme();
+    if (theme && typeof theme.setStyle === 'function') theme.setStyle(next);
+  }, []);
+
+  const setDensity = useCallback((next: ThemeDensity) => {
+    setState((s) => ({ ...s, density: next }));
+    const theme = OneToneTheme();
+    if (theme && typeof theme.setDensity === 'function') theme.setDensity(next);
   }, []);
 
   const setFontScale = useCallback((next: FontScale) => {
@@ -362,7 +400,13 @@ export function BasicSettingsIsland(): JSX.Element {
 
   const launchValue = state.autostart ? t('basicSummaryLaunchAuto') : t('basicSummaryLaunchManual');
   const windowValue = state.startMinimized ? t('basicSummaryWindowTray') : t('basicSummaryWindowNormal');
-  const styleValue = state.theme === 'dark' ? t('styleGraphiteName') : t('styleClearName');
+  const styleValue = state.style === 'graphite' ? t('styleGraphiteName') : t('styleClearName');
+  const modeValue =
+    state.mode === 'system'
+      ? t('themeModeSystem') || '跟随系统'
+      : state.mode === 'dark'
+        ? t('themeModeDark') || '深色'
+        : t('themeModeLight') || '浅色';
   const langName = state.lang === 'en' ? t('langEn') : t('langZh');
   const langValue = `${langName} · ${t(FONT_SCALE_LABEL_KEY[state.fontScale])}`;
 
@@ -432,8 +476,8 @@ export function BasicSettingsIsland(): JSX.Element {
           <strong className="basic-summary-value">{windowValue}</strong>
         </article>
         <article className="basic-summary-card">
-          <span className="basic-summary-label">当前风格</span>
-          <strong className="basic-summary-value">{styleValue}</strong>
+          <span className="basic-summary-label">外观</span>
+          <strong className="basic-summary-value">{`${modeValue} · ${styleValue}`}</strong>
         </article>
         <article className="basic-summary-card">
           <span className="basic-summary-label">语言与字体</span>
@@ -642,50 +686,59 @@ export function BasicSettingsIsland(): JSX.Element {
         <section className="basic-block" aria-labelledby="prefSectionAppearance">
           <div className="basic-block-head">
             <h4 className="basic-block-title">外观</h4>
-            <p className="basic-block-desc">主题色与组件语言保持统一，切换后立即生效</p>
+            <p className="basic-block-desc">明暗模式与视觉风格分开设置，切换后立即生效</p>
           </div>
           <div className="basic-split-grid">
             <section className="basic-subcard" aria-labelledby="themeLabel">
               <div className="basic-subcard-head">
-                <p className="pref-row-label">主题</p>
-                <p className="pref-row-desc">仅本机保存，与应用窗口同步</p>
+                <p className="pref-row-label">主题模式</p>
+                <p className="pref-row-desc">浅色、深色或跟随系统</p>
               </div>
               <div className="pref-row-control basic-subcard-control">
-                <div className="pref-segmented" role="radiogroup" aria-labelledby="themeLabel">
+                <div className="pref-segmented is-wide" role="radiogroup" aria-labelledby="themeLabel">
                   <button
                     type="button"
-                    className={cn('pref-segmented-btn', state.theme === 'dark' && 'is-active')}
+                    className={cn('pref-segmented-btn', state.mode === 'light' && 'is-active')}
+                    data-ot-theme-pick="light"
+                    aria-checked={state.mode === 'light'}
+                    onClick={() => setMode('light')}
+                  >
+                    浅色
+                  </button>
+                  <button
+                    type="button"
+                    className={cn('pref-segmented-btn', state.mode === 'dark' && 'is-active')}
                     data-ot-theme-pick="dark"
-                    aria-checked={state.theme === 'dark'}
-                    onClick={() => setTheme('dark')}
+                    aria-checked={state.mode === 'dark'}
+                    onClick={() => setMode('dark')}
                   >
                     深色
                   </button>
                   <button
                     type="button"
-                    className={cn('pref-segmented-btn', state.theme === 'light' && 'is-active')}
-                    data-ot-theme-pick="light"
-                    aria-checked={state.theme === 'light'}
-                    onClick={() => setTheme('light')}
+                    className={cn('pref-segmented-btn', state.mode === 'system' && 'is-active')}
+                    data-ot-theme-pick="system"
+                    aria-checked={state.mode === 'system'}
+                    onClick={() => setMode('system')}
                   >
-                    浅色
+                    跟随系统
                   </button>
                 </div>
               </div>
             </section>
             <section className="basic-subcard" aria-labelledby="styleLabel">
               <div className="basic-subcard-head">
-                <p className="pref-row-label">风格</p>
-                <p className="pref-row-desc">为界面选择具体视觉配色</p>
+                <p className="pref-row-label">视觉风格</p>
+                <p className="pref-row-desc">强调色独立于明暗模式</p>
               </div>
               <div className="pref-row-control basic-subcard-control">
                 <div className="pref-style-grid" role="radiogroup" aria-labelledby="styleLabel">
                   <button
                     type="button"
-                    className={cn('pref-style-card', state.theme === 'light' && 'is-active')}
-                    data-ot-style-pick="light"
-                    aria-checked={state.theme === 'light'}
-                    onClick={() => setTheme('light')}
+                    className={cn('pref-style-card', state.style === 'blue' && 'is-active')}
+                    data-ot-style-pick="blue"
+                    aria-checked={state.style === 'blue'}
+                    onClick={() => setStyle('blue')}
                   >
                     <span className="pref-style-swatches" aria-hidden="true">
                       <span style={{ background: '#f9fbfd' }} />
@@ -693,22 +746,50 @@ export function BasicSettingsIsland(): JSX.Element {
                       <span style={{ background: '#e6f7fc' }} />
                     </span>
                     <span className="pref-style-name">{t('styleClearName')}</span>
-                    <span className="pref-style-desc">明亮浅色，青蓝强调色</span>
+                    <span className="pref-style-desc">{t('styleClearDesc')}</span>
                   </button>
                   <button
                     type="button"
-                    className={cn('pref-style-card', state.theme === 'dark' && 'is-active')}
-                    data-ot-style-pick="dark"
-                    aria-checked={state.theme === 'dark'}
-                    onClick={() => setTheme('dark')}
+                    className={cn('pref-style-card', state.style === 'graphite' && 'is-active')}
+                    data-ot-style-pick="graphite"
+                    aria-checked={state.style === 'graphite'}
+                    onClick={() => setStyle('graphite')}
                   >
                     <span className="pref-style-swatches" aria-hidden="true">
                       <span style={{ background: '#1a2436' }} />
-                      <span style={{ background: '#5ec8e8' }} />
+                      <span style={{ background: '#64748b' }} />
                       <span style={{ background: '#0f1419' }} />
                     </span>
                     <span className="pref-style-name">{t('styleGraphiteName')}</span>
-                    <span className="pref-style-desc">中性深色，适合夜间使用</span>
+                    <span className="pref-style-desc">{t('styleGraphiteDesc')}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+            <section className="basic-subcard" aria-labelledby="densityLabel">
+              <div className="basic-subcard-head">
+                <p className="pref-row-label">密度</p>
+                <p className="pref-row-desc">控件高度与圆角紧凑度</p>
+              </div>
+              <div className="pref-row-control basic-subcard-control">
+                <div className="pref-segmented" role="radiogroup" aria-labelledby="densityLabel">
+                  <button
+                    type="button"
+                    className={cn('pref-segmented-btn', state.density === 'comfortable' && 'is-active')}
+                    data-density-pick="comfortable"
+                    aria-checked={state.density === 'comfortable'}
+                    onClick={() => setDensity('comfortable')}
+                  >
+                    舒适
+                  </button>
+                  <button
+                    type="button"
+                    className={cn('pref-segmented-btn', state.density === 'compact' && 'is-active')}
+                    data-density-pick="compact"
+                    aria-checked={state.density === 'compact'}
+                    onClick={() => setDensity('compact')}
+                  >
+                    紧凑
                   </button>
                 </div>
               </div>

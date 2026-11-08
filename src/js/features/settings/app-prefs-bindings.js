@@ -10,11 +10,28 @@
     var hooks=h();
     document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
       btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
-      btn.addEventListener('click',function(){ hooks.setTheme(btn.getAttribute('data-theme-pick')); });
+      btn.addEventListener('click',function(){
+        var mode=btn.getAttribute('data-theme-pick');
+        var theme=global.OneToneTheme;
+        if(theme&&typeof theme.setMode==='function') theme.setMode(mode);
+        else if(hooks.setTheme) hooks.setTheme(mode==='dark'?'dark':'light');
+      });
     });
     document.querySelectorAll('[data-style-pick]').forEach(function(btn){
       btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
-      btn.addEventListener('click',function(){ hooks.setTheme(btn.getAttribute('data-style-pick')); });
+      btn.addEventListener('click',function(){
+        var style=btn.getAttribute('data-style-pick');
+        var theme=global.OneToneTheme;
+        if(theme&&typeof theme.setStyle==='function') theme.setStyle(style);
+      });
+    });
+    document.querySelectorAll('[data-density-pick]').forEach(function(btn){
+      btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+      btn.addEventListener('click',function(){
+        var density=btn.getAttribute('data-density-pick');
+        var theme=global.OneToneTheme;
+        if(theme&&typeof theme.setDensity==='function') theme.setDensity(density);
+      });
     });
     document.querySelectorAll('[data-lang-pick]').forEach(function(btn){
       btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
