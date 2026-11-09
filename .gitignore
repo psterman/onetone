@@ -113,3 +113,6 @@ scripts/hang-dumps/procdump64.exe
 
 # 每日图片站的本地项目，不进 onetone 仓库，也不跟着仓库走
 daily-image-site/
+
+# ATR isolate e2e scratch (was accidentally tracked)
+.tmp-atr-e2e-sandbox/

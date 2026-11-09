@@ -780,16 +780,32 @@ pub fn run() {
                 let mut last_key: Option<String> = None;
                 let mut last_at: Option<std::time::Instant> = None;
                 let mut last_fg_track = std::time::Instant::now();
+                let mut last_input_activity = std::time::Instant::now();
                 const DEDUP_MS: u64 = 80;
                 const FG_TRACK_MS: u64 = 150;
+                const HOT_TICK_MS: u64 = 8;
+                const IDLE_TICK_MS: u64 = 24;
+                const RECENT_INPUT_MS: u64 = 200;
 
                 loop {
                     // Input events are delivered by the native hook/Raw Input
                     // thread. A 40ms polling tick made XButton recording and
                     // push-to-talk feel delayed, especially when down/up edges
-                    // arrived back-to-back. Keep the loop responsive while the
-                    // existing 80ms event dedupe remains the final guard.
-                    sleep(Duration::from_millis(8)).await;
+                    // arrived back-to-back. Keep 8ms while hot; idle at 24ms
+                    // to cut empty wakeups (existing 80ms event dedupe remains).
+                    let tick_hot = last_input_activity.elapsed()
+                        < Duration::from_millis(RECENT_INPUT_MS)
+                        || *state2.recording.lock()
+                        || crate::hotkey_win::is_recording_session_active()
+                        || voice_end_runtime::session_state(&state2) == "dictating"
+                        || ipc::trigger_compat_probe_active(&state2)
+                        || ipc::trigger_verify_listen_active(&state2);
+                    sleep(Duration::from_millis(if tick_hot {
+                        HOT_TICK_MS
+                    } else {
+                        IDLE_TICK_MS
+                    }))
+                    .await;
 
                     if last_fg_track.elapsed() >= Duration::from_millis(FG_TRACK_MS) {
                         keyboard::track_foreground_for_send();
@@ -831,6 +847,7 @@ pub fn run() {
                         let mgr_opt = state2.hotkey_mgr.lock();
                         if let Some(mgr) = mgr_opt.as_ref() {
                             while let Some(obs) = mgr.try_recv_obs() {
+                                last_input_activity = std::time::Instant::now();
                                 if !ipc::note_trigger_compat_obs(&state2, &obs) {
                                     ipc::handle_input_obs_event(&state2, &app2, obs);
                                 }
@@ -904,6 +921,7 @@ pub fn run() {
                     // the next loop iteration. If sender is not primed yet, commit
                     // directly — do not drop the edge (arm→start used to lose X1).
                     if !mouse_pendings.is_empty() {
+                        last_input_activity = std::time::Instant::now();
                         if let Some(sender) = crate::hotkey_win::recording_sender_clone() {
                             for name in mouse_pendings {
                                 let _ = sender.send(name);
@@ -918,6 +936,7 @@ pub fn run() {
                     let Some(key_name) = key_name else {
                         continue;
                     };
+                    last_input_activity = std::time::Instant::now();
 
                     let now = std::time::Instant::now();
                     if let (Some(ref prev), Some(at)) = (&last_key, last_at) {

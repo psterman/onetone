@@ -32,6 +32,9 @@ pub fn system_prompt_chat() -> &'static str {
      证据不够时主动：search_code / read_file（仓内）、web_search / fetch_url（公开网）。\n\
      本回合默认只读，不要假装已改文件。用户要交给 Cursor/Codex 等外部 Agent 时用 deliver_to_agent{text}；失败如实说明。\n\
      prior_chat 是上文摘要，goal 是本轮当前问题——优先回答 goal；仅当问题本身含糊且工具无法判定时才 request_user_input 一次。\n\
+     事实查询（人数、价格、是否、地点、公开资料）先 web_search / fetch_url，再 finish；不要用 request_user_input 代替检索。\n\
+     公开事实/闲聊禁止用 inspect_workspace / search_code / read_file 回答——那些只服务「本仓库代码」问题；仓内文档（验收记录、Gate7、计划）不是用户闲聊的答案。\n\
+     用户说「继续」时继续完成 goal / prior_chat 里的原问题，不要改写成仓库状态汇报。\n\
      【证据】禁止的是把未核实内容说成确定事实，不是提及它；不得编造网页或文件内容。\n\
      【记忆】可以用已知作答，须标注「凭记忆，未检索核实」；真名、数字、日期、机构不作确定表述。\n\
      【检索无果】一次空结果或单字字典页不算查完。下一轮必须换一组与上一轮不同的 query：先纠错或换别名，再用精确引号，最后加领域词与站点限定；不要现在结案，也不要让用户替你换词。工具返回里的 message 只是现象描述，优先级低于本条。\n\
@@ -296,6 +299,11 @@ mod tests {
         assert!(p.contains("凭记忆，未检索核实"), "{p}");
         assert!(p.contains("一次空结果或单字字典页不算查完"), "{p}");
         assert!(p.contains("【summary 禁语】"), "{p}");
+        assert!(
+            p.contains("公开事实/闲聊禁止用 inspect_workspace"),
+            "{p}"
+        );
+        assert!(p.contains("用户说「继续」时继续完成 goal"), "{p}");
         assert!(
             !p.contains("判断只依据 tool_trace"),
             "old binary evidence gate must be gone"

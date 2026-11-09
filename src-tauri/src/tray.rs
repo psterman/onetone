@@ -19,6 +19,8 @@ const TRAY_MENU_LABEL: &str = "tray_menu";
 const BLUR_GUARD_MS: u64 = 280;
 const TRAY_OPEN_DEBOUNCE_MS: u64 = 220;
 const TRAY_VISUAL_DEBOUNCE_MS: u64 = 500;
+/// Keep tray WebView warm briefly after hide; then destroy to free ~WebView2 RAM.
+const TRAY_MENU_IDLE_DESTROY_MS: u64 = 45_000;
 
 static TRAY_MENU_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
 static TRAY_MENU_OPEN_AT: AtomicU64 = AtomicU64::new(0);
@@ -28,6 +30,7 @@ static TRAY_VISUAL_REFRESH_AT: AtomicU64 = AtomicU64::new(0);
 static LAST_TRAY_VISUAL_KEY: Mutex<Option<String>> = Mutex::new(None);
 static TRAY_OPEN_FG: Mutex<Option<crate::app_identity::AppIdentity>> = Mutex::new(None);
 static TRAY_MENU_DISMISS_GEN: AtomicU64 = AtomicU64::new(0);
+static TRAY_MENU_IDLE_DESTROY_GEN: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TrayMicVisual {
@@ -89,26 +92,12 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
         .build(app)?;
 
     start_tray_mic_poll(app.clone());
-    preload_tray_menu_window(app.clone());
+    // Do not preload tray_menu WebView — ~500MB static RAM for a rarely-open popup.
     // Do not refresh_tray_visual_forced here — WASAPI on the setup path 假死'd launch.
     // First paint comes from the poll thread after the event loop is up.
 
     let _ = state;
     Ok(())
-}
-
-/// Hidden preload so first right-click avoids cold webview creation.
-fn preload_tray_menu_window(app: AppHandle) {
-    std::thread::Builder::new()
-        .name("tray-preload".into())
-        .spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            let _ = crate::overlay_window::ensure_overlay_window(
-                &app,
-                crate::overlay_window::TRAY_MENU,
-            );
-        })
-        .ok();
 }
 
 fn start_tray_mic_poll(app: AppHandle) {
@@ -540,6 +529,8 @@ fn exit_app(app: &AppHandle) {
 }
 
 fn show_tray_menu(app: &AppHandle, anchor: Option<(i32, i32)>) {
+    // Cancel pending idle destroy — user is opening the menu again.
+    TRAY_MENU_IDLE_DESTROY_GEN.fetch_add(1, Ordering::SeqCst);
     if let Ok(mut g) = TRAY_OPEN_FG.lock() {
         *g = crate::app_identity::capture_tray_foreground_identity();
     }
@@ -718,7 +709,41 @@ fn hide_tray_menu(app: &AppHandle) {
     }
     if let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) {
         let _ = menu_win.hide();
+        schedule_tray_menu_idle_destroy(app.clone());
     }
+}
+
+/// After hide, keep the WebView warm briefly then close it to free WebView2 RAM.
+fn schedule_tray_menu_idle_destroy(app: AppHandle) {
+    let gen = TRAY_MENU_IDLE_DESTROY_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    std::thread::Builder::new()
+        .name("tray-idle-destroy".into())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(TRAY_MENU_IDLE_DESTROY_MS));
+            if TRAY_MENU_IDLE_DESTROY_GEN.load(Ordering::SeqCst) != gen {
+                return;
+            }
+            let Some(win) = app.get_webview_window(TRAY_MENU_LABEL) else {
+                return;
+            };
+            if win.is_visible().unwrap_or(false) {
+                return;
+            }
+            let app_close = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if TRAY_MENU_IDLE_DESTROY_GEN.load(Ordering::SeqCst) != gen {
+                    return;
+                }
+                if let Some(win) = app_close.get_webview_window(TRAY_MENU_LABEL) {
+                    if win.is_visible().unwrap_or(false) {
+                        return;
+                    }
+                    let _ = win.hide();
+                    let _ = win.close();
+                }
+            });
+        })
+        .ok();
 }
 
 fn show_main_window(app: &AppHandle) {
@@ -1201,4 +1226,20 @@ fn cursor_physical_position() -> (i32, i32) {
 #[cfg(not(windows))]
 fn cursor_physical_position() -> (i32, i32) {
     (100, 100)
+}
+
+#[cfg(test)]
+mod idle_destroy_tests {
+    use super::*;
+
+    #[test]
+    fn tray_idle_destroy_keeps_warm_window_briefly() {
+        assert_eq!(TRAY_MENU_IDLE_DESTROY_MS, 45_000);
+        let g0 = TRAY_MENU_IDLE_DESTROY_GEN.load(Ordering::SeqCst);
+        let g1 = TRAY_MENU_IDLE_DESTROY_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+        assert_eq!(g1, g0 + 1);
+        // Reopen bumps gen → pending destroy must no-op.
+        TRAY_MENU_IDLE_DESTROY_GEN.fetch_add(1, Ordering::SeqCst);
+        assert_ne!(TRAY_MENU_IDLE_DESTROY_GEN.load(Ordering::SeqCst), g1);
+    }
 }

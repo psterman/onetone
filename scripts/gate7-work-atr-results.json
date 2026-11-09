@@ -1,54 +1,72 @@
 {
   "schemaVersion": 1,
-  "live": false,
+  "live": true,
   "results": [
     {
       "id": "minimax_success",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.017Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.098Z"
     },
     {
       "id": "minimax_fallback_workbuddy",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "workbuddy_stream_complete",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "workbuddy_cancel",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
+    },
+    {
+      "id": "late_done_after_new_send",
+      "status": "not_run",
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
+    },
+    {
+      "id": "waiting_user_input_resume",
+      "status": "not_run",
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
+    },
+    {
+      "id": "interrupted_heal",
+      "status": "not_run",
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "atr_planning",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "atr_tool_decision",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "atr_repair",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     },
     {
       "id": "atr_synthesis",
       "status": "not_run",
-      "detail": "No live IPC / credentials in this environment. Set ONETONE_GATE7_LIVE=1 to attempt.",
-      "at": "2026-11-04T10:52:36.019Z"
+      "detail": "ONETONE_GATE7_LIVE=1 set but no Gate7 IPC harness wired yet — refuse mock pass",
+      "at": "2026-11-09T11:14:14.107Z"
     }
   ]
 }

@@ -11274,9 +11274,67 @@
   function atrLooksLikeContinueInput(text) {
     var s = String(text || '').trim();
     if (!s) return true;
-    return /^(没有补充|无补充|没有|无|继续|继续吧|跳过|好的|可以|行|ok|okay|yes|y|n\/a|none|skip)$/i.test(
+    return /^(没有补充|无补充|没有|无|继续|继续\?|继续？|继续吧|跳过|好的|可以|行|ok|okay|yes|y|n\/a|none|skip)$/i.test(
       s
     );
+  }
+
+  /** Last real user question in the chat transcript (skips 「继续」). */
+  function chatPriorUserQuestion(fallback) {
+    var ti;
+    for (ti = wbChatTurns.length - 1; ti >= 0; ti--) {
+      var prev = wbChatTurns[ti];
+      if (
+        prev &&
+        prev.role === 'user' &&
+        String(prev.text || '').trim() &&
+        !atrLooksLikeContinueInput(prev.text)
+      ) {
+        return String(prev.text).trim();
+      }
+    }
+    return String(fallback || '').trim();
+  }
+
+  /** Assistant finishes / goals that are repo/acceptance status — never steal continue. */
+  function looksLikeWorkspaceMetaReply(body) {
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.looksLikeWorkspaceMetaReply === 'function') {
+      return P.looksLikeWorkspaceMetaReply(body);
+    }
+    return /Gate7|ATR Product|atr-live-provider|not_run|permission_mode\s*=\s*read_only|离线回归|验收记录|ONETONE_GATE7|整体.*NOT PASSED|Live WorkBuddy/i.test(
+      String(body || '')
+    );
+  }
+
+  /**
+   * 「继续」must keep the original goal. Never treat the word 继续 itself as goal/clarify.
+   * Prefer the last real user ask when the bound task goal is a Gate7/repo status essay.
+   */
+  function resolveChatContinueGoal(snap, text) {
+    var raw = String(text || '').trim();
+    if (!atrLooksLikeContinueInput(raw)) return raw;
+    var conflictGoal =
+      (snap && snap.atrSendConflict && snap.atrSendConflict.goal) || '';
+    var taskGoal =
+      (snap &&
+        snap.agentTask &&
+        atrIsChatLoopTask(snap.agentTask) &&
+        String(snap.agentTask.goal || '').trim()) ||
+      '';
+    var prior = chatPriorUserQuestion('');
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.resolveChatContinueGoal === 'function') {
+      return P.resolveChatContinueGoal({
+        raw: raw,
+        conflictGoal: conflictGoal,
+        taskGoal: taskGoal,
+        prior: prior
+      });
+    }
+    if (prior && looksLikeWorkspaceMetaReply(taskGoal)) return prior;
+    if (prior && looksLikeWorkspaceMetaReply(conflictGoal)) return prior;
+    return String(conflictGoal || taskGoal || prior || raw).trim();
   }
 
   function atrTextIsNewGoal(text, task) {
@@ -12501,11 +12559,18 @@
       var row = turns[i] || {};
       var role = row.role === 'user' ? 'user' : 'assistant';
       var kind = String(row.kind || '');
-      if (kind === 'tool_step' || kind === 'needs_input' || kind === 'deliver_approval') {
+      if (
+        kind === 'tool_step' ||
+        kind === 'needs_input' ||
+        kind === 'deliver_approval' ||
+        kind === 'chat_conflict'
+      ) {
         continue;
       }
       var body = String(row.text || '').replace(/\s+/g, ' ').trim();
       if (!body) continue;
+      // Drop prior runaway replies that hijacked continue into Gate7/ATR status.
+      if (role === 'assistant' && looksLikeWorkspaceMetaReply(body)) continue;
       if (body.length > 220) body = body.slice(0, 220) + '…';
       lines.push(role + ': ' + body);
     }
@@ -12514,6 +12579,23 @@
       out = (out ? out + '\n' : '') + String(extra);
     }
     if (out.length > 2800) out = out.slice(out.length - 2800);
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.withChatReplyToneMaterials === 'function') {
+      return Caps.withChatReplyToneMaterials(out, readChatReplyTone());
+    }
+    return out;
+  }
+
+  /** 「继续」redrive: lean prior_chat so a prior Gate7 essay cannot steal the goal. */
+  function chatContinueMaterialsSummary(goal) {
+    var P = global.OneToneAtrSessionProjection;
+    var out =
+      P && typeof P.chatContinueMaterialsSummary === 'function'
+        ? P.chatContinueMaterialsSummary(goal)
+        : (String(goal || '').trim()
+            ? 'user: ' + String(goal).trim() + '\n'
+            : '') +
+          '(系统: 用户点了继续；只回答本 goal。忽略会话里跑偏的仓库/验收/Gate7 汇报。)';
     var Caps = global.OneToneHomeAgentCapabilities;
     if (Caps && typeof Caps.withChatReplyToneMaterials === 'function') {
       return Caps.withChatReplyToneMaterials(out, readChatReplyTone());
@@ -12746,6 +12828,10 @@
    * Raw CoT stays in kind:thinking (chip detail) — never the answer bubble.
    */
   function chatLiveProjection(task) {
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.chatLiveProjection === 'function') {
+      return P.chatLiveProjection(task);
+    }
     var raw = String(
       (task && (task.liveThinking || task.live_thinking)) || ''
     );
@@ -13060,6 +13146,54 @@
     return true;
   }
 
+  /**
+   * Waiting on user_input: if waiting_user event was missed/ignored, still surface
+   * a needs_input row so the chat does not freeze on "正在调用 request_user_input".
+   */
+  function ensureChatNeedsInputFromAtr(tid, snap, task) {
+    tid = String(tid || '');
+    if (!tid) return false;
+    if (atrTaskWaitingReason(task) === 'deliver_approval') return false;
+    var i;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && wbChatTurns[i].kind === 'needs_input') return false;
+    }
+    var q = '';
+    var evs = (snap && snap.agentTaskEvents) || [];
+    for (i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i] || {};
+      var kind = String(e.kind || '');
+      var tool = String(e.toolName || e.tool_name || '');
+      var payload = e.payload || {};
+      if (kind === 'waiting_user' || kind === 'waiting_user_input') {
+        q = String((payload && (payload.question || payload.prompt)) || '');
+        if (q) break;
+      }
+      if (
+        !q &&
+        kind === 'tool_call' &&
+        tool === 'request_user_input' &&
+        payload &&
+        payload.arguments
+      ) {
+        q = String(
+          payload.arguments.question || payload.arguments.prompt || ''
+        );
+        if (q) break;
+      }
+    }
+    if (!q) q = t('ha2AtrAskInput', '回复 Agent 任务');
+    appendWbChatTurn({
+      id: 'need_' + tid,
+      role: 'assistant',
+      kind: 'needs_input',
+      toolName: 'request_user_input',
+      text: q,
+      collapsed: false
+    });
+    return true;
+  }
+
   /** Keep the progress chip after stop/cancel — do not delete it. */
   function finalizeChatLoopProgressTurn(tid, label, opts) {
     opts = opts || {};
@@ -13103,6 +13237,7 @@
   /**
    * Model hang (any turn): no new ATR events for CHAT_STALL_MS while busy.
    * Covers turn0 first call AND post-user_input second call (log: iphone stuck running@turn1).
+   * Turn-0 empty quiet hang also force-kicks drive once (wedged「等待控制回路」).
    */
   function maybeStallChatDrive(snap, task) {
     var tid = String((task && task.taskId) || '');
@@ -13131,6 +13266,13 @@
     // A quiet event log does not prove the provider stopped. The request may
     // still be streaming; the transport owns the timeout and final error.
     chatStallTried[tid] = true;
+    var turn = task && task.currentTurn != null ? Number(task.currentTurn) : 0;
+    if (turn === 0 && live.kind === 'empty') {
+      var Sstall = store();
+      if (Sstall && typeof Sstall.driveActiveIfRunning === 'function') {
+        Sstall.driveActiveIfRunning({ force: true }).catch(function () {});
+      }
+    }
     appendWbChatTurn({
       id: 'slow_' + tid,
       role: 'assistant',
@@ -13144,9 +13286,44 @@
     paintWbTranscript();
   }
 
+  /** Spinner for chat_loop_live with no bound taskId — clear after stall, don't spin forever. */
+  function maybeRecoverUnboundChatStart(snap) {
+    if (!wbChatBusy || String(wbThinkingTurnId || '') !== 'chat_loop_live') return;
+    if (chatLoopTaskId || chatStallTried.chat_loop_live) return;
+    if (!chatBusySinceMs || Date.now() - chatBusySinceMs < CHAT_STALL_MS) return;
+    var task = snap && snap.agentTask;
+    if (atrIsChatLoopTask(task) && task.taskId) {
+      chatLoopTaskId = String(task.taskId);
+      upsertChatLoopProgressTurn(task);
+      paintWbTranscript();
+      return;
+    }
+    chatStallTried.chat_loop_live = true;
+    finalizeChatLoopProgressTurn('chat_loop_live');
+    wbChatBusy = false;
+    wbStreamingText = '';
+    wbStreamingReasoning = '';
+    wbStreamingTurnId = '';
+    wbThinkingTurnId = '';
+    appendWbChatTurn({
+      role: 'assistant',
+      kind: 'finish',
+      text: chatLoopHonestFailText(
+        'start_failed',
+        t(
+          'ha2ChatLoopStartFailed',
+          '对话未能启动 — 可停止后重发原问题，或换引擎后再试'
+        )
+      ),
+      toolOk: false
+    });
+    paintWbTranscript();
+  }
+
   function emitChatRecoveryTurn(tid, text) {
     tid = String(tid || '');
     if (!tid || chatRecoveryEmitted[tid]) return;
+    // Pure once-guard lives in atr-session-projection.noteChatRecovery; keep local map in sync.
     chatRecoveryEmitted[tid] = true;
     wbStreamingText = '';
     wbStreamingReasoning = '';
@@ -13300,6 +13477,7 @@
   }
 
   function syncChatLoopFromAtr(snap) {
+    maybeRecoverUnboundChatStart(snap);
     var task = snap && snap.agentTask;
     if (!atrIsChatLoopTask(task)) return;
     var tid = String(task.taskId || '');
@@ -13330,6 +13508,27 @@
       var kind = String(e.kind || '');
       var tool = String(e.toolName || e.tool_name || '');
       var payload = e.payload || {};
+      var Proj = global.OneToneAtrSessionProjection;
+      if (
+        Proj &&
+        typeof Proj.shouldIgnoreAtrEvent === 'function' &&
+        Proj.shouldIgnoreAtrEvent(
+          {
+            boundTaskId: chatLoopTaskId,
+            stopPendingId: chatStopPendingId,
+            syncedEv: chatLoopSyncedEv
+          },
+          {
+            eventId: eid,
+            taskId: e.taskId || e.task_id || tid,
+            kind: kind,
+            payload: payload
+          }
+        )
+      ) {
+        chatLoopSyncedEv[eid] = true;
+        continue;
+      }
       if (kind === 'tool_call') {
         // Persist call chip immediately — cancel mid-think must leave a foldable step.
         var callDetail = '';
@@ -13389,6 +13588,10 @@
         var q =
           (payload && (payload.question || payload.prompt)) ||
           t('ha2AtrAskInput', '回复 Agent 任务');
+        // Collapse live "正在调用 request_user_input" chip — waiting is settled.
+        finalizeChatLoopProgressTurn(tid, t('ha2ToolAsk', '需要你补充'), {
+          toolOk: true
+        });
         appendWbChatTurn({
           id: 'need_' + eid,
           role: 'assistant',
@@ -13399,6 +13602,9 @@
         });
         chatLoopSyncedEv[eid] = true;
         wbChatBusy = false;
+        wbStreamingText = '';
+        wbStreamingReasoning = '';
+        wbStreamingTurnId = '';
       } else if (kind === 'waiting_deliver') {
         var preview =
           (payload && (payload.preview || payload.text)) ||
@@ -13575,6 +13781,18 @@
     } else if (st === 'waiting') {
       syncWbChatBusyFromTask(task);
       chatBusySinceMs = 0;
+      wbStreamingText = '';
+      wbStreamingReasoning = '';
+      wbStreamingTurnId = '';
+      // Never leave the live chip stuck on "正在调用 request_user_input · 第 N 步".
+      finalizeChatLoopProgressTurn(
+        tid,
+        atrTaskWaitingReason(task) === 'deliver_approval'
+          ? t('ha2ToolDeliver', '投递到 Agent')
+          : t('ha2ToolAsk', '需要你补充'),
+        { toolOk: true }
+      );
+      ensureChatNeedsInputFromAtr(tid, snap, task);
       if (tid) {
         delete chatHealTried[tid];
         delete chatStallTried[tid];
@@ -13683,6 +13901,46 @@
       reason === 'user_input' &&
       S.submitAgentInput
     ) {
+      // 「继续」is not a clarify answer — steer back to the original goal.
+      if (atrLooksLikeContinueInput(text)) {
+        var contGoal = resolveChatContinueGoal(snap, text) || String(task.goal || '').trim();
+        if (typeof opts.clearInput === 'function') opts.clearInput();
+        appendWbChatTurn({ role: 'user', text: text });
+        openWbChatPage({ chatOnly: true });
+        wbChatBusy = true;
+        upsertChatLoopProgressTurn(task);
+        chatBusySinceMs = Date.now();
+        if (task && task.taskId) {
+          delete chatHealTried[String(task.taskId)];
+          delete chatStallTried[String(task.taskId)];
+        }
+        paintWbTranscript();
+        var steer =
+          '请直接继续回答原问题「' +
+          contGoal +
+          '」。不要再 request_user_input；公开事实请 web_search / fetch_url 后 finish，不要读仓库验收文档。';
+        S.submitAgentInput(steer)
+          .then(function () {
+            if (!mounted) return;
+            wbChatBusy = true;
+            paint(S.getSnapshot());
+          })
+          .catch(function (err) {
+            wbChatBusy = false;
+            wbStreamingText = '';
+            appendWbChatTurn({
+              role: 'assistant',
+              kind: 'finish',
+              text: chatLoopHonestFailText(
+                String((err && (err.code || err.message)) || err || ''),
+                String((err && err.message) || err || 'input_failed')
+              ),
+              toolOk: false
+            });
+            paintWbTranscript();
+          });
+        return;
+      }
       // New unrelated question → abandon waiting clarify and start fresh chat.
       if (chatShouldStartNewWhileWaiting(text, task) && S.abandonAgentTask) {
         if (typeof opts.clearInput === 'function') opts.clearInput();
@@ -13797,31 +14055,38 @@
     }
 
     // 「继续」在冲突/失败后应重发上一句真实问题，不要把「继续」当 goal。
-    if (typeof atrLooksLikeContinueInput === 'function' && atrLooksLikeContinueInput(text)) {
-      var conflictGoal =
-        (snap.atrSendConflict && snap.atrSendConflict.goal) || '';
-      var priorQ = '';
-      var ti;
-      for (ti = wbChatTurns.length - 1; ti >= 0; ti--) {
-        var prev = wbChatTurns[ti];
-        if (
-          prev &&
-          prev.role === 'user' &&
-          String(prev.text || '').trim() &&
-          !atrLooksLikeContinueInput(prev.text)
-        ) {
-          priorQ = String(prev.text).trim();
-          break;
-        }
+    var continueRaw = atrLooksLikeContinueInput(text);
+    var displayUserText = text;
+    if (continueRaw) {
+      text = resolveChatContinueGoal(snap, text);
+    }
+
+    // Interrupted chat + 「继续」→ resume same task (keep goal/tool_trace), don't spawn a new one.
+    // Skip resume when the bound goal is a Gate7/repo essay or remapped away from it.
+    if (
+      continueRaw &&
+      atrIsChatLoopTask(task) &&
+      st === 'interrupted' &&
+      !looksLikeWorkspaceMetaReply(String(task.goal || '')) &&
+      (!text || !String(task.goal || '').trim() || text === String(task.goal || '').trim()) &&
+      (S.resumeAndDriveAgentTask ||
+        (global.OneToneAtrSessionController &&
+          typeof global.OneToneAtrSessionController.resumeAndDrive === 'function'))
+    ) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      appendWbChatTurn({ role: 'user', text: displayUserText });
+      openWbChatPage({ chatOnly: true });
+      if (tryResumeInterruptedChat(String(task.taskId || ''), snap, task)) {
+        return;
       }
-      text = String(conflictGoal || priorQ || text).trim();
+      // Fall through to redrive original goal if silent resume is unavailable.
     }
 
     var provider = resolveAtrProviderForChat();
     if (typeof opts.clearInput === 'function') opts.clearInput();
     appendWbChatTurn({
       role: 'user',
-      text: text,
+      text: continueRaw ? displayUserText : text,
       model: provider,
       providerId: provider
     });
@@ -13852,10 +14117,12 @@
     openWbChatPage({ chatOnly: true });
     paintWbTranscript();
 
-    var matSum =
-      chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
-      opts.materialsSummary ||
-      '';
+    // 「继续」must not re-inject a previous Gate7/ATR status essay into prior_chat.
+    var matSum = continueRaw
+      ? chatContinueMaterialsSummary(text)
+      : chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
+        opts.materialsSummary ||
+        '';
 
     function clearChatLoopBusy() {
       wbChatBusy = false;
@@ -13880,10 +14147,49 @@
             skipPlanConfirm: true,
             provider: provider
           };
-    S.startAndDriveAgentTask(sendOpts)
+    // 「继续」remap 到真实问题后，旧 chat 任务若仍占坑（跑偏 goal / running@0）先放弃再开。
+    var boundGoal = atrIsChatLoopTask(task) ? String(task.goal || '').trim() : '';
+    var mustAbandonForContinue =
+      continueRaw &&
+      atrIsChatLoopTask(task) &&
+      typeof S.abandonAgentTask === 'function' &&
+      (chatAtrBusyPhase(st) || st === 'interrupted' || st === 'waiting') &&
+      (looksLikeWorkspaceMetaReply(boundGoal) ||
+        (boundGoal && text && boundGoal !== text));
+    var startP = mustAbandonForContinue
+      ? S.abandonAgentTask()
+          .catch(function (err) {
+            if (String((err && err.message) || err) === 'no_task') return null;
+            return Promise.reject(err);
+          })
+          .then(function () {
+            sendOpts.skipBlockingCheck = true;
+            return S.startAndDriveAgentTask(sendOpts);
+          })
+      : S.startAndDriveAgentTask(sendOpts);
+    startP
       .then(function (dto) {
         if (!mounted) return;
         var stDone = dto ? String(dto.status || '') : '';
+        // startAndDrive returned null (silent fail) — never leave 第0步 spinner forever.
+        if (!dto) {
+          finalizeChatLoopProgressTurn(chatLoopTaskId || 'chat_loop_live');
+          clearChatLoopBusy();
+          appendWbChatTurn({
+            role: 'assistant',
+            kind: 'finish',
+            text: chatLoopHonestFailText(
+              'start_failed',
+              t(
+                'ha2ChatLoopStartFailed',
+                '对话未能启动 — 可停止后重发原问题，或换引擎后再试'
+              )
+            ),
+            toolOk: false
+          });
+          paintWbTranscript();
+          return;
+        }
         if (dto && dto.taskId && stDone !== 'failed' && stDone !== 'cancelled') {
           chatLoopTaskId = String(dto.taskId);
           if (stDone === 'done') {
