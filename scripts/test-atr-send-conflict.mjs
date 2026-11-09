@@ -70,6 +70,21 @@ assert.ok(Store.__testOnly && Store.__testOnly.getState);
 
 let abandonCalls = 0;
 let startCalls = 0;
+// startAndDrive requires a WorkController before it can surface send conflicts.
+sandbox.OneToneWorkController = {
+  create() {
+    return {
+      confirmPlan() {},
+      isPlanConfirmed() {
+        return true;
+      },
+      bindAtrTask() {},
+      snapshot() {
+        return { mode: 'work' };
+      }
+    };
+  }
+};
 sandbox.OneToneHomeAgentTask = {
   featureEnabled() {
     return true;
@@ -130,7 +145,10 @@ state.draft = '';
 
 const blocked = await Store.startAndDriveAgentTask({
   goal: 'change hello.txt to hi',
-  materialsSummary: 'mat'
+  materialsSummary: 'mat',
+  // Reach the blocking-conflict branch (plan gate is covered elsewhere).
+  skipPlanConfirm: true,
+  planConfirmed: true
 });
 assert.equal(blocked, null);
 assert.equal(abandonCalls, 0, 'must not abandon on send conflict');

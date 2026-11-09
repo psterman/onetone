@@ -400,13 +400,27 @@
           invoke('cmd_workbuddy_local_chat_poll', { runId: runId }).then(function (res) {
             res = res || {};
             var text = String(res.contentSoFar != null ? res.contentSoFar : res.content || '');
-            if (text !== last && typeof req.onDelta === 'function') {
-              last = text;
-              req.onDelta({ runId: runId, contentSoFar: text });
+            var reasoning = res.reasoningSoFar != null ? String(res.reasoningSoFar) : '';
+            var key = text + '\0' + reasoning;
+            if (key !== last && typeof req.onDelta === 'function') {
+              last = key;
+              req.onDelta({
+                runId: runId,
+                contentSoFar: text,
+                reasoningSoFar: res.reasoningSoFar != null ? reasoning : undefined
+              });
             }
             if (res.done) {
               clearInterval(timer);
-              var out = { ok: !res.error, providerId: 'workbuddy', model: res.model || req.model || (llm && llm.model) || '', text: text, error: res.error || null, durationMs: Date.now() - started };
+              var out = {
+                ok: !res.error,
+                providerId: 'workbuddy',
+                model: res.model || req.model || (llm && llm.model) || '',
+                text: text,
+                reasoning: reasoning,
+                error: res.error || null,
+                durationMs: Date.now() - started
+              };
               if (res.error) rejectDone(Object.assign(new Error(res.error), { code: res.error }));
               else { if (typeof req.onComplete === 'function') req.onComplete(out); resolveDone(out); }
             }

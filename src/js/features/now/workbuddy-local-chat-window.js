@@ -46,10 +46,14 @@
   }
 
   /**
-   * Mechanical text → HTML (no LLM, no reflow of wording):
-   * "- " bullets → <ul>, "# " heading lines → .wb-h, rest → <p>.
+   * Prefer Caps formatter (headings/lists/tables/fences) so settled replies match
+   * the home chat page. Fallback keeps the thin local path.
    */
   function formatBody(text) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.formatChatBodyHtml === 'function') {
+      return Caps.formatChatBodyHtml(text);
+    }
     var lines = String(text || '').split(/\r?\n/);
     var out = [];
     var inList = false;
@@ -153,8 +157,14 @@
           streamCls +
           '"><span class="wb-turn-role">' +
           roleHtml +
-          '</span><div class="wb-turn-body">' +
-          formatBody(t.text || '') +
+          '</span>' +
+          (role === 'assistant' && t.reasoning
+            ? '<details class="wb-thinking"' + (t.thinkingOpen ? ' open' : '') + '><summary>思考过程</summary><div class="wb-thinking-body">' + formatBody(t.reasoning) + '</div></details>'
+            : '') +
+          '<div class="wb-turn-body">' +
+          (role === 'assistant' && t.id && t.id === streamingId
+            ? '<pre class="wb-turn-plain">' + esc(t.text || '…') + '</pre>'
+            : formatBody(t.text || '')) +
           '</div></div>'
         );
       })
@@ -175,6 +185,7 @@
       at: Date.now()
     };
     if (!row.text && !(opts.allowEmpty && row.role === 'assistant')) return null;
+    if (opts.reasoning) row.reasoning = String(opts.reasoning);
     turns.push(row);
     if (turns.length > WB_CHAT_MAX) turns = turns.slice(-WB_CHAT_MAX);
     if (!opts.skipSave) {
@@ -221,12 +232,26 @@
       });
   }
 
+  function readChatReplyTone() {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    var raw = '';
+    try {
+      raw =
+        (global.localStorage && global.localStorage.getItem('onetone.chat.replyTone')) || '';
+    } catch (_) {}
+    if (Caps && typeof Caps.normalizeChatReplyTone === 'function') {
+      return Caps.normalizeChatReplyTone(raw);
+    }
+    return raw === 'concise' || raw === 'colleague' ? raw : 'natural';
+  }
+
   function systemFromMeta() {
     var Caps = global.OneToneHomeAgentCapabilities;
     if (Caps && typeof Caps.buildLocalChatSystemPrompt === 'function') {
       return Caps.buildLocalChatSystemPrompt({
         projectPath: projectPath,
-        projectName: projectName
+        projectName: projectName,
+        replyTone: readChatReplyTone()
       });
     }
     if (projectPath) {
@@ -276,9 +301,18 @@
   function onDelta(payload) {
     payload = payload || {};
     if (activeRunId && payload.runId && payload.runId !== activeRunId) return;
-    var soFar = String(payload.contentSoFar != null ? payload.contentSoFar : payload.delta || '');
+    // Prefer answer content; while only reasoning streams, show a short status — not CoT as the reply.
+    var soFar = String(payload.contentSoFar != null ? payload.contentSoFar : '');
+    var reasoning =
+      payload.reasoningSoFar != null ? String(payload.reasoningSoFar || '') : '';
+    if (!soFar && payload.reasoningSoFar == null) {
+      soFar = String(payload.delta || '');
+    }
+    var display = soFar || (reasoning ? '思考中…' : '…');
+    if (reasoning && !soFar) setStatus('思考中…');
+    else setStatus('正在回复…');
     if (!streamingId) {
-      var asst = appendTurn('assistant', soFar || '…', 'stream_' + Date.now().toString(36), {
+      var asst = appendTurn('assistant', display, 'stream_' + Date.now().toString(36), {
         allowEmpty: true,
         skipSave: true
       });
@@ -286,13 +320,13 @@
     } else {
       for (var i = turns.length - 1; i >= 0; i--) {
         if (turns[i].id === streamingId) {
-          turns[i].text = soFar;
+          turns[i].text = display;
+          if (reasoning) turns[i].reasoning = reasoning;
           break;
         }
       }
     }
     paintTurns();
-    setStatus('正在回复…');
   }
 
   function onDone(payload) {
@@ -311,6 +345,12 @@
       for (var i = turns.length - 1; i >= 0; i--) {
         if (turns[i].id === streamingId) {
           if (content) turns[i].text = content;
+          if (payload.reasoning) turns[i].reasoning = String(payload.reasoning);
+          else if (!String(turns[i].text || '').trim()) {
+            turns[i].text = err === 'cancelled'
+              ? '任务已停止，未生成最终回复。'
+              : '请求未能生成最终回复：' + mapErr(err || 'chat_failed');
+          }
           turns[i].model = modelDone;
           break;
         }
@@ -381,6 +421,7 @@
         onDone({
           runId: (res && res.runId) || activeRunId,
           content: res && res.text,
+          reasoning: res && res.reasoning,
           model: res && res.model ? res.model : model,
           accountId: accountId,
           error: res && res.error ? res.error : null,
@@ -388,13 +429,18 @@
         });
       },
       onError: function (err) {
-        setStatus('失败：' + mapErr((err && (err.code || err.message)) || err), true);
+        var code = (err && (err.code || err.message)) || err || 'chat_failed';
+        onDone({ runId: activeRunId, error: String(code), content: '' });
       }
     })
       .catch(function (e) {
-        busy = false;
-        streamingId = null;
-        setStatus('失败：' + ((e && e.message) || e || 'chat_failed'), true);
+        if (busy || streamingId) {
+          onDone({
+            runId: activeRunId,
+            error: (e && (e.code || e.message)) || 'chat_failed',
+            content: ''
+          });
+        }
         syncSendEnabled();
       });
   }

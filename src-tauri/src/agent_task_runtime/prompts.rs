@@ -217,6 +217,34 @@ pub fn task_context_prompt(
     )
 }
 
+/// FE prefixes materials with `reply_tone:<hint>\n` for chat-lane soft style.
+fn peel_reply_tone(materials_summary: &str) -> (Option<String>, String) {
+    let trimmed = materials_summary.trim_start();
+    let Some(rest) = trimmed.strip_prefix("reply_tone:") else {
+        return (None, materials_summary.to_string());
+    };
+    if let Some((hint, body)) = rest.split_once('\n') {
+        let h = hint.trim();
+        return (
+            if h.is_empty() {
+                None
+            } else {
+                Some(h.to_string())
+            },
+            body.to_string(),
+        );
+    }
+    let h = rest.trim();
+    (
+        if h.is_empty() {
+            None
+        } else {
+            Some(h.to_string())
+        },
+        String::new(),
+    )
+}
+
 pub fn build_messages(task: &TaskRow, recent: &str, tool_trace: &str) -> Vec<serde_json::Value> {
     build_messages_with_materials(task, recent, tool_trace, "")
 }
@@ -227,17 +255,27 @@ pub fn build_messages_with_materials(
     tool_trace: &str,
     materials_summary: &str,
 ) -> Vec<serde_json::Value> {
-    let (sys, tools) = if is_chat_lane(task) {
-        (system_prompt_chat(), tool_contracts_prompt_chat())
+    let (tone, mats) = peel_reply_tone(materials_summary);
+    let chat = is_chat_lane(task);
+    let tools = if chat {
+        tool_contracts_prompt_chat()
     } else {
-        (system_prompt_work(), tool_contracts_prompt_work())
+        tool_contracts_prompt_work()
+    };
+    let sys = if chat {
+        match tone {
+            Some(hint) if !hint.is_empty() => format!("{}\n{}", system_prompt_chat(), hint),
+            _ => system_prompt_chat().to_string(),
+        }
+    } else {
+        system_prompt_work().to_string()
     };
     vec![
         serde_json::json!({"role":"system","content": sys}),
         serde_json::json!({"role":"system","content": tools}),
         serde_json::json!({
             "role":"user",
-            "content": task_context_prompt(task, recent, tool_trace, materials_summary)
+            "content": task_context_prompt(task, recent, tool_trace, &mats)
         }),
     ]
 }
@@ -262,6 +300,49 @@ mod tests {
             !p.contains("判断只依据 tool_trace"),
             "old binary evidence gate must be gone"
         );
+    }
+
+    #[test]
+    fn chat_reply_tone_peels_into_system_not_prior_chat() {
+        let task = TaskRow {
+            task_id: "t1".into(),
+            goal: "问一句".into(),
+            workspace_root: "/tmp".into(),
+            permission_mode: "read_only".into(),
+            status: "running".into(),
+            waiting_reason: None,
+            current_turn: 0,
+            tool_call_count: 0,
+            changed_files_json: "[]".into(),
+            baseline_dirty_json: "[]".into(),
+            pending_approval_token: None,
+            pending_patch_json: None,
+            fingerprints_json: "{}".into(),
+            checkpoint_id: None,
+            last_error: None,
+            repair_count: 0,
+            format_retry_count: 0,
+            applied_tokens_json: "[]".into(),
+            created_at: 1,
+            updated_at: 1,
+            provider_id: None,
+            model_id: None,
+            config_fp: None,
+            driver_kind: "fake".into(),
+            verify_intent: false,
+            sandbox_id: None,
+            expected_rel_path: None,
+            expected_content: None,
+        };
+        let mats = "reply_tone:回复语气：口语、先结论。\nuser: hi\nassistant: hello";
+        let msgs = build_messages_with_materials(&task, "", "", mats);
+        let sys = msgs[0]["content"].as_str().unwrap_or("");
+        assert!(sys.contains("回复语气：口语、先结论。"), "{sys}");
+        let user = msgs[2]["content"].as_str().unwrap_or("");
+        assert!(user.contains("prior_chat:"), "{user}");
+        assert!(user.contains("user: hi"), "{user}");
+        assert!(!user.contains("reply_tone:"), "{user}");
+        assert!(!user.contains("回复语气："), "{user}");
     }
 
     #[test]

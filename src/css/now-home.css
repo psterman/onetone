@@ -6,8 +6,9 @@
   --now-ink4: var(--ot-text-tertiary, #8b97a8);
   --now-line: var(--ot-border, rgba(26, 45, 74, 0.12));
   --now-line2: var(--ot-surface-muted, #f7f8fa);
-  --now-pri: var(--ot-accent, #2a9cc4);
+  --now-pri: var(--ot-accent, #087ea4);
   --now-pri-sf: var(--ot-accent-soft, #e6f7fc);
+  --now-pri-fill: var(--ot-accent-fill, #2a9cc4);
   --now-ok: var(--ot-success, #059669);
   --now-ok-sf: color-mix(in srgb, var(--ot-success, #059669) 12%, var(--ot-surface, #fff));
   --now-wa: var(--ot-warning, #f97316);
@@ -364,7 +365,7 @@
 
 .now-home .now-crit-go {
   border: 0;
-  background: var(--now-pri);
+  background: var(--now-pri-fill, var(--now-pri));
   color: #fff;
   border-radius: 9px;
   padding: 8px 12px;
@@ -1429,7 +1430,7 @@
   transition: left 0.2s;
 }
 
-.now-home .now-sw.on { background: var(--now-pri); }
+.now-home .now-sw.on { background: var(--now-pri-fill, var(--now-pri)); }
 .now-home .now-sw.on::after { left: 21px; }
 
 .now-home .now-mgmt-actions {
@@ -1582,11 +1583,11 @@
 }
 .now-home .now-gate-opt.is-rec {
   border-color: transparent;
-  background: var(--now-pri);
+  background: var(--now-pri-fill, var(--now-pri));
   color: #fff;
 }
 .now-home .now-gate-opt.is-rec:hover {
-  background: #0369a1;
+  background: var(--ot-accent-hover, #066782);
 }
 .now-home .now-gate-opt.is-quiet {
   background: var(--ot-surface-muted);
@@ -1788,14 +1789,14 @@
 /* —— Now v1 situational canvas (hn-*) ——
    Accent tracks app --primary (cyan), not the old teal island. */
 .now-home {
-  --hn-ink: #14233a;
-  --hn-ink2: #3a4a5c;
-  --hn-muted: #556576;
-  --hn-line: rgba(20, 35, 58, 0.1);
-  --hn-teal: var(--primary, #2a9cc4);
-  --hn-teal-soft: var(--primary-soft, #e6f7fc);
-  --hn-paper: #f7fafc;
-  --hn-bg: #eef3f6;
+  --hn-ink: var(--ot-text, #152238);
+  --hn-ink2: var(--ot-text-muted, #5a7086);
+  --hn-muted: var(--ot-text-muted, #5a7086);
+  --hn-line: var(--ot-border, rgba(26, 45, 74, 0.12));
+  --hn-teal: var(--ot-accent-fill, var(--primary, #2a9cc4));
+  --hn-teal-soft: var(--ot-accent-soft, var(--primary-soft, #e6f7fc));
+  --hn-paper: var(--ot-surface, #ffffff);
+  --hn-bg: var(--ot-bg, #edf2f8);
   --hn-amber: #8a4b12;
   --hn-amber-soft: #fff1e6;
   --hn-red: #a33b2b;
@@ -1932,16 +1933,17 @@
 }
 /* Focus embed is not `.now-home.is-home-agent-v2` — define tokens or menus go transparent. */
 .now-home.is-hf-ha2-compose {
-  --ha2-bg: #eef3f6;
-  --ha2-surface: #ffffff;
-  --ha2-ink: #152238;
-  --ha2-muted: #5a7086;
-  --ha2-line: rgba(26, 45, 74, 0.1);
-  --ha2-accent: #2a9cc4;
-  --ha2-ok: #1a9b5f;
-  --ha2-warn: #f97316;
-  --ha2-err: #dc2626;
-  --ha2-radius: 16px;
+  --ha2-bg: var(--ot-bg, #edf2f8);
+  --ha2-surface: var(--ot-surface, #ffffff);
+  --ha2-ink: var(--ot-text, #152238);
+  --ha2-muted: var(--ot-text-muted, #5a7086);
+  --ha2-line: var(--ot-border, rgba(26, 45, 74, 0.1));
+  --ha2-accent: var(--ot-accent, #087ea4);
+  --ha2-accent-fill: var(--ot-accent-fill, #2a9cc4);
+  --ha2-ok: var(--ot-success, #059669);
+  --ha2-warn: var(--ot-warning, #f97316);
+  --ha2-err: var(--ot-error, #dc2626);
+  --ha2-radius: var(--ot-radius-dialog, 16px);
 }
 .now-home .hn-quiet-composer--ha2 {
   width: min(720px, 100%);
@@ -4095,16 +4097,16 @@
 
 /* —— Home Focus legacy chrome (pick / progress overlays) —— */
 .now-home .hf-root {
-  --hf-ink: #123331;
-  --hf-muted: #536764;
-  --hf-line: #dbe7e5;
-  --hf-teal: var(--primary, #2a9cc4);
-  --hf-teal-dark: var(--primary-strong, #1f8fb8);
-  --hf-teal-soft: var(--primary-soft, #e6f7fc);
+  --hf-ink: var(--ot-text, #152238);
+  --hf-muted: var(--ot-text-muted, #5a7086);
+  --hf-line: var(--ot-border, rgba(26, 45, 74, 0.12));
+  --hf-teal: var(--ot-accent-fill, var(--primary, #2a9cc4));
+  --hf-teal-dark: var(--ot-accent-hover, var(--primary-strong, #1f8fb8));
+  --hf-teal-soft: var(--ot-accent-soft, var(--primary-soft, #e6f7fc));
   --hf-orange: #c2410c;
   --hf-orange-soft: #fff1e9;
-  --hf-bg: #f4f7f7;
-  --hf-paper: #fff;
+  --hf-bg: var(--ot-bg, #edf2f8);
+  --hf-paper: var(--ot-surface, #ffffff);
   background: var(--hf-bg);
   color: var(--hf-ink);
   padding: 20px 18px 28px;

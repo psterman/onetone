@@ -78,10 +78,13 @@
   var chatBusySinceMs = 0;
   /** taskId → stall heal already fired (first-turn hang). */
   var chatStallTried = Object.create(null);
+  var chatLastProgressByTask = Object.create(null);
   /** First model turn can hang inside next_tool_json; FE cancel only helps between turns / after HTTP timeout. */
   var CHAT_STALL_MS = 45000;
   var wbStreamingText = '';
+  var wbStreamingReasoning = '';
   var wbStreamingTurnId = '';
+  var wbThinkingTurnId = '';
   var wbPollTimer = 0;
   /** Handoff draft editor open (summary → draft only; no auto-send). */
   var handoffOpen = false;
@@ -181,6 +184,33 @@
   /** { deepseek: { configured, masked }, … } */
   var softPadFreemodelKeys = {};
   var SOFTPAD_PREF_KEY = 'onetone.softpadPreferredProvider';
+  var REPLY_TONE_KEY = 'onetone.chat.replyTone';
+
+  function readChatReplyTone() {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    var raw = '';
+    try {
+      raw = (global.localStorage && global.localStorage.getItem(REPLY_TONE_KEY)) || '';
+    } catch (_) {}
+    if (Caps && typeof Caps.normalizeChatReplyTone === 'function') {
+      return Caps.normalizeChatReplyTone(raw);
+    }
+    return raw === 'concise' || raw === 'colleague' ? raw : 'natural';
+  }
+
+  function writeChatReplyTone(v) {
+    var Caps = global.OneToneHomeAgentCapabilities;
+    var tone =
+      Caps && typeof Caps.normalizeChatReplyTone === 'function'
+        ? Caps.normalizeChatReplyTone(v)
+        : v === 'concise' || v === 'colleague'
+          ? v
+          : 'natural';
+    try {
+      if (global.localStorage) global.localStorage.setItem(REPLY_TONE_KEY, tone);
+    } catch (_) {}
+    return tone;
+  }
 
   /**
    * Custom API presets from models.dev (OneToneCustomApiPresets) — OpenAI-compatible only.
@@ -300,9 +330,16 @@
   function saveWbChatTurns() {
     try {
       if (global.localStorage) {
+        // streaming is paint-only — never persist or reload as「思考中…」.
+        var persisted = wbChatTurns.slice(-WB_CHAT_MAX).map(function (row) {
+          if (!row || !row.streaming) return row;
+          var copy = Object.assign({}, row);
+          delete copy.streaming;
+          return copy;
+        });
         global.localStorage.setItem(
           WB_CHAT_KEY,
-          JSON.stringify({ turns: wbChatTurns.slice(-WB_CHAT_MAX), at: Date.now() })
+          JSON.stringify({ turns: persisted, at: Date.now() })
         );
       }
     } catch (_) {}
@@ -335,7 +372,8 @@
       toolOk: turn.toolOk,
       detail: turn.detail ? String(turn.detail) : '',
       collapsed: turn.collapsed !== false,
-      approvalToken: turn.approvalToken ? String(turn.approvalToken) : ''
+      approvalToken: turn.approvalToken ? String(turn.approvalToken) : '',
+      streaming: !!turn.streaming
     };
     if (
       !row.text &&
@@ -506,7 +544,8 @@
       projectName: name,
       workTitle: work,
       materialNames: mats,
-      workMode: String((snap && snap.workMode) || '')
+      workMode: String((snap && snap.workMode) || ''),
+      replyTone: readChatReplyTone()
     };
   }
 
@@ -1537,17 +1576,49 @@
     return '<pre class="ha2-wb-page-turn-text is-plain">' + esc(text || '') + '</pre>';
   }
 
+  /** Fold-chip summary only — CoT stays in detail. */
+  function thinkingChipLabel(turn) {
+    turn = turn || {};
+    if (turn.toolOk === false) {
+      var stopped = String(turn.text || '').trim();
+      return stopped || t('ha2WbChatCancelled', '已停止');
+    }
+    var live =
+      !!turn.streaming ||
+      (!!wbChatBusy &&
+        turn.id &&
+        (String(turn.id) === String(wbThinkingTurnId || '') ||
+          String(turn.id) === 'think_' + String(chatLoopTaskId || '')));
+    if (live) return t('ha2ToolThinkingLive', '思考中…');
+    if (String(turn.detail || '').trim()) {
+      return t('ha2ToolThinkingDone', '已思考');
+    }
+    return t('ha2ToolThinkingIdle', '思考');
+  }
+
   function wbToolStepHtml(turn) {
     turn = turn || {};
     var tool = turn.toolName || '';
-    // Thinking steps: show live progress in the summary badge (collapsed-visible).
-    var label =
-      tool === 'thinking'
-        ? turn.text || chatToolStepLabel(tool)
-        : chatToolStepLabel(tool) || turn.text || tool;
+    var isThinking = tool === 'thinking';
+    var label = isThinking
+      ? thinkingChipLabel(turn)
+      : chatToolStepLabel(tool) || turn.text || tool;
     var open = turn.collapsed === false;
     var ok = turn.toolOk !== false;
-    var detail = String(turn.detail || '');
+    var detail = String(turn.detail || '').trim();
+    var thinkSub = '';
+    if (isThinking) {
+      // Summary subtitle must stay visible (badge-only was washing out on light themes).
+      thinkSub = String(turn.text || '').trim();
+      if (!thinkSub || thinkSub === label) {
+        thinkSub = detail.split('\n')[0] || '';
+      }
+      if (!thinkSub) {
+        thinkSub = t('ha2ChatLoopWaitingModel', '正在等待模型回应…');
+      }
+      if (!detail) detail = thinkSub;
+    }
+    var turnId = turn.id ? String(turn.id) : '';
     if (turn.kind === 'needs_input') {
       return (
         '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool is-needs-input" data-ha2-tool-step>' +
@@ -1603,19 +1674,66 @@
         '</div>'
       );
     }
+    // Empty chips (no badge text) paint as purple/grey border rails — skip.
+    if (!String(label || '').trim() && !detail && !thinkSub) return '';
+    if (!String(label || '').trim()) {
+      label = isThinking
+        ? thinkSub || t('ha2ToolThinkingLive', '思考中…')
+        : thinkSub || detail.split('\n')[0] || t('ha2ToolStep', '工具');
+    }
+    // Live thinking must NOT use <details> — WebView2 often collapses open details
+    // to a border-only rail with no visible badge/body text.
+    if (isThinking && (open || turn.streaming)) {
+      var liveSub = thinkSub || label;
+      // Don't mirror the same waiting line under the header — that was getting
+      // clipped mid-glyph by overflow:hidden on the tool shell.
+      var liveBody =
+        detail &&
+        detail !== liveSub &&
+        detail !== label
+          ? detail
+          : '';
+      return (
+        '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool ha2-wb-page-turn--thinking is-live"' +
+        ' data-ha2-tool-step data-ha2-thinking="1"' +
+        (liveBody ? ' data-ha2-has-detail="1"' : '') +
+        (turnId ? ' data-ha2-turn-id="' + esc(turnId) + '"' : '') +
+        '>' +
+        '<div class="ha2-tool-step-hd">' +
+        '<span class="ha2-tool-step-badge">' +
+        esc(label) +
+        '</span>' +
+        '<span class="ha2-tool-step-label">' +
+        esc(liveSub) +
+        '</span></div>' +
+        (liveBody
+          ? '<pre class="ha2-tool-step-detail">' + esc(liveBody) + '</pre>'
+          : '') +
+        '</div>'
+      );
+    }
+    // Closed chips: omit detail from DOM so WebView2 cannot paint grey body strips.
+    // Toggle handler remounts detail when the user expands.
     return (
       '<details class="ha2-wb-page-turn ha2-wb-page-turn--tool' +
+      (isThinking ? ' ha2-wb-page-turn--thinking' : '') +
       (ok ? '' : ' is-err') +
       '" data-ha2-tool-step' +
+      (isThinking ? ' data-ha2-thinking="1"' : '') +
+      (turnId ? ' data-ha2-turn-id="' + esc(turnId) + '"' : '') +
+      (detail ? ' data-ha2-has-detail="1"' : '') +
       (open ? ' open' : '') +
       '>' +
       '<summary class="ha2-tool-step-hd">' +
       '<span class="ha2-tool-step-badge">' +
       esc(label) +
       '</span>' +
+      (isThinking && thinkSub
+        ? '<span class="ha2-tool-step-label">' + esc(thinkSub) + '</span>'
+        : '') +
       (ok ? '' : '<span class="ha2-tool-step-err">!</span>') +
       '</summary>' +
-      (detail
+      (detail && open
         ? '<pre class="ha2-tool-step-detail">' + esc(detail) + '</pre>'
         : '') +
       '</details>'
@@ -1636,6 +1754,14 @@
       return wbToolStepHtml(turn);
     }
     var role = turn.role === 'assistant' ? 'assistant' : 'user';
+    // Empty assistant shells paint as thin border rails in WebView2 — skip them.
+    if (
+      role === 'assistant' &&
+      !turn.streaming &&
+      !String(turn.text || '').trim()
+    ) {
+      return '';
+    }
     return (
       '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
       role +
@@ -9288,6 +9414,7 @@
       agentCapBtn(caps, 'voice', t('ha2Voice', '语音')) +
       agentCapBtn(caps, 'camera', t('ha2Camera', '摄像头')) +
       '</div>' +
+      replyToneSegmentHtml() +
       '<span class="ha2-wb-account-host" data-ha2-wb-account-host' +
       (atrEdit ? ' hidden' : '') +
       '>' +
@@ -9861,28 +9988,67 @@
   function wbPageTurnsForPaint() {
     var list = wbChatTurns.slice();
     if (wbChatBusy) {
-      var streamText = wbStreamingText || '…';
+      var thinkId = wbThinkingTurnId || 'stream_think';
       var sid = wbStreamingTurnId || 'stream_live';
-      var found = -1;
       var i;
+      var foundThink = -1;
+      var foundAns = -1;
       for (i = 0; i < list.length; i++) {
-        if (list[i] && String(list[i].id) === String(sid)) {
-          found = i;
-          break;
+        if (!list[i]) continue;
+        if (String(list[i].id) === String(thinkId)) foundThink = i;
+        if (String(list[i].id) === String(sid)) foundAns = i;
+        if (
+          foundThink < 0 &&
+          list[i].toolName === 'thinking' &&
+          list[i].kind === 'tool_step'
+        ) {
+          foundThink = i;
+          if (!wbThinkingTurnId) thinkId = String(list[i].id);
         }
       }
-      if (found >= 0) {
-        list[found] = Object.assign({}, list[found], {
-          text: streamText,
+      // Thinking chip — never dump CoT into the answer bubble. Open while live.
+      if (wbStreamingReasoning) {
+        var thinkRow = {
+          id: thinkId,
+          role: 'assistant',
+          kind: 'tool_step',
+          toolName: 'thinking',
+          text: t('ha2ToolThinkingLive', '思考中…'),
+          detail: wbStreamingReasoning,
+          collapsed: false,
+          toolOk: true,
           streaming: true
+        };
+        if (foundThink >= 0) list[foundThink] = Object.assign({}, list[foundThink], thinkRow);
+        else list.push(thinkRow);
+        foundThink = foundThink >= 0 ? foundThink : list.length - 1;
+      } else if (foundThink >= 0 && list[foundThink]) {
+        list[foundThink] = Object.assign({}, list[foundThink], {
+          streaming: true,
+          collapsed: list[foundThink].collapsed === false ? false : list[foundThink].collapsed
         });
-      } else {
-        list.push({
+      }
+      // Answer bubble only once content starts. While CoT/thinking chip is live,
+      // keep the reply empty — no second grey "正在思考…" line.
+      if (wbStreamingText) {
+        var ansRow = {
           id: sid,
           role: 'assistant',
-          text: streamText,
+          text: wbStreamingText,
           streaming: true
-        });
+        };
+        if (foundAns >= 0) list[foundAns] = Object.assign({}, list[foundAns], ansRow);
+        else list.push(ansRow);
+      } else if (foundThink < 0 && !wbStreamingReasoning) {
+        // Waiting for first token with no thinking chip yet.
+        var waitRow = {
+          id: sid,
+          role: 'assistant',
+          text: t('ha2ChatLoopStarting', '正在启动工具循环…'),
+          streaming: true
+        };
+        if (foundAns >= 0) list[foundAns] = Object.assign({}, list[foundAns], waitRow);
+        else list.push(waitRow);
       }
     }
     return list;
@@ -10369,6 +10535,7 @@
       '</div>' +
       (atrMode ? atrPageNoticeHtml(snap) + atrMainGateHtml(snap) : '') +
       '<div class="ha2-wb-page-compose">' +
+      (atrMode || researchMode ? '' : replyToneSegmentHtml()) +
       '<textarea data-ha2-wb-page-draft rows="2" placeholder="' +
       esc(
         (snap && snap.workMode) === 'edit'
@@ -11357,7 +11524,9 @@
       finalizeChatLoopProgressTurn(atrId);
       wbChatBusy = false;
       wbStreamingText = '';
+      wbStreamingReasoning = '';
       wbStreamingTurnId = '';
+      wbThinkingTurnId = '';
       if (A && typeof A.cancel === 'function') {
         A.cancel(atrId)
           .catch(function () {})
@@ -11425,7 +11594,9 @@
     wbChatBusy = false;
     wbStreamRunId = '';
     wbStreamingText = '';
+    wbStreamingReasoning = '';
     wbStreamingTurnId = '';
+    wbThinkingTurnId = '';
     paintWbTranscript();
     var S = store();
     if (!S || !S.getSnapshot) return;
@@ -11438,6 +11609,11 @@
   function paintWbStreamingLive() {
     if (!wbChatPageOpen || !root) {
       paintWbTranscript();
+      return;
+    }
+    // Reasoning chip needs a full patch (details markup); answer-only can patch text.
+    if (wbStreamingReasoning) {
+      paintWbChatPage();
       return;
     }
     var textEl = root.querySelector(
@@ -11465,7 +11641,7 @@
 
   function startWbPoll(runId, gen) {
     stopWbPoll();
-    var last = '';
+    var lastKey = '';
     wbPollTimer = setInterval(function () {
       if (gen !== wbChatPaintGen) {
         stopWbPoll();
@@ -11478,11 +11654,15 @@
           if (gen !== wbChatPaintGen) return;
           res = res || {};
           var soFar = String(res.contentSoFar != null ? res.contentSoFar : res.content || '');
-          if (soFar && soFar !== last) {
-            last = soFar;
+          var reasoning =
+            res.reasoningSoFar != null ? String(res.reasoningSoFar) : '';
+          var key = soFar + '\0' + reasoning;
+          if (key !== lastKey && (soFar || reasoning)) {
+            lastKey = key;
             onWbStreamDelta({
               runId: res.runId || runId,
-              contentSoFar: soFar
+              contentSoFar: soFar,
+              reasoningSoFar: res.reasoningSoFar != null ? reasoning : undefined
             });
           }
           if (res.done) {
@@ -11490,6 +11670,7 @@
             onWbStreamDone({
               runId: res.runId || runId,
               content: soFar || res.content || '',
+              reasoningSoFar: reasoning,
               model: res.model || wbStreamModel,
               accountId: res.accountId || '',
               error: res.error || null,
@@ -11504,9 +11685,18 @@
   function onWbStreamDelta(payload) {
     payload = payload || {};
     if (wbStreamRunId && payload.runId && payload.runId !== wbStreamRunId) return;
-    wbStreamingText = String(
-      payload.contentSoFar != null ? payload.contentSoFar : payload.delta || ''
-    );
+    // New backend always sends reasoningSoFar (string, maybe empty). Legacy omits it
+    // and folds CoT into contentSoFar — keep that as a single answer bubble.
+    if (payload.reasoningSoFar != null) {
+      wbStreamingReasoning = String(payload.reasoningSoFar || '');
+      wbStreamingText = String(payload.contentSoFar != null ? payload.contentSoFar : '');
+    } else {
+      wbStreamingReasoning = '';
+      wbStreamingText = String(
+        payload.contentSoFar != null ? payload.contentSoFar : payload.delta || ''
+      );
+    }
+    if (!wbThinkingTurnId) wbThinkingTurnId = 'think_' + Date.now().toString(36);
     if (!wbStreamingTurnId) wbStreamingTurnId = 'stream_' + Date.now().toString(36);
     paintWbStreamingLive();
   }
@@ -11521,11 +11711,42 @@
     // Shared history may have been updated by another surface — reload first.
     wbChatTurns = loadWbChatTurns();
     var content = payload.content != null ? String(payload.content).trim() : '';
+    var reasoning = String(payload.reasoningSoFar || wbStreamingReasoning || '').trim();
     var err = payload.error ? String(payload.error) : '';
     var model = (payload.model && String(payload.model)) || wbStreamModel;
     var accountId = payload.accountId ? String(payload.accountId) : '';
     wbStreamingText = '';
+    wbStreamingReasoning = '';
     wbStreamingTurnId = '';
+    var thinkId = wbThinkingTurnId;
+    wbThinkingTurnId = '';
+    // Persist the collected reasoning even when the provider ends with an
+    // error/cancel. Previously this branch returned before creating the
+    // collapsible thinking step, so the UI lost the entire streamed trace.
+    if (reasoning && (!content || reasoning !== content)) {
+      appendWbChatTurn({
+        id: thinkId || 'think_' + Date.now().toString(36),
+        role: 'assistant',
+        kind: 'tool_step',
+        toolName: 'thinking',
+        text: err
+          ? t('ha2WbChatCancelled', '已停止')
+          : t('ha2ToolThinkingDone', '已思考'),
+        detail: reasoning,
+        collapsed: true,
+        toolOk: !err
+      });
+    }
+    if (!content && err) {
+      appendWbChatTurn({
+        role: 'assistant',
+        text: err === 'cancelled'
+          ? '任务已停止，未生成最终回复。'
+          : mapWbChatError(err),
+        model: model,
+        accountId: accountId
+      });
+    }
     if (err && err !== 'cancelled') {
       paintWbTranscript();
       S.setDeliveryReceipt({
@@ -11540,6 +11761,7 @@
       finishWbLocalBusy();
       return;
     }
+    // Thinking was persisted above, before the error/cancel branch.
     if (content) {
       var last = wbChatTurns[wbChatTurns.length - 1];
       if (!(last && last.role === 'assistant' && String(last.text || '') === content)) {
@@ -12281,7 +12503,44 @@
       out = (out ? out + '\n' : '') + String(extra);
     }
     if (out.length > 2800) out = out.slice(out.length - 2800);
+    var Caps = global.OneToneHomeAgentCapabilities;
+    if (Caps && typeof Caps.withChatReplyToneMaterials === 'function') {
+      return Caps.withChatReplyToneMaterials(out, readChatReplyTone());
+    }
     return out;
+  }
+
+  function replyToneSegmentHtml() {
+    var cur = readChatReplyTone();
+    var opts = [
+      { id: 'natural', label: t('ha2ReplyToneNatural', '自然') },
+      { id: 'concise', label: t('ha2ReplyToneConcise', '简洁') },
+      { id: 'colleague', label: t('ha2ReplyToneColleague', '同事') }
+    ];
+    return (
+      '<div class="ha2-reply-tone" role="group" aria-label="' +
+      esc(t('ha2ReplyTone', '回复语气')) +
+      '">' +
+      '<span class="ha2-reply-tone-lab">' +
+      esc(t('ha2ReplyTone', '语气')) +
+      '</span>' +
+      opts
+        .map(function (o) {
+          return (
+            '<button type="button" class="ha2-reply-tone-btn' +
+            (o.id === cur ? ' is-on' : '') +
+            '" data-ha2-reply-tone="' +
+            esc(o.id) +
+            '"' +
+            (o.id === cur ? ' aria-pressed="true"' : ' aria-pressed="false"') +
+            '>' +
+            esc(o.label) +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
   }
 
   function chatLoopHonestFailText(code, fallback) {
@@ -12410,9 +12669,8 @@
   }
 
   /**
-   * Busy line for the chat bubble — short status only.
-   * Never dump liveThinking / CoT here: truncated reasoning was being painted
-   * as the final answer when the model stalled mid-thought.
+   * Busy projection for the thinking chip / answer bubble.
+   * Raw CoT stays in kind:thinking (chip detail) — never the answer bubble.
    */
   function chatLiveProjection(task) {
     var raw = String(
@@ -12424,8 +12682,10 @@
     if (raw.indexOf('status|') === 0) {
       return { kind: 'status', text: raw.slice(7) };
     }
-    // Legacy/raw provider text may contain private or incomplete reasoning.
-    return { kind: raw ? 'legacy' : 'empty', text: '' };
+    if (raw.trim()) {
+      return { kind: 'thinking', text: raw };
+    }
+    return { kind: 'empty', text: '' };
   }
 
   function chatLoopProgressText(task) {
@@ -12435,16 +12695,18 @@
     if (live.kind === 'status' && live.text) {
       return live.text + (turn ? ' · 第 ' + turn + ' 步' : '');
     }
+    if (live.kind === 'thinking') {
+      return turn
+        ? t('ha2ChatLoopThinking', '模型思考中 · 第 {n} 步… — 可点停止').replace(
+            '{n}',
+            String(turn)
+          )
+        : t('ha2ToolThinkingLive', '思考中…');
+    }
     if (!turn) {
       return t(
         'ha2ChatLoopWaitingModel',
         '正在等待模型回应（第 0 步）… — 可点停止'
-      );
-    }
-    if (live.kind === 'legacy') {
-      return t('ha2ChatLoopThinking', '模型思考中 · 第 {n} 步… — 可点停止').replace(
-        '{n}',
-        String(turn)
       );
     }
     return t('ha2ChatLoopBusyStep', '工具循环中 · 第 {n} 步…')
@@ -12468,20 +12730,61 @@
       });
       wbStreamingTurnId = answerId;
       wbStreamingText = live.text;
+      // Keep any prior thinking chip; do not recycle it as the answer id.
+      if (!wbThinkingTurnId) wbThinkingTurnId = 'think_' + tid;
+      // Settle the thinking fold once the answer starts streaming.
+      var ti;
+      for (ti = 0; ti < wbChatTurns.length; ti++) {
+        if (
+          wbChatTurns[ti] &&
+          String(wbChatTurns[ti].id) === 'think_' + tid &&
+          wbChatTurns[ti].toolName === 'thinking'
+        ) {
+          wbChatTurns[ti] = Object.assign({}, wbChatTurns[ti], {
+            text: t('ha2ToolThinkingDone', '已思考'),
+            collapsed: true,
+            streaming: false
+          });
+          break;
+        }
+      }
       return answerRow;
     }
+    // Live thinking body: prefer CoT/status payload; fall back to progress label.
+    var detailBits = [];
+    if (
+      (live.kind === 'status' || live.kind === 'thinking') &&
+      live.text
+    ) {
+      detailBits.push(String(live.text));
+    } else if (text) {
+      detailBits.push(String(text));
+    }
+    var detailText = detailBits.join('\n');
+    // Drive the paint overlay so CoT keeps streaming even if a turn upsert races.
+    wbStreamingReasoning = detailText || text || wbStreamingReasoning;
     var row = appendWbChatTurn({
       id: 'think_' + tid,
       role: 'assistant',
       kind: 'tool_step',
       toolName: 'thinking',
       text: text,
-      detail: live.kind === 'status' ? live.text : '',
-      collapsed: true,
-      toolOk: true
+      detail: detailText,
+      // Open while live so the thinking flow is visible without a click.
+      collapsed: false,
+      toolOk: true,
+      streaming: true
     });
-    wbStreamingTurnId = 'think_' + tid;
-    wbStreamingText = text;
+    wbThinkingTurnId = 'think_' + tid;
+    // Thinking stays on the fold chip — never paint a second answer bubble for status.
+    wbStreamingTurnId = '';
+    wbStreamingText = '';
+    // Drop the synthetic start chip once the real task id is known.
+    if (tid) {
+      wbChatTurns = wbChatTurns.filter(function (r) {
+        return !(r && r.id === 'chat_loop_live');
+      });
+    }
     return row;
   }
 
@@ -12552,7 +12855,8 @@
         ? t('ha2ChatTraceAnswered', '生成最终回复')
         : t('ha2ChatTraceStopped', '查询未正常完成')
     );
-    var rowId = 'think_' + tid;
+    // Separate id from think_<tid> — never overwrite the CoT thinking chip.
+    var rowId = 'trace_' + tid;
     var label = t('ha2ToolProcessTrace', '查询过程') + ' · ' + lines.length + ' 步';
     var row = appendWbChatTurn({
       id: rowId,
@@ -12564,39 +12868,162 @@
       collapsed: true,
       toolOk: terminalKind === 'done'
     });
-    if (wbStreamingTurnId === rowId) wbStreamingTurnId = '';
+    // Collapse the live thinking chip once the turn settles.
+    var thinkId = 'think_' + tid;
+    var i2;
+    for (i2 = 0; i2 < wbChatTurns.length; i2++) {
+      if (
+        wbChatTurns[i2] &&
+        String(wbChatTurns[i2].id) === thinkId &&
+        wbChatTurns[i2].toolName === 'thinking'
+      ) {
+        wbChatTurns[i2] = Object.assign({}, wbChatTurns[i2], {
+          text:
+            terminalKind === 'done'
+              ? t('ha2ToolThinkingDone', '已思考')
+              : t('ha2WbChatCancelled', '已停止'),
+          collapsed: true,
+          streaming: false,
+          toolOk: terminalKind === 'done'
+        });
+        break;
+      }
+    }
+    if (wbStreamingTurnId === rowId || wbStreamingTurnId === thinkId) {
+      wbStreamingTurnId = '';
+    }
+    if (wbThinkingTurnId === thinkId) wbThinkingTurnId = '';
     return row;
   }
 
-  /** Keep the progress chip after stop/cancel — do not delete it. */
-  function finalizeChatLoopProgressTurn(tid, label) {
-    tid = String(tid || chatLoopTaskId || '');
-    if (!tid) return;
-    var id = 'think_' + tid;
-    var turn = 0;
-    var i;
-    for (i = 0; i < wbChatTurns.length; i++) {
-      if (wbChatTurns[i] && String(wbChatTurns[i].id) === id) {
-        var prev = String(wbChatTurns[i].text || '');
-        var m = prev.match(/第\s*(\d+)\s*步/);
-        if (m) turn = Number(m[1]) || 0;
-        var stopped =
-          label ||
-          (turn
-            ? t('ha2ChatLoopStoppedStep', '已停止（第 {n} 步）').replace(
-                '{n}',
-                String(turn)
-              )
-            : t('ha2WbChatCancelled', '已停止'));
-        wbChatTurns[i] = Object.assign({}, wbChatTurns[i], {
-          text: stopped,
-          detail: wbChatTurns[i].detail || '',
-          toolOk: false,
-          collapsed: true
-        });
-        saveWbChatTurns();
-        return;
+  /**
+   * Append/replace a reply so it always sits after the latest user turn.
+   * Plain upsert-by-id can refresh an older finish still parked above a newer question.
+   */
+  function ensureChatReplyAfterLatestUser(turn) {
+    turn = turn || {};
+    var id = String(turn.id || '');
+    if (id) {
+      var lastUser = -1;
+      var existing = -1;
+      var i;
+      for (i = 0; i < wbChatTurns.length; i++) {
+        if (!wbChatTurns[i]) continue;
+        if (wbChatTurns[i].role === 'user') lastUser = i;
+        if (String(wbChatTurns[i].id) === id) existing = i;
       }
+      if (existing >= 0 && existing < lastUser) {
+        wbChatTurns.splice(existing, 1);
+      }
+    }
+    return appendWbChatTurn(turn);
+  }
+
+  /** True when an assistant finish/conflict already follows the latest user turn. */
+  function latestUserHasChatReply() {
+    var i;
+    var lastUser = -1;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && wbChatTurns[i].role === 'user') lastUser = i;
+    }
+    if (lastUser < 0) return true;
+    for (i = lastUser + 1; i < wbChatTurns.length; i++) {
+      var row = wbChatTurns[i];
+      if (!row || row.role === 'user') continue;
+      if (
+        row.kind === 'finish' ||
+        row.kind === 'chat_conflict' ||
+        row.kind === 'needs_input' ||
+        row.kind === 'deliver_approval' ||
+        (!row.kind && String(row.text || '').trim())
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Pull finish summary from task/events when drive resolves done without a tail bubble. */
+  function ensureLatestChatFinish(dto, snap) {
+    if (latestUserHasChatReply()) return false;
+    var tid = String((dto && dto.taskId) || chatLoopTaskId || '');
+    if (!tid) return false;
+    var summary = '';
+    var evs =
+      (snap && snap.agentTaskEvents) ||
+      (dto && (dto.events || dto.agentTaskEvents)) ||
+      [];
+    var i;
+    for (i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i] || {};
+      var kind = String(e.kind || '');
+      if (kind === 'done' || kind === 'task_done') {
+        summary = String(
+          (e.payload && e.payload.summary) || e.summary || ''
+        ).trim();
+        if (summary) break;
+      }
+    }
+    if (!summary) {
+      summary = String(
+        (dto && (dto.summary || dto.lastSummary || dto.resultSummary)) || ''
+      ).trim();
+    }
+    if (!summary) {
+      summary = t('ha2ToolFinishDone', '已完成');
+    }
+    finalizeChatLoopProgressTurn(tid, t('ha2ToolThinkingDone', '已思考'), {
+      toolOk: true
+    });
+    ensureChatReplyAfterLatestUser({
+      id: 'fin_' + tid,
+      role: 'assistant',
+      kind: 'finish',
+      toolName: 'finish',
+      text: summary,
+      collapsed: false,
+      toolOk: true
+    });
+    return true;
+  }
+
+  /** Keep the progress chip after stop/cancel — do not delete it. */
+  function finalizeChatLoopProgressTurn(tid, label, opts) {
+    opts = opts || {};
+    tid = String(tid || chatLoopTaskId || '');
+    var targets = { chat_loop_live: true };
+    if (tid) targets['think_' + tid] = true;
+    if (wbThinkingTurnId) targets[String(wbThinkingTurnId)] = true;
+    var i;
+    var touched = false;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      var row = wbChatTurns[i];
+      if (!row || row.toolName !== 'thinking') continue;
+      var rowId = String(row.id || '');
+      if (!targets[rowId] && !row.streaming) continue;
+      var prev = String(row.text || '');
+      var m = prev.match(/第\s*(\d+)\s*步/);
+      var step = m ? Number(m[1]) || 0 : 0;
+      var text =
+        label ||
+        (step
+          ? t('ha2ChatLoopStoppedStep', '已停止（第 {n} 步）').replace(
+              '{n}',
+              String(step)
+            )
+          : t('ha2WbChatCancelled', '已停止'));
+      wbChatTurns[i] = Object.assign({}, row, {
+        text: text,
+        toolOk: opts.toolOk === true,
+        collapsed: true,
+        streaming: false
+      });
+      touched = true;
+    }
+    if (touched) {
+      wbThinkingTurnId = '';
+      wbStreamingReasoning = '';
+      saveWbChatTurns();
     }
   }
 
@@ -12620,33 +13047,46 @@
       if (em > lastMs) lastMs = em;
     }
     if (!chatBusySinceMs) chatBusySinceMs = Date.now();
-    var since = Math.max(lastMs || 0, chatBusySinceMs || 0);
-    if (!since || Date.now() - since < CHAT_STALL_MS) return;
-    chatStallTried[tid] = true;
-    chatHealTried[tid] = true;
-    finalizeChatLoopProgressTurn(tid);
-    wbChatBusy = false;
-    wbStreamingText = '';
-    chatStopPendingId = tid;
-    var A = global.OneToneHomeAgentTask;
-    if (A && typeof A.cancel === 'function') {
-      A.cancel(tid).catch(function () {});
+    var live = chatLiveProjection(task);
+    var progress = chatLastProgressByTask[tid];
+    if (!progress || progress.kind !== live.kind || progress.text !== live.text) {
+      progress = { kind: live.kind, text: live.text, at: Date.now() };
+      chatLastProgressByTask[tid] = progress;
     }
-    emitChatRecoveryTurn(
-      tid,
-      t(
-        'ha2ChatLoopStall',
-        '等模型太久没有新步骤 — 可恢复重试，或放弃后换引擎/重发'
-      )
-    );
-    var S = store();
-    if (S && S.getSnapshot) paint(S.getSnapshot());
+    var since = Math.max(lastMs || 0, chatBusySinceMs || 0, progress.at || 0);
+    if (!since || Date.now() - since < CHAT_STALL_MS) return;
+    // A quiet event log does not prove the provider stopped. The request may
+    // still be streaming; the transport owns the timeout and final error.
+    chatStallTried[tid] = true;
+    appendWbChatTurn({
+      id: 'slow_' + tid,
+      role: 'assistant',
+      kind: 'tool_step',
+      toolName: 'thinking',
+      text: t('ha2ChatLoopSlow', '模型仍在处理，等待下一步或超时结果'),
+      detail: chatLoopProgressText(task),
+      collapsed: true,
+      toolOk: true
+    });
+    paintWbTranscript();
   }
 
   function emitChatRecoveryTurn(tid, text) {
     tid = String(tid || '');
     if (!tid || chatRecoveryEmitted[tid]) return;
     chatRecoveryEmitted[tid] = true;
+    wbStreamingText = '';
+    wbStreamingReasoning = '';
+    wbStreamingTurnId = '';
+    wbThinkingTurnId = '';
+    // Drop empty answer shells that become border-only rails.
+    wbChatTurns = wbChatTurns.filter(function (row) {
+      if (!row) return false;
+      if (row.role === 'assistant' && !row.kind && !String(row.text || '').trim()) {
+        return false;
+      }
+      return true;
+    });
     var recoveryText =
       text ||
       t(
@@ -12659,6 +13099,7 @@
         toolOk: false
       })
     ) {
+      saveWbChatTurns();
       return;
     }
     appendWbChatTurn({
@@ -12668,6 +13109,59 @@
       text: recoveryText,
       toolOk: false
     });
+  }
+
+  /**
+   * Chat lane: one silent resume before showing the recovery card.
+   * Interrupted without finish left users with「没有回复」+ grey rails.
+   */
+  function tryResumeInterruptedChat(tid, snap, task) {
+    tid = String(tid || (task && task.taskId) || '');
+    if (!tid || chatHealTried[tid] || chatStopPendingId === tid) return false;
+    if (!atrIsChatLoopTask(task)) return false;
+    var S = store();
+    if (!S || typeof S.resumeAndDriveAgentTask !== 'function') return false;
+    chatHealTried[tid] = true;
+    chatLoopTaskId = tid;
+    wbChatBusy = true;
+    wbStreamingText = '';
+    wbStreamingReasoning = '';
+    wbStreamingTurnId = '';
+    chatBusySinceMs = Date.now();
+    upsertChatLoopProgressTurn(
+      Object.assign({}, task || {}, { taskId: tid, status: 'running' })
+    );
+    paintWbTranscript();
+    S.resumeAndDriveAgentTask()
+      .then(function () {
+        if (!mounted) return;
+        var next = S.getSnapshot && S.getSnapshot();
+        var t2 = (next && next.agentTask) || null;
+        var st2 = String((t2 && t2.status) || '');
+        if (st2 === 'done') {
+          wbChatBusy = false;
+          chatBusySinceMs = 0;
+        } else if (chatAtrBusyPhase(st2) || st2 === 'waiting') {
+          wbChatBusy = st2 !== 'waiting';
+          if (wbChatBusy) upsertChatLoopProgressTurn(t2);
+        } else {
+          wbChatBusy = false;
+          persistChatProcessTrace(
+            tid,
+            (next && next.agentTaskEvents) || [],
+            'interrupted'
+          );
+          emitChatRecoveryTurn(tid);
+        }
+        paint(next || snap);
+      })
+      .catch(function () {
+        if (!mounted) return;
+        wbChatBusy = false;
+        emitChatRecoveryTurn(tid);
+        paint(S.getSnapshot());
+      });
+    return true;
   }
 
   /**
@@ -12839,8 +13333,18 @@
         wbChatBusy = false;
       } else if (kind === 'interrupted' || kind === 'task_interrupted') {
         chatLoopSyncedEv[eid] = true;
+        if (tryResumeInterruptedChat(tid, snap, task)) {
+          continue;
+        }
+        // Resume already in flight — wait for its settle; don't double-paint recovery.
+        if (chatHealTried[tid] && (wbChatBusy || chatDriveAlive(tid))) {
+          continue;
+        }
         wbChatBusy = false;
         wbStreamingText = '';
+        wbStreamingReasoning = '';
+        wbStreamingTurnId = '';
+        wbThinkingTurnId = '';
         persistChatProcessTrace(tid, evs, 'interrupted');
         emitChatRecoveryTurn(
           tid,
@@ -12855,27 +13359,36 @@
           (payload && payload.summary) ||
           t('ha2ToolFinishDone', '已完成');
         persistChatProcessTrace(tid, evs, 'done');
+        // Key by task id — event-id upsert reused the old bubble above a newer user turn.
+        var finId = 'fin_' + (tid || eid);
         if (
-          !settleStreamedChatAnswer(tid, 'fin_' + eid, summary, {
+          !settleStreamedChatAnswer(tid, finId, summary, {
             kind: 'finish',
             toolName: 'finish',
             toolOk: true
           })
         ) {
-          appendWbChatTurn({
-            id: 'fin_' + eid,
+          ensureChatReplyAfterLatestUser({
+            id: finId,
             role: 'assistant',
             kind: 'finish',
             toolName: 'finish',
             text: String(summary),
-            collapsed: false
+            collapsed: false,
+            toolOk: true
           });
         }
+        // Collapse live thinking chip once the answer is settled.
+        finalizeChatLoopProgressTurn(tid, t('ha2ToolThinkingDone', '已思考'), {
+          toolOk: true
+        });
         chatLoopSyncedEv[eid] = true;
         wbChatBusy = false;
         chatLoopTaskId = '';
         chatStopPendingId = '';
         chatBusySinceMs = 0;
+        wbThinkingTurnId = '';
+        wbStreamingReasoning = '';
         if (tid) {
           delete chatHealTried[tid];
           delete chatRecoveryEmitted[tid];
@@ -12996,8 +13509,16 @@
       }
       wbChatBusy = false;
       wbStreamingText = '';
+      wbStreamingReasoning = '';
+      wbStreamingTurnId = '';
       chatBusySinceMs = 0;
       if (st === 'interrupted') {
+        if (tryResumeInterruptedChat(tid, snap, task)) {
+          return;
+        }
+        if (chatHealTried[tid] && (wbChatBusy || chatDriveAlive(tid))) {
+          return;
+        }
         emitChatRecoveryTurn(tid);
       } else if (st === 'cancelled') {
         // Silent if auto-abandoned; user Stop still paints via cancel event / stopWbLocalStream.
@@ -13083,8 +13604,21 @@
         appendWbChatTurn({ role: 'user', text: text });
         openWbChatPage({ chatOnly: true });
         wbChatBusy = true;
-        wbStreamingText = t('ha2ChatLoopStarting', '正在启动工具循环…');
-        wbStreamingTurnId = 'chat_loop_live';
+        wbStreamingText = '';
+        wbStreamingReasoning = '';
+        wbStreamingTurnId = '';
+        wbThinkingTurnId = 'chat_loop_live';
+        appendWbChatTurn({
+          id: 'chat_loop_live',
+          role: 'assistant',
+          kind: 'tool_step',
+          toolName: 'thinking',
+          text: t('ha2ToolThinkingLive', '思考中…'),
+          detail: t('ha2ChatLoopStarting', '正在启动工具循环…'),
+          collapsed: false,
+          toolOk: true,
+          streaming: true
+        });
         chatBusySinceMs = Date.now();
         chatHealTried = Object.create(null);
         chatStallTried = Object.create(null);
@@ -13202,8 +13736,22 @@
     chatStallTried = Object.create(null);
     chatBusySinceMs = Date.now();
     wbChatBusy = true;
-    wbStreamingText = t('ha2ChatLoopStarting', '正在启动工具循环…');
-    wbStreamingTurnId = 'chat_loop_live';
+    // Thinking chip — never an empty answer bubble (those paint as grey rails).
+    wbStreamingText = '';
+    wbStreamingReasoning = '';
+    wbStreamingTurnId = '';
+    wbThinkingTurnId = 'chat_loop_live';
+    appendWbChatTurn({
+      id: 'chat_loop_live',
+      role: 'assistant',
+      kind: 'tool_step',
+      toolName: 'thinking',
+      text: t('ha2ToolThinkingLive', '思考中…'),
+      detail: t('ha2ChatLoopStarting', '正在启动工具循环…'),
+      collapsed: false,
+      toolOk: true,
+      streaming: true
+    });
     openWbChatPage({ chatOnly: true });
     paintWbTranscript();
 
@@ -13215,7 +13763,9 @@
     function clearChatLoopBusy() {
       wbChatBusy = false;
       wbStreamingText = '';
+      wbStreamingReasoning = '';
       wbStreamingTurnId = '';
+      wbThinkingTurnId = '';
     }
 
     S.startAndDriveAgentTask({
@@ -13231,8 +13781,22 @@
         var stDone = dto ? String(dto.status || '') : '';
         if (dto && dto.taskId && stDone !== 'failed' && stDone !== 'cancelled') {
           chatLoopTaskId = String(dto.taskId);
-          if (stDone === 'done') clearChatLoopBusy();
-          else if (!chatAtrBusyPhase(stDone) && stDone !== 'waiting') {
+          if (stDone === 'done') {
+            clearChatLoopBusy();
+            // sync may have upserted an older fin_* above this user turn — force a tail reply.
+            ensureLatestChatFinish(dto, S.getSnapshot && S.getSnapshot());
+          } else if (stDone === 'interrupted') {
+            if (
+              !tryResumeInterruptedChat(
+                dto.taskId,
+                S.getSnapshot && S.getSnapshot(),
+                dto
+              )
+            ) {
+              clearChatLoopBusy();
+              emitChatRecoveryTurn(String(dto.taskId));
+            }
+          } else if (!chatAtrBusyPhase(stDone) && stDone !== 'waiting') {
             clearChatLoopBusy();
           }
         } else {
@@ -14068,7 +14632,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-chat-needs-reply],[data-ha2-chat-deliver-approve],[data-ha2-chat-deliver-reject],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-reply-tone],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-chat-needs-reply],[data-ha2-chat-deliver-approve],[data-ha2-chat-deliver-reject],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -14304,7 +14868,9 @@
         else openWbChatPage({ chatOnly: true });
         S.abandonAndStartAgentTask({
           goal: draftSend,
-          materialsSummary: matSumSend,
+          materialsSummary: chatCtx
+            ? chatHistoryMaterialsSummary(matSumSend)
+            : matSumSend,
           permissionMode: chatCtx ? 'read_only' : undefined,
           lane: chatCtx ? 'chat' : undefined,
           skipPlanConfirm: !!chatCtx,
@@ -15144,6 +15710,13 @@
       else if (cap === 'camera' && D) D.toggleCamera();
       return;
     }
+    if (tEl.hasAttribute('data-ha2-reply-tone')) {
+      writeChatReplyTone(tEl.getAttribute('data-ha2-reply-tone') || 'natural');
+      // Soft prompt only — next reply picks it up; no toast spam.
+      paint(S && S.getSnapshot ? S.getSnapshot() : null);
+      if (wbChatPageOpen) paintWbChatPage();
+      return;
+    }
     if (tEl.hasAttribute('data-ha2-compose-more')) {
       var ov = root && root.querySelector('[data-ha2-compose-overflow]');
       if (ov) {
@@ -15197,11 +15770,34 @@
     positionPickerPanel();
   }
 
+  function onToolStepToggle(ev) {
+    var el = ev && ev.target;
+    if (!el || el.tagName !== 'DETAILS' || !el.hasAttribute('data-ha2-tool-step')) {
+      return;
+    }
+    var id = String(el.getAttribute('data-ha2-turn-id') || '');
+    if (!id) return;
+    var open = !!el.open;
+    var i;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && String(wbChatTurns[i].id) === id) {
+        if (!!wbChatTurns[i].collapsed === !open) return;
+        wbChatTurns[i] = Object.assign({}, wbChatTurns[i], {
+          collapsed: !open
+        });
+        saveWbChatTurns();
+        paintWbTranscript();
+        return;
+      }
+    }
+  }
+
   function bindHa2RootEvents(S) {
     if (!root || root.__ha2EventsBound) return;
     root.__ha2EventsBound = true;
     ensureWbStreamListen();
     root.addEventListener('click', onClick);
+    root.addEventListener('toggle', onToolStepToggle, true);
     root.addEventListener('pointerdown', onMatTogglePointerDown, true);
     root.addEventListener('change', onChange);
     refreshAssistReady();

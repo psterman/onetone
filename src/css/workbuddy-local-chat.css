@@ -165,6 +165,31 @@ html[data-theme="dark"] .wb-turn--assistant .wb-turn-role {
   font-family: inherit;
 }
 
+.wb-thinking {
+  width: min(100%, 680px);
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--wb-accent) 22%, var(--wb-line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--wb-accent) 5%, var(--wb-surface));
+  color: var(--wb-muted);
+  font-size: 12px;
+}
+
+.wb-thinking summary {
+  cursor: pointer;
+  padding: 7px 10px;
+  user-select: none;
+  font-weight: 600;
+  list-style: none;
+}
+
+.wb-thinking summary::-webkit-details-marker { display: none; }
+.wb-thinking summary::before { content: "▸"; display: inline-block; margin-right: 6px; transition: transform .15s ease; }
+.wb-thinking[open] summary::before { transform: rotate(90deg); }
+.wb-thinking-body { padding: 0 10px 9px; opacity: .9; }
+.wb-thinking-body p { margin: 0 0 4px; }
+.wb-thinking-body p:last-child { margin-bottom: 0; }
+
 .wb-turn-body p {
   margin: 0 0 6px;
 }
@@ -173,15 +198,51 @@ html[data-theme="dark"] .wb-turn--assistant .wb-turn-role {
   margin-bottom: 0;
 }
 
-.wb-turn-body .wb-h {
+.wb-turn-body .wb-h,
+.wb-turn-body .ha2-md-h {
   font-weight: 600;
   font-size: 13.5px;
   margin: 6px 0 4px;
   color: var(--wb-ink);
 }
 
-.wb-turn-body .wb-h:first-child {
+.wb-turn-body .wb-h:first-child,
+.wb-turn-body .ha2-md-h:first-child {
   margin-top: 0;
+}
+
+.wb-turn-plain {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wb-turn-body .ha2-md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+.wb-turn-body .ha2-md-table th,
+.wb-turn-body .ha2-md-table td {
+  border: 1px solid var(--wb-line);
+  padding: 4px 8px;
+  text-align: left;
+}
+.wb-turn-body .ha2-md-code,
+.wb-turn-body .ha2-md-mermaid {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--wb-line);
+  overflow: auto;
+  font: 12px/1.45 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
 }
 
 .wb-turn-body ul,

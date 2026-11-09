@@ -325,6 +325,23 @@ pub fn begin_raw_tool_turn(
     let next_n = next_identical_count(recent, &sig)
         .max(identical_tool_streak_from_events(conn, task_id, &call)?);
     if next_n >= MAX_IDENTICAL_TOOL {
+        // Chat is read-only and may legitimately repeat a lookup while
+        // refining an answer. Give the model a finish nudge so the user gets
+        // the accumulated trace instead of an opaque auto-stop. Keep the hard
+        // guard for edit tasks where repeated writes can be unsafe.
+        let chat = PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly);
+        if chat {
+            let nudge = CHAT_IDENTICAL_TOOL_NUDGE;
+            let updated = commit_event(
+                conn,
+                &task,
+                "format_retry",
+                Some(&call.name),
+                json!({"error": nudge, "code": "chat_identical_tool_cap", "streak": next_n}),
+            )?;
+            *recent = nudge.into();
+            return Ok(RawTurnOutcome::Applied(updated));
+        }
         return fail_task(conn, task_id, "stuck_loop").map(RawTurnOutcome::Applied);
     }
     // Chat: soft-cap search (force-finish nudge). Work: hard stuck after 5 consecutive.
@@ -883,6 +900,7 @@ fn is_terminal_tool(name: &str) -> bool {
 }
 
 const CHAT_SEARCH_FORCE_FINISH_NUDGE: &str = "chat_search_cap: 搜索次数或空结果已达上限。请基于 tool_trace 立刻 finish{summary}；或 request_user_input 澄清；若已有 URL 可用 fetch_url。";
+const CHAT_IDENTICAL_TOOL_NUDGE: &str = "chat_identical_tool_cap: 你已重复调用相同工具。请基于已有 tool_trace 立刻 finish{summary}；或 request_user_input 澄清，不要继续重复调用。";
 
 fn chat_web_search_blocked(prior_calls: u32, fail_count: u32) -> bool {
     prior_calls >= CHAT_WEB_SEARCH_CAP || fail_count >= CHAT_WEB_SEARCH_FAIL_CAP

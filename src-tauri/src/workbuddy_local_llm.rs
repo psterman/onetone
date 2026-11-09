@@ -31,7 +31,10 @@ const OAUTH_LOGIN_TTL_MS: u64 = 5 * 60 * 1000;
 const OAUTH_REFRESH_SKEW_MS: u64 = 5 * 60 * 1000;
 const MODELS_CACHE_MS: u64 = 10 * 60 * 1000;
 const HTTP_TIMEOUT_SECS: u64 = 20;
-const CHAT_TIMEOUT_SECS: u64 = 180;
+// Reasoning models can spend several minutes before producing visible answer
+// tokens. Keep the transport deadline above the UI polling window so a slow
+// but healthy run is not reported as an unexplained "stopped" state.
+const CHAT_TIMEOUT_SECS: u64 = 600;
 /// ATR tool turns — long enough for freemodel SSE with tools; short of chat's 180s.
 const AGENT_CHAT_TIMEOUT_SECS: u64 = 90;
 const UA: &str = "CLI/unknown CodeBuddy/2.136.0 OneTone";
@@ -783,8 +786,10 @@ pub const WINDOW_LABEL: &str = "workbuddy_local_chat";
 struct ActiveStream {
     run_id: String,
     cancel: Arc<AtomicBool>,
-    /// Shared live text for frontend poll (event delivery is unreliable).
+    /// Live assistant answer (not reasoning). On done: final visible reply.
     content: Arc<Mutex<String>>,
+    /// Live reasoning / CoT — kept separate so FE can render a thinking chip.
+    reasoning: Arc<Mutex<String>>,
     done: Arc<AtomicBool>,
     error: Arc<Mutex<Option<String>>>,
     model: String,
@@ -854,12 +859,15 @@ fn set_stream_content(content: &Arc<Mutex<String>>, text: &str) {
 
 fn finish_stream_state(
     content: &Arc<Mutex<String>>,
+    reasoning: &Arc<Mutex<String>>,
     done: &Arc<AtomicBool>,
     error: &Arc<Mutex<Option<String>>>,
     final_text: &str,
+    reasoning_text: &str,
     err: Option<String>,
 ) {
     set_stream_content(content, final_text);
+    set_stream_content(reasoning, reasoning_text);
     if let Ok(mut g) = error.lock() {
         *g = err;
     }
@@ -1364,9 +1372,13 @@ fn stream_agent_sse_body(resp: reqwest::blocking::Response) -> Result<String, St
             atr_live_push(&format!("answer|{summary}"));
         } else if !tool_hint.is_empty() {
             atr_live_push(&format!("status|正在调用 {tool_hint}"));
+        } else if !reasoning.trim().is_empty() {
+            // FE treats unprefixed live text as thinking-chip body (not the answer bubble).
+            atr_live_push(reasoning.trim());
+        } else if !content.trim().is_empty() {
+            let preview: String = content.chars().take(400).collect();
+            atr_live_push(&format!("status|{preview}"));
         } else {
-            // Raw reasoning/content can be a half-written thought. Only the
-            // structured finish.summary is safe to stream as the final answer.
             atr_live_push("status|正在整理下一步");
         }
         if done_stream {
@@ -1687,6 +1699,7 @@ pub fn chat_stream_start(
     let run_id = format!("wb_{}", now_ms());
     let cancel = Arc::new(AtomicBool::new(false));
     let content_arc = Arc::new(Mutex::new(String::new()));
+    let reasoning_arc = Arc::new(Mutex::new(String::new()));
     let done_flag = Arc::new(AtomicBool::new(false));
     let error_arc = Arc::new(Mutex::new(None));
     {
@@ -1695,6 +1708,7 @@ pub fn chat_stream_start(
             run_id: run_id.clone(),
             cancel: cancel.clone(),
             content: content_arc.clone(),
+            reasoning: reasoning_arc.clone(),
             done: done_flag.clone(),
             error: error_arc.clone(),
             model: prepared.model_id.clone(),
@@ -1714,32 +1728,41 @@ pub fn chat_stream_start(
     let _ = std::thread::Builder::new()
         .name("wb-chat-stream".into())
         .spawn(move || {
-            let done = |final_text: String, error: Option<String>, usage: Value| {
-                finish_stream_state(
-                    &content_arc,
-                    &done_flag,
-                    &error_arc,
-                    &final_text,
-                    error.clone(),
-                );
-                emit_chat(
-                    &app2,
-                    EVENT_DONE,
-                    json!({
-                        "runId": run_id_thread,
-                        "content": final_text,
-                        "model": model_id,
-                        "accountId": account_id,
-                        "usage": usage,
-                        "error": error,
-                        "ok": error.is_none(),
-                        "done": true,
-                    }),
-                );
-            };
+            let done =
+                |final_text: String, reasoning_text: String, error: Option<String>, usage: Value| {
+                    finish_stream_state(
+                        &content_arc,
+                        &reasoning_arc,
+                        &done_flag,
+                        &error_arc,
+                        &final_text,
+                        &reasoning_text,
+                        error.clone(),
+                    );
+                    emit_chat(
+                        &app2,
+                        EVENT_DONE,
+                        json!({
+                            "runId": run_id_thread,
+                            "content": final_text,
+                            "reasoningSoFar": reasoning_text,
+                            "model": model_id,
+                            "accountId": account_id,
+                            "usage": usage,
+                            "error": error,
+                            "ok": error.is_none(),
+                            "done": true,
+                        }),
+                    );
+                };
 
             if cancel.load(Ordering::SeqCst) {
-                done(String::new(), Some("cancelled".into()), Value::Null);
+                done(
+                    String::new(),
+                    String::new(),
+                    Some("cancelled".into()),
+                    Value::Null,
+                );
                 return;
             }
 
@@ -1751,7 +1774,7 @@ pub fn chat_stream_start(
             {
                 Ok(c) => c,
                 Err(e) => {
-                    done(String::new(), Some(e.to_string()), Value::Null);
+                    done(String::new(), String::new(), Some(e.to_string()), Value::Null);
                     return;
                 }
             };
@@ -1767,7 +1790,7 @@ pub fn chat_stream_start(
             let resp = match apply_auth_headers(req, &auth).send() {
                 Ok(r) => r,
                 Err(e) => {
-                    done(String::new(), Some(e.to_string()), Value::Null);
+                    done(String::new(), String::new(), Some(e.to_string()), Value::Null);
                     return;
                 }
             };
@@ -1779,16 +1802,22 @@ pub fn chat_stream_start(
                 } else {
                     "key_unauthorized".to_string()
                 };
-                done(String::new(), Some(err), Value::Null);
+                done(String::new(), String::new(), Some(err), Value::Null);
                 return;
             }
             if status.as_u16() == 429 {
-                done(String::new(), Some("rate_limited".into()), Value::Null);
+                done(
+                    String::new(),
+                    String::new(),
+                    Some("rate_limited".into()),
+                    Value::Null,
+                );
                 return;
             }
             if !status.is_success() {
                 let text = resp.text().unwrap_or_default();
                 done(
+                    String::new(),
                     String::new(),
                     Some(format!("HTTP {status}: {}", trunc_err(&text))),
                     Value::Null,
@@ -1799,12 +1828,14 @@ pub fn chat_stream_start(
             let mut content = String::new();
             let mut reasoning = String::new();
             let mut usage = Value::Null;
-            let mut emitted = String::new();
+            let mut emitted_content = String::new();
+            let mut emitted_reasoning = String::new();
             let reader = BufReader::with_capacity(8 * 1024, resp);
             for line_res in reader.lines() {
                 if cancel.load(Ordering::SeqCst) {
                     done(
                         visible_assistant_text(&content, &reasoning),
+                        reasoning.clone(),
                         Some("cancelled".into()),
                         usage,
                     );
@@ -1815,26 +1846,27 @@ pub fn chat_stream_start(
                 };
                 let done_stream =
                     ingest_chat_sse_line(&mut content, &mut reasoning, &mut usage, &line);
-                let visible = visible_assistant_text(&content, &reasoning);
-                if visible != emitted {
-                    let delta = if visible.starts_with(&emitted) {
-                        visible[emitted.len()..].to_string()
+                if content != emitted_content || reasoning != emitted_reasoning {
+                    let delta = if content.starts_with(&emitted_content) {
+                        content[emitted_content.len()..].to_string()
                     } else {
-                        visible.clone()
+                        content.clone()
                     };
-                    emitted = visible.clone();
-                    set_stream_content(&content_arc, &emitted);
-                    if !delta.is_empty() {
-                        emit_chat(
-                            &app2,
-                            EVENT_DELTA,
-                            json!({
-                                "runId": run_id_thread,
-                                "delta": delta,
-                                "contentSoFar": emitted,
-                            }),
-                        );
-                    }
+                    emitted_content = content.clone();
+                    emitted_reasoning = reasoning.clone();
+                    // Poll/FE: answer and thinking stay separate (do not fold CoT into contentSoFar).
+                    set_stream_content(&content_arc, &emitted_content);
+                    set_stream_content(&reasoning_arc, &emitted_reasoning);
+                    emit_chat(
+                        &app2,
+                        EVENT_DELTA,
+                        json!({
+                            "runId": run_id_thread,
+                            "delta": delta,
+                            "contentSoFar": emitted_content,
+                            "reasoningSoFar": emitted_reasoning,
+                        }),
+                    );
                 }
                 if done_stream {
                     break;
@@ -1843,9 +1875,14 @@ pub fn chat_stream_start(
 
             let final_text = visible_assistant_text(&content, &reasoning);
             if final_text.trim().is_empty() {
-                done(String::new(), Some("empty_model_content".into()), usage);
+                done(
+                    String::new(),
+                    reasoning,
+                    Some("empty_model_content".into()),
+                    usage,
+                );
             } else {
-                done(final_text, None, usage);
+                done(final_text, reasoning, None, usage);
             }
         });
 
@@ -1866,6 +1903,7 @@ pub fn chat_stream_poll(run_id: Option<&str>) -> Result<Value, String> {
             "active": false,
             "done": true,
             "contentSoFar": "",
+            "reasoningSoFar": "",
             "content": "",
             "error": Value::Null,
         }));
@@ -1878,6 +1916,7 @@ pub fn chat_stream_poll(run_id: Option<&str>) -> Result<Value, String> {
                 "done": true,
                 "runId": active.run_id,
                 "contentSoFar": "",
+                "reasoningSoFar": "",
                 "content": "",
                 "error": "run_mismatch",
             }));
@@ -1885,6 +1924,11 @@ pub fn chat_stream_poll(run_id: Option<&str>) -> Result<Value, String> {
     }
     let content = active
         .content
+        .lock()
+        .map(|c| c.clone())
+        .unwrap_or_default();
+    let reasoning = active
+        .reasoning
         .lock()
         .map(|c| c.clone())
         .unwrap_or_default();
@@ -1903,6 +1947,7 @@ pub fn chat_stream_poll(run_id: Option<&str>) -> Result<Value, String> {
         "model": active.model,
         "accountId": active.account_id,
         "contentSoFar": content,
+        "reasoningSoFar": reasoning,
         "content": content,
         "error": if err.is_empty() { Value::Null } else { json!(err) },
     }))
@@ -2726,5 +2771,28 @@ data: [DONE]\n";
         }
         assert_eq!(pieces, vec!["你".to_string(), "好".to_string()]);
         assert_eq!(emitted, "你好");
+    }
+
+    #[test]
+    fn stream_keeps_reasoning_out_of_answer_content() {
+        let lines = [
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"想\"}}]}",
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"一下\"}}]}",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"答\"}}]}",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"案\"}}]}",
+            "data: [DONE]",
+        ];
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut usage = Value::Null;
+        for line in lines {
+            if ingest_chat_sse_line(&mut content, &mut reasoning, &mut usage, line) {
+                break;
+            }
+        }
+        assert_eq!(reasoning, "想一下");
+        assert_eq!(content, "答案");
+        assert_eq!(visible_assistant_text(&content, &reasoning), "答案");
+        assert_eq!(visible_assistant_text("", &reasoning), "想一下");
     }
 }

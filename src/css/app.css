@@ -1,13 +1,14 @@
     :root{
-      /* Compat aliases → theme-tokens.css (--ot-*) */
-      --primary:var(--ot-accent);
+      /* Compat aliases → theme-tokens.css (--ot-*)
+         --primary = fill (CTAs); text/links/focus use --ot-accent. */
+      --primary:var(--ot-accent-fill);
       --primary-strong:var(--ot-accent-hover);
       --primary-muted:#45b0d4;
       --primary-soft:var(--ot-accent-soft);
-      --primary-glow:#5ec8e8;
+      --primary-glow:var(--ot-accent-fill);
       --indigo:#1a2d4a;
       --indigo-muted:var(--ot-text-muted);
-      --key-soft:var(--ot-accent);
+      --key-soft:var(--ot-accent-fill);
       --on-primary:#ffffff;
       --surface:var(--ot-surface);
       --surface-high:var(--ot-surface-raised);
@@ -17,7 +18,7 @@
       --on-surface-muted:var(--ot-text-muted);
       --btn-label:var(--ot-text);
       --btn-label-muted:var(--ot-text-muted);
-      --outline:color-mix(in srgb, var(--ot-accent) 24%, transparent);
+      --outline:color-mix(in srgb, var(--ot-accent-fill) 24%, transparent);
       --outline-variant:var(--ot-border);
       --success:var(--ot-success);
       --toggle-off:#c5d3de;
@@ -28,7 +29,7 @@
       --radius-row:16px;
       --radius-pill:999px;
       --shadow-card:0 14px 34px rgba(26,45,74,.07);
-      --shadow-button:0 10px 22px color-mix(in srgb, var(--ot-accent) 20%, transparent);
+      --shadow-button:0 10px 22px color-mix(in srgb, var(--ot-accent-fill) 20%, transparent);
       --dur-fast:160ms;
       --dur-med:260ms;
       --ease-standard:cubic-bezier(.2,.8,.2,1);
@@ -59,22 +60,22 @@
       .soft-pad-app-chip,
       .micro-hw__key
     ):focus-visible{
-      outline:2px solid var(--primary);
+      outline:2px solid var(--ot-accent);
       outline-offset:2px;
     }
     html[data-theme="dark"]{
       --primary-muted:#7ed4ef;
-      --primary-glow:#8ee0f4;
+      --primary-glow:var(--ot-accent-fill);
       --indigo:#dce8f5;
       --indigo-muted:var(--ot-text-muted);
-      --key-soft:#8ee0f4;
+      --key-soft:var(--ot-accent-fill);
       --on-primary:#0b1220;
       --btn-label:var(--ot-text);
       --btn-label-muted:var(--ot-text-muted);
-      --outline:color-mix(in srgb, var(--ot-accent) 22%, transparent);
+      --outline:color-mix(in srgb, var(--ot-accent-fill) 22%, transparent);
       --toggle-off:#3d4d62;
       --shadow-card:0 12px 36px rgba(0,0,0,.32);
-      --shadow-button:0 8px 20px color-mix(in srgb, var(--ot-accent) 18%, transparent);
+      --shadow-button:0 8px 20px color-mix(in srgb, var(--ot-accent-fill) 18%, transparent);
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;overflow:hidden;overflow-x:hidden}
@@ -82,7 +83,7 @@
     .app{
       height:100vh;display:flex;flex-direction:column;overflow:hidden;
       background:
-        radial-gradient(circle at 14% 0%,color-mix(in srgb, var(--ot-accent) 12%, transparent),transparent 36%),
+        radial-gradient(circle at 14% 0%,color-mix(in srgb, var(--ot-accent-fill) 12%, transparent),transparent 36%),
         radial-gradient(circle at 88% 8%,rgba(26,45,74,.05),transparent 28%),
         linear-gradient(180deg,var(--ot-surface-raised) 0%,var(--ot-bg) 100%);
     }
@@ -93,7 +94,7 @@
     }
     html[data-theme="dark"] .app{
       background:
-        radial-gradient(circle at 18% 0%,color-mix(in srgb, var(--ot-accent) 16%, transparent),transparent 38%),
+        radial-gradient(circle at 18% 0%,color-mix(in srgb, var(--ot-accent-fill) 16%, transparent),transparent 38%),
         radial-gradient(circle at 82% 10%,rgba(26,45,74,.28),transparent 32%),
         linear-gradient(180deg,var(--ot-bg) 0%,var(--ot-surface) 100%);
     }

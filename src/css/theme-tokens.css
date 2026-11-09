@@ -9,10 +9,12 @@
   --ot-text-tertiary: #8b97a8;
   --ot-border: rgba(26, 45, 74, 0.12);
   --ot-border-strong: rgba(26, 45, 74, 0.2);
-  --ot-accent: #2a9cc4;
-  --ot-accent-hover: #1f8fb8;
+  /* Text/links/focus vs solid fills — do not use one accent for both. */
+  --ot-accent: #087ea4;
+  --ot-accent-fill: #2a9cc4;
+  --ot-accent-hover: #066782;
   --ot-accent-soft: #e6f7fc;
-  --ot-focus: #2a9cc4;
+  --ot-focus: var(--ot-accent);
   --ot-success: #059669;
   --ot-warning: #f97316;
   --ot-error: #dc2626;
@@ -33,28 +35,49 @@ html[data-theme="dark"] {
   --ot-text-tertiary: #7a8799;
   --ot-border: rgba(148, 163, 184, 0.14);
   --ot-border-strong: rgba(148, 163, 184, 0.28);
-  --ot-accent: #5ec8e8;
+  --ot-accent: #7dd3ec;
+  --ot-accent-fill: #5ec8e8;
   --ot-accent-hover: #3eb8dc;
   --ot-accent-soft: rgba(94, 200, 232, 0.14);
-  --ot-focus: #5ec8e8;
+  --ot-focus: var(--ot-accent);
   --ot-success: #34d399;
   --ot-warning: #fb923c;
   --ot-error: #f87171;
 }
 
-/* Graphite: cooler neutrals, slate accent — independent of light/dark mode. */
+/* Graphite: full surface/text style + slate accent (independent of mode). */
 html[data-style="graphite"] {
-  --ot-accent: #64748b;
-  --ot-accent-hover: #475569;
+  --ot-bg: #eef1f5;
+  --ot-surface: #ffffff;
+  --ot-surface-raised: #f8fafc;
+  --ot-surface-muted: #eef1f5;
+  --ot-text: #1e293b;
+  --ot-text-muted: #64748b;
+  --ot-text-tertiary: #94a3b8;
+  --ot-border: rgba(51, 65, 85, 0.16);
+  --ot-border-strong: rgba(51, 65, 85, 0.24);
+  --ot-accent: #475569;
+  --ot-accent-fill: #64748b;
+  --ot-accent-hover: #334155;
   --ot-accent-soft: rgba(100, 116, 139, 0.14);
-  --ot-focus: #64748b;
+  --ot-focus: var(--ot-accent);
 }
 
 html[data-theme="dark"][data-style="graphite"] {
+  --ot-bg: #0f1419;
+  --ot-surface: #161e2c;
+  --ot-surface-raised: #1c2636;
+  --ot-surface-muted: #243044;
+  --ot-text: #e8f0f8;
+  --ot-text-muted: #9aa8b8;
+  --ot-text-tertiary: #7a8799;
+  --ot-border: rgba(148, 163, 184, 0.16);
+  --ot-border-strong: rgba(148, 163, 184, 0.28);
   --ot-accent: #94a3b8;
+  --ot-accent-fill: #64748b;
   --ot-accent-hover: #cbd5e1;
   --ot-accent-soft: rgba(148, 163, 184, 0.16);
-  --ot-focus: #94a3b8;
+  --ot-focus: var(--ot-accent);
 }
 
 html[data-density="compact"] {

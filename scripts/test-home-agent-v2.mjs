@@ -771,10 +771,20 @@ assert.equal(Caps.looksLikeWeatherAsk('今天天气'), true);
 var promptChat = Caps.buildLocalChatSystemPrompt({ workMode: 'think', projectPath: 'E:/x' });
 assert.match(promptChat, /对话模式/);
 assert.match(promptChat, /禁止把|自己用工具查/);
+assert.match(promptChat, /回复语气：/);
+assert.match(promptChat, /轻量 Markdown/);
 assert.doesNotMatch(promptChat, /请用户点顶部|后再发目标/);
 var promptWork = Caps.buildLocalChatSystemPrompt({ workMode: 'edit', projectPath: 'E:/x' });
 assert.match(promptWork, /已在「工作」/);
 assert.match(promptWork, /禁止再说/);
+assert.match(promptWork, /回复语气：/);
+assert.equal(Caps.normalizeChatReplyTone('concise'), 'concise');
+assert.equal(Caps.normalizeChatReplyTone('weird'), 'natural');
+assert.match(Caps.chatReplyToneHint('colleague'), /同事口吻/);
+assert.match(Caps.withChatReplyToneMaterials('user: hi', 'natural'), /^reply_tone:/);
+assert.match(shell, /onetone\.chat\.replyTone|REPLY_TONE_KEY/);
+assert.match(shell, /data-ha2-reply-tone|replyToneSegmentHtml/);
+assert.match(shell, /withChatReplyToneMaterials/);
 // Work-mode send must not regex-kick to chat.
 assert.doesNotMatch(
   shell,
@@ -860,7 +870,8 @@ assert.match(shell, /function chatLiveProjection/);
 assert.match(shell, /raw\.indexOf\('answer\|'\)/);
 assert.match(shell, /raw\.indexOf\('status\|'\)/);
 assert.match(shell, /function settleStreamedChatAnswer/);
-assert.match(shell, /settleStreamedChatAnswer\(tid, 'fin_' \+ eid/);
+assert.match(shell, /settleStreamedChatAnswer\(tid, finId/);
+assert.match(shell, /fin_' \+ \(tid \|\| eid\)/);
 assert.match(shell, /function persistChatProcessTrace/);
 assert.match(shell, /toolName: 'process_trace'/);
 assert.match(shell, /persistChatProcessTrace\(tid, evs, 'done'\)/);
@@ -1046,6 +1057,14 @@ assert.match(shell, /atrOwnsHomeChrome/);
   assert.doesNotMatch(withPath, /你是 OneTone 首页的 WorkBuddy 本机讨论助手/);
   const noPath = Caps.buildLocalChatSystemPrompt({});
   assert.match(noPath, /未选定/);
+  assert.match(withPath, /回复语气：|轻量 Markdown/);
+
+  assert.equal(typeof Caps.formatChatBodyHtml, 'function');
+  const mdHtml = Caps.formatChatBodyHtml('# 标题\n\n- 一项\n\n**粗体** 与 `code`');
+  assert.match(mdHtml, /ha2-md-h/);
+  assert.match(mdHtml, /<ul>/);
+  assert.match(mdHtml, /<strong>/);
+  assert.match(mdHtml, /<code>/);
 
   assert.equal(typeof Caps.compactLocalChatUserText, 'function');
   const compact = Caps.compactLocalChatUserText(

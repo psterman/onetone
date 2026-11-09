@@ -181,11 +181,19 @@ function loadThemeManager({ matchDark = false, storage = {} } = {}) {
     '--ot-text-muted',
     '--ot-border',
     '--ot-accent',
+    '--ot-accent-fill',
   ]) {
     assert.ok(tokens.includes(key), `theme-tokens missing ${key}`);
   }
+  assert.ok(tokens.includes('--ot-accent: #087ea4'), 'light text accent for contrast');
+  assert.ok(tokens.includes('--ot-accent-fill: #2a9cc4'), 'light fill accent');
   assert.ok(tokens.includes('html[data-theme="dark"]'));
   assert.ok(tokens.includes('html[data-style="graphite"]'));
+  assert.ok(tokens.includes('html[data-theme="dark"][data-style="graphite"]'));
+  assert.ok(
+    /html\[data-style="graphite"\][\s\S]*?--ot-bg:\s*#eef1f5/.test(tokens),
+    'graphite must override surfaces, not only accent',
+  );
   assert.ok(tokens.includes('html[data-density="compact"]'));
 
   const index = read('src/index.html');
@@ -199,9 +207,24 @@ function loadThemeManager({ matchDark = false, storage = {} } = {}) {
   assert.ok(!index.includes('data-style-pick="dark"'));
   assert.ok(index.includes('data-theme-pick="system"'));
 
+  const island = read('src-islands/islands/basic-settings-island.tsx');
+  assert.ok(island.includes('data-ot-theme-pick="system"'), 'settings island exposes system mode');
+  assert.ok(island.includes('data-ot-style-pick="blue"'));
+  assert.ok(island.includes('data-ot-style-pick="graphite"'));
+
+  const nowCss = read('src/css/now-home.css');
+  assert.ok(/--hn-paper:\s*var\(--ot-surface/.test(nowCss), 'hn-paper maps to ot-surface');
+  assert.ok(/--hn-ink:\s*var\(--ot-text/.test(nowCss), 'hn-ink maps to ot-text');
+  assert.ok(/--hn-muted:\s*var\(--ot-text-muted/.test(nowCss), 'hn-muted maps to ot-text-muted');
+
   const appCss = read('src/css/app.css');
-  assert.ok(appCss.includes('--primary:var(--ot-accent)') || appCss.includes('--primary: var(--ot-accent)'));
+  assert.ok(
+    appCss.includes('--primary:var(--ot-accent-fill)') ||
+      appCss.includes('--primary: var(--ot-accent-fill)'),
+    'primary aliases to fill accent',
+  );
   assert.ok(appCss.includes('var(--ot-surface)') || appCss.includes('var(--ot-text)'));
+  assert.ok(appCss.includes('outline:2px solid var(--ot-accent)'), 'focus uses text accent');
 
   const wbCss = read('src/css/workbuddy-local-chat.css');
   assert.ok(!wbCss.includes('prefers-color-scheme'));
@@ -217,6 +240,48 @@ function loadThemeManager({ matchDark = false, storage = {} } = {}) {
   assert.ok(prefs.includes('setStyle'));
   assert.ok(prefs.includes('setMode'));
   assert.ok(!/data-style-pick[\s\S]{0,200}hooks\.setTheme/.test(prefs), 'style picks must not call setTheme');
+}
+
+// --- system mode pick stays active on stored mode ---
+{
+  const { api, document } = loadThemeManager();
+  document._picks.length = 0;
+  const sysBtn = {
+    getAttribute(name) {
+      return name === 'data-theme-pick' ? 'system' : null;
+    },
+    classList: {
+      _on: false,
+      toggle(_c, on) {
+        this._on = !!on;
+      },
+      contains() {
+        return this._on;
+      },
+    },
+  };
+  const lightBtn = {
+    getAttribute(name) {
+      return name === 'data-theme-pick' ? 'light' : null;
+    },
+    classList: {
+      _on: false,
+      toggle(_c, on) {
+        this._on = !!on;
+      },
+      contains() {
+        return this._on;
+      },
+    },
+  };
+  document.querySelectorAll = (sel) => {
+    if (sel.includes('data-theme-pick') && !sel.includes('ot-')) return [sysBtn, lightBtn];
+    return [];
+  };
+  api.setMode('system');
+  assert.equal(api.getState().mode, 'system');
+  assert.equal(sysBtn.classList._on, true, 'system pick marked active');
+  assert.equal(lightBtn.classList._on, false, 'light pick not active under system');
 }
 
 console.log('ok theme-manager persistence, system mode, tokens, settings split');

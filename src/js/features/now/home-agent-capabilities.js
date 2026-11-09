@@ -482,6 +482,40 @@
    *   workMode?: string|null
    * }} input
    */
+  function normalizeChatReplyTone(v) {
+    v = String(v || '').trim();
+    if (v === 'concise' || v === 'colleague') return v;
+    return 'natural';
+  }
+
+  /**
+   * Soft style hint only — never canned reply templates / never post-rewrites model text.
+   * Caller supplies tone (FE reads onetone.chat.replyTone); default natural.
+   */
+  function chatReplyToneHint(tone) {
+    tone = normalizeChatReplyTone(tone);
+    var style =
+      tone === 'concise'
+        ? '短句要点，少铺垫。'
+        : tone === 'colleague'
+          ? '同事口吻，可你/我。'
+          : '口语、先结论。';
+    return (
+      '回复语气：' +
+      style +
+      ' 结构需要时可用轻量 Markdown（标题/列表/加粗），勿堆砌框架表。'
+    );
+  }
+
+  /** Prefix materialsSummary so Rust peels it into the chat system prompt. */
+  function withChatReplyToneMaterials(body, tone) {
+    var hint = chatReplyToneHint(tone);
+    var rest = String(body || '');
+    if (!hint) return rest;
+    if (/^reply_tone:/m.test(rest)) return rest;
+    return 'reply_tone:' + hint + (rest ? '\n' + rest : '');
+  }
+
   function buildLocalChatSystemPrompt(input) {
     input = input || {};
     var path = String(input.projectPath || '').trim();
@@ -518,6 +552,7 @@
           '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。',
           '勿臆测「本机无网/离线」。时效信息（天气等）缺城市时先反向问一句。'
         ];
+    lines.push(chatReplyToneHint(input.replyTone));
     if (path) {
       lines.push('项目：' + (name ? name + ' · ' : '') + path);
     } else {
@@ -740,6 +775,9 @@
     projectPermissions: projectPermissions,
     projectSession: projectSession,
     resolveHomeTimelineWorkspace: resolveHomeTimelineWorkspace,
+    normalizeChatReplyTone: normalizeChatReplyTone,
+    chatReplyToneHint: chatReplyToneHint,
+    withChatReplyToneMaterials: withChatReplyToneMaterials,
     buildLocalChatSystemPrompt: buildLocalChatSystemPrompt,
     formatChatBodyHtml: formatChatBodyHtml,
     compactLocalChatUserText: compactLocalChatUserText,

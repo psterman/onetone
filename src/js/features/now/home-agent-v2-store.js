@@ -2863,7 +2863,43 @@
       state.modelRouting = global.OneToneModelGateway.snapshot();
     }
     // skipBlockingCheck re-enters after abandon; must not return the outer in-flight promise.
-    if (atrSendInFlight && !opts.skipBlockingCheck) return atrSendInFlight;
+    // Chat lane: a new question must never attach to the previous drive — that left
+    // empty thinking chips + no reply under the latest user turn.
+    if (atrSendInFlight && !opts.skipBlockingCheck) {
+      if (chatLane) {
+        var chatRestartGoal = String(opts.goal || '').trim();
+        return abandonAgentTask()
+          .catch(function (err) {
+            if (String((err && err.message) || err) === 'no_task') return null;
+            return Promise.reject(err);
+          })
+          .then(function () {
+            state.atrSendConflict = null;
+            state.validationNotice = null;
+            return startAndDriveAgentTask(
+              Object.assign({}, opts, {
+                goal: chatRestartGoal,
+                skipBlockingCheck: true,
+                skipPlanConfirm: true,
+                planConfirmed: true,
+                permissionMode: opts.permissionMode || 'read_only',
+                lane: 'chat'
+              })
+            );
+          })
+          .catch(function (err) {
+            var raw = String((err && err.message) || err || '');
+            atrNotice(
+              'atr_abandon_start_failed',
+              '旧对话已清理，提问未启动：' + raw.slice(0, 120),
+              { code: 'abandon_start_failed', abandoned: true }
+            );
+            emit();
+            return null;
+          });
+      }
+      return atrSendInFlight;
+    }
 
     var A = atrApi();
     if (!A || !atrFeatureOn()) {
@@ -2984,7 +3020,7 @@
 
     state.atrSendConflict = null;
 
-    atrSendInFlight = (
+    var flight = (
       opts.verifySandboxRoot
         ? Promise.resolve(String(opts.verifySandboxRoot))
         : opts.chatScratchRoot
@@ -3237,15 +3273,18 @@
       })
       .then(
         function (result) {
-          atrSendInFlight = null;
+          // Only the active flight may clear the latch — a superseded chat restart
+          // must not null out the newer in-flight promise.
+          if (atrSendInFlight === flight) atrSendInFlight = null;
           return result;
         },
         function (err) {
-          atrSendInFlight = null;
+          if (atrSendInFlight === flight) atrSendInFlight = null;
           return Promise.reject(err);
         }
       );
 
+    atrSendInFlight = flight;
     return atrSendInFlight;
   }
 
