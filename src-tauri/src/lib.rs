@@ -1387,6 +1387,7 @@ pub fn run() {
             ipc::cmd_run_archive_list,
             ipc::cmd_run_archive_remove,
             ipc::cmd_agent_task_start,
+            ipc::cmd_agent_task_confirm_plan,
             ipc::cmd_agent_task_status,
             ipc::cmd_agent_task_events,
             ipc::cmd_agent_task_cancel,

@@ -5,7 +5,7 @@ use std::path::Path;
 use rusqlite::Connection;
 use serde_json::json;
 
-use super::contracts::TaskStatus;
+use super::contracts::{TaskStatus, WaitingReason};
 use super::scope;
 use super::store::{append_event_and_update_task, get_task, interrupt_active_tasks, now_ms, TaskRow};
 use super::tools;
@@ -76,7 +76,12 @@ pub fn resume_task(conn: &mut Connection, task_id: &str) -> Result<TaskRow, Stri
 
     task.status = next_status.as_str().into();
     task.waiting_reason = match next_status {
-        TaskStatus::Waiting => task.waiting_reason.clone().or(Some("approval".into())),
+        TaskStatus::Waiting => task
+            .waiting_reason
+            .clone()
+            .filter(|r| WaitingReason::parse(r).is_some())
+            .or(Some(WaitingReason::Approval.as_str().into())),
+        // Interrupted marker (not a WaitingReason) — column reused for resume hints.
         TaskStatus::Interrupted => Some("external_change".into()),
         _ => None,
     };
@@ -104,7 +109,7 @@ pub fn resume_task(conn: &mut Connection, task_id: &str) -> Result<TaskRow, Stri
 pub fn abandon_task(conn: &mut Connection, task_id: &str) -> Result<TaskRow, String> {
     let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
     task.status = TaskStatus::Cancelled.as_str().into();
-    task.waiting_reason = Some("abandoned".into());
+    task.waiting_reason = Some(WaitingReason::Abandoned.as_str().into());
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let ev = append_event_and_update_task(
         &tx,

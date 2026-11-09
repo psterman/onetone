@@ -17,8 +17,8 @@ mod verify_accept;
 mod workbuddy;
 
 pub use contracts::{
-    ApprovePatchRequest, PermissionMode, StartTaskRequest, SubmitUserInputRequest, TaskDto,
-    TaskEventDto, TaskIdRequest, TaskStatus,
+    ApprovePatchRequest, ConfirmPlanRequest, PermissionMode, StartTaskRequest,
+    SubmitUserInputRequest, TaskDto, TaskEventDto, TaskIdRequest, TaskStatus,
 };
 pub use deepseek::deepseek_ready;
 pub use engine::{
@@ -74,6 +74,7 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
                     None,
                 )
             };
+        let plan_confirmed = req.plan_confirmed.unwrap_or(false) || req.use_fake_driver;
         let task = start_task(
             conn,
             StartOpts {
@@ -85,6 +86,7 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
                 sandbox_id: sandbox_id.clone(),
                 expected_rel_path,
                 expected_content,
+                plan_confirmed,
             },
         )?;
         if let Some(ref sid) = sandbox_id {
@@ -92,6 +94,18 @@ pub fn api_start(req: StartTaskRequest) -> Result<TaskDto, String> {
         }
         let _ = req.use_fake_driver;
         Ok(task.to_dto())
+    })
+}
+
+pub fn api_confirm_plan(req: ConfirmPlanRequest) -> Result<TaskDto, String> {
+    with_write(|conn| {
+        engine::confirm_plan(
+            conn,
+            &req.task_id,
+            req.plan,
+            req.goal.as_deref(),
+        )
+        .map(|t| t.to_dto())
     })
 }
 
@@ -244,7 +258,15 @@ fn drive_releasing(
             });
         }
 
-        let prep = with_write(|conn| engine::prep_turn(conn, task_id, &recent))?;
+        let prep = match with_write(|conn| engine::prep_turn(conn, task_id, &recent)) {
+            Ok(p) => p,
+            Err(e) if e == "budget_tools" || e == "budget_time" => {
+                return with_write(|conn| {
+                    engine::fail_task_public(conn, task_id, &e).map(|t| t.to_dto())
+                });
+            }
+            Err(e) => return Err(e),
+        };
         let Some(prep) = prep else {
             return with_write(|conn| {
                 let task = get_task(conn, task_id)?.ok_or_else(|| "task_not_found".to_string())?;

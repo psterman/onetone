@@ -205,7 +205,8 @@ async function main() {
     }
   });
   assert.equal(gated.isPlanConfirmed(), false);
-  assert.equal(gated.snapshot().status, 'waiting_approval');
+  assert.equal(gated.snapshot().status, 'waiting');
+  assert.equal(gated.snapshot().stopReason, 'awaiting_plan');
   const denied = await gated.stepAtr({ taskId: 't1' });
   assert.equal(denied.ok, false);
   assert.equal(denied.code, 'plan_not_confirmed');
@@ -315,10 +316,27 @@ async function main() {
   assert.equal(migrated.tasks[0].taskId, 'uuid-9');
   assert.equal(migrated.actions[0].taskId, 'uuid-9');
 
-  // PAUSE must not include verifying
+  // PAUSE must not include verifying; canonical pause is waiting.
   assert.equal(!!Controller.PAUSE.verifying, false);
   assert.equal(!!Controller.PAUSE.repair, false);
-  assert.equal(!!Controller.PAUSE.waiting_approval, true);
+  assert.equal(!!Controller.PAUSE.waiting, true);
+
+  // Poll-style finish must keep waiting + reason (not invent waiting_approval status).
+  const polled = Controller.create({
+    runId: 'own-poll',
+    mode: 'work',
+    budget: { model: 4 },
+    skipArchiveLoad: true,
+    planConfirmed: true,
+    permissions: ['*'],
+    invoke() {
+      return Promise.resolve({});
+    }
+  });
+  polled.bindAtrTask({ taskId: 't-poll', status: 'running' });
+  polled.finish('waiting', 'user_input');
+  assert.equal(polled.snapshot().status, 'waiting');
+  assert.equal(polled.snapshot().stopReason, 'user_input');
 
   console.log('test-controller-ownership: ok');
 }

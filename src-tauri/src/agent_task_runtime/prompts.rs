@@ -333,6 +333,9 @@ mod tests {
             sandbox_id: None,
             expected_rel_path: None,
             expected_content: None,
+        plan_json: None,
+        plan_version: 0,
+        plan_status: "none".into(),
         };
         let mats = "reply_tone:回复语气：口语、先结论。\nuser: hi\nassistant: hello";
         let msgs = build_messages_with_materials(&task, "", "", mats);
@@ -393,6 +396,9 @@ mod tests {
             sandbox_id: None,
             expected_rel_path: None,
             expected_content: None,
+        plan_json: None,
+        plan_version: 0,
+        plan_status: "none".into(),
         };
         let ctx = task_context_prompt(&task, "", "", "user: hi\nassistant: hello");
         assert!(ctx.contains("prior_chat:"), "{ctx}");

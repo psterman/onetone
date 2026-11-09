@@ -92,6 +92,35 @@ fn open_rw(path: &Path) -> Result<Connection, String> {
     Ok(conn)
 }
 
+fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool, String> {
+    let mut stmt = conn
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(|e| format!("pragma table_info {table}: {e}"))?;
+    let names = stmt
+        .query_map([], |r| r.get::<_, String>(1))
+        .map_err(|e| format!("pragma table_info rows: {e}"))?;
+    for name in names {
+        let n = name.map_err(|e| format!("pragma col: {e}"))?;
+        if n == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Idempotent ADD COLUMN — heals DBs where migration version was recorded without columns.
+fn ensure_column(conn: &Connection, table: &str, column: &str, decl: &str) -> Result<(), String> {
+    if table_has_column(conn, table, column)? {
+        return Ok(());
+    }
+    conn.execute(
+        &format!("ALTER TABLE {table} ADD COLUMN {column} {decl}"),
+        [],
+    )
+    .map_err(|e| format!("add column {table}.{column}: {e}"))?;
+    Ok(())
+}
+
 fn migrate(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(SCHEMA)
         .map_err(|e| format!("atr schema: {e}"))?;
@@ -175,6 +204,42 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         )
         .map_err(|e| format!("atr migrate v3 record: {e}"))?;
     }
+    // v4 plan columns — always ensure physically present (heals half-applied DBs).
+    ensure_column(conn, "agent_tasks", "plan_json", "TEXT")?;
+    ensure_column(
+        conn,
+        "agent_tasks",
+        "plan_version",
+        "INTEGER NOT NULL DEFAULT 0",
+    )?;
+    ensure_column(
+        conn,
+        "agent_tasks",
+        "plan_status",
+        "TEXT NOT NULL DEFAULT 'none'",
+    )?;
+    let v4: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM atr_schema_migrations WHERE version = 4",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if v4 == 0 {
+        // Existing write-lane tasks were already FE-confirmed; don't block resume.
+        conn.execute(
+            "UPDATE agent_tasks SET plan_status = 'confirmed'
+             WHERE permission_mode != 'read_only' AND permission_mode != 'readonly'
+               AND (plan_status IS NULL OR plan_status = '' OR plan_status = 'none')",
+            [],
+        )
+        .map_err(|e| format!("atr migrate v4 backfill: {e}"))?;
+        conn.execute(
+            "INSERT INTO atr_schema_migrations(version, applied_at_ms) VALUES (4, ?1)",
+            [now_ms() as i64],
+        )
+        .map_err(|e| format!("atr migrate v4 record: {e}"))?;
+    }
     Ok(())
 }
 
@@ -247,6 +312,11 @@ pub struct TaskRow {
     pub sandbox_id: Option<String>,
     pub expected_rel_path: Option<String>,
     pub expected_content: Option<String>,
+    /// Work-lane plan blob (JSON). Chat/read_only leaves None.
+    pub plan_json: Option<String>,
+    pub plan_version: u32,
+    /// `none` | `draft` | `confirmed` | `superseded`
+    pub plan_status: String,
 }
 
 impl TaskRow {
@@ -290,6 +360,12 @@ impl TaskRow {
             provider_duration_ms: None,
             fallback_from: None,
             live_thinking: None,
+            plan_json: self
+                .plan_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok()),
+            plan_version: self.plan_version,
+            plan_status: Some(self.plan_status.clone()),
         }
     }
 }
@@ -330,6 +406,11 @@ fn map_task(r: &rusqlite::Row<'_>) -> rusqlite::Result<TaskRow> {
         sandbox_id: r.get(25)?,
         expected_rel_path: r.get(26)?,
         expected_content: r.get(27)?,
+        plan_json: r.get(28)?,
+        plan_version: r.get::<_, Option<i64>>(29)?.unwrap_or(0) as u32,
+        plan_status: r
+            .get::<_, Option<String>>(30)?
+            .unwrap_or_else(|| "none".into()),
     })
 }
 
@@ -338,7 +419,7 @@ const TASK_SELECT: &str = "SELECT task_id, goal, workspace_root, permission_mode
   pending_approval_token, pending_patch_json, fingerprints_json, checkpoint_id, last_error,
   repair_count, format_retry_count, applied_tokens_json, created_at_ms, updated_at_ms,
   provider_id, model_id, config_fp, driver_kind, verify_intent, sandbox_id,
-  expected_rel_path, expected_content
+  expected_rel_path, expected_content, plan_json, plan_version, plan_status
   FROM agent_tasks";
 
 pub fn get_task(conn: &Connection, task_id: &str) -> Result<Option<TaskRow>, String> {
@@ -432,8 +513,9 @@ pub fn append_event_and_update_task(
           changed_files_json=?5, baseline_dirty_json=?6, pending_approval_token=?7,
           pending_patch_json=?8, fingerprints_json=?9, checkpoint_id=?10, last_error=?11,
           repair_count=?12, format_retry_count=?13, applied_tokens_json=?14,
-          permission_mode=?15, updated_at_ms=?16
-         WHERE task_id=?17",
+          permission_mode=?15, plan_json=?16, plan_version=?17, plan_status=?18,
+          updated_at_ms=?19
+         WHERE task_id=?20",
         params![
             task.status,
             task.waiting_reason,
@@ -450,6 +532,9 @@ pub fn append_event_and_update_task(
             task.format_retry_count as i64,
             task.applied_tokens_json,
             task.permission_mode,
+            task.plan_json,
+            task.plan_version as i64,
+            task.plan_status,
             created as i64,
             task.task_id
         ],
@@ -477,9 +562,9 @@ pub fn insert_task(conn: &Connection, task: &TaskRow) -> Result<(), String> {
           last_error, repair_count, format_retry_count, applied_tokens_json,
           created_at_ms, updated_at_ms,
           provider_id, model_id, config_fp, driver_kind, verify_intent, sandbox_id,
-          expected_rel_path, expected_content
+          expected_rel_path, expected_content, plan_json, plan_version, plan_status
         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,
-          ?21,?22,?23,?24,?25,?26,?27,?28)",
+          ?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31)",
         params![
             task.task_id,
             task.goal,
@@ -508,7 +593,10 @@ pub fn insert_task(conn: &Connection, task: &TaskRow) -> Result<(), String> {
             if task.verify_intent { 1i64 } else { 0i64 },
             task.sandbox_id,
             task.expected_rel_path,
-            task.expected_content
+            task.expected_content,
+            task.plan_json,
+            task.plan_version as i64,
+            task.plan_status
         ],
     )
     .map_err(|e| format!("insert task: {e}"))?;
@@ -757,6 +845,114 @@ pub fn replay_status(conn: &Connection, task_id: &str) -> Result<String, String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn migrate_heals_missing_plan_columns_even_if_v4_marked() {
+        let path = std::env::temp_dir().join(format!(
+            "atr_plan_heal_{}.sqlite3",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        // Simulate a broken DB: v4 recorded, but plan_* columns never added.
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(
+                r#"
+                CREATE TABLE atr_schema_migrations (
+                  version INTEGER PRIMARY KEY,
+                  applied_at_ms INTEGER NOT NULL
+                );
+                CREATE TABLE agent_tasks (
+                  task_id TEXT PRIMARY KEY,
+                  goal TEXT NOT NULL,
+                  workspace_root TEXT NOT NULL,
+                  permission_mode TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  waiting_reason TEXT,
+                  current_turn INTEGER NOT NULL DEFAULT 0,
+                  tool_call_count INTEGER NOT NULL DEFAULT 0,
+                  changed_files_json TEXT NOT NULL DEFAULT '[]',
+                  baseline_dirty_json TEXT NOT NULL DEFAULT '[]',
+                  pending_approval_token TEXT,
+                  pending_patch_json TEXT,
+                  fingerprints_json TEXT NOT NULL DEFAULT '{}',
+                  checkpoint_id TEXT,
+                  last_error TEXT,
+                  repair_count INTEGER NOT NULL DEFAULT 0,
+                  format_retry_count INTEGER NOT NULL DEFAULT 0,
+                  applied_tokens_json TEXT NOT NULL DEFAULT '[]',
+                  created_at_ms INTEGER NOT NULL,
+                  updated_at_ms INTEGER NOT NULL,
+                  provider_id TEXT,
+                  model_id TEXT,
+                  config_fp TEXT,
+                  driver_kind TEXT NOT NULL DEFAULT 'unknown',
+                  verify_intent INTEGER NOT NULL DEFAULT 0,
+                  sandbox_id TEXT,
+                  expected_rel_path TEXT,
+                  expected_content TEXT
+                );
+                CREATE TABLE agent_task_events (
+                  event_id TEXT PRIMARY KEY,
+                  task_id TEXT NOT NULL,
+                  seq INTEGER NOT NULL,
+                  kind TEXT NOT NULL,
+                  turn INTEGER NOT NULL DEFAULT 0,
+                  tool_name TEXT,
+                  payload_json TEXT NOT NULL,
+                  created_at_ms INTEGER NOT NULL,
+                  UNIQUE(task_id, seq)
+                );
+                INSERT INTO atr_schema_migrations(version, applied_at_ms) VALUES (1, 1), (2, 1), (3, 1), (4, 1);
+                "#,
+            )
+            .unwrap();
+        }
+        with_conn_at(&path, |conn| {
+            assert!(table_has_column(conn, "agent_tasks", "plan_json")?);
+            assert!(table_has_column(conn, "agent_tasks", "plan_version")?);
+            assert!(table_has_column(conn, "agent_tasks", "plan_status")?);
+            let now = now_ms();
+            let task = TaskRow {
+                task_id: "heal1".into(),
+                goal: "g".into(),
+                workspace_root: "/tmp".into(),
+                permission_mode: "read_only".into(),
+                status: "running".into(),
+                waiting_reason: None,
+                current_turn: 0,
+                tool_call_count: 0,
+                changed_files_json: "[]".into(),
+                baseline_dirty_json: "[]".into(),
+                pending_approval_token: None,
+                pending_patch_json: None,
+                fingerprints_json: "{}".into(),
+                checkpoint_id: None,
+                last_error: None,
+                repair_count: 0,
+                format_retry_count: 0,
+                applied_tokens_json: "[]".into(),
+                created_at: now,
+                updated_at: now,
+                provider_id: None,
+                model_id: None,
+                config_fp: None,
+                driver_kind: "unknown".into(),
+                verify_intent: false,
+                sandbox_id: None,
+                expected_rel_path: None,
+                expected_content: None,
+                plan_json: None,
+                plan_version: 0,
+                plan_status: "confirmed".into(),
+            };
+            insert_task(conn, &task)?;
+            Ok(())
+        })
+        .unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
     #[test]
     fn events_are_append_only_insert() {
         let path = std::env::temp_dir().join(format!(
@@ -795,6 +991,9 @@ mod tests {
                 sandbox_id: None,
                 expected_rel_path: None,
                 expected_content: None,
+                plan_json: None,
+                plan_version: 0,
+                plan_status: "none".into(),
             };
             insert_task(conn, &task)?;
             append_event_and_update_task(

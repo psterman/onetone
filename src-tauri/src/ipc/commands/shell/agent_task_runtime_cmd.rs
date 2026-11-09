@@ -1,14 +1,19 @@
 //! IPC for Agent Task Runtime.
 
 use crate::agent_task_runtime::{
-    self, ApprovePatchRequest, StartTaskRequest, SubmitUserInputRequest, TaskDto, TaskEventDto,
-    TaskIdRequest,
+    self, ApprovePatchRequest, ConfirmPlanRequest, StartTaskRequest, SubmitUserInputRequest,
+    TaskDto, TaskEventDto, TaskIdRequest,
 };
 use serde::Deserialize;
 
 #[tauri::command]
 pub fn cmd_agent_task_start(args: StartTaskRequest) -> Result<TaskDto, String> {
     agent_task_runtime::api_start(args)
+}
+
+#[tauri::command]
+pub fn cmd_agent_task_confirm_plan(args: ConfirmPlanRequest) -> Result<TaskDto, String> {
+    agent_task_runtime::api_confirm_plan(args)
 }
 
 #[tauri::command]

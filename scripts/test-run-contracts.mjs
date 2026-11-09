@@ -81,11 +81,25 @@ assert.throws(
 );
 
 assert.equal(C.mapAtrStatus('done'), 'completed');
-assert.equal(C.mapAtrStatus('waiting'), 'waiting_approval');
-assert.equal(C.mapAtrStatus('needs_input'), 'waiting_user');
+assert.equal(C.mapAtrStatus('waiting'), 'waiting');
+assert.equal(C.mapAtrStatus('waiting_approval'), 'waiting');
+assert.equal(C.mapAtrStatus('needs_input'), 'waiting');
 assert.equal(C.mapAtrStatus('verifying'), 'verifying');
 assert.equal(C.mapAtrStatus('repair'), 'repair');
 assert.equal(C.mapAtrStatus('interrupted'), 'interrupted');
+assert.equal(C.normalizeWaitingReason('waiting_approval'), 'approval');
+assert.equal(C.normalizeWaitingReason('user_input'), 'user_input');
+const projWait = C.projectAtrTask({
+  status: 'waiting',
+  waitingReason: 'user_input'
+});
+assert.equal(projWait.status, 'waiting');
+assert.equal(projWait.waitingReason, 'user_input');
+assert.equal(projWait.busy, false);
+assert.equal(projWait.pauseKind, 'user_input');
+const projBusy = C.projectAtrTask({ status: 'verifying' });
+assert.equal(projBusy.busy, true);
+assert.equal(projBusy.status, 'verifying');
 
 const live = C.createRun({ runId: 'r-live', status: 'running' });
 live.actions = [C.createAction({ toolId: 'web_search', input: { query: 'a' }, status: 'running' })];

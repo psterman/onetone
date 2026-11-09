@@ -13,14 +13,23 @@
   };
   /**
    * Pause: no new atr_turn until resume/continue.
+   * Canonical pause status is waiting; legacy aliases normalize to waiting.
    * verifying / repair / review stay running so Controller keeps stepping.
    */
   var PAUSE = {
-    waiting: true, waiting_approval: true, waiting_user: true
+    waiting: true,
+    // Legacy aliases (normalize to waiting via mapAtrStatus / finish).
+    waiting_approval: true,
+    waiting_user: true
   };
   var ATR_IDLE = {
-    waiting: 1, waiting_approval: 1, waiting_user: 1,
-    completed: 1, failed: 1, cancelled: 1, interrupted: 1
+    waiting: 1,
+    waiting_approval: 1,
+    waiting_user: 1,
+    completed: 1,
+    failed: 1,
+    cancelled: 1,
+    interrupted: 1
   };
 
   function contracts() { return global.OneToneRunContracts; }
@@ -116,7 +125,7 @@
       || !!(opts.plan && (opts.plan.confirmed === true || opts.plan.status === 'confirmed'));
     if (state.mode === 'work' && !planConfirmed && !opts.restore) {
       state.phase = 'plan';
-      state.status = 'waiting_approval';
+      state.status = 'waiting';
       state.stopReason = 'awaiting_plan';
       state.resumeAvailable = true;
     }
@@ -367,7 +376,8 @@
       var atrId = (dto && dto.taskId) ? String(dto.taskId) : boundAtrTaskId();
       if (dto && dto.taskId) bindAtrTask(dto);
       if (dto && dto.status) {
-        var mapped = map(dto.status);
+        var proj = C.projectAtrTask ? C.projectAtrTask(dto) : null;
+        var mapped = proj ? proj.status : map(dto.status);
         // Keep verifying/repair as running so the outer Controller loop can step.
         if (mapped === 'verifying' || mapped === 'repair') {
           state.status = 'running';
@@ -376,7 +386,14 @@
           state.updatedAt = nowIso();
           emitEvent('status', { status: state.status, reason: state.stopReason, atrStatus: mapped });
         } else {
-          setStatus(mapped, dto.lastError || dto.waitingReason || null);
+          setStatus(
+            mapped,
+            dto.lastError ||
+              (proj && proj.waitingReason) ||
+              dto.waitingReason ||
+              dto.waiting_reason ||
+              null
+          );
         }
       }
       if (dto) {
@@ -463,14 +480,23 @@
 
     function setStatus(status, reason) {
       var next = String(status || '');
-      if (C.mapAtrStatus && !C.RUN_STATUSES[next]) {
+      if (C.mapAtrStatus) {
         next = C.mapAtrStatus(next);
+      } else if (!C.RUN_STATUSES[next]) {
+        next = String(status || '');
       }
       if (!C.RUN_STATUSES[next]) throw new Error('invalid_status:' + status);
       state.status = next;
-      if (reason) state.stopReason = String(reason);
-      if (PAUSE[next]) {
-        state.resumeAvailable = next === 'waiting_approval' || next === 'waiting_user' || next === 'interrupted';
+      if (reason) {
+        var nr =
+          C.normalizeWaitingReason && next === 'waiting'
+            ? C.normalizeWaitingReason(reason)
+            : null;
+        state.stopReason = nr || String(reason);
+      }
+      if (PAUSE[next] || next === 'waiting') {
+        state.resumeAvailable =
+          next === 'waiting' || next === 'interrupted';
       }
       if (TERMINAL[next] && next !== 'interrupted') {
         state.resumeAvailable = false;
@@ -541,11 +567,25 @@
       if (!tool || !tool.executor) {
         return Promise.resolve({ ok: true, result: input || {} });
       }
+      // ATR owns workspace + chat/work network tools. Research mode still drives
+      // web_search/fetch_url via research IPC from the Controller.
       if (tool.executor === 'atr_internal') {
-        return Promise.reject(Object.assign(
-          new Error('atr_internal_not_executable'),
-          { code: 'atr_internal_not_executable' }
-        ));
+        if (
+          state.mode === 'research' &&
+          (tool.id === 'web_search' || tool.id === 'fetch_url')
+        ) {
+          tool = Object.assign({}, tool, {
+            executor:
+              tool.id === 'web_search'
+                ? 'cmd_research_web_search'
+                : 'cmd_research_fetch_url'
+          });
+        } else {
+          return Promise.reject(Object.assign(
+            new Error('atr_internal_not_executable'),
+            { code: 'atr_internal_not_executable' }
+          ));
+        }
       }
       if (tool.executor === 'model_chat') {
         var gw = gateway();
@@ -794,9 +834,8 @@
     }
 
     function finish(status, reason) {
-      var mapped = status;
-      if (C.mapAtrStatus && status === 'waiting') mapped = 'waiting_approval';
-      if (PAUSE[mapped]) {
+      var mapped = C.mapAtrStatus ? C.mapAtrStatus(status) : String(status || '');
+      if (PAUSE[mapped] || mapped === 'waiting') {
         return setStatus(mapped, reason);
       }
       state.status = TERMINAL[mapped] ? mapped : (C.RUN_STATUSES[mapped] ? mapped : 'failed');
@@ -846,6 +885,18 @@
       state.resumeAvailable = false;
       state.updatedAt = nowIso();
       emitEvent('plan_confirmed', { plan: state.plan });
+      // Persist to ATR when a task is already bound (start usually sends planConfirmed).
+      var tid = boundAtrTaskId();
+      var A = global.OneToneHomeAgentTask;
+      if (tid && A && typeof A.confirmPlan === 'function') {
+        try {
+          A.confirmPlan({
+            taskId: tid,
+            plan: state.plan,
+            goal: state.goal || plan.goal || ''
+          }).catch(function () {});
+        } catch (_) {}
+      }
       return { ok: true, snapshot: snapshot() };
     }
 

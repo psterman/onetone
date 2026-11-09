@@ -51,7 +51,43 @@ impl TaskStatus {
     }
 
     pub fn is_active_exec(self) -> bool {
-        matches!(self, Self::Running | Self::Verifying | Self::Repair)
+        matches!(self, Self::Running | Self::Verifying | Self::Repair | Self::Review)
+    }
+}
+
+/// Canonical wait reason when `TaskStatus::Waiting` (also reused for abandon marker).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WaitingReason {
+    Approval,
+    UserInput,
+    DeliverApproval,
+    Abandoned,
+}
+
+impl WaitingReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Approval => "approval",
+            Self::UserInput => "user_input",
+            Self::DeliverApproval => "deliver_approval",
+            Self::Abandoned => "abandoned",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim() {
+            "approval" => Some(Self::Approval),
+            "user_input" => Some(Self::UserInput),
+            "deliver_approval" => Some(Self::DeliverApproval),
+            "abandoned" => Some(Self::Abandoned),
+            _ => None,
+        }
+    }
+
+    /// Reject unknown reasons at the write boundary for Waiting status.
+    pub fn require(s: &str) -> Result<Self, String> {
+        Self::parse(s).ok_or_else(|| format!("invalid_waiting_reason:{s}"))
     }
 }
 
@@ -103,6 +139,9 @@ pub struct StartTaskRequest {
     pub expected_rel_path: Option<String>,
     #[serde(default)]
     pub expected_content: Option<String>,
+    /// Work lane: FE already confirmed plan before start (chat/read_only ignores).
+    #[serde(default)]
+    pub plan_confirmed: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,6 +186,24 @@ pub struct TaskDto {
     /// Ephemeral WorkBuddy SSE progress while a drive turn is in flight (not persisted).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub live_thinking: Option<String>,
+    /// Work-lane versioned plan (chat/read_only usually none).
+    #[serde(default)]
+    pub plan_json: Option<Value>,
+    #[serde(default)]
+    pub plan_version: u32,
+    /// `none` | `draft` | `confirmed` | `superseded`
+    #[serde(default)]
+    pub plan_status: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmPlanRequest {
+    pub task_id: String,
+    #[serde(default)]
+    pub plan: Option<Value>,
+    #[serde(default)]
+    pub goal: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,7 +268,33 @@ pub const MAX_TOOL_JSON_DEPTH: usize = 8;
 pub const MAX_FORMAT_RETRIES: u32 = 1;
 /// Same tool+args in a row (WorkBuddy/vague goals often spin inspect). Fail early vs burning MAX_TURNS.
 pub const MAX_IDENTICAL_TOOL: u32 = 3;
+/// Observe-only tools with unchanged files — no-progress vs identical-args alone.
+pub const MAX_NO_PROGRESS: u32 = 4;
+/// Hard cap on tool invocations (budget), independent of turn count.
+pub const MAX_TOOL_CALLS: u32 = 48;
+/// Wall-clock budget from task created_at (ms).
+pub const MAX_WALL_MS: u64 = 15 * 60 * 1000;
 /// Chat lane: soft-cap web_search attempts — engine nudges force-finish (not stuck_loop).
 pub const CHAT_WEB_SEARCH_CAP: u32 = 3;
 /// Chat lane: after this many failed/empty web_search results, nudge force-finish.
 pub const CHAT_WEB_SEARCH_FAIL_CAP: u32 = 2;
+
+#[cfg(test)]
+mod tests {
+    use super::WaitingReason;
+
+    #[test]
+    fn waiting_reason_roundtrip() {
+        for r in [
+            WaitingReason::Approval,
+            WaitingReason::UserInput,
+            WaitingReason::DeliverApproval,
+            WaitingReason::Abandoned,
+        ] {
+            assert_eq!(WaitingReason::parse(r.as_str()), Some(r));
+            assert_eq!(WaitingReason::require(r.as_str()).unwrap(), r);
+        }
+        assert!(WaitingReason::require("bogus").is_err());
+        assert!(WaitingReason::parse("external_change").is_none());
+    }
+}

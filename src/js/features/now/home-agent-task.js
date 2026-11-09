@@ -88,17 +88,33 @@
 
   function start(opts) {
     opts = opts || {};
+    var pm = opts.permissionMode || readPermissionMode();
+    var chatLane =
+      String(pm || '').toLowerCase() === 'read_only' ||
+      String(pm || '').toLowerCase() === 'readonly' ||
+      opts.lane === 'chat';
     return invoke('cmd_agent_task_start', {
       goal: String(opts.goal || ''),
       workspaceRoot: String(opts.workspaceRoot || ''),
-      permissionMode: opts.permissionMode || readPermissionMode(),
+      permissionMode: pm,
       materialsSummary: opts.materialsSummary || '',
       useFakeDriver: !!opts.useFakeDriver,
       // Backend derives verify_intent + expected_* from sandbox registry when sandboxId set.
-      sandboxId: opts.sandboxId || null
+      sandboxId: opts.sandboxId || null,
+      // Work lane: FE confirmPlan already passed (or chat skips gate).
+      planConfirmed: chatLane || !!opts.planConfirmed || !!opts.skipPlanConfirm
     }).then(function (dto) {
       if (dto && dto.taskId) writeActiveId(dto.taskId);
       return dto;
+    });
+  }
+
+  function confirmPlan(opts) {
+    opts = opts || {};
+    return invoke('cmd_agent_task_confirm_plan', {
+      taskId: String(opts.taskId || ''),
+      plan: opts.plan || null,
+      goal: opts.goal != null ? String(opts.goal) : undefined
     });
   }
 
@@ -695,6 +711,7 @@
     verifyThroughController: verifyThroughController,
     enrichReadySnapshot: enrichReadySnapshot,
     start: start,
+    confirmPlan: confirmPlan,
     status: status,
     events: events,
     cancel: cancel,

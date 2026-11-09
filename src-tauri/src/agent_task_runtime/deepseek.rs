@@ -511,6 +511,9 @@ mod tests {
             sandbox_id: None,
             expected_rel_path: None,
             expected_content: None,
+        plan_json: None,
+        plan_version: 0,
+        plan_status: "none".into(),
         };
         let tools = openai_tools_for_task(&task);
         let names: Vec<&str> = tools

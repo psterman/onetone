@@ -48,22 +48,96 @@
   /** Product run statuses. `resumable` is NOT a status — use resumeAvailable + interrupted. */
   var RUN_STATUSES = {
     running: 1, completed: 1, failed: 1, cancelled: 1, waiting: 1,
+    // Legacy aliases — normalizeRun / mapAtrStatus collapse these to waiting.
     waiting_approval: 1, waiting_user: 1, verifying: 1, repair: 1, interrupted: 1
   };
 
-  /** Map ATR TaskRow.status → RunContracts run status. */
+  var WAITING_REASONS = {
+    approval: 1,
+    user_input: 1,
+    deliver_approval: 1,
+    abandoned: 1
+  };
+
+  var ATR_BUSY = {
+    running: 1,
+    verifying: 1,
+    repair: 1,
+    review: 1,
+    intake: 1
+  };
+
+  /** Map ATR TaskRow.status → RunContracts run status (reasons stay on waitingReason). */
   function mapAtrStatus(atrStatus) {
     var s = String(atrStatus || '').toLowerCase();
     if (s === 'done') return 'completed';
-    if (s === 'waiting') return 'waiting_approval';
-    if (s === 'needs_input' || s === 'waiting_input') return 'waiting_user';
+    // Legacy FE aliases → canonical waiting (reason lives separately).
+    if (
+      s === 'waiting' ||
+      s === 'waiting_approval' ||
+      s === 'waiting_user' ||
+      s === 'needs_input' ||
+      s === 'waiting_input'
+    ) {
+      return 'waiting';
+    }
     if (s === 'verifying' || s === 'review') return 'verifying';
     if (s === 'repair') return 'repair';
     if (s === 'failed') return 'failed';
     if (s === 'cancelled') return 'cancelled';
     if (s === 'interrupted') return 'interrupted';
-    if (s === 'running') return 'running';
+    if (s === 'running' || s === 'intake') return 'running';
     return RUN_STATUSES[s] ? s : 'running';
+  }
+
+  function normalizeWaitingReason(raw) {
+    var s = String(raw || '').trim().toLowerCase();
+    if (!s) return null;
+    if (WAITING_REASONS[s]) return s;
+    // Legacy event-kind / UI labels → canonical reason.
+    if (s === 'waiting_approval' || s === 'awaiting_approval' || s === 'patch') {
+      return 'approval';
+    }
+    if (s === 'waiting_user' || s === 'waiting_user_input' || s === 'needs_input') {
+      return 'user_input';
+    }
+    if (s === 'waiting_deliver' || s === 'deliver') return 'deliver_approval';
+    return null;
+  }
+
+  /**
+   * Sole ATR→UI/controller projection. Never invents phase from local flags.
+   * @returns {{ status:string, waitingReason:string|null, busy:boolean, pauseKind:string|null, atrStatus:string }}
+   */
+  function projectAtrTask(dto) {
+    dto = dto || {};
+    var atrStatus = String(dto.status || '').toLowerCase();
+    var status = mapAtrStatus(atrStatus);
+    var waitingReason = normalizeWaitingReason(
+      dto.waitingReason != null ? dto.waitingReason : dto.waiting_reason
+    );
+    if (status === 'waiting' && !waitingReason) {
+      waitingReason = 'user_input';
+    }
+    var busy = !!ATR_BUSY[atrStatus];
+    var pauseKind = null;
+    if (status === 'waiting') {
+      pauseKind =
+        waitingReason === 'approval'
+          ? 'approval'
+          : waitingReason === 'deliver_approval'
+            ? 'deliver_approval'
+            : 'user_input';
+    } else if (status === 'interrupted') {
+      pauseKind = 'interrupted';
+    }
+    return {
+      status: status,
+      waitingReason: waitingReason,
+      busy: busy,
+      pauseKind: pauseKind,
+      atrStatus: atrStatus || status
+    };
   }
 
   function nowIso() { return new Date().toISOString(); }
@@ -485,6 +559,10 @@
     coerceInterrupted: coerceInterrupted,
     migrateAtrTaskSlot: migrateAtrTaskSlot,
     mapAtrStatus: mapAtrStatus,
+    normalizeWaitingReason: normalizeWaitingReason,
+    projectAtrTask: projectAtrTask,
+    WAITING_REASONS: WAITING_REASONS,
+    ATR_BUSY: ATR_BUSY,
     scrubValue: scrubValue,
     id: id
   };

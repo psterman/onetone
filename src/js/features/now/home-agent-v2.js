@@ -11527,8 +11527,19 @@
       wbStreamingReasoning = '';
       wbStreamingTurnId = '';
       wbThinkingTurnId = '';
-      if (A && typeof A.cancel === 'function') {
-        A.cancel(atrId)
+      var Ctrl = global.OneToneAtrSessionController;
+      var cancelFn =
+        Ctrl && typeof Ctrl.cancel === 'function'
+          ? function (id) {
+              return Ctrl.cancel(id);
+            }
+          : A && typeof A.cancel === 'function'
+            ? function (id) {
+                return A.cancel(id);
+              }
+            : null;
+      if (cancelFn) {
+        cancelFn(atrId)
           .catch(function () {})
           .then(function () {
             if (String(chatStopPendingId) === String(atrId)) {
@@ -12651,13 +12662,75 @@
   }
 
   function chatAtrBusyPhase(st) {
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.chatAtrBusyPhase === 'function') {
+      return P.chatAtrBusyPhase(st);
+    }
     st = String(st || '');
     return (
       st === 'running' ||
       st === 'verifying' ||
       st === 'repair' ||
-      st === 'review'
+      st === 'review' ||
+      st === 'intake'
     );
+  }
+
+  /** ATR DTO projection — chatLoopTaskId/wbChatBusy must not invent phase. */
+  function projectChatAtr(task) {
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.projectChatAtr === 'function') {
+      return P.projectChatAtr(task);
+    }
+    var C = global.OneToneRunContracts;
+    if (C && typeof C.projectAtrTask === 'function') {
+      return C.projectAtrTask(task || {});
+    }
+    var st = String((task && task.status) || '');
+    return {
+      status: st === 'done' ? 'completed' : st,
+      waitingReason:
+        (task && (task.waitingReason || task.waiting_reason)) || null,
+      busy: chatAtrBusyPhase(st),
+      pauseKind: st === 'waiting' ? 'user_input' : null,
+      atrStatus: st
+    };
+  }
+
+  /**
+   * wbChatBusy is a projection cache: busy only when DTO is in a busy phase
+   * and a drive is alive (or opts.optimisticSend for the first paint before poll).
+   */
+  function syncWbChatBusyFromTask(task, opts) {
+    opts = opts || {};
+    var P = global.OneToneAtrSessionProjection;
+    if (P && typeof P.projectChatBusy === 'function') {
+      var out = P.projectChatBusy(task, {
+        optimisticSend: !!opts.optimisticSend,
+        driveAlive: opts.driveAlive === true,
+        stopPendingId: chatStopPendingId,
+        boundTaskId: chatLoopTaskId,
+        driveAliveFn: chatDriveAlive
+      });
+      wbChatBusy = !!out.busy;
+      return out.proj;
+    }
+    var proj = projectChatAtr(task);
+    var tid = String((task && task.taskId) || chatLoopTaskId || '');
+    if (chatStopPendingId && tid && tid === String(chatStopPendingId)) {
+      wbChatBusy = false;
+      return proj;
+    }
+    if (opts.optimisticSend) {
+      wbChatBusy = true;
+      return proj;
+    }
+    if (proj.busy && (opts.driveAlive === true || chatDriveAlive(tid))) {
+      wbChatBusy = true;
+    } else {
+      wbChatBusy = false;
+    }
+    return proj;
   }
 
   function chatDriveAlive(taskId) {
@@ -13120,32 +13193,44 @@
     if (!tid || chatHealTried[tid] || chatStopPendingId === tid) return false;
     if (!atrIsChatLoopTask(task)) return false;
     var S = store();
-    if (!S || typeof S.resumeAndDriveAgentTask !== 'function') return false;
+    var Ctrl = global.OneToneAtrSessionController;
+    var resumeFn =
+      Ctrl && typeof Ctrl.resumeAndDrive === 'function'
+        ? function () {
+            return Ctrl.resumeAndDrive();
+          }
+        : S && typeof S.resumeAndDriveAgentTask === 'function'
+          ? function () {
+              return S.resumeAndDriveAgentTask();
+            }
+          : null;
+    if (!resumeFn) return false;
     chatHealTried[tid] = true;
-    chatLoopTaskId = tid;
-    wbChatBusy = true;
+    chatLoopTaskId = tid; // binding cache only
+    syncWbChatBusyFromTask(
+      Object.assign({}, task || {}, { taskId: tid }),
+      { optimisticSend: true }
+    );
     wbStreamingText = '';
     wbStreamingReasoning = '';
     wbStreamingTurnId = '';
     chatBusySinceMs = Date.now();
-    upsertChatLoopProgressTurn(
-      Object.assign({}, task || {}, { taskId: tid, status: 'running' })
-    );
+    // Do not invent status:running — paint from last DTO + optimistic busy.
+    upsertChatLoopProgressTurn(Object.assign({}, task || {}, { taskId: tid }));
     paintWbTranscript();
-    S.resumeAndDriveAgentTask()
+    resumeFn()
       .then(function () {
         if (!mounted) return;
-        var next = S.getSnapshot && S.getSnapshot();
+        var next = S && S.getSnapshot && S.getSnapshot();
         var t2 = (next && next.agentTask) || null;
-        var st2 = String((t2 && t2.status) || '');
-        if (st2 === 'done') {
-          wbChatBusy = false;
+        var proj = syncWbChatBusyFromTask(t2);
+        if (proj.status === 'completed' || String((t2 && t2.status) || '') === 'done') {
           chatBusySinceMs = 0;
-        } else if (chatAtrBusyPhase(st2) || st2 === 'waiting') {
-          wbChatBusy = st2 !== 'waiting';
-          if (wbChatBusy) upsertChatLoopProgressTurn(t2);
+        } else if (proj.busy) {
+          upsertChatLoopProgressTurn(t2);
+        } else if (proj.status === 'waiting') {
+          chatBusySinceMs = 0;
         } else {
-          wbChatBusy = false;
           persistChatProcessTrace(
             tid,
             (next && next.agentTaskEvents) || [],
@@ -13157,9 +13242,9 @@
       })
       .catch(function () {
         if (!mounted) return;
-        wbChatBusy = false;
+        syncWbChatBusyFromTask(null);
         emitChatRecoveryTurn(tid);
-        paint(S.getSnapshot());
+        paint(S && S.getSnapshot ? S.getSnapshot() : snap);
       });
     return true;
   }
@@ -13479,16 +13564,16 @@
     if (chatAtrBusyPhase(st)) {
       if (!chatBusySinceMs) chatBusySinceMs = Date.now();
       if (chatDriveAlive(tid)) {
-        wbChatBusy = true;
+        syncWbChatBusyFromTask(task, { driveAlive: true });
         upsertChatLoopProgressTurn(task);
         maybeStallChatDrive(snap, task);
       } else {
-        wbChatBusy = false;
+        syncWbChatBusyFromTask(task);
         wbStreamingText = '';
         maybeHealChatDrive(snap, task);
       }
     } else if (st === 'waiting') {
-      wbChatBusy = false;
+      syncWbChatBusyFromTask(task);
       chatBusySinceMs = 0;
       if (tid) {
         delete chatHealTried[tid];
@@ -13507,7 +13592,7 @@
       if (st === 'cancelled' || st === 'failed') {
         finalizeChatLoopProgressTurn(tid);
       }
-      wbChatBusy = false;
+      syncWbChatBusyFromTask(task);
       wbStreamingText = '';
       wbStreamingReasoning = '';
       wbStreamingTurnId = '';
@@ -13630,18 +13715,30 @@
             return Promise.reject(err);
           })
           .then(function () {
-            return S.startAndDriveAgentTask({
-              goal: text,
-              materialsSummary:
-                chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
-                opts.materialsSummary ||
-                '',
-              permissionMode: 'read_only',
-              lane: 'chat',
-              skipPlanConfirm: true,
-              skipBlockingCheck: true,
-              provider: resolveAtrProviderForChat()
-            });
+            var Comp = global.OneToneChatComposer;
+            var sendOpts =
+              Comp && typeof Comp.buildChatSendOpts === 'function'
+                ? Comp.buildChatSendOpts(text, {
+                    materialsSummary:
+                      chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
+                      opts.materialsSummary ||
+                      '',
+                    skipBlockingCheck: true,
+                    provider: resolveAtrProviderForChat()
+                  })
+                : {
+                    goal: text,
+                    materialsSummary:
+                      chatHistoryMaterialsSummary(opts.materialsSummary || '') ||
+                      opts.materialsSummary ||
+                      '',
+                    permissionMode: 'read_only',
+                    lane: 'chat',
+                    skipPlanConfirm: true,
+                    skipBlockingCheck: true,
+                    provider: resolveAtrProviderForChat()
+                  };
+            return S.startAndDriveAgentTask(sendOpts);
           })
           .then(function (dto) {
             if (!mounted) return;
@@ -13768,14 +13865,22 @@
       wbThinkingTurnId = '';
     }
 
-    S.startAndDriveAgentTask({
-      goal: text,
-      materialsSummary: matSum,
-      permissionMode: 'read_only',
-      lane: 'chat',
-      skipPlanConfirm: true,
-      provider: provider
-    })
+    var Comp = global.OneToneChatComposer;
+    var sendOpts =
+      Comp && typeof Comp.buildChatSendOpts === 'function'
+        ? Comp.buildChatSendOpts(text, {
+            materialsSummary: matSum,
+            provider: provider
+          })
+        : {
+            goal: text,
+            materialsSummary: matSum,
+            permissionMode: 'read_only',
+            lane: 'chat',
+            skipPlanConfirm: true,
+            provider: provider
+          };
+    S.startAndDriveAgentTask(sendOpts)
       .then(function (dto) {
         if (!mounted) return;
         var stDone = dto ? String(dto.status || '') : '';

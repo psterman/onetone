@@ -387,7 +387,8 @@ assert.match(store, /provider_stream/);
     refresh[0],
     /dto\.status === 'running'[\s\S]{0,180}setStatus/
   );
-  assert.match(refresh[0], /finish\('waiting_approval'/);
+  assert.match(refresh[0], /projectAtrTask|ingestAtrTurn|finish\('waiting'/);
+  assert.doesNotMatch(refresh[0], /finish\('waiting_approval'/);
 }
 {
   const drive = store.match(

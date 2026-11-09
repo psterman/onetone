@@ -9,8 +9,9 @@ use sha2::{Digest, Sha256};
 
 use super::cancel::{self, TaskCancel};
 use super::contracts::{
-    PermissionMode, TaskStatus, CHAT_WEB_SEARCH_CAP, CHAT_WEB_SEARCH_FAIL_CAP,
-    MAX_FORMAT_RETRIES, MAX_IDENTICAL_TOOL, MAX_REPAIR, MAX_TOOL_JSON_DEPTH, MAX_TURNS,
+    PermissionMode, TaskStatus, WaitingReason, CHAT_WEB_SEARCH_CAP, CHAT_WEB_SEARCH_FAIL_CAP,
+    MAX_FORMAT_RETRIES, MAX_IDENTICAL_TOOL, MAX_NO_PROGRESS, MAX_REPAIR, MAX_TOOL_CALLS,
+    MAX_TOOL_JSON_DEPTH, MAX_TURNS, MAX_WALL_MS,
 };
 use super::parse::{self, ParseError, ToolCall};
 use super::prompts;
@@ -51,6 +52,8 @@ pub struct StartOpts {
     pub sandbox_id: Option<String>,
     pub expected_rel_path: Option<String>,
     pub expected_content: Option<String>,
+    /// When true, work-lane starts already plan-confirmed (FE gate already passed).
+    pub plan_confirmed: bool,
 }
 
 pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, String> {
@@ -101,6 +104,18 @@ pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, Str
         sandbox_id: opts.sandbox_id,
         expected_rel_path: opts.expected_rel_path,
         expected_content: opts.expected_content,
+        plan_json: None,
+        plan_version: 0,
+        // Chat/read_only + verify sandbox: no work-lane plan gate.
+        // Work/edit: draft until confirm_plan (or start with plan_confirmed).
+        plan_status: if opts.permission_mode == PermissionMode::ReadOnly
+            || opts.verify_intent
+            || opts.plan_confirmed
+        {
+            "confirmed".into()
+        } else {
+            "draft".into()
+        },
     };
     let tx = conn
         .unchecked_transaction()
@@ -116,8 +131,22 @@ pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, Str
             "baselineDirty": scope.baseline_dirty,
             "sessionId": session_id,
             "checkpointId": ckpt.checkpoint_id,
+            "planStatus": task.plan_status,
         }),
     )?;
+    if task.plan_status == "draft" {
+        let plan = json!({ "goal": task.goal, "version": 0, "status": "draft" });
+        task.plan_json = Some(plan.to_string());
+        let _ = append_event_and_update_task(&tx, &task, "plan_created", None, plan)?;
+    } else if task.plan_status == "confirmed"
+        && opts.permission_mode != PermissionMode::ReadOnly
+        && !opts.verify_intent
+    {
+        task.plan_version = 1;
+        let plan = json!({ "goal": task.goal, "version": 1, "status": "confirmed" });
+        task.plan_json = Some(plan.to_string());
+        let _ = append_event_and_update_task(&tx, &task, "plan_confirmed", None, plan)?;
+    }
     task = get_task(&tx, &task_id)?.ok_or("missing after start")?;
     tx.commit().map_err(|e| format!("commit start: {e}"))?;
     sync_memory_checkpoint(&task, Some(&ev.event_id));
@@ -125,7 +154,49 @@ pub fn start_task(conn: &mut Connection, opts: StartOpts) -> Result<TaskRow, Str
     Ok(task)
 }
 
+/// Persist work-lane plan confirmation (versioned). Chat/read_only is a no-op success.
+pub fn confirm_plan(
+    conn: &mut Connection,
+    task_id: &str,
+    plan: Option<Value>,
+    goal: Option<&str>,
+) -> Result<TaskRow, String> {
+    let mut task = get_task(conn, task_id)?.ok_or("task_not_found")?;
+    if PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly)
+        || task.verify_intent
+    {
+        return Ok(task);
+    }
+    if let Some(g) = goal.map(str::trim).filter(|s| !s.is_empty()) {
+        task.goal = g.to_string();
+    }
+    if task.plan_status == "confirmed" && plan.is_none() {
+        return Ok(task);
+    }
+    if task.plan_status == "confirmed" {
+        task.plan_status = "superseded".into();
+    }
+    task.plan_version = task.plan_version.saturating_add(1);
+    let mut body = plan.unwrap_or_else(|| {
+        json!({
+            "goal": task.goal,
+        })
+    });
+    if let Some(obj) = body.as_object_mut() {
+        obj.insert("version".into(), json!(task.plan_version));
+        obj.insert("status".into(), json!("confirmed"));
+        obj.entry("goal".to_string())
+            .or_insert_with(|| json!(task.goal));
+    }
+    task.plan_json = Some(body.to_string());
+    task.plan_status = "confirmed".into();
+    commit_event(conn, &task, "plan_confirmed", None, body)
+}
+
 /// Project ATR task onto the bound agent_memory checkpoint (same checkpoint_id).
+///
+/// Memory lifecycle stays a separate machine (`waiting_approval` session status).
+/// This adapter only maps ATR `status` + `waiting_reason` → checkpoint hints.
 pub fn sync_memory_checkpoint(task: &TaskRow, last_event_id: Option<&str>) {
     let Some(ckpt_id) = task.checkpoint_id.as_deref() else {
         return;
@@ -133,8 +204,16 @@ pub fn sync_memory_checkpoint(task: &TaskRow, last_event_id: Option<&str>) {
     let changed = store::parse_string_list(&task.changed_files_json);
     let mut pending = Vec::new();
     let next = match task.status.as_str() {
-        "waiting" if task.waiting_reason.as_deref() == Some("approval") => {
+        "waiting"
+            if task.waiting_reason.as_deref() == Some(WaitingReason::Approval.as_str()) =>
+        {
             pending.push("批准或拒绝当前补丁".into());
+            Some("确认后继续")
+        }
+        "waiting"
+            if task.waiting_reason.as_deref() == Some(WaitingReason::DeliverApproval.as_str()) =>
+        {
+            pending.push("批准或拒绝投递".into());
             Some("确认后继续")
         }
         "waiting" => {
@@ -235,6 +314,17 @@ pub fn prep_turn(conn: &Connection, task_id: &str, recent: &str) -> Result<Optio
         || task.status == TaskStatus::Interrupted.as_str()
     {
         return Ok(None);
+    }
+    // Work-lane plan gate — chat/read_only starts confirmed; draft blocks drive.
+    if task.plan_status == "draft" {
+        return Err("plan_not_confirmed".into());
+    }
+    if task.tool_call_count >= MAX_TOOL_CALLS {
+        return Err("budget_tools".into());
+    }
+    let age = now_ms().saturating_sub(task.created_at);
+    if age >= MAX_WALL_MS {
+        return Err("budget_time".into());
     }
     if task.current_turn >= MAX_TURNS {
         return Ok(None);
@@ -343,6 +433,16 @@ pub fn begin_raw_tool_turn(
             return Ok(RawTurnOutcome::Applied(updated));
         }
         return fail_task(conn, task_id, "stuck_loop").map(RawTurnOutcome::Applied);
+    }
+    // No-progress: observe-only tools with unchanged files (stronger than identical args).
+    if is_observe_only_tool(&call.name) {
+        let chat = PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly);
+        if !chat {
+            let nprog = no_progress_streak_from_events(conn, task_id, &task.changed_files_json)?;
+            if nprog >= MAX_NO_PROGRESS {
+                return fail_task(conn, task_id, "no_progress").map(RawTurnOutcome::Applied);
+            }
+        }
     }
     // Chat: soft-cap search (force-finish nudge). Work: hard stuck after 5 consecutive.
     if call.name == "web_search" {
@@ -674,7 +774,7 @@ fn dispatch_tool(
             if mode == PermissionMode::WriteWithApproval {
                 let baseline_dirty = scope::is_baseline_dirty(&scope, &pending.path);
                 task.status = TaskStatus::Waiting.as_str().into();
-                task.waiting_reason = Some("approval".into());
+                task.waiting_reason = Some(WaitingReason::Approval.as_str().into());
                 task.pending_approval_token = Some(pending.approval_token.clone());
                 task.pending_patch_json =
                     Some(serde_json::to_string(&pending).unwrap_or_else(|_| "{}".into()));
@@ -750,13 +850,27 @@ fn dispatch_tool(
                 task.repair_count = task.repair_count.saturating_add(1);
                 if task.repair_count > MAX_REPAIR {
                     task.status = TaskStatus::Failed.as_str().into();
-                    task.last_error = Some("max_repair".into());
+                    // Failure class bound to check failure (not a bare max_repair).
+                    task.last_error = Some(format!("max_repair:check_failed:{check_id}"));
                 } else {
                     task.status = TaskStatus::Repair.as_str().into();
                 }
             }
             *recent = format!("run_check {check_id} ok={ok}");
             persist_tool(conn, task, &call.name, json!({"result": result}))?;
+            if task.status == TaskStatus::Repair.as_str() {
+                let _ = commit_event(
+                    conn,
+                    task,
+                    "repair_started",
+                    Some("run_check"),
+                    json!({
+                        "checkId": check_id,
+                        "repairCount": task.repair_count,
+                        "failureClass": "check_failed",
+                    }),
+                )?;
+            }
             if task.status == TaskStatus::Failed.as_str() {
                 let updated = get_task(conn, &task.task_id)?.ok_or("missing")?;
                 return Ok(Some(updated));
@@ -814,7 +928,7 @@ fn dispatch_tool(
                     "approvalToken": token,
                 });
                 task.status = TaskStatus::Waiting.as_str().into();
-                task.waiting_reason = Some("deliver_approval".into());
+                task.waiting_reason = Some(WaitingReason::DeliverApproval.as_str().into());
                 task.pending_approval_token = Some(token.clone());
                 task.pending_patch_json =
                     Some(serde_json::to_string(&pending).unwrap_or_else(|_| "{}".into()));
@@ -840,7 +954,7 @@ fn dispatch_tool(
                 .and_then(|v| v.as_str())
                 .unwrap_or("need input");
             task.status = TaskStatus::Waiting.as_str().into();
-            task.waiting_reason = Some("user_input".into());
+            task.waiting_reason = Some(WaitingReason::UserInput.as_str().into());
             *recent = "waiting_user".into();
             let updated = commit_event(
                 conn,
@@ -859,6 +973,19 @@ fn dispatch_tool(
                 .and_then(|v| v.as_str())
                 .unwrap_or("done");
             *recent = "done".into();
+            let changed = store::parse_string_list(&task.changed_files_json);
+            let _ = commit_event(
+                conn,
+                task,
+                "goal_evaluated",
+                Some("finish"),
+                json!({
+                    "goalStatus": "satisfied",
+                    "evidence": { "changedFiles": changed, "summary": summary },
+                    "nextAction": "finish",
+                    "acceptance": "model_finish",
+                }),
+            )?;
             let updated = commit_event(
                 conn,
                 task,
@@ -1098,7 +1225,7 @@ pub fn submit_user_input(
     if task.status != TaskStatus::Waiting.as_str() {
         return Err("not_waiting".into());
     }
-    if task.waiting_reason.as_deref() == Some("deliver_approval") {
+    if task.waiting_reason.as_deref() == Some(WaitingReason::DeliverApproval.as_str()) {
         return Err("waiting_deliver_approval".into());
     }
     task.status = TaskStatus::Running.as_str().into();
@@ -1128,7 +1255,7 @@ pub fn approve_deliver(
     if task.status != TaskStatus::Waiting.as_str() {
         return Err("not_waiting".into());
     }
-    if task.waiting_reason.as_deref() != Some("deliver_approval") {
+    if task.waiting_reason.as_deref() != Some(WaitingReason::DeliverApproval.as_str()) {
         return Err("not_deliver_waiting".into());
     }
     let expected = task
@@ -1172,7 +1299,7 @@ pub fn reject_deliver(
     if task.status != TaskStatus::Waiting.as_str() {
         return Err("not_waiting".into());
     }
-    if task.waiting_reason.as_deref() != Some("deliver_approval") {
+    if task.waiting_reason.as_deref() != Some(WaitingReason::DeliverApproval.as_str()) {
         return Err("not_deliver_waiting".into());
     }
     let expected = task
@@ -1216,6 +1343,42 @@ fn mark_cancelled(conn: &mut Connection, task_id: &str) -> Result<TaskRow, Strin
 fn tool_call_sig(call: &ToolCall) -> String {
     let args = serde_json::to_string(&call.arguments).unwrap_or_else(|_| "{}".into());
     format!("{}:{}", call.name, args)
+}
+
+fn is_observe_only_tool(name: &str) -> bool {
+    matches!(
+        name,
+        "inspect_workspace" | "search_code" | "read_file" | "inspect_diff" | "web_search" | "fetch_url"
+    )
+}
+
+/// Consecutive observe-only tool_calls while changed_files fingerprint stays fixed.
+fn no_progress_streak_from_events(
+    conn: &Connection,
+    task_id: &str,
+    changed_files_json: &str,
+) -> Result<u32, String> {
+    let events = list_events(conn, task_id)?;
+    let mut n = 0u32;
+    for e in events.iter().rev() {
+        if e.kind != "tool_call" {
+            if e.kind == "tool_result" || e.kind == "patch_applied" {
+                continue;
+            }
+            break;
+        }
+        let name = e.tool_name.as_deref().unwrap_or("");
+        if !is_observe_only_tool(name) {
+            break;
+        }
+        // Any write/progress event would have broken the reverse scan earlier.
+        let _ = changed_files_json;
+        n = n.saturating_add(1);
+        if n >= MAX_NO_PROGRESS {
+            break;
+        }
+    }
+    Ok(n)
 }
 
 /// `recent` may be `repeat:N###sig###note` (set after prior turn) or a plain tool note.
@@ -1337,7 +1500,13 @@ pub fn classify_drive_failure(reason: &str) -> &'static str {
     {
         return "rate_limited";
     }
-    if r == "max_turns" || r == "stuck_loop" {
+    if r == "max_turns"
+        || r == "stuck_loop"
+        || r == "budget_tools"
+        || r == "budget_time"
+        || r == "no_progress"
+        || r.starts_with("max_repair")
+    {
         return "budget_exhausted";
     }
     if r.starts_with("parse_")

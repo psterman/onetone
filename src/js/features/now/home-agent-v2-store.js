@@ -1963,18 +1963,30 @@
         state.agentTaskGrant = true;
         if (state.workController) {
           try {
-            // Poll must NOT setStatus/transition while busy — verifying/repair are not
-            // controller "running", and that aborted the next atr_turn (stuck at 第0步).
-            // Drive owns busy status via ingestAtrTurn; poll only mirrors pause/terminal.
-            if (dto.status === 'waiting') {
-              state.workController.finish('waiting_approval', dto.waitingReason || 'waiting');
-            } else if (dto.status === 'done') {
+            // Poll is mirror-only: project ATR DTO into controller. Never invent phases.
+            // Busy statuses (running/verifying/repair/review) are owned by drive/ingestAtrTurn.
+            var C = global.OneToneRunContracts;
+            var proj =
+              C && typeof C.projectAtrTask === 'function' ? C.projectAtrTask(dto) : null;
+            var st = proj ? proj.status : String(dto.status || '');
+            var reason =
+              (proj && proj.waitingReason) ||
+              dto.waitingReason ||
+              dto.waiting_reason ||
+              null;
+            if (st === 'waiting') {
+              if (typeof state.workController.ingestAtrTurn === 'function') {
+                state.workController.ingestAtrTurn(dto, evs, { purpose: 'poll_mirror' });
+              } else {
+                state.workController.finish('waiting', reason || 'user_input');
+              }
+            } else if (st === 'completed' || dto.status === 'done') {
               state.workController.finish('completed', 'agent_task_done');
-            } else if (dto.status === 'failed') {
+            } else if (st === 'failed') {
               state.workController.finish('failed', dto.lastError || 'agent_task_failed');
-            } else if (dto.status === 'cancelled') {
+            } else if (st === 'cancelled') {
               state.workController.finish('cancelled', 'agent_task_cancelled');
-            } else if (dto.status === 'interrupted') {
+            } else if (st === 'interrupted') {
               state.workController.finish('interrupted', 'atr_interrupted');
             }
           } catch (_) {}

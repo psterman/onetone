@@ -513,6 +513,9 @@ mod tests {
                 sandbox_id: None,
                 expected_rel_path: None,
                 expected_content: None,
+            plan_json: None,
+            plan_version: 0,
+            plan_status: "none".into(),
             };
             store::insert_task(conn, &task)?;
             let err = bind_provider_locked(conn, "tb1", "workbuddy", "real").unwrap_err();
@@ -567,6 +570,9 @@ mod tests {
             sandbox_id: sandbox.map(|s| s.into()),
             expected_rel_path: None,
             expected_content: None,
+        plan_json: None,
+        plan_version: 0,
+        plan_status: "none".into(),
         }
     }
 
@@ -661,6 +667,7 @@ mod tests {
             sandbox_id: Some(sid.clone()),
             expected_rel_path: Some("forged.txt".into()),
             expected_content: Some("forged".into()),
+            plan_confirmed: None,
         })
         .unwrap();
         assert!(dto.verify_intent);
@@ -682,6 +689,7 @@ mod tests {
             sandbox_id: Some(sid),
             expected_rel_path: None,
             expected_content: None,
+            plan_confirmed: None,
         })
         .unwrap_err();
         assert!(
@@ -714,6 +722,7 @@ mod tests {
             sandbox_id: Some(sid.clone()),
             expected_rel_path: None,
             expected_content: None,
+            plan_confirmed: None,
         })
         .unwrap();
 

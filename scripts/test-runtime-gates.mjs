@@ -295,9 +295,10 @@ async function main() {
   });
   assert.equal(blocked.ok, false);
 
-  // waiting_approval pause then continue
-  cw.finish('waiting_approval', 'approval');
-  assert.equal(cw.snapshot().status, 'waiting_approval');
+  // waiting + reason pause then continue (legacy waiting_approval normalizes)
+  cw.finish('waiting', 'approval');
+  assert.equal(cw.snapshot().status, 'waiting');
+  assert.equal(cw.snapshot().stopReason, 'approval');
   const cont = cw.continueFromPause('approve');
   assert.equal(cont.ok, true);
   assert.equal(cw.snapshot().status, 'running');
