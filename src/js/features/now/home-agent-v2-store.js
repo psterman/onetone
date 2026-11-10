@@ -109,6 +109,8 @@
   var atrPollTimer = 0;
   // Faster while ATR liveThinking streams; still cheap (status+events only).
   var ATR_POLL_MS = 450;
+  /** Skip localStorage rewrite when poll mirror is unchanged. */
+  var atrPersistSig = '';
   /** Prevent double start from rapid Send. */
   var atrSendInFlight = null;
   /** taskId → in-flight drive Promise (approve/poll/continue must share). */
@@ -1897,6 +1899,27 @@
     } catch (_) {}
   }
 
+  function atrTaskMirrorSig(dto, events) {
+    dto = dto || null;
+    events = Array.isArray(events) ? events : [];
+    if (!dto || !dto.taskId) return '';
+    var last = events.length ? events[events.length - 1] : null;
+    var lastKey =
+      (last && (last.id || last.eventId || last.ts || last.at || last.kind)) || '';
+    var live = String(dto.liveThinking || dto.live_thinking || '');
+    return [
+      String(dto.taskId),
+      String(dto.status || ''),
+      String(dto.currentTurn != null ? dto.currentTurn : dto.current_turn || ''),
+      String(dto.toolCallCount != null ? dto.toolCallCount : dto.tool_call_count || ''),
+      String(dto.waitingReason || dto.waiting_reason || ''),
+      String(live.length),
+      live.slice(-24),
+      String(events.length),
+      String(lastKey)
+    ].join('|');
+  }
+
   function rememberAgentTask(dto, events) {
     if (!dto || !dto.taskId) return;
     var id = String(dto.taskId);
@@ -2020,7 +2043,13 @@
         }
       }
       state.agentTaskEvents = Array.isArray(evs) ? evs : [];
-      if (state.agentTask) rememberAgentTask(state.agentTask, state.agentTaskEvents);
+      if (state.agentTask) {
+        var mirrorSig = atrTaskMirrorSig(state.agentTask, state.agentTaskEvents);
+        if (mirrorSig !== atrPersistSig) {
+          atrPersistSig = mirrorSig;
+          rememberAgentTask(state.agentTask, state.agentTaskEvents);
+        }
+      }
       return dto;
     });
   }
@@ -2060,8 +2089,18 @@
     if (atrPollTimer || !atrFeatureOn() || !state.activeAgentTaskId) return;
     atrPollTimer = global.setInterval(function () {
       if (!state.mounted || !state.activeAgentTaskId) return;
+      var st = String((state.agentTask && state.agentTask.status) || '');
+      // waiting/done/failed/cancelled do not advance without FE action. Polling them
+      // every 450ms was emit+localStorage thrash that grew WebView memory while idle.
+      if (!isAgentTaskBusy(st) && !isAtrDriveInFlight(state.activeAgentTaskId)) {
+        return;
+      }
+      var before = atrPersistSig;
       refreshAgentTask().then(function () {
-        if (state.mounted) emit();
+        if (!state.mounted) return;
+        // Unchanged mirror (incl. liveThinking): skip getSnapshot/paint alloc.
+        if (atrPersistSig === before) return;
+        emit();
       });
     }, ATR_POLL_MS);
   }
@@ -2071,6 +2110,7 @@
       clearInterval(atrPollTimer);
       atrPollTimer = 0;
     }
+    atrPersistSig = '';
   }
 
   function atrBusyStatuses() {
@@ -3808,6 +3848,7 @@
     __testOnly: {
       ensureWorkController: ensureWorkController,
       isAtrDriveInFlight: isAtrDriveInFlight,
+      atrTaskMirrorSig: atrTaskMirrorSig,
       isChatLaneTask: isChatLaneTask,
       projectAgent: projectAgent,
       resolveKind: resolveKind,

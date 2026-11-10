@@ -86,5 +86,11 @@ assert.match(wb, /cmd_habit_foreground_app/);
 assert.match(wb, /lastExternalFg/);
 assert.match(wb, /selectFollowedHabit/);
 assert.doesNotMatch(wb, /adoptForegroundIdentity/);
+// Idle CPU: Cursor↔TaskMgr must not scheme_select every poll.
+assert.match(wb, /function commitFollowFgScene/);
+assert.match(wb, /FOLLOW_UP_MS/);
+assert.match(wb, /FOLLOW_DOWN_MS/);
+assert.match(wb, /pendingFollowSceneId/);
+assert.match(wb, /commitFollowFgScene\(desired,identity\)/);
 
 console.log('ok habit-follow-fg');

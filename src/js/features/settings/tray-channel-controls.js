@@ -334,10 +334,11 @@
     if (!cfg) return;
     cfg.voiceActivation = on ? 'wakeOrPushToTalk' : 'pushToTalk';
     cfg.voiceWakeListeningOptIn = !!on;
-    cfg.voiceListeningStrategy = on ? 'resourceSaver' : 'off';
-    cfg.desiredEngine = on ? 'kws' : 'none';
-    if (cfg.voiceKws) cfg.voiceKws.enabled = !!on;
-    if (cfg.voiceVosk) cfg.voiceVosk.enabled = false;
+    // Armed = Vosk auto (matches apply_voice_activation); off stops engines.
+    cfg.voiceListeningStrategy = on ? 'auto' : 'off';
+    cfg.desiredEngine = on ? 'vosk' : 'none';
+    if (cfg.voiceVosk) cfg.voiceVosk.enabled = !!on;
+    if (cfg.voiceKws) cfg.voiceKws.enabled = false;
     if (cfg.voiceSapi) cfg.voiceSapi.enabled = false;
     if (on) cfg.voiceAssistEnabled = true;
   }
@@ -350,16 +351,26 @@
   function trayActivateKeyless(on, ctx) {
     ctx = ctx || {};
     var batch = !!ctx.batchApply;
-    var mode = on ? 'wakeOrPushToTalk' : 'pushToTalk';
+    var K = global.OneToneVoiceKeyless;
     var run = function () {
-      return invoke('cmd_voice_set_activation', { mode: mode }).then(function () {
-        patchOsKeyless(on);
-        if (batch) return;
-        return refreshOsContext(ctx.global);
-      }).then(function () {
-        if (batch) return;
-        return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(function () {});
-      });
+      var p =
+        K && typeof K.setOn === 'function'
+          ? K.setOn(!!on, { skipConfirm: true, reason: 'tray-keyless' })
+          : invoke('cmd_voice_set_activation', {
+              mode: on ? 'wakeOrPushToTalk' : 'pushToTalk'
+            });
+      return Promise.resolve(p)
+        .then(function () {
+          patchOsKeyless(on);
+          if (batch) return;
+          return refreshOsContext(ctx.global);
+        })
+        .then(function () {
+          if (batch) return;
+          return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(
+            function () {}
+          );
+        });
     };
     if (on) return unparkVoiceForTray().then(run);
     return run();

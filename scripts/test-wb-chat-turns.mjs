@@ -84,6 +84,26 @@ assert.match(ha2, /ha2-tool-step-label/);
 assert.match(ha2, /function ensureChatReplyAfterLatestUser/);
 assert.match(ha2, /function ensureLatestChatFinish/);
 assert.match(ha2, /fin_' \+ \(tid \|\| eid\)/);
+// Poll may reach status:done with no done event — status branch must call ensure.
+assert.match(
+  ha2,
+  /done without a synced done event[\s\S]{0,120}ensureLatestChatFinish\(task,\s*snap\)/
+);
+assert.match(ha2, /id:\s*'err_status_'\s*\+\s*tid/);
+// Clarify question is a body block, not a one-line label (overflow → purple rails).
+assert.match(
+  ha2Css,
+  /\.ha2-wb-page-turn--tool\.is-needs-input[\s\S]{0,220}overflow:\s*visible/
+);
+assert.match(ha2Css, /ha2-chat-needs-q/);
+assert.match(ha2, /ha2-chat-needs-q/);
+// Poll must not wipe clarify input focus every tick.
+assert.match(ha2, /function liveTranscriptSig/);
+assert.match(
+  ha2,
+  /data-ha2-live-sig[\s\S]{0,220}data-ha2-chat-needs-input|needsFocused[\s\S]{0,400}ni\.focus/
+);
+assert.match(ha2, /function submitChatNeedsInput/);
 // Live thinking paints as a plain div — not WebView2-fragile <details>.
 assert.match(
   ha2,
@@ -96,6 +116,15 @@ assert.match(ha2Css, /overflow:\s*visible/);
 assert.match(
   storeSrc,
   /atrSendInFlight && !opts\.skipBlockingCheck\) \{\s*if \(chatLane\)/
+);
+// Unbound terminal read_only DTO must not re-emit under a fresh user turn.
+assert.match(
+  ha2,
+  /String\(chatLoopTaskId \|\| ''\) !== tid[\s\S]{0,160}stBind === 'done'[\s\S]{0,80}return;/
+);
+assert.doesNotMatch(
+  ha2,
+  /function chatShouldStartNewWhileWaiting[\s\S]{0,220}t\.length\s*<=\s*8/
 );
 assert.match(storeSrc, /if \(atrSendInFlight === flight\) atrSendInFlight = null/);
 assert.match(ha2Css, /\.ha2-wb-page-turn--thinking\{/);

@@ -2651,6 +2651,11 @@
           lastSnap.voice_activation=mode;
           lastSnap.voiceWakeListeningOptIn=!!next;
           lastSnap.voice_wake_listening_opt_in=!!next;
+          // Armed = Vosk auto; off stops engines (matches apply_voice_activation).
+          lastSnap.voiceListeningStrategy=next?'auto':'off';
+          lastSnap.voice_listening_strategy=next?'auto':'off';
+          lastSnap.desiredEngine=next?'vosk':'none';
+          lastSnap.desired_engine=next?'vosk':'none';
         }
         if(btn){
           btn.classList.toggle('is-on',!!next);
@@ -4600,6 +4605,27 @@
       pullAppLightHttp();
     }
     if(listen){
+      listen('voice-keyless-changed',function(ev){
+        var p=(ev&&ev.payload)||ev||{};
+        var on=!!p.on||String(p.voiceActivation||'')==='wakeOrPushToTalk';
+        var mode=on?'wakeOrPushToTalk':'pushToTalk';
+        if(!lastSnap) lastSnap={};
+        lastSnap.voiceActivation=mode;
+        lastSnap.voice_activation=mode;
+        lastSnap.voiceWakeListeningOptIn=on;
+        lastSnap.voice_wake_listening_opt_in=on;
+        lastSnap.voiceListeningStrategy=p.strategy||(on?'auto':'off');
+        lastSnap.voice_listening_strategy=lastSnap.voiceListeningStrategy;
+        lastSnap.desiredEngine=p.desiredEngine||(on?'vosk':'none');
+        lastSnap.desired_engine=lastSnap.desiredEngine;
+        try{
+          var btn=document.querySelector('[data-beginner-slot="toggleVoiceKeyless"]');
+          if(btn){
+            btn.classList.toggle('is-on',on);
+            btn.setAttribute('aria-checked',on?'true':'false');
+          }
+        }catch(_){}
+      });
       listen('codex_micro_overlay_state',function(ev){
         var s=ev&&ev.payload;
         if(!s) return;

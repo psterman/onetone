@@ -422,20 +422,49 @@
           resumable: res.resumable !== false
         };
       }
-      if (!sessionId && ipc && ipc.invoke) {
-        return ipc
-          .invoke('cmd_agent_home_snapshot', {})
-          .then(function (snap) {
-            var id =
-              (snap && snap.activeSession && snap.activeSession.sessionId) ||
-              (snap && snap.checkpoint && snap.checkpoint.sessionId) ||
-              '';
-            if (!id) return { ok: false, error: '找不到可续的会话' };
-            return S.resumeCheckpoint(id).then(wrapResume);
+      // Probable project: soft-confirm on resume so one click enters work without a gate screen.
+      function softConfirmThen(run) {
+        var root = String(vm.projectRoot || '').trim();
+        var match = String(vm.match || '');
+        if (
+          vm.confirmed ||
+          !root ||
+          (match !== 'probable' && match !== 'exact') ||
+          typeof S.confirmProject !== 'function'
+        ) {
+          return run();
+        }
+        return Promise.resolve(
+          S.confirmProject({
+            projectRoot: root,
+            projectId: vm.projectId || null
+          })
+        )
+          .catch(function () {
+            return { ok: false };
+          })
+          .then(function () {
+            return run();
           });
       }
+      if (!sessionId && ipc && ipc.invoke) {
+        return softConfirmThen(function () {
+          return ipc
+            .invoke('cmd_agent_home_snapshot', {})
+            .then(function (snap) {
+              var id =
+                (snap && snap.activeSession && snap.activeSession.sessionId) ||
+                (snap && snap.checkpoint && snap.checkpoint.sessionId) ||
+                '';
+              if (!id) return { ok: false, error: '找不到可续的会话' };
+              return S.resumeCheckpoint(id).then(wrapResume);
+            });
+        });
+      }
       if (!sessionId) return Promise.resolve({ ok: false, error: '找不到可续的会话' });
-      return S.resumeCheckpoint(sessionId).then(wrapResume);
+      return softConfirmThen(function () {
+        return S.resumeCheckpoint(sessionId).then(wrapResume);
+      });
     }
     if (kind === 'open_prep' || kind === 'start_task') {
       if (typeof hooks.openPrep === 'function') {

@@ -387,6 +387,12 @@ assert.match(shell, /function stashLiveComposeDrafts/);
 assert.match(shell, /wbPageDraftText/);
 assert.match(shell, /stashLiveComposeDrafts:\s*stashLiveComposeDrafts/);
 assert.match(
+  now,
+  /liveComposeHost/,
+  'now-home Focus remount preserves compose host (draft focus)'
+);
+assert.match(now, /composeSlot\.replaceWith\(liveComposeHost\)/);
+assert.match(
   shell,
   /!next && String\(nodes\[i\]\.value \|\| ''\)\) continue/
 );
@@ -849,7 +855,45 @@ assert.match(
   shell,
   /chatShouldStartNewWhileWaiting\(text,\s*task\)[\s\S]{0,200}abandonAgentTask/
 );
-assert.match(shell, /Date\.now\(\)\s*-\s*since\s*<\s*CHAT_STALL_MS/);
+// 「我要开发小程序」is 7 CJK chars — must not be blocked by a length≤8 gate.
+assert.doesNotMatch(
+  shell,
+  /function chatShouldStartNewWhileWaiting[\s\S]{0,220}t\.length\s*<=\s*8/
+);
+// Lone "?" while busy must not abandon mid-answer (「突然停止」).
+assert.match(shell, /function looksLikeChatNudge/);
+assert.match(
+  shell,
+  /chatAtrBusyPhase\(st\)[\s\S]{0,180}looksLikeChatNudge[\s\S]{0,220}ha2ChatWaitCurrent|正在回答上一问/
+);
+assert.match(shell, /CHAT_TURN0_REDRIVE_MS\s*=\s*12000/);
+assert.match(
+  shell,
+  /quietMs\s*>=\s*CHAT_TURN0_REDRIVE_MS[\s\S]{0,280}driveActiveIfRunning/
+);
+// Terminal done/failed without synced finish event must still leave a bubble.
+assert.match(shell, /ensureLatestChatFinish\(task,\s*snap\)/);
+assert.match(shell, /err_status_'\s*\+\s*tid|err_status_\$\{/);
+assert.match(
+  shell,
+  /nudgeRaw[\s\S]{0,200}resolveChatContinueGoal|looksLikeChatNudge\(text\)[\s\S]{0,280}chatPriorUserQuestion/
+);
+// Waiting clarify must paint under latest user — old needs_input must not block.
+assert.match(
+  shell,
+  /function ensureChatNeedsInputFromAtr[\s\S]{0,480}latestUserHasChatReply\(\)/
+);
+assert.match(shell, /ha2-chat-needs-q/);
+assert.doesNotMatch(
+  shell,
+  /function ensureChatNeedsInputFromAtr[\s\S]{0,280}kind === 'needs_input'\) return false/
+);
+// New send clears syncedEv while old done DTO lingers — must not replay Gate7 finish.
+assert.match(
+  shell,
+  /paste the old Gate7 essay|String\(chatLoopTaskId \|\| ''\) !== tid[\s\S]{0,120}stBind === 'done'/
+);
+assert.match(shell, /quietMs\s*<\s*CHAT_STALL_MS/);
 assert.match(shell, /abandoned\/i\.test\(cancelReason\)|reason === 'abandoned'|\/abandoned\/i/);
 assert.match(storeSrc, /Stop poll before abandon|stopAtrPoll\(\);\s*\n\s*return A\.abandon/);
 assert.match(shell, /kind === 'interrupted'|task_interrupted/);
@@ -886,6 +930,14 @@ assert.match(shell, /persistChatProcessTrace\(tid, evs, 'done'\)/);
   );
   assert.match(storeAsk, /chatLanePf[\s\S]{0,200}editCapable|Chat only needs chatReady/);
   assert.match(storeAsk, /function isAtrDriveInFlight/);
+  // Idle ATR poll must not thrash emit/localStorage while waiting/done (WebView RSS).
+  assert.match(storeAsk, /function atrTaskMirrorSig/);
+  assert.match(
+    storeAsk,
+    /!isAgentTaskBusy\(st\) && !isAtrDriveInFlight\(state\.activeAgentTaskId\)/
+  );
+  assert.match(storeAsk, /atrPersistSig === before/);
+  assert.match(storeAsk, /liveThinking \|\| dto\.live_thinking/);
   assert.match(
     storeAsk,
     /function ensureWorkController[\s\S]*?mode:\s*chatLane\s*\?\s*'chat'\s*:\s*'work'/
@@ -1904,6 +1956,21 @@ assert.equal(st.loadLastGood(), null);
   assert.equal(snap.session.sessionId, null);
   assert.equal(snap.session.externalSessionId, null);
   Store.setHandoffId(null);
+}
+
+// --- ATR mirror sig tracks liveThinking so busy poll still paints ---
+{
+  const sig = Store.__testOnly.atrTaskMirrorSig;
+  assert.equal(typeof sig, 'function');
+  const a = sig({ taskId: 't1', status: 'running', liveThinking: 'think' }, []);
+  const b = sig({ taskId: 't1', status: 'running', liveThinking: 'thinking…' }, []);
+  const c = sig({ taskId: 't1', status: 'waiting', liveThinking: 'thinking…' }, []);
+  assert.notEqual(a, b);
+  assert.notEqual(b, c);
+  assert.equal(
+    sig({ taskId: 't1', status: 'waiting', liveThinking: 'thinking…' }, []),
+    c
+  );
 }
 
 console.log('test-home-agent-v2: ok');

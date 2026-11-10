@@ -81,6 +81,8 @@
   var chatLastProgressByTask = Object.create(null);
   /** First model turn can hang inside next_tool_json; FE cancel only helps between turns / after HTTP timeout. */
   var CHAT_STALL_MS = 45000;
+  /** Turn-0 empty quiet hang: redrive sooner than full stall notice. */
+  var CHAT_TURN0_REDRIVE_MS = 12000;
   var wbStreamingText = '';
   var wbStreamingReasoning = '';
   var wbStreamingTurnId = '';
@@ -1620,15 +1622,21 @@
     }
     var turnId = turn.id ? String(turn.id) : '';
     if (turn.kind === 'needs_input') {
+      // Question body must wrap — stuffing a long clarify into .ha2-tool-step-label
+      // under overflow:hidden paints as empty purple rails (no options visible).
+      var needQ = String(turn.text || label || '').trim();
       return (
         '<div class="ha2-wb-page-turn ha2-wb-page-turn--tool is-needs-input" data-ha2-tool-step>' +
         '<div class="ha2-tool-step-hd">' +
         '<span class="ha2-tool-step-badge">' +
-        esc(t('ha2NeedsInput', 'Needs input')) +
+        esc(t('ha2NeedsInput', '需要你补充')) +
         '</span>' +
         '<span class="ha2-tool-step-label">' +
-        esc(turn.text || label) +
+        esc(t('ha2ToolAsk', '需要你补充')) +
         '</span></div>' +
+        (needQ
+          ? '<pre class="ha2-tool-step-detail ha2-chat-needs-q">' + esc(needQ) + '</pre>'
+          : '') +
         '<div class="ha2-chat-needs-row">' +
         '<input type="text" class="ha2-chat-needs-input" data-ha2-chat-needs-input' +
         ' placeholder="' +
@@ -8737,8 +8745,44 @@
     onClick(e);
   }
 
+  function submitChatNeedsInput(needInp) {
+    needInp = needInp || null;
+    var needText = needInp ? String(needInp.value || '').trim() : '';
+    if (!needText) return false;
+    var S = store();
+    appendWbChatTurn({ role: 'user', text: needText });
+    needInp.value = '';
+    if (S && S.submitAgentInput) {
+      wbChatBusy = true;
+      S.submitAgentInput(needText)
+        .then(function () {
+          if (!mounted) return;
+          paint(S.getSnapshot());
+        })
+        .catch(function (err) {
+          wbChatBusy = false;
+          toast(String((err && err.message) || err || 'input_failed'));
+        });
+    }
+    return true;
+  }
+
   function onDocKeyDown(e) {
     if (!mounted || !e) return;
+    // Enter in clarify strip → same as「继续」(poll must not steal focus).
+    if (
+      (e.key === 'Enter' || e.key === 'NumpadEnter') &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.shiftKey &&
+      e.target &&
+      e.target.matches &&
+      e.target.matches('[data-ha2-chat-needs-input]')
+    ) {
+      e.preventDefault();
+      submitChatNeedsInput(e.target);
+      return;
+    }
     // Ctrl/Cmd+Enter in draft → aim + paste send (same as ↑).
     if (
       (e.key === 'Enter' || e.key === 'NumpadEnter') &&
@@ -9858,10 +9902,11 @@
     // Keep the custom model dropdown open while the user is choosing.
     if (modelRouteMenuOpen) return;
     if (composing || (store() && store().isComposing())) {
-      // IME: skip dock rebuild, but still refresh ATR steps (failure / tool results).
+      // IME: skip dock rebuild; refresh ATR only if the chat page is already open.
+      // Never openWbChatPage here — typing must not yank Focus into 提问页.
       var snapIme = store().getSnapshot() || snap;
       syncChatLoopFromAtr(snapIme);
-      maybeOpenAtrWbPage(snapIme);
+      if (wbChatPageOpen) maybeOpenAtrWbPage(snapIme);
       return;
     }
     // Silent sync — never emit from inside a store subscriber paint.
@@ -10935,6 +10980,9 @@
   }
 
   function maybeOpenAtrWbPage(snap) {
+    // Focus home: never auto-cover the desk while typing / polling.
+    // Send, openChatTask, and resume paths call openWbChatPage explicitly.
+    if (embedMode && !wbChatPageOpen) return;
     var live = atrTaskShouldSurface(snap);
     var chatLoop = atrIsChatLoopTask(snap && snap.agentTask);
     var id = live ? String((snap.agentTask && snap.agentTask.taskId) || '') : '';
@@ -10963,6 +11011,19 @@
       if (!wbChatPageOpen) openWbChatPage();
       else paintWbChatPage();
     }
+  }
+
+  /** Cheap sig so poll can skip identical transcript rewrites. */
+  function liveTranscriptSig(html) {
+    html = String(html || '');
+    var h = 2166136261 >>> 0;
+    var step = html.length > 4000 ? 131 : 31;
+    var i;
+    for (i = 0; i < html.length; i += step) {
+      h ^= html.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return html.length + ':' + h;
   }
 
   /** Live-update ATR/chat page without destroying the compose textarea (poll jank / IME). */
@@ -10994,7 +11055,44 @@
           '<div class="ha2-wb-page-empty">' +
             esc(t('ha2WbPageEmpty', '本机讨论会出现在这里（流式回复）')) +
             '</div>';
-    if (prevTranscript) prevTranscript.innerHTML = body;
+    // Poll used to rewrite transcript every tick — that unfocused「在此回复」mid-type.
+    var ae = document.activeElement;
+    var needsFocused =
+      !!(ae &&
+        ae.matches &&
+        ae.matches('[data-ha2-chat-needs-input]') &&
+        prevTranscript &&
+        prevTranscript.contains(ae));
+    var needsVal = needsFocused ? String(ae.value || '') : '';
+    var needsStart = 0;
+    var needsEnd = 0;
+    if (needsFocused) {
+      try {
+        needsStart = ae.selectionStart || 0;
+        needsEnd = ae.selectionEnd || 0;
+      } catch (_) {}
+    }
+    if (prevTranscript) {
+      var nextSig = liveTranscriptSig(body);
+      if (prevTranscript.getAttribute('data-ha2-live-sig') !== nextSig) {
+        prevTranscript.setAttribute('data-ha2-live-sig', nextSig);
+        prevTranscript.innerHTML = body;
+      }
+      if (needsFocused) {
+        var ni = prevTranscript.querySelector('[data-ha2-chat-needs-input]');
+        if (ni) {
+          ni.value = needsVal;
+          try {
+            ni.setSelectionRange(needsStart, needsEnd);
+          } catch (_) {}
+          if (document.activeElement !== ni) {
+            try {
+              ni.focus();
+            } catch (_) {}
+          }
+        }
+      }
+    }
     var main = host.querySelector('.ha2-wb-page-main');
     if (main) {
       var noticeEl = main.querySelector('[data-ha2-atr-page-notice]');
@@ -11279,6 +11377,13 @@
     );
   }
 
+  /** Lone "?" / "…" while a loop is busy — nudge, not a new goal (would abandon mid-answer). */
+  function looksLikeChatNudge(text) {
+    var s = String(text || '').trim();
+    if (!s) return true;
+    return /^[?？。.．…~～]+$/.test(s) || /^[.…]{2,}$/.test(s);
+  }
+
   /** Last real user question in the chat transcript (skips 「继续」). */
   function chatPriorUserQuestion(fallback) {
     var ti;
@@ -11348,14 +11453,15 @@
   }
 
   /**
-   * Chat waiting on request_user_input: short answers ("1"/"了解") continue;
-   * a clearly new question ("iphone duo有没有降价?") must start a new loop —
+   * Chat waiting on request_user_input: short answers ("1"/"好的") continue;
+   * a clearly new question ("我要开发小程序") must start a new loop —
    * otherwise it is swallowed as clarify text and the user sees「不回复」.
+   * Do not gate on raw length — CJK goals are often ≤8 chars.
    */
   function chatShouldStartNewWhileWaiting(text, task) {
     var t = String(text || '').trim();
     if (!t || !atrTextIsNewGoal(t, task)) return false;
-    if (t.length <= 8) return false;
+    if (looksLikeChatNudge(t)) return false;
     if (/^[1-9]([\s.、)）]|[、.].*)?$/.test(t)) return false;
     return true;
   }
@@ -13154,10 +13260,10 @@
     tid = String(tid || '');
     if (!tid) return false;
     if (atrTaskWaitingReason(task) === 'deliver_approval') return false;
+    // Only skip when a needs_input already sits AFTER the latest user turn.
+    // Older abandoned clarifies must not block painting under a new question.
+    if (latestUserHasChatReply()) return false;
     var i;
-    for (i = 0; i < wbChatTurns.length; i++) {
-      if (wbChatTurns[i] && wbChatTurns[i].kind === 'needs_input') return false;
-    }
     var q = '';
     var evs = (snap && snap.agentTaskEvents) || [];
     for (i = evs.length - 1; i >= 0; i--) {
@@ -13183,7 +13289,7 @@
       }
     }
     if (!q) q = t('ha2AtrAskInput', '回复 Agent 任务');
-    appendWbChatTurn({
+    ensureChatReplyAfterLatestUser({
       id: 'need_' + tid,
       role: 'assistant',
       kind: 'needs_input',
@@ -13241,7 +13347,7 @@
    */
   function maybeStallChatDrive(snap, task) {
     var tid = String((task && task.taskId) || '');
-    if (!tid || chatStallTried[tid] || chatStopPendingId === tid) return;
+    if (!tid || chatStopPendingId === tid) return;
     var evs = (snap && snap.agentTaskEvents) || [];
     var lastMs = 0;
     var i;
@@ -13262,11 +13368,26 @@
       chatLastProgressByTask[tid] = progress;
     }
     var since = Math.max(lastMs || 0, chatBusySinceMs || 0, progress.at || 0);
-    if (!since || Date.now() - since < CHAT_STALL_MS) return;
+    if (!since) return;
+    var quietMs = Date.now() - since;
+    var turn = task && task.currentTurn != null ? Number(task.currentTurn) : 0;
+    // Turn-0 empty: kick drive once early — stuck「第 0 步」often means drop, not slow model.
+    if (
+      turn === 0 &&
+      live.kind === 'empty' &&
+      quietMs >= CHAT_TURN0_REDRIVE_MS &&
+      !chatStallTried[tid + '_t0']
+    ) {
+      chatStallTried[tid + '_t0'] = true;
+      var S0 = store();
+      if (S0 && typeof S0.driveActiveIfRunning === 'function') {
+        S0.driveActiveIfRunning({ force: true }).catch(function () {});
+      }
+    }
+    if (chatStallTried[tid] || quietMs < CHAT_STALL_MS) return;
     // A quiet event log does not prove the provider stopped. The request may
     // still be streaming; the transport owns the timeout and final error.
     chatStallTried[tid] = true;
-    var turn = task && task.currentTurn != null ? Number(task.currentTurn) : 0;
     if (turn === 0 && live.kind === 'empty') {
       var Sstall = store();
       if (Sstall && typeof Sstall.driveActiveIfRunning === 'function') {
@@ -13482,6 +13603,22 @@
     if (!atrIsChatLoopTask(task)) return;
     var tid = String(task.taskId || '');
     var stBind = String((task && task.status) || '');
+    // New question clears chatLoopTaskId + chatLoopSyncedEv while the previous
+    // read_only DTO may still be done/failed. Replaying its done event would
+    // paste the old Gate7 essay under the new user turn and kill the spinner.
+    if (
+      String(chatLoopTaskId || '') !== tid &&
+      (stBind === 'done' || stBind === 'failed' || stBind === 'cancelled')
+    ) {
+      return;
+    }
+    if (
+      String(chatLoopTaskId || '') !== tid &&
+      stBind === 'interrupted' &&
+      (wbChatBusy || chatDriveAlive(''))
+    ) {
+      return;
+    }
     // Never rebind the live chat loop to a terminal abandoned/cancelled leftover.
     if (
       tid &&
@@ -13592,8 +13729,8 @@
         finalizeChatLoopProgressTurn(tid, t('ha2ToolAsk', '需要你补充'), {
           toolOk: true
         });
-        appendWbChatTurn({
-          id: 'need_' + eid,
+        ensureChatReplyAfterLatestUser({
+          id: 'need_' + (tid || eid),
           role: 'assistant',
           kind: 'needs_input',
           toolName: 'request_user_input',
@@ -13824,7 +13961,42 @@
         }
         emitChatRecoveryTurn(tid);
       } else if (st === 'cancelled') {
-        // Silent if auto-abandoned; user Stop still paints via cancel event / stopWbLocalStream.
+        // Auto-abandon for a new question — cancel event may be silenced; don't paint「已停止」.
+        var cancelAbandoned = /abandoned/i.test(
+          String(
+            (task && (task.cancelReason || task.lastError || task.last_error)) ||
+              ''
+          )
+        );
+        if (!cancelAbandoned && !latestUserHasChatReply()) {
+          ensureChatReplyAfterLatestUser({
+            id: 'err_cancel_' + tid,
+            role: 'assistant',
+            kind: 'finish',
+            text: t('ha2WbChatCancelled', '已停止'),
+            toolOk: false
+          });
+        }
+        chatLoopTaskId = '';
+        if (tid) {
+          delete chatHealTried[tid];
+          delete chatRecoveryEmitted[tid];
+          delete chatStallTried[tid];
+        }
+      } else if (st === 'failed') {
+        // Status flipped to failed without a synced fail event → thinking dies, no bubble.
+        if (!latestUserHasChatReply()) {
+          var failRaw =
+            (task && (task.lastError || task.last_error || task.summary)) ||
+            'failed';
+          ensureChatReplyAfterLatestUser({
+            id: 'err_status_' + tid,
+            role: 'assistant',
+            kind: 'finish',
+            text: chatLoopHonestFailText(String(failRaw), String(failRaw)),
+            toolOk: false
+          });
+        }
         chatLoopTaskId = '';
         if (tid) {
           delete chatHealTried[tid];
@@ -13832,6 +14004,8 @@
           delete chatStallTried[tid];
         }
       } else {
+        // done without a synced done event still left empty rails under the user turn.
+        ensureLatestChatFinish(task, snap);
         chatLoopTaskId = '';
         if (tid) {
           delete chatHealTried[tid];
@@ -13887,6 +14061,27 @@
     var task = snap.agentTask;
     var st = task ? String(task.status || '') : '';
     var reason = atrTaskWaitingReason(task);
+    // Busy at 第0步: lone "?" must not abandon+restart (looks like「突然停止」).
+    if (
+      atrIsChatLoopTask(task) &&
+      chatAtrBusyPhase(st) &&
+      (atrLooksLikeContinueInput(text) || looksLikeChatNudge(text))
+    ) {
+      if (typeof opts.clearInput === 'function') opts.clearInput();
+      toast(
+        t(
+          'ha2ChatWaitCurrent',
+          '正在回答上一问 — 请稍候，或点停止后再发新问题'
+        )
+      );
+      if (typeof S.driveActiveIfRunning === 'function') {
+        S.driveActiveIfRunning({ force: true }).catch(function () {});
+      }
+      openWbChatPage({ chatOnly: true });
+      upsertChatLoopProgressTurn(task);
+      paintWbTranscript();
+      return;
+    }
     if (
       atrIsChatLoopTask(task) &&
       st === 'waiting' &&
@@ -14055,10 +14250,18 @@
     }
 
     // 「继续」在冲突/失败后应重发上一句真实问题，不要把「继续」当 goal。
+    // Lone "?" after a silent stop is the same intent — never start a new loop with goal「?」.
     var continueRaw = atrLooksLikeContinueInput(text);
+    var nudgeRaw = !continueRaw && looksLikeChatNudge(text);
     var displayUserText = text;
-    if (continueRaw) {
-      text = resolveChatContinueGoal(snap, text);
+    if (continueRaw || nudgeRaw) {
+      text = resolveChatContinueGoal(snap, continueRaw ? text : '继续') || chatPriorUserQuestion('');
+      if (!text) {
+        toast(t('ha2ChatNoPrior', '没有可继续的上一问 — 请直接输入问题'));
+        if (typeof opts.clearInput === 'function') opts.clearInput();
+        return;
+      }
+      continueRaw = true;
     }
 
     // Interrupted chat + 「继续」→ resume same task (keep goal/tool_trace), don't spawn a new one.
@@ -15381,22 +15584,7 @@
       var needWrap = tEl.closest('[data-ha2-tool-step]');
       var needInp =
         needWrap && needWrap.querySelector('[data-ha2-chat-needs-input]');
-      var needText = needInp ? String(needInp.value || '').trim() : '';
-      if (!needText) return;
-      appendWbChatTurn({ role: 'user', text: needText });
-      if (needInp) needInp.value = '';
-      if (S && S.submitAgentInput) {
-        wbChatBusy = true;
-        S.submitAgentInput(needText)
-          .then(function () {
-            if (!mounted) return;
-            paint(S.getSnapshot());
-          })
-          .catch(function (err) {
-            wbChatBusy = false;
-            toast(String((err && err.message) || err || 'input_failed'));
-          });
-      }
+      submitChatNeedsInput(needInp);
       return;
     }
     if (tEl.hasAttribute('data-ha2-chat-deliver-approve')) {

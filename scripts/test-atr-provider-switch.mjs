@@ -94,6 +94,9 @@ assert.match(ui, /abandonAndStartAgentTask/);
 assert.match(ui, /atrTaskPanelHtml/);
 assert.match(ui, /ha2-atr-timeline/);
 assert.match(ui, /maybeOpenAtrWbPage/);
+// Focus desk: typing/IME must not auto-open WB 提问页 — send owns navigation.
+assert.match(ui, /embedMode && !wbChatPageOpen/);
+assert.match(ui, /Never openWbChatPage here/);
 assert.match(ui, /openAtrEditPage/);
 assert.match(ui, /atrWbPageForced/);
 assert.match(ui, /atrMainGateHtml/);

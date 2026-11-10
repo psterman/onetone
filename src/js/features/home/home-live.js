@@ -2125,19 +2125,23 @@
     const summary=global.OneToneVoiceHomeSummary.compute();
     const eng=summary.engine;
     const voiceOn=summary.voiceOn;
+    // Toggle paints keyless arm bit (免按键), not assist/PTT-only voiceOn.
+    const keylessOn=global.OneToneVoiceKeyless&&typeof global.OneToneVoiceKeyless.isOn==='function'
+      ?global.OneToneVoiceKeyless.isOn()
+      :voiceOn;
     const w=hooks().voiceUiSnapshot.wake||{};
     const running=w.state==='listening'||w.state==='triggered';
     const voskState=(w.vosk&&w.vosk.state)||'';
     const sapiState=(w.sapi&&w.sapi.state)||'';
     const engineStarting=voskState==='starting'||sapiState==='starting';
-    const warming=voiceOn&&engineStarting&&!summary.loading;
+    const warming=keylessOn&&engineStarting&&!summary.loading;
     setHomeLiveBadge('homeLiveVoiceBadge',summary.loading?t('homeLiveLoading'):(eng==='off'?t('homeLiveBadgeOff'):(warming?t('homeLiveLoading'):(running?t('homeLiveBadgeOn'):t('homeLiveBadgeReady')))),summary.loading?'':(eng==='off'?'':(running?'on':'on')));
     renderHomeVoiceSimpleCard(summary);
     const toggleBtn=$('btnHomeVoiceToggle');
-    syncHomeEntryToggleBtn(toggleBtn,voiceOn,'homeLiveToggleWakeOff','homeLiveToggleWakeOn');
+    syncHomeEntryToggleBtn(toggleBtn,keylessOn,'homeLiveToggleWakeOff','homeLiveToggleWakeOn');
     if(toggleBtn) toggleBtn.disabled=!!global.OneToneVoiceWake.isSapiTogglePending()||!!global.OneToneVoiceWake.isVoskTogglePending()||recordingBusy;
     const voicePanel=$('homeLivePanelVoice');
-    if(voicePanel) voicePanel.classList.toggle('is-entry-disabled',!summary.loading&&!voiceOn);
+    if(voicePanel) voicePanel.classList.toggle('is-entry-disabled',!summary.loading&&!keylessOn);
   }
 
   var homeLiveRenderTimer=0;

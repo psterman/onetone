@@ -1057,6 +1057,31 @@
 .ha2-wb-page-turn--tool.is-deliver-approval{
   border-color:color-mix(in srgb, #8a4fbf 40%, var(--ha2-line));
   background:color-mix(in srgb, #8a4fbf 8%, transparent);
+  /* Long clarify text must not crush into border-only rails. */
+  overflow:visible;
+}
+.ha2-wb-page-turn--tool.is-needs-input .ha2-tool-step-hd{
+  align-items:flex-start;
+  cursor:default;
+}
+.ha2-wb-page-turn--tool.is-needs-input .ha2-chat-needs-q{
+  display:block !important;
+  visibility:visible !important;
+  height:auto !important;
+  max-height:none;
+  overflow:visible;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font:13px/1.5 inherit;
+  color:var(--ha2-ink);
+  padding:8px 12px 4px;
+  border-top:0;
+}
+.ha2-wb-page-turn--tool.is-needs-input .ha2-chat-needs-input{
+  pointer-events:auto;
+  cursor:text;
+  position:relative;
+  z-index:1;
 }
 .ha2-tool-step-hd{
   display:flex;align-items:center;gap:8px;cursor:pointer;

@@ -192,11 +192,33 @@ export function getVoiceActivation(): VoiceActivation {
 }
 
 export async function setVoiceActivation(mode: VoiceActivation): Promise<void> {
+  // pushToTalk ↔ wakeOrPushToTalk go through OneToneVoiceKeyless SSOT (Vosk auto arm).
+  if (mode === 'wakeOrPushToTalk' || mode === 'pushToTalk') {
+    const K = (window as unknown as {
+      OneToneVoiceKeyless?: {
+        setOn?: (on: boolean, opts?: { skipConfirm?: boolean; reason?: string }) => Promise<unknown>;
+      };
+    }).OneToneVoiceKeyless;
+    if (K && typeof K.setOn === 'function') {
+      await K.setOn(mode === 'wakeOrPushToTalk', {
+        skipConfirm: true,
+        reason: 'island-activation',
+      });
+      return;
+    }
+  }
   const cfg = getConfig();
   cfg.voiceActivation = mode;
   cfg.voiceWakeListeningOptIn = mode === 'wakeOrPushToTalk';
   if (mode === 'disabled') cfg.voiceAssistEnabled = false;
   else if (cfg.voiceAssistEnabled === false) cfg.voiceAssistEnabled = true;
+  if (mode === 'wakeOrPushToTalk') {
+    cfg.voiceListeningStrategy = 'auto';
+    cfg.desiredEngine = 'vosk';
+  } else if (mode === 'pushToTalk' || mode === 'softPad' || mode === 'disabled') {
+    cfg.voiceListeningStrategy = 'off';
+    cfg.desiredEngine = 'none';
+  }
   persistSoon();
   try {
     await typed.setVoiceActivation(mode);

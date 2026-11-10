@@ -163,16 +163,21 @@ pub fn voice_set_activation(
         crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
     }
     let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
-    Ok(serde_json::json!({
+    let payload = serde_json::json!({
         "ok": true,
+        "on": label == "wakeOrPushToTalk",
         "voiceActivation": label,
         "voiceWakeListeningOptIn": cfg_snapshot.voice_wake_listening_opt_in,
         "voiceAssistEnabled": cfg_snapshot.voice_assist_enabled,
         "strategy": cfg_snapshot.voice_listening_strategy,
+        "desiredEngine": cfg_snapshot.desired_engine,
         "supervisor": supervisor,
         "activateAsync": !parked,
         "activateBusy": !parked,
-    }))
+    });
+    // Cross-webview sync: Soft Pad / mini / tray ↔ main home/settings paint.
+    let _ = crate::ipc::emit_app_event(app, "voice-keyless-changed", &payload);
+    Ok(payload)
 }
 
 #[tauri::command]

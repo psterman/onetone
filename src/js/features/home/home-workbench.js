@@ -2281,6 +2281,13 @@
   var followFgPollTimer=null;
   var lastExternalFg=null;
   var lastFollowExe='';
+  // Commit only after desired scene stays put — Cursor↔TaskMgr/TourBox used to
+  // scheme_select every ~1s (config write + voice/hotkey rebuild → main-process CPU ~50%).
+  // ponytail: poll hysteresis ceiling; upgrade = event-driven FG IPC with same sticky rules.
+  var pendingFollowSceneId='';
+  var pendingFollowSceneAt=0;
+  var FOLLOW_UP_MS=1200;
+  var FOLLOW_DOWN_MS=3500;
 
   function isFollowFgEnabled(){
     // App scenarios exist so the home habit follows the foreground app.
@@ -2398,6 +2405,49 @@
     }catch(_){}
   }
 
+  function isAppScenarioMappingId(id){
+    id=String(id||'').trim();
+    if(!id) return false;
+    var core=global.OneToneMappingCore;
+    var m=core&&core.byId?core.byId(id):null;
+    if(!m) return false;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isAppScenarioMapping) return !!diff.isAppScenarioMapping(m);
+    return !!String(m.appTargetId||m.app_target_id||'').trim();
+  }
+
+  function clearPendingFollowScene(){
+    pendingFollowSceneId='';
+    pendingFollowSceneAt=0;
+  }
+
+  /** Hysteresis + sticky downgrade — never scheme_select on every 800ms FG flicker. */
+  function commitFollowFgScene(desired,identity){
+    desired=String(desired||'').trim();
+    if(!desired) return;
+    var act=global.OneToneSceneActivate;
+    if(!act||typeof act.activateScene!=='function') return;
+    var cur=act.activeSceneId?String(act.activeSceneId()||'').trim():'';
+    if(cur===desired){
+      clearPendingFollowScene();
+      return;
+    }
+    var now=Date.now();
+    if(desired!==pendingFollowSceneId){
+      pendingFollowSceneId=desired;
+      pendingFollowSceneAt=now;
+      return;
+    }
+    var need=FOLLOW_UP_MS;
+    if(isAppScenarioMappingId(cur)&&!isAppScenarioMappingId(desired)){
+      need=FOLLOW_DOWN_MS;
+    }
+    if(now-pendingFollowSceneAt<need) return;
+    clearPendingFollowScene();
+    act.activateScene(desired,{source:'foreground'});
+    if(isAppScenarioMappingId(desired)) selectFollowedHabit(desired,identity);
+  }
+
   function syncFollowForegroundApp(){
     if(!isFollowFgEnabled()) return;
     try{
@@ -2430,19 +2480,15 @@
       if(!identity||isSelfFgIdentity(identity)||isTrayFgIdentity(identity)) return;
       var act=global.OneToneSceneActivate;
       if(rt&&rt.getPin&&rt.getPin()){
+        clearPendingFollowScene();
         var pinned=rt.resolveActiveSceneId?rt.resolveActiveSceneId(identity):'';
         if(pinned&&act&&act.activateScene) act.activateScene(pinned,{source:'foreground'});
         return;
       }
       var hub=global.OneToneHabitHub;
       var hit=hub&&hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
-      if(hit&&hit.id){
-        if(act&&act.activateScene) act.activateScene(String(hit.id),{source:'foreground'});
-        selectFollowedHabit(String(hit.id),identity);
-        return;
-      }
-      var base=baselineMappingId();
-      if(base&&act&&act.activateScene) act.activateScene(base,{source:'foreground'});
+      var desired=hit&&hit.id?String(hit.id):baselineMappingId();
+      commitFollowFgScene(desired,identity);
     }).catch(function(){});
   }
 
@@ -2470,6 +2516,7 @@
       clearInterval(followFgPollTimer);
       followFgPollTimer=null;
     }
+    clearPendingFollowScene();
   }
 
   function hasAppScenarioMappings(){

@@ -140,7 +140,7 @@
     opts = opts || {};
     var age = when ? String(when) + '有进度' : '有可恢复进度';
     if (opts.projUnconfirmed) {
-      return age + '，确认项目后可继续。';
+      return age + '，可以直接继续（项目未确认时可稍后改）。';
     }
     return age + '，可以从停下的地方继续。';
   }
@@ -545,8 +545,10 @@
   }
 
   /**
-   * Single primary CTA: when project is unconfirmed, Hero owns confirm/pick.
-   * Resumable + unconfirmed → "确认项目以继续" (never resume + gate competing).
+   * Project unconfirmed:
+   * - Resumable / return → keep last-status Hero +「继续上次工作」(fast path).
+   *   Project confirm is secondary; resume may soft-confirm probable root.
+   * - Idle / no resume → Hero owns confirm/pick (no competing desk gate).
    */
   function applyProjectConfirmGate(vm) {
     if (!vm) return vm;
@@ -574,16 +576,8 @@
     var resumableIntent =
       (vm.primary && vm.primary.id === 'resume') ||
       vm.mode === 'return' ||
+      !!(vm.desk && vm.desk.continueCard) ||
       (vm.dto && vm.dto.work && String(vm.dto.work.status) === 'resumable');
-
-    var label =
-      resumableIntent
-        ? gateKind === 'confirm_project'
-          ? '确认项目以继续'
-          : '选择项目以继续'
-        : gateKind === 'confirm_project'
-          ? '确认这是当前项目'
-          : '选择当前项目';
 
     // attention / degraded keep their primary; still drop competing gate button.
     if (vm.mode === 'attention' || vm.mode === 'degraded') {
@@ -591,18 +585,24 @@
       return vm;
     }
 
+    // Fast path: show where you left off; one click resumes. Don't bury status behind project pick.
     if (resumableIntent) {
-      vm.mode = 'return';
-      vm.headline = '有可继续的工作，但项目尚未确认。';
-      vm.assistance =
-        vm.projectName && vm.projectName !== '未知项目'
-          ? '推断当前是 ' +
-            vm.projectName +
-            '。确认后即可从保存的位置继续，不会用猜测替你决定。'
-          : '确认当前项目后即可从保存的位置继续，不会用猜测替你决定。';
-      vm.continuation = null;
-      vm.presence = null;
+      if (vm.mode !== 'return') vm.mode = 'return';
+      if (!vm.primary || vm.primary.id !== 'resume') {
+        vm.primary = { id: 'resume', label: RESUME_LABEL };
+      }
+      if (!vm.secondary || vm.secondary.id === 'confirm_project' || vm.secondary.id === 'pick_project') {
+        vm.secondary =
+          gateKind === 'confirm_project'
+            ? { id: 'confirm_project', label: '确认这是当前项目' }
+            : { id: 'pick_project', label: '选择其他项目' };
+      }
+      if (vm.desk) vm.desk.projectGate = null;
+      return vm;
     }
+
+    var label =
+      gateKind === 'confirm_project' ? '确认这是当前项目' : '选择当前项目';
 
     vm.primary = { id: gateKind, label: label };
     if (gateKind === 'confirm_project') {

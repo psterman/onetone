@@ -2693,6 +2693,28 @@
         bindQuietComposer();
         return;
       }
+      // Keep live ha2 compose across Focus remounts. Status/card polls used to
+      // wipe [data-hf-ha2-compose-host] via innerHTML → caret/IME blur mid-type.
+      var liveComposeHost = null;
+      var draftWasFocused = false;
+      var draftCaret = { start: 0, end: 0 };
+      try {
+        var oldComposeHost = root.querySelector(
+          '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
+        );
+        if (oldComposeHost && oldComposeHost.querySelector('[data-ha2-compose]')) {
+          var oldDraft = oldComposeHost.querySelector('[data-ha2-draft]');
+          draftWasFocused = !!(oldDraft && document.activeElement === oldDraft);
+          if (draftWasFocused && oldDraft) {
+            try {
+              draftCaret.start = oldDraft.selectionStart;
+              draftCaret.end = oldDraft.selectionEnd;
+            } catch (_) {}
+          }
+          liveComposeHost = oldComposeHost;
+          oldComposeHost.remove();
+        }
+      } catch (_) {}
       // Flush live ha2 drafts before wiping the host (Shift+Enter / poll remount).
       try {
         var HA2stash = global.OneToneHomeAgentV2;
@@ -2702,9 +2724,37 @@
       } catch (_) {}
       lastPaintHtml = html;
       root.innerHTML = html;
+      if (liveComposeHost) {
+        try {
+          var composeSlot = root.querySelector(
+            '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
+          );
+          if (composeSlot && composeSlot !== liveComposeHost) {
+            composeSlot.replaceWith(liveComposeHost);
+          }
+        } catch (_) {}
+      }
       syncVoiceStrip(voice);
       mountHomeFocusChrome();
       bindQuietComposer();
+      if (draftWasFocused) {
+        try {
+          var keepTa = root.querySelector(
+            '.ha2-compose [data-ha2-draft], [data-ha2-draft]'
+          );
+          if (keepTa) {
+            if (typeof keepTa.focus === 'function') {
+              try {
+                keepTa.focus({ preventScroll: true });
+              } catch (_) {
+                keepTa.focus();
+              }
+            }
+            keepTa.selectionStart = draftCaret.start;
+            keepTa.selectionEnd = draftCaret.end;
+          }
+        } catch (_) {}
+      }
       scheduleAgentCenterRefresh();
       return;
     }
@@ -3599,6 +3649,72 @@
     paint();
   }
 
+  /** Put caret in the home draft on enter — never mid-type or over exclusive chat. */
+  function focusHomeDraft(opts) {
+    opts = opts || {};
+    if (!root || !visible) return false;
+    if (root.classList.contains('is-wb-chat-page')) return false;
+    try {
+      var HA2 = global.OneToneHomeAgentV2;
+      if (HA2 && typeof HA2.isWbChatPageOpen === 'function' && HA2.isWbChatPageOpen()) {
+        return false;
+      }
+    } catch (_) {}
+    var ta = root.querySelector('.ha2-compose [data-ha2-draft], [data-ha2-draft]');
+    if (!ta || ta.disabled || ta.readOnly) return false;
+    var ae = document.activeElement;
+    if (ae === ta) return true;
+    // Don't yank focus from another live field the user is already typing in.
+    if (
+      !opts.force &&
+      ae &&
+      ae !== document.body &&
+      ae !== root &&
+      typeof ae.matches === 'function' &&
+      ae.matches('input, textarea, select, [contenteditable="true"]') &&
+      root.contains(ae) &&
+      !ae.closest('[hidden]')
+    ) {
+      return false;
+    }
+    try {
+      ta.focus({ preventScroll: true });
+    } catch (_) {
+      try {
+        ta.focus();
+      } catch (_) {
+        return false;
+      }
+    }
+    try {
+      var len = String(ta.value || '').length;
+      ta.selectionStart = len;
+      ta.selectionEnd = len;
+    } catch (_) {}
+    return document.activeElement === ta;
+  }
+
+  function scheduleFocusHomeDraft() {
+    var tries = 0;
+    function tick() {
+      tries += 1;
+      if (!visible) return;
+      if (focusHomeDraft()) return;
+      if (tries < 10) {
+        try {
+          requestAnimationFrame(tick);
+        } catch (_) {
+          setTimeout(tick, 16);
+        }
+      }
+    }
+    try {
+      requestAnimationFrame(tick);
+    } catch (_) {
+      setTimeout(tick, 0);
+    }
+  }
+
   function showAgentV2Surface() {
     if (!root) return;
     var HA2 = global.OneToneHomeAgentV2;
@@ -3612,6 +3728,7 @@
     HA2.mount(root);
     HA2.show();
     visible = true;
+    scheduleFocusHomeDraft();
   }
 
   function show() {
@@ -3647,6 +3764,7 @@
     }
     paint();
     syncVoiceStrip();
+    scheduleFocusHomeDraft();
     // Single post-paint IPC batch (title-bar drag / nav feel).
     setTimeout(function () {
       if (!visible) return;
@@ -3716,6 +3834,8 @@
     },
     paint: paint,
     syncVoice: syncVoiceStrip,
+    focusHomeDraft: focusHomeDraft,
+    scheduleFocusHomeDraft: scheduleFocusHomeDraft,
     openHabitHub: openHabitHub,
     lastAgentSessionId: function () {
       try {

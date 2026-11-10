@@ -376,6 +376,11 @@
       if(row) row.hidden=false;
     }
     global.__vp_syncWakeListeningOptInToggle__=syncWakeListeningOptInToggle;
+    try{
+      if(global.OneToneVoiceKeyless&&typeof global.OneToneVoiceKeyless.onChange==='function'){
+        global.OneToneVoiceKeyless.onChange(function(){ syncWakeListeningOptInToggle(); });
+      }
+    }catch(_){}
     if(wakeOptInBtn){
       wakeOptInBtn.onclick=function(){
         var K=global.OneToneVoiceKeyless;

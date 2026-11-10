@@ -3834,8 +3834,8 @@ pub fn apply_voice_activation(cfg: &mut VoiceConfig, mode: &str) {
     match mode {
         "wakeOrPushToTalk" => {
             cfg.voice_assist_enabled = true;
-            // Keyword-only mic while waiting for wake.
-            apply_voice_listening_strategy_engine_only(cfg, "resourceSaver");
+            // Background wake uses Vosk (auto) — same as home「开始」intent.
+            apply_voice_listening_strategy_engine_only(cfg, "auto");
         }
         "disabled" => {
             cfg.voice_assist_enabled = false;
@@ -7045,13 +7045,17 @@ mod tests {
         apply_voice_activation(&mut cfg, "wakeOrPushToTalk");
         assert_eq!(cfg.voice_activation, "wakeOrPushToTalk");
         assert!(cfg.voice_wake_listening_opt_in);
-        assert!(cfg.voice_kws.enabled);
+        assert_eq!(cfg.voice_listening_strategy, "auto");
+        assert_eq!(cfg.desired_engine, "vosk");
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_kws.enabled);
         assert!(cfg.voice_assist_enabled);
 
         apply_keyless_wake(&mut cfg, false);
         assert_eq!(cfg.voice_activation, "pushToTalk");
         assert!(!cfg.voice_wake_listening_opt_in);
         assert_eq!(cfg.desired_engine, "none");
+        assert!(!cfg.voice_vosk.enabled);
         assert!(!cfg.voice_kws.enabled);
         assert!(cfg.voice_assist_enabled, "PTT assist must survive keyless off");
     }

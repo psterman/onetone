@@ -26,6 +26,24 @@ assert.match(
   /Turning an engine strategy on implies assist; turning off must NOT kill PTT/,
   'strategy off must not clear assist'
 );
+// Armed = Vosk auto (not resourceSaver/KWS).
+{
+  const armIdx = configRs.indexOf('"wakeOrPushToTalk" =>');
+  assert.ok(armIdx > 0, 'wakeOrPushToTalk branch in apply_voice_activation');
+  const armChunk = configRs.slice(armIdx, armIdx + 280);
+  assert.match(armChunk, /"auto"/, 'arm maps to strategy auto (Vosk)');
+  assert.doesNotMatch(armChunk, /resourceSaver/, 'arm must not force resourceSaver/KWS');
+}
+assert.match(
+  configRs,
+  /assert_eq!\(cfg\.voice_listening_strategy, "auto"\)/,
+  'Rust test asserts auto strategy on arm'
+);
+assert.match(
+  configRs,
+  /assert_eq!\(cfg\.desired_engine, "vosk"\)/,
+  'Rust test asserts vosk desired_engine on arm'
+);
 
 const muteRs = read('src-tauri/src/ipc/commands/mic/mute.rs');
 assert.match(muteRs, /stop_all_voice_engines/, 'mic mute stops all voice engines');
@@ -52,6 +70,9 @@ assert.match(trayLayout, /trayChVoiceKeyless/, 'tray label key for 免按键语�
 const trayCtrl = read('src/js/features/settings/tray-channel-controls.js');
 assert.match(trayCtrl, /voiceKeyless/, 'tray controls handle voiceKeyless');
 assert.match(trayCtrl, /cmd_voice_set_activation/, 'tray keyless uses activation IPC');
+assert.match(trayCtrl, /OneToneVoiceKeyless/, 'tray routes through shared keyless SSOT');
+assert.match(trayCtrl, /desiredEngine = on \? 'vosk'/, 'tray patchOsKeyless mirrors vosk when armed');
+assert.match(trayCtrl, /voiceListeningStrategy = on \? 'auto'/, 'tray patchOsKeyless mirrors auto when armed');
 assert.match(
   trayCtrl,
   /Voice channel master: assist only/,
@@ -110,6 +131,36 @@ assert.match(semTest, /disallowed_channel_cannot_bind/, 'channel gate test');
 const keylessJs = read('src/js/features/voice/voice-keyless-toggle.js');
 assert.match(keylessJs, /OneToneVoiceKeyless/, 'shared keyless toggle API');
 assert.match(keylessJs, /cmd_voice_set_activation/, 'shared toggle uses activation IPC');
+assert.match(keylessJs, /voice-keyless-changed/, 'shared emits voice-keyless-changed');
+assert.match(keylessJs, /voiceListeningStrategy = next \? 'auto'/, 'shared FE mirrors auto on arm');
+assert.match(keylessJs, /voiceListeningStrategy = next \? 'auto' : 'off'/, 'shared FE mirrors off on disarm');
+
+const homeActions = read('src/js/features/home/home-live-actions.js');
+assert.match(homeActions, /OneToneVoiceKeyless/, 'home toggle uses keyless SSOT');
+assert.match(homeActions, /K\.toggle/, 'home calls OneToneVoiceKeyless.toggle');
+assert.doesNotMatch(
+  homeActions,
+  /switchListeningStrategy\('auto'/,
+  'home must not bypass activation via strategy-only switch'
+);
+
+const homeLive = read('src/js/features/home/home-live.js');
+assert.match(homeLive, /OneToneVoiceKeyless/, 'home paint reads keyless arm bit');
+assert.match(homeLive, /keylessOn/, 'home toggle button paints keylessOn');
+
+const boot = read('src/js/core/app-session.js');
+assert.match(
+  boot,
+  /strategyEarly==='off'/,
+  'deferred boot stays idle when strategy off (disarmed)'
+);
+
+const desiredRs = read('src-tauri/src/ipc/commands/voice/desired.rs');
+assert.match(
+  desiredRs,
+  /emit_app_event\(app, "voice-keyless-changed"/,
+  'activation IPC emits cross-webview voice-keyless-changed'
+);
 
 const agentSlots = read('src/js/features/agent/agent-actions.js');
 assert.match(agentSlots, /slotId: 'toggleVoiceKeyless'/, 'Soft Pad bindable slot toggleVoiceKeyless');
@@ -123,6 +174,8 @@ assert.match(overlay, /toggleVoiceKeyless/, 'floating Soft Pad bar can toggle ke
 assert.match(overlay, /toggleVoiceKeylessFromOverlay/, 'overlay FE toggles keyless');
 assert.match(overlay, /withPinnedMiniSlots/, 'keyless is pinned on mini tools row');
 assert.match(overlay, /overlay-mini__action-txt/, 'keyless shows 免按键 text on bar');
+assert.match(overlay, /voice-keyless-changed/, 'overlay listens for keyless sync');
+assert.match(overlay, /desiredEngine=next\?'vosk'/, 'overlay snap mirrors vosk when armed');
 
 const dispatch = read('src-tauri/src/ipc/runtime_dispatch.rs');
 assert.match(

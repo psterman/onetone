@@ -868,13 +868,17 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('Continue detail must not include checkpoint word');
   }
   if (unk.desk.projectGate) {
-    throw new Error('unconfirmed+checkpoint must clear desk gate — Hero owns confirm/pick');
+    throw new Error('unconfirmed+checkpoint must clear desk gate — resume owns the fast path');
   }
-  if (!unk.primary || (unk.primary.id !== 'confirm_project' && unk.primary.id !== 'pick_project')) {
-    throw new Error('unconfirmed+checkpoint primary must be confirm/pick, got ' + (unk.primary && unk.primary.id));
+  // Fast path: last status stays visible; primary is resume (not project pick gate).
+  if (!unk.primary || unk.primary.id !== 'resume') {
+    throw new Error('unconfirmed+checkpoint primary must stay resume, got ' + (unk.primary && unk.primary.id));
   }
-  if (!/确认项目以继续|选择项目以继续/.test(unk.primary.label || '')) {
-    throw new Error('unconfirmed resume path label must say 以继续, got ' + unk.primary.label);
+  if (!/继续上次工作/.test(unk.primary.label || '')) {
+    throw new Error('unconfirmed resume path label must stay 继续上次工作, got ' + unk.primary.label);
+  }
+  if (!unk.headline || !/上次停在/.test(unk.headline)) {
+    throw new Error('unconfirmed+checkpoint must keep last-status headline, got ' + unk.headline);
   }
   // Active running session → Living; same-session checkpoint not duplicated as Continue
   let live = HFAdapter.toViewModel({
@@ -1435,6 +1439,22 @@ assertFocus(
     if (!nowSrc.includes('tryEmbedHa2Compose') || !nowSrc.includes('embedCompose')) {
       throw new Error('Focus paint must tryEmbedHa2Compose → HA2.embedCompose');
     }
+    // Focus remount must keep live compose DOM — status polls were blurring the draft.
+    if (
+      !nowSrc.includes('liveComposeHost') ||
+      !nowSrc.includes('composeSlot.replaceWith(liveComposeHost)') ||
+      !nowSrc.includes('draftWasFocused')
+    ) {
+      throw new Error('Focus paint must preserve ha2 compose host across remounts');
+    }
+    // Entering home autofocuses the draft (once per show, not every paint).
+    if (
+      !nowSrc.includes('function focusHomeDraft') ||
+      !nowSrc.includes('scheduleFocusHomeDraft') ||
+      !/show\(\)[\s\S]{0,900}scheduleFocusHomeDraft\(/.test(nowSrc)
+    ) {
+      throw new Error('Home show() must schedule draft autofocus on enter');
+    }
     if (
       !nowSrc.includes("loadGroup('home-agent')") &&
       !nowSrc.includes('loadGroup("home-agent")')
@@ -1504,7 +1524,7 @@ assertFocus(
     }
     if (
       !css.includes('.now-home.is-hf-ha2-compose') ||
-      !css.includes('--ha2-surface: #ffffff') ||
+      !css.includes('--ha2-surface:') ||
       !css.includes('.ha2-cap-panel')
     ) {
       throw new Error('Focus embed CSS must define ha2 tokens and hide ready strip');

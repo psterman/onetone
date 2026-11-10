@@ -19,35 +19,16 @@
     return 'vosk';
   }
 
-  function persistVoiceAssistToggle(){
-    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.invokeSaveOnce){
-      global.OneToneConfigPersist.invokeSaveOnce('voiceAssistToggle');
-    }
-    if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
-    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
-  }
-
   function homeToggleVoiceWake(){
-    var vw=global.OneToneVoiceWake;
-    if(!vw||!vw.switchListeningStrategy) return;
-    var cfg=global.OneToneState.state.config||{};
+    var K=global.OneToneVoiceKeyless;
+    if(!K||typeof K.toggle!=='function') return;
     var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
-    var on=global.OneToneVoiceSurfaceCopy
-      ?global.OneToneVoiceSurfaceCopy.assistEnabled(cfg)
-      :(global.OneToneHomeLive.voiceEngineOn()!=='off');
-    if(paused&&on&&global.OneToneIpc){
+    if(paused&&K.isOn()&&global.OneToneIpc){
       global.OneToneIpc.invoke('cmd_resume',{}).catch(function(){});
       return;
     }
-    if(on){
-      cfg.voiceAssistEnabled=false;
-      Promise.resolve(vw.switchListeningStrategy('off',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
-      return;
-    }
-    cfg.voiceAssistEnabled=true;
-    cfg.voiceWakeListeningOptIn=true;
-    // Home speak channel expects live text → auto (Vosk), not resourceSaver (KWS-only).
-    Promise.resolve(vw.switchListeningStrategy('auto',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
+    // SSOT: arm/disarm = wakeOrPushToTalk + Vosk auto (same as settings/tray/Soft Pad/mini).
+    K.toggle({ confirm:true, reason:'homeVoiceToggle' });
   }
 
   function toggleHomeKeyEnable(){
