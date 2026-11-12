@@ -527,7 +527,7 @@
       +'</div>';
   }
 
-  var KEYS_DELAY_PRESETS = [100, 200, 500, 1000];
+  var KEYS_DELAY_PRESETS = [100, 120, 200, 500, 1000];
   var KEYS_SEQ_RECENT_LS = 'onetone.keys.seq.recentKinds';
   var keysSeqAddMenuOpen = false;
 
@@ -615,6 +615,7 @@
   // Keys desk: row body IS the editor (no sheet / catalog).
   function buildKeysInlineRowHtml(a, i, total, canEdit, listening){
     var typ=a&&a.type?String(a.type):'';
+    // Mac Keys step kinds; 输入框 = aim+IME peer on Windows.
     var kind=typ==='key'
       ? t('keysCaptureSeqAddKey','按键')
       : typ==='text'
@@ -622,9 +623,9 @@
         : typ==='open'
           ? openKindLabel(a&&a.kind)
           : typ==='ime'
-            ? t('keysCaptureSeqAddIme','语音输入法')
+            ? t('keysCaptureSeqAddAim','输入框')
             : t('keysCaptureSeqAddDelay','延迟');
-    var body='';
+    var val='';
     if(typ==='key'){
       var empty=!String(a&&a.value||'').trim();
       var label=listening
@@ -632,14 +633,14 @@
         : empty
           ? t('keysCaptureSeqTapRecord','点此录制按键')
           : (hooks().friendlyKeyName(a.value)||a.value);
-      body='<button type="button" class="keys-seq-key-chip'
+      val='<button type="button" class="keys-seq-key-chip'
         +(empty&&!listening?' is-empty':'')
         +(listening?' is-listen':'')
         +'" data-inline-rec="'+i+'">'
         +escHtml(label)
         +'</button>';
     } else if(typ==='text'){
-      body='<textarea class="keys-seq-text-in" rows="1" data-inline-text="'+i+'"'
+      val='<textarea class="keys-seq-text-in" rows="1" data-inline-text="'+i+'"'
         +' placeholder="'+escHtml(t('keysActionTextSheetField','文本内容'))+'">'
         +escHtml(a&&a.value||'')
         +'</textarea>';
@@ -660,7 +661,7 @@
             +' title="'+escHtml(t('keysCaptureSeqOpenBrowse','浏览'))+'">'
             +escHtml(t('keysCaptureSeqOpenBrowse','浏览'))
             +'</button>');
-      body='<div class="keys-seq-open-row">'
+      val='<div class="keys-seq-open-row">'
         +'<input type="text" class="keys-seq-open-in" data-inline-open="'+i+'"'
         +' data-open-kind="'+escHtml(okind)+'"'
         +' value="'+escHtml(a&&a.value||'')+'"'
@@ -668,92 +669,59 @@
         +sideBtns
         +'</div>';
     } else if(typ==='ime'){
-      var presets=(global.OneToneImePresets&&global.OneToneImePresets.presets)||[];
-      var pid=String(a&&(a.presetId||a.preset_id)||'');
       var aim=String(a&&a.aim||'auto')==='none'?'none':'auto';
-      var finishRaw=String(a&&a.finish||'confirm');
-      var finish=finishRaw==='manual'||finishRaw==='none'||finishRaw==='keep'
-        ? 'manual'
-        : finishRaw==='perpress'||finishRaw==='hold'
-          ? 'perpress'
-          : 'confirm';
-      var delayMs=Number(a&&a.ms)>0?Number(a.ms):(Number(a&&a.delayMs)||2000);
       var chordEmpty=!String(a&&a.value||'').trim();
       var chordLbl=chordEmpty
         ? t('keysCaptureSeqTapRecord','点此录制按键')
         : (hooks().friendlyKeyName(a.value)||a.value);
-      var presetBtns=presets.map(function(p){
-        var name=t(p.nameKey,p.id);
-        var shortName=t(p.shortKey,name);
-        var ico=p.icon
-          ? '<img class="keys-seq-ime-ico" src="'+escHtml(p.icon)+'" alt="" width="18" height="18" />'
-          : '';
-        return '<button type="button" class="keys-seq-ime-preset'+(pid===p.id?' is-on':'')+'"'
-          +' data-inline-ime-preset-pick="'+i+'" data-preset="'+escHtml(p.id)+'"'
-          +' title="'+escHtml(name)+'" aria-pressed="'+(pid===p.id?'true':'false')+'">'
-          +ico+'<span>'+escHtml(shortName)+'</span></button>';
-      }).join('');
-      var finishBtns=
-        '<button type="button" class="keys-seq-ime-finish'+(finish==='manual'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="manual">'
-        +escHtml(t('habitFinishModeManual','说完先等我'))+'</button>'
-        +'<button type="button" class="keys-seq-ime-finish'+(finish==='confirm'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="confirm">'
-        +escHtml(t('habitFinishModeConfirmSend','说完发送'))+'</button>'
-        +'<button type="button" class="keys-seq-ime-finish'+(finish==='perpress'?' is-on':'')+'" data-inline-ime-finish-mode="'+i+'" data-finish="perpress">'
-        +escHtml(t('habitFinishModeAuto','按住说话'))+'</button>';
-      var delayHtml=finish==='confirm'
-        ? ('<div class="keys-seq-ime-delay" role="group" aria-label="ms">'
-          +[1000,2000,3000].map(function(ms){
-            return '<button type="button" class="keys-seq-delay-pill'+(Math.abs(delayMs-ms)<1?' is-on':'')+'"'
-              +' data-inline-ime-delay="'+i+'" data-ms="'+ms+'">'+(ms/1000)+'s</button>';
-          }).join('')
-          +'</div>')
-        : '';
-      body='<div class="keys-seq-ime-card">'
-        +'<div class="keys-seq-ime-field wide"><label>'+escHtml(t('keysSeqImePreset','输入法'))+'</label>'
-        +'<div class="keys-seq-ime-presets" role="listbox">'+presetBtns+'</div></div>'
-        +'<div class="keys-seq-ime-field"><label>'+escHtml(t('keysSeqImeChord','识别键'))+'</label>'
-        +'<button type="button" class="keys-seq-key-chip'+(chordEmpty?' is-empty':'')+'" data-inline-rec="'+i+'">'
-        +escHtml(chordLbl)+'</button></div>'
-        +'<div class="keys-seq-ime-field"><label>'+escHtml(t('keysSeqImeAim','聚焦策略'))+'</label>'
-        +'<div class="keys-seq-ime-aim-row">'
-        +'<select data-inline-ime-aim="'+i+'">'
-        +'<option value="auto"'+(aim==='auto'?' selected':'')+'>'+escHtml(t('keysSeqImeAimAuto','自动对准输入框'))+'</option>'
+      // Mac「输入框」compact: aim mode + chord + calibrate affordances.
+      val='<div class="keys-seq-aim-card">'
+        +'<select class="keys-seq-aim-sel" data-inline-ime-aim="'+i+'">'
+        +'<option value="auto"'+(aim==='auto'?' selected':'')+'>'+escHtml(t('keysSeqImeAimFirst','先对准，再填入'))+'</option>'
         +'<option value="none"'+(aim==='none'?' selected':'')+'>'+escHtml(t('keysSeqImeAimNone','自己点进框'))+'</option>'
         +'</select>'
-        +'<button type="button" class="keys-seq-ime-demo-btn" data-inline-ime-aim-demo="'+i+'" data-ime-aim-demo-host="'+i+'" data-mode="'+aim+'">'
-        +escHtml(t('keysAimDemoShow','看演示'))+'</button></div></div>'
-        +'<div class="keys-seq-ime-field wide"><label>'+escHtml(t('keysSeqImeFinish','说完后'))+'</label>'
-        +'<div class="keys-seq-ime-finish-row">'+finishBtns+'</div>'+delayHtml+'</div></div>';
+        +'<p class="keys-seq-aim-help">'
+        +escHtml(aim==='auto'
+          ? t('keysSeqImeAimAutoHint','自动点进聊天框再写；失败则取消')
+          : t('keysSeqImeAimNoneHint','假定焦点已在输入框'))
+        +'</p>'
+        +'<div class="keys-seq-aim-meta">'
+        +'<button type="button" class="keys-seq-key-chip'+(chordEmpty?' is-empty':'')+'" data-inline-rec="'+i+'"'
+        +' title="'+escHtml(t('keysSeqImeChord','识别键'))+'">'+escHtml(chordLbl)+'</button>'
+        +'<button type="button" class="keys-seq-aim-link" data-inline-ime-aim-demo="'+i+'" data-ime-aim-demo-host="'+i+'" data-mode="'+aim+'">'
+        +escHtml(t('keysAimDemoShow','看演示'))+'</button>'
+        +'</div></div>';
     } else {
       var ms=Number(a&&a.ms)||200;
-      var pills=KEYS_DELAY_PRESETS.map(function(preset){
-        return '<button type="button" class="keys-seq-delay-pill'
-          +(Math.abs(ms-preset)<1?' is-on':'')
-          +'" data-inline-delay="'+i+'" data-ms="'+preset+'">'
-          +(preset>=1000?(preset/1000)+'s':preset+'ms')
-          +'</button>';
-      }).join('');
-      body='<div class="keys-seq-delay-pills">'+pills
-        +'<input type="number" class="keys-seq-delay-custom" min="1" step="50" value="'+escHtml(String(ms))+'"'
-        +' data-inline-delay-custom="'+i+'" aria-label="ms" />'
-        +'<span class="keys-seq-delay-unit">ms</span></div>';
+      var delayOpts=KEYS_DELAY_PRESETS.slice();
+      if(delayOpts.indexOf(ms)<0) delayOpts=delayOpts.concat([ms]).sort(function(a,b){ return a-b; });
+      val='<select class="keys-seq-delay-sel" data-inline-delay-select="'+i+'" aria-label="ms">'
+        +delayOpts.map(function(preset){
+          return '<option value="'+preset+'"'+(Math.abs(ms-preset)<1?' selected':'')+'>'
+            +(preset>=1000?(preset/1000)+'s':preset+'ms')
+            +'</option>';
+        }).join('')
+        +'</select>';
     }
     var upDis=!canEdit||i<=0;
     var downDis=!canEdit||i>=total-1;
     var acts=canEdit
       ? ('<button type="button" class="home-key-map-action-btn" data-act="up" data-idx="'+i+'"'
-        +(upDis?' disabled':'')+' aria-label="'+escHtml(t('homeKeyMapActionUp'))+'">▲</button>'
+        +(upDis?' disabled':'')+' title="'+escHtml(t('homeKeyMapActionUp'))+'" aria-label="'+escHtml(t('homeKeyMapActionUp'))+'">↑</button>'
         +'<button type="button" class="home-key-map-action-btn" data-act="down" data-idx="'+i+'"'
-        +(downDis?' disabled':'')+' aria-label="'+escHtml(t('homeKeyMapActionDown'))+'">▼</button>'
+        +(downDis?' disabled':'')+' title="'+escHtml(t('homeKeyMapActionDown'))+'" aria-label="'+escHtml(t('homeKeyMapActionDown'))+'">↓</button>'
         +'<button type="button" class="home-key-map-action-btn is-del" data-act="del" data-idx="'+i+'"'
-        +' aria-label="'+escHtml(t('homeKeyMapActionDelete'))+'">×</button>')
+        +' title="'+escHtml(t('homeKeyMapActionDelete'))+'" aria-label="'+escHtml(t('homeKeyMapActionDelete'))+'">🗑</button>')
       : '';
+    // Mac: idx | body(kind+val) | ops
     return '<div class="home-key-map-action-row is-keys-inline is-'+escHtml(typ||'unknown')
       +(listening?' is-listen':'')
       +'" data-idx="'+i+'" role="listitem">'
       +'<span class="home-key-map-action-idx">'+(i+1)+'</span>'
-      +'<span class="keys-seq-kind">'+escHtml(kind)+'</span>'
-      +'<div class="keys-seq-body">'+body+'</div>'
+      +'<div class="keys-seq-body">'
+      +'<div class="keys-seq-kind">'+escHtml(kind)+'</div>'
+      +'<div class="keys-seq-val">'+val+'</div>'
+      +'</div>'
       +'<span class="home-key-map-action-acts">'+acts+'</span>'
       +'</div>';
   }
@@ -1058,6 +1026,17 @@
         applyAndRefresh(mapping, cur);
         return;
       }
+      var dsel=el.getAttribute('data-inline-delay-select');
+      if(dsel!=null){
+        var di=parseInt(dsel,10);
+        var dn=parseInt(el.value,10);
+        if(!(dn>0)||!mapping) return;
+        var curD=effectiveTargetActions(mapping).slice();
+        if(!curD[di]) return;
+        curD[di]={type:'delay',ms:dn};
+        applyAndRefresh(mapping, curD);
+        return;
+      }
       var ip=el.getAttribute('data-inline-ime-preset');
       var ia=el.getAttribute('data-inline-ime-aim');
       var iff=el.getAttribute('data-inline-ime-finish');
@@ -1151,18 +1130,24 @@
     if(global.OneToneState&&global.OneToneState.state&&typeof global.OneToneState.state.render==='function'){
       try{ global.OneToneState.state.render(); }catch(_){ }
     }
-    ['keysCaptureTargetActions','keysSeqActions'].forEach(function(hid){
-      var keysEl=document.getElementById(hid);
-      if(keysEl && keysEl.classList.contains('is-keys-variant')){
-        try{
-          renderTargetActionsInto(keysEl, m, {
-            mode:'picker',
-            variant:'keys',
-            hideAdd: !!keysEl.__keysHideAdd
-          });
-        }catch(_){ }
-      }
-    });
+    // Live custom-key detail owns the strip (#keysCaptureTargetActions).
+    // Never also paint #keysSeqActions — that was a twin empty「添加步骤」bar.
+    var keysEl=document.getElementById('keysCaptureTargetActions');
+    if(keysEl && keysEl.classList.contains('is-keys-variant')){
+      try{
+        renderTargetActionsInto(keysEl, m, {
+          mode:'picker',
+          variant:'keys',
+          hideAdd: !!keysEl.__keysHideAdd
+        });
+      }catch(_){ }
+    }
+    var seqCompat=document.getElementById('keysSeqActions');
+    if(seqCompat){
+      seqCompat.hidden=true;
+      seqCompat.innerHTML='';
+      seqCompat.classList.remove('is-keys-variant','is-keys-inline');
+    }
     var picker=global.OneToneKeysChannelCommandPicker;
     if(picker&&picker.refreshKeysCustomKeyMatchList){
       try{ picker.refreshKeysCustomKeyMatchList(); }catch(_){ }
@@ -2232,6 +2217,7 @@
         String(m.id) === keysInlineListen.mappingId
           ? keysInlineListen.idx
           : -1;
+      // Mac Keys: always-visible add strip (+ 按键 / 文本 / 延迟…), not a folded ＋ menu.
       var addItems=[
         {id:'key', lab:t('keysCaptureSeqAddKey','按键'), tip:t('keysSeqAddHintKey','发送一组快捷键（含外设）')},
         {id:'text', lab:t('keysCaptureSeqAddText','文本'), tip:t('keysSeqAddHintText','向当前输入框注入文字')},
@@ -2239,24 +2225,20 @@
         {id:'open-file', lab:t('keysCaptureSeqAddOpenFile','文件'), tip:t('keysSeqAddHintOpenFile','用系统默认应用打开文件')},
         {id:'open-folder', lab:t('keysCaptureSeqAddOpenFolder','文件夹'), tip:t('keysSeqAddHintOpenFolder','在资源管理器中打开文件夹')},
         {id:'open-url', lab:t('keysCaptureSeqAddOpenUrl','网址'), tip:t('keysSeqAddHintOpenUrl','在浏览器打开网址')},
-        {id:'ime', lab:t('keysCaptureSeqAddIme','语音输入法'), tip:t('keysSeqAddHintIme','对准输入框后激活语音输入法')}
+        {id:'ime', lab:t('keysCaptureSeqAddAim','输入框'), tip:t('keysSeqAddHintAim','先对准输入框再写入 / 注入')}
       ];
-      var buildAddStrip = function(optsAdd){
-        optsAdd=optsAdd||{};
+      // Mac: strip sits under「动作步骤」— no second「添加步骤」label when empty.
+      var buildAddStrip = function(){
         if(!canEdit || options.hideAdd) return '';
-        var emptyPlus=!!optsAdd.emptyPlus;
-        return '<div class="keys-seq-add-row'+(emptyPlus?' is-empty-plus':'')+'">'
-          +(emptyPlus?('<p class="keys-seq-add-lab">'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'</p>'):'')
-          +'<button type="button" class="keys-seq-add-toggle'+(keysSeqAddMenuOpen?' is-open':'')+(emptyPlus?' is-hero':'')+'" data-add-toggle="1"'
-          +' aria-expanded="'+(keysSeqAddMenuOpen?'true':'false')+'"'
-          +' title="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">＋</button>'
-          +'<div class="keys-seq-add-menu'+(keysSeqAddMenuOpen?' is-on':'')+'" role="menu"'
+        return '<div class="keys-seq-add-strip" role="toolbar"'
           +' aria-label="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">'
           +addItems.map(function(it){
-            return '<button type="button" role="menuitem" data-add="'+escHtml(it.id)+'" title="'+escHtml(it.tip)+'">'
-              +escHtml(it.lab)+'</button>';
+            return '<button type="button" data-add="'+escHtml(it.id)+'" title="'+escHtml(it.tip)+'">'
+              +'<span class="keys-seq-add-plus" aria-hidden="true">+</span>'
+              +escHtml(it.lab)
+              +'</button>';
           }).join('')
-          +'</div></div>';
+          +'</div>';
       };
       container.__keysHideAdd = !!options.hideAdd;
       container.hidden = false;
@@ -2266,7 +2248,7 @@
         }).join('');
         container.innerHTML = '<div class="home-key-map-action-list is-keys-inline" role="list">'+rows+'</div>'+buildAddStrip();
       } else {
-        container.innerHTML = buildAddStrip({ emptyPlus:true });
+        container.innerHTML = buildAddStrip();
       }
       if(canEdit) wireKeysInlineHandlers(container, m);
       container.querySelectorAll('.keys-seq-text-in').forEach(function(ta){
@@ -2383,7 +2365,7 @@
       } else if(add==='text'||add==='open-url'){
         // paintActions may re-render; focus the new field after a tick.
         setTimeout(function(){
-          var host=document.getElementById('keysSeqActions')||document.getElementById('keysCaptureTargetActions');
+          var host=document.getElementById('keysCaptureTargetActions')||document.getElementById('keysSeqActions');
           if(!host) return;
           var sel=add==='text'
             ? '[data-inline-text="'+(cur.length-1)+'"]'

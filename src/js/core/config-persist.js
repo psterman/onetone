@@ -45,7 +45,7 @@
       if(!ui||!ui.drawerOpen) return false;
       var p=ui.settingsPanel;
       if(p==='habits'&&(ui.habitView||'hub')==='hub') return true;
-      return p==='softPad'||p==='keys'||p==='camera'||p==='camera2'||p==='voiceWake';
+      return p==='softPad'||p==='keyboard'||p==='keys'||p==='camera'||p==='camera2'||p==='voiceWake';
     }catch(_){ return false; }
   }
 

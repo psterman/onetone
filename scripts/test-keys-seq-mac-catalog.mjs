@@ -1,4 +1,4 @@
-// Guard: 动作链页对齐 Mac Keys — left catalog / mid trigger+steps.
+// Guard: 动作链页对齐 Mac Keys — left catalog (听写 + 序列) / mid dual live faces.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -8,6 +8,11 @@ const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 const panel = readFileSync(join(root, 'src/js/features/mapping/keys-seq-panel.js'), 'utf8');
 const css = readFileSync(join(root, 'src/css/keys-seq-panel.css'), 'utf8');
 const i18n = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
+const flowIx = readFileSync(join(root, 'src/js/features/mapping/keys-flow-interaction.js'), 'utf8');
+const keysUi = readFileSync(join(root, 'src/js/features/settings/keys-panel-ui.js'), 'utf8');
+const drawer = readFileSync(join(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
+const picker = readFileSync(join(root, 'src/js/features/mapping/keys-channel-command-picker.js'), 'utf8');
+const kw = readFileSync(join(root, 'src/css/keys-workflow.css'), 'utf8');
 
 let pass = 0;
 let fail = 0;
@@ -32,16 +37,49 @@ const mainChunk = railEnd >= 0 && mainEnd > railEnd ? html.slice(railEnd, mainEn
 check('rail has catalog list', /id="keysSeqSavedList"/.test(railChunk) && !/hidden/.test(railChunk.match(/id="keysSeqSavedList"[^>]*>/)?.[0] || 'hidden'));
 check('rail has no trigger row', !/id="keysSeqTriggerRow"/.test(railChunk));
 check('rail has no accordion toggle', !/id="keysSeqSavedToggle"/.test(railChunk));
-check('mid hosts trigger row', /id="keysSeqTriggerRow"/.test(mainChunk));
+check('rail has dictation card', /id="keysSeqImeCard"/.test(railChunk) && /keys-seq-dictation-card/.test(railChunk));
+check('rail has seq group + tpl', /keysSeqRailSeqGroup/.test(railChunk) && /id="keysSeqTplAction"/.test(railChunk));
+check('mid hosts dual desks', /id="keysSeqImeDesk"/.test(mainChunk) && /id="keysSeqSeqDesk"/.test(mainChunk));
+check('mid ime host for live Keys IME', /id="keysSeqImeHost"/.test(mainChunk));
+check('mid key host for live custom key', /id="keysSeqKeyHost"/.test(mainChunk));
+check('mid no fake proto banner', !/keysSeqImeProtoBanner|keysSeqImeOpenKeys/.test(mainChunk));
+check('mid hosts trigger row in seq desk', /id="keysSeqTriggerRow"/.test(mainChunk));
 check('mid hosts trigger cap', /id="keysSeqTriggerCap"/.test(mainChunk));
-check('mid hosts summary + actions', /id="keysSeqMidSummary"/.test(mainChunk) && /id="keysSeqActions"/.test(mainChunk));
+check('mid has Mac name + delete', /id="keysSeqSeqName"/.test(mainChunk) && /id="keysSeqSeqDelete"/.test(mainChunk));
+check('mid has habit folder', /id="keysSeqHabitFolder"/.test(mainChunk));
+check('mid name+folder share one meta row', /keys-seq-meta-row/.test(mainChunk) && /keys-seq-meta-name/.test(mainChunk) && /keys-seq-meta-folder/.test(mainChunk));
+check('JS paints Mac path summary', /→/.test(panel) && /keysSeqSeqName/.test(panel) && /keysSeqFolder|keysSeqHabitFolder/.test(panel));
+check('CSS Mac title + key row', /keys-seq-meta-row/.test(css) && /keys-seq-title-in/.test(css) && /keys-seq-key-row/.test(css) && /keys-seq-retrigger/.test(css));
+check('classic Keys IME + custom key sources remain', /id="keysChannelPaneRight"/.test(html) && /id="keysCaptureTargetActionsHost"/.test(html) && /id="keysCustomKeyMatchList"/.test(html));
 check('scene dock still hidden', /id="keysSeqSceneActionsPanel"[^>]*hidden/.test(html) && /display:none!important/.test(html));
 
+check('JS mounts live pane for both faces', /mountLivePane/.test(panel) && /keysSeqKeyHost/.test(panel) && /keysSeqImeHost/.test(panel));
+check('JS lists custom-key mappings', /listCustomKeyMappingsForCurrentApp/.test(panel));
+check('JS new uses createCustomKeyMatchMapping', /createCustomKeyMatchMapping/.test(panel));
+check(
+  'JS new stamps sourceId + selects created',
+  /createCustomKeyMatchMapping\(\{[\s\S]*?sourceId:[\s\S]*?selectSaved\(created\.id\)/.test(panel)
+);
+check(
+  'picker keeps editId after setActiveTab on create',
+  /setActiveTab\('key'[\s\S]*?customKeyMatchEditId\s*=\s*newId/.test(picker) &&
+    /curEdit[\s\S]*?mappingById\(curEdit\)/.test(picker)
+);
+check('JS hostsCustomKey + live chrome', /hostsCustomKey/.test(panel) && /hostsLiveKeysChrome/.test(panel));
+check('JS setCustomKeyMatchEditId on select', /setCustomKeyMatchEditId/.test(panel));
+check('picker exports setCustomKeyMatchEditId', /setCustomKeyMatchEditId:\s*function/.test(picker));
 check('JS no savedExpanded gate', !/savedExpanded/.test(panel));
 check('JS no left flow expand', !/flowOpenId|stepFlowHtml|data-seq-flow/.test(panel));
-check('JS paints mid summary', /keysSeqMidSummary/.test(panel));
+check('CSS dictation + key hosts', /keys-seq-dictation-card/.test(css) && /keys-seq-ime-host/.test(css) && /keys-seq-key-host/.test(css));
+check('CSS seq face hides nested match list', /is-seq-face[\s\S]*keys-custom-key-match/.test(css));
 check('CSS rail width 210', /grid-template-columns:\s*210px/.test(css));
-check('i18n rail/mid labels', /keysSeqRailRole:/.test(i18n) && /keysSeqMidLabel:/.test(i18n));
+check('Keys custom-key styles under keysSeq', /:is\(#settingsPanelKeys, #settingsPanelKeysSeq\) \.keys-custom-key-detail/.test(kw) || /:is\(#settingsPanelKeys, #settingsPanelKeysSeq\) \.keys-custom-key-split/.test(kw));
+check('Keys IME finish peers style under keysSeq', /:is\(#settingsPanelKeys, #settingsPanelKeysSeq\) \.keys-finish-peers/.test(kw));
+check('i18n rail/mid + ime labels', /keysSeqRailImeGroup:/.test(i18n) && /keysSeqImeCardTitle:/.test(i18n) && /keysSeqImeMidLabel:/.test(i18n));
+check('i18n mid Mac chrome labels', /keysSeqHabitFolder:/.test(i18n) && /keysSeqRetrigger:/.test(i18n) && /keysSeqStepsLabel:/.test(i18n));
+check('keysUi treats keysSeq live as active', /keysSeqHostsLive/.test(keysUi));
+check('flow ix binds keysSeq + live host', /settingsPanelKeysSeq/.test(flowIx) && /keysSeqHostsLive/.test(flowIx));
+check('drawer refreshes custom key face', /refreshCustomKeyPaint/.test(drawer));
 
 if (fail) {
   console.error(fail + ' failed');

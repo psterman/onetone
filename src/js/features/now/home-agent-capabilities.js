@@ -658,6 +658,8 @@
         }
         if (i === lines.length) break;
         if (!raw.trim()) continue;
+        // Thematic breaks paint as empty horizontal rails in the transcript.
+        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) continue;
         var head = raw.match(/^\s*#{1,4}\s+(.*)$/);
         if (head) {
           out.push('<div class="ha2-md-h">' + inlineFmtEscaped(escHtml(head[1])) + '</div>');

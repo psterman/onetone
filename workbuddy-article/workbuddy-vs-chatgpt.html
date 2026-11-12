@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkBuddy vs ChatGPT · 国内办公对照</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f7f4; --card:#ffffff;
+    --line:#e6e4de; --line-soft:#efeee9;
+    --ink:#16181d; --ink-2:#454b57; --muted:#7c828e;
+    --teal:#0f766e; --teal-ink:#0b5a54; --teal-soft:#eaf4f2;
+    --slate:#4b5563; --slate-soft:#eef0f3;
+    --ok:#15803d; --bad:#b42318; --warn:#b45309;
+    --sans:"Outfit","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Source Han Sans SC","Noto Sans SC",system-ui,sans-serif;
+    --mono:"JetBrains Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:14.5px; line-height:1.62;
+    font-feature-settings:"tnum" 1;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:44px 22px 72px;}
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:.06em; color:var(--muted);
+    font-family:var(--mono); text-transform:uppercase;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);}
+  h1{
+    font-size:34px; line-height:1.22; font-weight:700; letter-spacing:-.015em;
+    margin:12px 0 8px;
+  }
+  h1 .vs{color:var(--muted); font-weight:500; font-size:24px; padding:0 6px;}
+  .lede{color:var(--ink-2); font-size:15px; max-width:60ch; margin:0 0 26px;}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--muted); margin-bottom:26px;}
+  .legend span b{font-weight:600;}
+
+  /* ---------- verdict ---------- */
+  .verdict{
+    background:var(--teal-soft); border:1px solid #d3e6e2; border-radius:18px;
+    padding:20px 22px; margin-bottom:34px;
+  }
+  .verdict .kicker{
+    font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--teal-ink); font-family:var(--mono); font-weight:500;
+  }
+  .verdict h2{font-size:20px; line-height:1.45; margin:8px 0 12px; font-weight:600; letter-spacing:-.005em;}
+  .verdict ul{margin:0; padding-left:18px; color:var(--ink-2);}
+  .verdict li{margin-bottom:5px;}
+  .verdict li:last-child{margin-bottom:0;}
+  .verdict b{color:var(--ink); font-weight:600;}
+  .timely{
+    margin-top:16px; padding-top:14px; border-top:1px dashed #bfdad5;
+    font-size:13.5px; color:var(--teal-ink);
+  }
+  .timely strong{font-weight:600;}
+
+  /* ---------- sections ---------- */
+  section{margin-bottom:46px;}
+  .sec-head{display:flex; align-items:baseline; gap:12px; margin-bottom:16px; flex-wrap:wrap;}
+  .sec-head h2{font-size:22px; font-weight:600; letter-spacing:-.005em; margin:0;}
+  .sec-head .sub{color:var(--muted); font-size:13px;}
+
+  /* ---------- scoreboard ---------- */
+  .board{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:6px 20px 16px; box-shadow:0 2px 8px rgba(0,0,0,.04);
+  }
+  .srow{display:grid; grid-template-columns:118px 1fr; gap:16px; align-items:center; padding:11px 0; border-bottom:1px solid var(--line-soft);}
+  .srow:last-child{border-bottom:none;}
+  .sbars{display:flex; flex-direction:column; gap:1px;}
+  .sname{font-size:13.5px; color:var(--ink-2); font-weight:500;}
+  .sname i{display:block; font-style:normal; font-size:11.5px; color:var(--muted); font-weight:400; margin-top:1px;}
+  .sbar{display:grid; grid-template-columns:34px 1fr 62px; gap:10px; align-items:center; margin:3px 0;}
+  .stag{font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--muted);}
+  .track{height:14px; background:#f0efeb; border-radius:5px; overflow:hidden;}
+  .fill{height:100%; border-radius:5px;}
+  .fill.teal{background:var(--teal);}
+  .fill.slate{background:#9aa1ad;}
+  .sval{font-family:var(--mono); font-size:12px; color:var(--ink-2);}
+  .sval b{font-weight:500; color:var(--muted);}
+  .board-note{margin:14px 2px 0; font-size:12.5px; color:var(--muted);}
+
+  /* ---------- comparison table ---------- */
+  .cmp{background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .crow{display:grid; grid-template-columns:1.12fr 1fr 1fr;}
+  .crow > div{padding:11px 15px; border-top:1px solid var(--line-soft); vertical-align:top;}
+  .crow.head > div{
+    border-top:none; background:#fafaf7; font-size:12.5px; font-weight:600;
+    padding-top:12px; padding-bottom:12px; border-bottom:1px solid var(--line);
+  }
+  .crow.head .wb{color:var(--teal-ink);}
+  .crow.head .gp{color:#3f4652;}
+  .crow > div.label{color:var(--ink); font-weight:500;}
+  .crow > div.label em{font-style:normal; display:block; color:var(--muted); font-weight:400; font-size:12px; margin-top:1px;}
+  .mk{font-size:14px; margin-right:5px;}
+  .mk-ok{color:var(--ok);} .mk-bad{color:var(--bad);} .mk-warn{color:var(--warn);}
+  .cell{color:var(--ink-2); font-size:13.2px;}
+  .cell .mk{font-weight:600;}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.03em;
+    padding:1px 6px; border-radius:5px; margin-left:6px; vertical-align:1px;
+  }
+  .tag-wb{background:var(--teal-soft); color:var(--teal-ink);}
+  .tag-gp{background:var(--slate-soft); color:#3f4652;}
+  .caption{margin:10px 2px 0; font-size:12.5px; color:var(--muted);}
+
+  /* ---------- your lane ---------- */
+  .lane{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:18px 20px; box-shadow:0 2px 8px rgba(0,0,0,.04);
+  }
+  .lane h3{margin:0 0 4px; font-size:17px; font-weight:600;}
+  .lane p.sub{margin:0 0 14px; color:var(--muted); font-size:13px;}
+  .lane-row{display:grid; grid-template-columns:1.12fr 1fr 1fr; gap:0; padding:9px 0; border-top:1px solid var(--line-soft); align-items:baseline;}
+  .lane-row:first-of-type{border-top:none;}
+  .lane-row .lbl{font-weight:500; font-size:13.5px;}
+  .lane-row .lbl em{font-style:normal; display:block; color:var(--muted); font-weight:400; font-size:12px;}
+  .lane-row .c{font-size:13px; color:var(--ink-2);}
+  .lane-head{font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em;}
+
+  /* ---------- flow ---------- */
+  .flow{display:grid; grid-template-columns:1fr 26px 1fr 26px 1fr; gap:0; align-items:stretch; margin-top:6px;}
+  .step{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 15px; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .step .n{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.08em;}
+  .step h4{margin:5px 0 6px; font-size:14.5px; font-weight:600; line-height:1.4;}
+  .step p{margin:0; font-size:12.8px; color:var(--ink-2); line-height:1.55;}
+  .arrow{display:flex; align-items:center; justify-content:center; color:#b9bcc2;}
+  .where{
+    margin-top:16px; background:#faf9f5; border:1px dashed var(--line); border-radius:14px;
+    padding:13px 16px; font-size:13px; color:var(--ink-2);
+  }
+  .where b{color:var(--ink);}
+
+  /* ---------- risk ---------- */
+  .risks{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .risk{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 16px; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .risk h4{margin:0 0 7px; font-size:14px; font-weight:600; display:flex; align-items:center; gap:7px;}
+  .risk p{margin:0 0 7px; font-size:13px; color:var(--ink-2); line-height:1.6;}
+  .risk p:last-child{margin-bottom:0;}
+  .risk .h{height:3px; width:30px; border-radius:2px; margin-bottom:11px;}
+  .risk.gp .h{background:var(--bad);}
+  .risk.wb .h{background:var(--teal);}
+
+  /* ---------- sources ---------- */
+  .src{font-size:12.5px; color:var(--muted); line-height:1.75;}
+  .src summary{cursor:pointer; font-size:13px; color:var(--ink-2); font-weight:500; padding:9px 0;}
+  .src summary:hover{color:var(--teal-ink);}
+  .src ul{margin:4px 0 0; padding-left:18px;}
+  .src li{margin-bottom:4px;}
+  .src a{color:var(--ink-2);}
+  .warnbox{
+    margin-top:14px; padding:11px 14px; background:#fdf6ec; border:1px solid #f0e0c8;
+    border-radius:10px; color:#7a5a20; font-size:12.5px;
+  }
+
+  @media (max-width:760px){
+    .wrap{padding:30px 15px 56px;}
+    h1{font-size:27px;} h1 .vs{font-size:19px;}
+    .verdict{padding:17px 16px;}
+    .srow{grid-template-columns:1fr; gap:6px;}
+    .crow.head{display:none;}
+    .crow{grid-template-columns:1fr; padding:4px 0;}
+    .crow > div{border-top:none; padding:8px 14px; display:flex; gap:9px;}
+    .crow > div + div{border-top:1px dashed var(--line-soft);}
+    .crow > div::before{
+      content:attr(data-col); flex:0 0 66px; font-size:11.5px; color:var(--muted);
+      font-weight:600; padding-top:1px;
+    }
+    .crow > div.label::before{content:"项目";}
+    .crow > div.label{font-weight:600;}
+    .crow > div.label em{margin-top:0;}
+    .lane-row{grid-template-columns:1fr; gap:6px; padding:12px 0;}
+    .lane-row .c::before{content:attr(data-col); font-weight:600; color:var(--muted); margin-right:8px; font-size:11.5px;}
+    .lane-head{display:none;}
+    .flow{grid-template-columns:1fr; gap:10px;}
+    .arrow{transform:rotate(90deg); height:26px;}
+    .risks{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span>核验日期 2026-11-12 · 面向国内使用</div>
+    <h1>WorkBuddy<span class="vs">vs</span>ChatGPT</h1>
+    <p class="lede">按 <b>国内可用</b>、<b>办公适配</b>、<b>生态</b> 三个维度对一遍，每条只给「能 / 不能 / 能但有代价」，不绕弯。末尾按你实际在做的事给出结论。</p>
+    <div class="legend">
+      <span><b class="mk mk-ok">✅</b> 能，直接用</span>
+      <span><b class="mk mk-bad">❌</b> 不能，或代价太大</span>
+      <span><b class="mk mk-warn">⚠️</b> 能，但有坑、有替代成本</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="kicker">结论</div>
+    <h2>主线用 WorkBuddy，ChatGPT 只留一个「备用位」——不是因为 ChatGPT 弱，是因为你的活儿几乎全在国内这一侧。</h2>
+    <ul>
+      <li><b>三个维度 WorkBuddy 通过 16/21，ChatGPT 5/21</b>，差距几乎全部来自「国内链路」而不是模型能力。</li>
+      <li><b>你的编码栈已经不是问题</b>：Claude Code 接 MiniMax 端点已经在跑，ChatGPT 最强的那块（Codex / 最强推理）对你边际价值低。</li>
+      <li><b>ChatGPT 在国内是「随时可能没了」的资产</b>：不在官方支持国家和地区名单、支付要绕、2026-11-08 起批量封号连 $200/月的 Pro 用户都没放过。别把长期资料只放在那边。</li>
+    </ul>
+    <div class="timely">
+      <strong>时间窗提醒：</strong>WorkBuddy 混元 Hy4 / Hy3 的限时免费到 <strong>11 月 15 日</strong>（官方口径「11 月 4 日至 11 月 15 日期间提供一定额度免费使用」，具体时点以官方公告为准）。限免期内体验版就是<b>全模型可选 + 99 个自动任务</b>，瓶颈只剩 500 积分和 5GB 资料库 —— 正好现在白嫖跑通一条链路，别直接订 199。
+    </div>
+  </div>
+
+  <!-- ============ 计分条 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>总账</h2>
+      <span class="sub">每条只记「能 / 不能 / 有代价」，按通过项计数；⚠️ 不计入通过</span>
+    </div>
+    <div class="board">
+      <div class="srow">
+        <div class="sname">国内可用<i>能否正常连上、注册、付费</i></div>
+        <div class="sbars">
+          <div class="sbar"><span class="stag">WB</span><div class="track"><div class="fill teal" style="width:83%"></div></div><span class="sval">5<b>/6</b></span></div>
+          <div class="sbar"><span class="stag">GPT</span><div class="track"><div class="fill slate" style="width:0%"></div></div><span class="sval">0<b>/6</b></span></div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="sname">办公适配<i>文档、IM、本机文件、自动化</i></div>
+        <div class="sbars">
+          <div class="sbar"><span class="stag">WB</span><div class="track"><div class="fill teal" style="width:75%"></div></div><span class="sval">6<b>/8</b></span></div>
+          <div class="sbar"><span class="stag">GPT</span><div class="track"><div class="fill slate" style="width:38%"></div></div><span class="sval">3<b>/8</b></span></div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="sname">生态<i>插件、连接器、模型可选性</i></div>
+        <div class="sbars">
+          <div class="sbar"><span class="stag">WB</span><div class="track"><div class="fill teal" style="width:71%"></div></div><span class="sval">5<b>/7</b></span></div>
+          <div class="sbar"><span class="stag">GPT</span><div class="track"><div class="fill slate" style="width:29%"></div></div><span class="sval">2<b>/7</b></span></div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="sname" style="font-weight:600;">合计<i>21 项对比</i></div>
+        <div class="sbars">
+          <div class="sbar"><span class="stag">WB</span><div class="track"><div class="fill teal" style="width:76%"></div></div><span class="sval"><b style="color:var(--teal-ink);">16</b><b>/21</b></span></div>
+          <div class="sbar"><span class="stag">GPT</span><div class="track"><div class="fill slate" style="width:24%"></div></div><span class="sval"><b>5</b><b>/21</b></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="board-note">⚠️ 全部计 ⚠️ 的项：ChatGPT 4 条、WorkBuddy 5 条 —— 「能，但有坑」的部分两边都存在，区别在坑的种类：一边是接不上和被封号，一边是不够灵活。</p>
+  </section>
+
+  <!-- ============ 维度一 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>一、国内能不能正常用</h2>
+      <span class="sub">WorkBuddy 5/6 · ChatGPT 0/6</span>
+    </div>
+    <div class="cmp">
+      <div class="crow head">
+        <div>项目</div>
+        <div class="wb">WorkBuddy（腾讯）</div>
+        <div class="gp">ChatGPT（OpenAI）</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">网络直连</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>腾讯自有服务，国内直连</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>官方不支持中国大陆，需特殊网络</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">手机号注册</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>国内手机号直接注册</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>中国大陆号码不在可注册范围</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">人民币支付</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>微信 / 支付宝，人民币计价</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>需境外卡或美区 Apple ID，Stripe 风控拒率高</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">境内合规主体</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>境内运营，已过信通院可信认证</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>无境内主体与备案，数据出境</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">账号稳定性</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>正常业务使用风险低</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>2026-11-08 起批量封号，含付费 Pro 用户</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">中文界面与售后</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>全中文，境内工单</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>界面中文，境内无客服通道</div>
+      </div>
+    </div>
+    <p class="caption">OpenAI 支持国家和地区名单至今不含中国大陆（API 流量自 2024-07-09 起被阻断）；ChatGPT 网页版在中国大陆同样不在服务范围。</p>
+  </section>
+
+  <!-- ============ 维度二 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>二、办公适配</h2>
+      <span class="sub">WorkBuddy 6/8 · ChatGPT 3/8</span>
+    </div>
+    <div class="cmp">
+      <div class="crow head">
+        <div>项目</div>
+        <div class="wb">WorkBuddy</div>
+        <div class="gp">ChatGPT</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">国内办公套件</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>腾讯文档 / 会议 / 网盘 / ima、QQ 邮箱、TAPD、乐享</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>插件 90%+ 是海外工具；飞书、钉钉、本土系统需自行接</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">微信 / 企微远程派活</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>微信、企微、小程序、App 都能下发并执行</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>无国内 IM 通道</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">直接读写本机文件</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>本地客户端直接操作硬盘文件</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>只能上传附件后对话，改不了你本地的文件</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">定时 / 自动化</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>定时任务（本地 / 项目 / 云端三来源）+ Webhook 事件触发</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>有 Tasks 定时与 Work Agent，但和本地文件、国内 IM 不闭环</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">屏幕接管（手机控电脑）</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>实时桌面 + 虚拟键鼠目前仅 Mac，Windows 即将上线</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>无手机远程接管电脑形态</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">资料库 / 长期上下文</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>资料库 + Buddy One 跨产品检索；MD/CSV/HTML 三件套</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-ok">✅</span>Projects（文件 + 指令 + 记忆）</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">电脑操作 Computer Use</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>Hy4 视觉理解 + 电脑操作</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-ok">✅</span>Agent / GPT-6 一侧的 computer use</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">英文 / 跨国协作</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>以中文为主，英文语料与生态弱</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-ok">✅</span>英文材料、深度研究、海外工具链最成熟</div>
+      </div>
+    </div>
+    <p class="caption">这一栏是整页的分水岭：两者都能「聊」，但只有 WorkBuddy 能「在你自己的电脑上，按你的规矩，把活干完并把东西放到该放的地方」。</p>
+  </section>
+
+  <!-- ============ 维度三 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>三、生态</h2>
+      <span class="sub">WorkBuddy 5/7 · ChatGPT 2/7</span>
+    </div>
+    <div class="cmp">
+      <div class="crow head">
+        <div>项目</div>
+        <div class="wb">WorkBuddy</div>
+        <div class="gp">ChatGPT</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">扩展机制</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>连接器 + Skill + 专家 / 专家团 + 自定义 MCP</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-ok">✅</span>GPTs 商店 + 插件（Apps SDK / MCP）+ Projects</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">扩展总量</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>2026 年 3 月才上线，社区还在长</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-ok">✅</span>三方插件 10 万+，数量级领先</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">国内常用应用覆盖</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>QQ 邮箱、腾讯文档、乐享、腾讯会议、TAPD、腾讯网盘内置</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>实测国内最常用的 56 个应用里，插件列表里只装得上 5 个</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">第三方系统对接成本</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>飞书、钉钉等原生适配，接通成本接近 0</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>单系统约 15 人天定制开发</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">模型可选性</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>混元 / DeepSeek / 智谱 GLM / Kimi，另有 Auto 调度</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>只有 OpenAI 自家模型</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">中文内容与社区</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>中文场景原生，中文教程刚起步</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>英文资料极丰富，中文偏少</div>
+      </div>
+
+      <div class="crow">
+        <div class="label">硬件 / 政务落地</div>
+        <div class="cell" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>30+ 品牌联名硬件；「湾擎」政务私有化部署</div>
+        <div class="cell" data-col="ChatGPT"><span class="mk mk-bad">❌</span>境内无落地形态</div>
+      </div>
+    </div>
+    <p class="caption">注意别被「10 万+ 插件」晃住：ChatGPT 的插件绝大多数是海外工具，接进来也得是能连通的海外服务。而你真正会天天打开的，是微信、腾讯文档、企微。</p>
+  </section>
+
+  <!-- ============ 你的盘子 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>四、按你实际在做的事对一遍</h2>
+      <span class="sub">依据工作区里 daily-image-site、workbuddy-article、Claude Code 配置的实际痕迹</span>
+    </div>
+    <div class="lane">
+      <h3>你的盘子：WorkBuddy 4/5，ChatGPT 1/5</h3>
+      <p class="sub">你唯一领先的这项，你已经有别的解了。</p>
+
+      <div class="lane-row lane-head"><div></div><div>WorkBuddy</div><div>ChatGPT</div></div>
+
+      <div class="lane-row">
+        <div class="lbl">中文内容日更<em>RSS 抓取 → 分类 → 配图 → 审稿 → 发布</em></div>
+        <div class="c" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>定时 + 资料库 + 本地文件，链路能闭环</div>
+        <div class="c" data-col="ChatGPT"><span class="mk mk-bad">❌</span>无国内源、无本机文件、无定时</div>
+      </div>
+
+      <div class="lane-row">
+        <div class="lbl">公众号 / 知乎长文<em>你正在写 WorkBuddy 评测本身</em></div>
+        <div class="c" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>公众号链路 + 中文语感 + 封面配图一体</div>
+        <div class="c" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>中文要调教，热点靠外搜</div>
+      </div>
+
+      <div class="lane-row">
+        <div class="lbl">编程 / 调试<em>你已有 Claude Code + MiniMax 端点</em></div>
+        <div class="c" data-col="WorkBuddy"><span class="mk mk-warn">⚠️</span>Hy4 能写，但不是你的主力编码栈</div>
+        <div class="c" data-col="ChatGPT"><span class="mk mk-ok">✅</span>Codex 一侧最强 —— 边际价值低</div>
+      </div>
+
+      <div class="lane-row">
+        <div class="lbl">日更 / 定时自动化</div>
+        <div class="c" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>限免期 99 个自动任务，直接够用</div>
+        <div class="c" data-col="ChatGPT"><span class="mk mk-bad">❌</span>只能提醒，做不了跨应用闭环</div>
+      </div>
+
+      <div class="lane-row">
+        <div class="lbl">长期资料沉淀 / 跨产品检索</div>
+        <div class="c" data-col="WorkBuddy"><span class="mk mk-ok">✅</span>Buddy One 打通文档 / 会议 / 网盘 / ima</div>
+        <div class="c" data-col="ChatGPT"><span class="mk mk-warn">⚠️</span>Projects 有，但触不到国内那套</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 搭配用法 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>五、这么用，别二选一</h2>
+      <span class="sub">把两边放在对的位置</span>
+    </div>
+    <div class="flow">
+      <div class="step">
+        <div class="n">STEP 1</div>
+        <h4>WorkBuddy 盯热点与素材</h4>
+        <p>定时抓热点、拆高赞结构、攒选题库，把判断标准沉淀进资料库。</p>
+      </div>
+      <div class="arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="step">
+        <div class="n">STEP 2</div>
+        <h4>WorkBuddy 出稿到草稿箱</h4>
+        <p>成稿 + 封面配图 + 转草稿箱，一次配置授权，再开定时。审稿仍由你手动把关。</p>
+      </div>
+      <div class="arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="step">
+        <div class="n">STEP 3</div>
+        <h4>你审、你看板、你发布</h4>
+        <p>闸门不合并：先过审稿台检查，再单独发布 —— 发布不可逆。</p>
+      </div>
+    </div>
+    <div class="where">
+      <b>ChatGPT 放哪：</b>只在你需要<b>深度研究、查海外资料、或写英文稿</b>时单点调用，别把日更流水线挂在它上面；账号只用一个、别用代充共享号，关键资料两边各留一份。
+    </div>
+  </section>
+
+  <!-- ============ 风险 ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>六、两个必须知道的坑</h2>
+    </div>
+    <div class="risks">
+      <div class="risk gp">
+        <div class="h"></div>
+        <h4>ChatGPT：封号与支付</h4>
+        <p>2026-11-08 起多地用户账号被批量停用，<b>没有前置邮件</b>，$200/月的 Pro 也在内，重灾区是低价区订阅、批量注册、共用支付卡、中转反代。</p>
+        <p>国内订阅的常规路径被风控拦住，实测多张国内发行 Visa/Mastercard 被拒；走代充或美区 Apple ID 内购的，续费与封号都在别人手里。</p>
+        <p>结论：<b>可以当备用位，不能当主力位，尤其别放不可复制的长期资料。</b></p>
+      </div>
+      <div class="risk wb">
+        <div class="h"></div>
+        <h4>WorkBuddy：限免与积分</h4>
+        <p>限免 11 月 15 日到期后，体验版只剩 500 积分 + 5GB 资料库 + 3 个自动任务；加量包 1,000 积分 50 元，<b>仅 1 个月有效</b>。</p>
+        <p>Hy4 本身不直接出图出视频，图/视频任务会自动切专用多模态模型并按常规计费 —— 限免期批量出图最烧。</p>
+        <p>结论：<b>现在就把一条完整链路跑通再决定订阅</b>；真不够用时，先买加量包，别一步跳到 199。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <details class="src">
+      <summary>口径与出处（核验日期 2026-11-12）</summary>
+      <ul>
+        <li>WorkBuddy：官方文档 workbuddy.cn/docs（定价页、Skills Market、Buddy One、Multidevice、Automation-Guide、Changelog）＋ 腾讯官方新闻稿 ＋ 央广网 / 光明网 / 中国经济网报道（2026-11-04 乌镇博览会；2026-07-20 《2026 年 Q2 中国办公智能体平台市场洞察报告》）。</li>
+        <li>ChatGPT 国内可用性：OpenAI 支持国家和地区官方名单（不含中国大陆）＋ 2024-07-09 API 流量阻断公告报道 ＋ 财经实测「中国大陆手机号无法注册」。</li>
+        <li>封号事件：21 世纪经济报道 / 网易 / 腾讯新闻，2026-11-08。</li>
+        <li>订阅与风控：腾讯新闻《记一次 ChatGPT Plus 国内订阅的折腾经历》（2026-07-18）＋ 2026 年 ChatGPT Plus 国内充值说明。</li>
+        <li>生态对比：火山引擎《智能办公Agent对比：HiAgent领跑国内，ChatGPT主打海外》（插件 10 万+、90%+ 为海外工具、单系统对接约 15 人天）＋ 科技区角《豆包工作 vs ChatGPT办公实测》（国内常用 56 应用仅 5 个可装）。</li>
+        <li>ChatGPT 功能面：官方帮助中心与 2026 年功能更新报道（Projects、Tasks、深度研究、连接器、GPTs、2026-06-22 起 Free/Go 看广告）。</li>
+      </ul>
+      <div class="warnbox">⚠️ 价格、限免额度与封号策略都是时效性极强的信息 —— 动手前按当天官方公告再核一次。媒体口径与官方口径不一致时以官方为准。</div>
+    </details>
+  </section>
+
+</div>
+</body>
+</html>

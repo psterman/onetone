@@ -11354,6 +11354,15 @@
     return t('softPadFlatBindKeyFallback', '键');
   }
 
+  function isKeyboardSurfaceUi() {
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.softPadSurface === 'keyboard') return true;
+    } catch (_) {}
+    var body = document.getElementById('softPadPageBody');
+    return !!(body && body.classList && body.classList.contains('is-vk-hub'));
+  }
+
   function buildSoftPadFlatBindListHtml(m) {
     var pad = m && m.codexMicroPad;
     var focusId = String(softPadLayoutFocusKeyId || '').trim();
@@ -11361,7 +11370,8 @@
     var seen = {};
     function pushId(microId) {
       var id = String(microId || '').trim();
-      if (!id || id === 'JOY' || seen[id]) return;
+      // 本键盘命令：不列固定方向键（上/下/左/右）。
+      if (!id || id === 'JOY' || seen[id] || isNavMicroKey(id)) return;
       var cell = cellByMicroId(id);
       if (cell && cell.kind === 'placeholder') return;
       seen[id] = 1;
@@ -11659,11 +11669,21 @@
     }
     var flatList = document.querySelector('[data-soft-pad-flat-bind="1"]');
     if (flatList) {
+      var onRow = null;
       flatList.querySelectorAll('[data-soft-pad-flat-bind-key]').forEach(function (el) {
         var on = !!id && el.getAttribute('data-soft-pad-flat-bind-key') === id;
         el.classList.toggle('is-on', on);
         el.setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) onRow = el;
       });
+      // 点 Soft Pad 键帽 → 左侧本键盘命令定位到对应行。
+      if (onRow && typeof onRow.scrollIntoView === 'function') {
+        try {
+          onRow.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        } catch (_) {
+          try { onRow.scrollIntoView(false); } catch (_2) {}
+        }
+      }
     }
     if (opts.skipCatalog) return;
     if (id === prevId) {
@@ -18297,12 +18317,32 @@
     renderCapabilityList(m);
   }
 
-  /** Soft Pad mid-panel: L3 match → Habits (picker only used as fallback). */
+  /** Soft Pad mid-panel: L3 match → Habits；键盘页留在本页选能力。 */
   function openSoftPadSemanticPick(m) {
     var live = (editDraft && !editDraft.__catalogOnly && editDraft.mapping) || m || softPadPreviewMapping;
     var keyId =
       (editDraft && editDraft.microKeyId) ||
       (typeof focusedSoftPadKeyId === 'function' ? focusedSoftPadKeyId() : '');
+    if (isKeyboardSurfaceUi()) {
+      if (!global.OneToneSemanticActionPicker) {
+        toast(t('softPadLayoutPickKey', '先点左侧键盘上的一个键，再在右侧换功能'));
+        return;
+      }
+      global.OneToneSemanticActionPicker.open({
+        mappingId: live && live.id,
+        channel: 'softPad',
+        placement: 'softPad',
+        onSelect: function (sel) {
+          if (!sel || !sel.actionId) return;
+          var sid =
+            (global.OneToneSemanticActionStore &&
+              global.OneToneSemanticActionStore.semanticSlotId('softPad', sel.actionId)) ||
+            ('semantic:softPad:' + sel.actionId);
+          applySoftPadCapabilityPick(live, sid);
+        }
+      });
+      return;
+    }
     var Link = global.OneToneHabitCommandLink;
     var ui = global.OneToneState && global.OneToneState.ui;
     if (ui && keyId) ui.habitMatchPadMicroKey = keyId;
@@ -18467,6 +18507,36 @@
     return id;
   }
 
+  /** 键盘页本页绑功能（不跳习惯）；软键盘页仍可走习惯匹配。 */
+  function applySoftPadCapabilityLocal(m, slotId, keyId) {
+    var id = String(slotId || '').trim();
+    keyId = String(keyId || focusedSoftPadKeyId() || '').trim();
+    if (!m || !keyId || keyId === 'ENC') return false;
+    if (ensureLayoutEditDraft(m)) {
+      onLayoutActionPick(id);
+      return true;
+    }
+    var Link = global.OneToneHabitCommandLink;
+    if (Link && typeof Link.setSoftPadBinding === 'function') {
+      Promise.resolve(
+        Link.setSoftPadBinding(m, id || ('semantic:softPad:' + keyId), id ? keyId : '')
+      ).then(function () {
+        markSoftPadPreviewFocus(keyId);
+        try {
+          refreshSoftPadFlatBindList(m);
+        } catch (_) {}
+        try {
+          var HubPick = global.OneToneSoftPadHub;
+          if (HubPick && typeof HubPick.schedulePreviewPaint === 'function') {
+            HubPick.schedulePreviewPaint({ mapping: m });
+          }
+        } catch (_) {}
+      });
+      return true;
+    }
+    return false;
+  }
+
   function applySoftPadCapabilityPick(m, slotId) {
     m = m || softPadPreviewMapping;
     var keyId = focusedSoftPadKeyId();
@@ -18478,8 +18548,14 @@
       toast(t('softPadLayoutPickKey', '先点左侧键盘上的一个键，再在右侧换功能'));
       return;
     }
-    // L3 command×Pad match writes via Habits; Soft Pad keeps look/layout (P-class) locally.
     var id = String(slotId || '').trim();
+    // 键盘页：在本页完成键帽配置，不要跳到习惯。
+    if (isKeyboardSurfaceUi()) {
+      if (applySoftPadCapabilityLocal(m, id, keyId)) return;
+      toast(t('softPadLayoutPickKey', '先点左侧键盘上的一个键，再在右侧换功能'));
+      return;
+    }
+    // L3 command×Pad match writes via Habits; Soft Pad keeps look/layout (P-class) locally.
     var Link = global.OneToneHabitCommandLink;
     var ui = global.OneToneState && global.OneToneState.ui;
     if (ui) ui.habitMatchPadMicroKey = keyId;
@@ -18495,20 +18571,7 @@
       toast(t('softPadHabitMatchRedirect', '命令绑定已改到习惯页编辑'));
       return;
     }
-    if (Link && typeof Link.setSoftPadBinding === 'function') {
-      Promise.resolve(Link.setSoftPadBinding(m, id || ('semantic:softPad:' + keyId), id ? keyId : '')).then(
-        function () {
-          markSoftPadPreviewFocus(keyId);
-          try {
-            var HubPick = global.OneToneSoftPadHub;
-            if (HubPick && typeof HubPick.schedulePreviewPaint === 'function') {
-              HubPick.schedulePreviewPaint({ mapping: m });
-            }
-          } catch (_) {}
-        }
-      );
-      return;
-    }
+    applySoftPadCapabilityLocal(m, id, keyId);
   }
 
   function renderCapabilityList(m) {
@@ -19796,6 +19859,8 @@
     isHoldMicroKey: isHoldMicroKey,
     getLayoutChannelTab: function () {
       return normalizeLayoutChannelTab(layoutChannelTab);
-    }
+    },
+    refreshSoftPadFlatBindList: refreshSoftPadFlatBindList,
+    bindSoftPadFlatBindList: bindSoftPadFlatBindList
   };
 })(typeof window !== 'undefined' ? window : globalThis);

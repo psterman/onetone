@@ -9,9 +9,18 @@
     return !!(panel && !panel.hidden);
   }
 
+  function keysSeqHostsLive(){
+    try{
+      var seq=global.OneToneKeysSeqPanel;
+      if(seq&&typeof seq.hostsLiveKeysChrome==='function') return !!seq.hostsLiveKeysChrome();
+      return !!(seq&&typeof seq.hostsImeScheme==='function'&&seq.hostsImeScheme());
+    }catch(_){ return false; }
+  }
+
   function isKeysPanelActive(){
     var drawer=global.OneToneSettingsDrawer;
     if(drawer&&drawer.isKeysPanel&&drawer.isKeysPanel()) return true;
+    if(keysSeqHostsLive()) return true;
     return visibleKeysPanel();
   }
 
@@ -85,14 +94,19 @@
     if(addBtn) addBtn.click();
   }
 
-  function bindEvents(){
-    var panel=$('settingsPanelKeys');
+  function bindPanel(panel){
     if(!panel||panel.dataset.keysPageIxBound==='1') return;
     panel.dataset.keysPageIxBound='1';
     panel.addEventListener('click',routeKeysPanelClick,true);
     panel.addEventListener('input',routeKeysPanelInput,true);
     panel.addEventListener('change',routeKeysPanelInput,true);
     panel.addEventListener('keydown',routeKeysPanelKeydown,true);
+  }
+
+  function bindEvents(){
+    bindPanel($('settingsPanelKeys'));
+    // 动作链「听写方式」挂载输入法方案 DOM 后，收尾点击需在此面板冒泡。
+    bindPanel($('settingsPanelKeysSeq'));
     var enableBtn=$('btnKeysMappingEnable');
     if(enableBtn&&!enableBtn.dataset.keysEnableIxBound){
       enableBtn.dataset.keysEnableIxBound='1';

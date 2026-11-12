@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark" data-style="blue">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 按键 · 修改后（对齐 Mac）</title>
+  <link rel="stylesheet" href="./onetone-channel-after-theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font); background: var(--page); color: var(--text);
+      font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--accent-bd); outline-offset: 2px;
+    }
+    a { color: var(--accent); text-decoration: none; font-weight: 650; }
+
+    .bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 16px; background: var(--bar); border-bottom: 1px solid var(--line);
+      color: var(--bar-text); font-size: 12px;
+    }
+    .bar strong { color: #fff; }
+    .bar em { font-style: normal; color: var(--bar-em); font-weight: 650; }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+    .bar a.nav {
+      color: #9ec9e8; border: 1px solid rgba(125,211,252,.28); border-radius: 6px;
+      padding: 5px 10px; font-size: 11px;
+    }
+    html[data-theme="light"] .bar a.nav { color: #7dd3fc; }
+    html[data-style="graphite"] .bar a.nav {
+      color: #d1d1d6; border-color: rgba(161,161,166,.35);
+    }
+    .bar a.nav.is-here { background: var(--accent-soft); color: #fff; border-color: transparent; }
+    html[data-theme="light"] .bar a.nav.is-here { color: var(--accent); background: var(--accent-soft); }
+
+    .wrap { width: min(1180px, calc(100% - 24px)); margin: 16px auto 48px; }
+    .brief {
+      margin-bottom: 12px; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--brief-bd); background: var(--brief-bg);
+      font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    }
+    .brief strong { color: var(--accent); }
+    .brief b { color: var(--text); }
+
+    .shell {
+      display: grid; grid-template-columns: 236px minmax(0, 1fr);
+      min-height: 680px; border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; background: var(--bg); box-shadow: var(--shadow);
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+
+    .chrome {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--chrome);
+    }
+    .chrome .scope { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .chrome .avatar {
+      width: 28px; height: 28px; border-radius: 8px; background: var(--pane2);
+      display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .chrome .scope strong { display: block; font-size: 13px; }
+    .chrome .scope span { font-size: 11px; color: var(--faint); }
+    .chrome .spacer { flex: 1; }
+    .chrome select {
+      background: var(--pane2); border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 10px; font-size: 12px; font-weight: 650;
+    }
+    .chrome .link { font-size: 12px; font-weight: 650; color: var(--accent); background: none; border: 0; }
+
+    .rail {
+      background: var(--rail); border-right: 1px solid var(--line);
+      padding: 10px 8px 14px; display: flex; flex-direction: column; gap: 2px; min-height: 0;
+    }
+    .rail-tag {
+      align-self: flex-start; margin: 2px 6px 10px;
+      padding: 5px 10px; border-radius: 999px; background: var(--accent);
+      color: var(--on-accent); font-size: 11px; font-weight: 750; border: 0;
+    }
+    .rail .g {
+      padding: 10px 10px 4px; font-size: 10px; font-weight: 800;
+      letter-spacing: .04em; color: var(--faint);
+    }
+    .rail .item {
+      position: relative; width: calc(100% - 8px); margin: 2px 4px; text-align: left;
+      border: 0; background: transparent; border-radius: 10px; padding: 10px 12px 10px 14px;
+      color: var(--muted); display: block;
+    }
+    .rail .item:hover { background: var(--hover); color: var(--text); }
+    .rail .item.on {
+      background: var(--sel-bg); color: var(--item-on-text);
+      box-shadow: inset 3px 0 0 var(--sel-bar);
+    }
+    .rail .item .t { font-size: 13px; font-weight: 700; }
+    .rail .item .s { display: block; margin-top: 3px; font-size: 11px; color: var(--faint); font-weight: 600; }
+    .rail .item.on .s { color: var(--muted); }
+    .rail .item .del {
+      position: absolute; top: 10px; right: 8px; width: 22px; height: 22px; border: 0;
+      border-radius: 6px; background: transparent; color: var(--danger); font-size: 13px;
+      opacity: 0; display: grid; place-items: center;
+    }
+    .rail .item:hover .del, .rail .item.on .del { opacity: .85; }
+    .rail .item .del:hover { background: var(--cut-bg); opacity: 1; }
+
+    .rail-foot {
+      margin-top: auto; padding: 12px 8px 4px; border-top: 1px solid var(--line);
+    }
+    .rail-acts { display: flex; gap: 12px; align-items: center; padding: 0 6px 8px; }
+    .rail-acts button {
+      background: none; border: 0; color: var(--accent); font-size: 12.5px; font-weight: 750; padding: 0;
+    }
+    .rail-hint { padding: 0 6px; font-size: 10.5px; color: var(--faint); line-height: 1.4; }
+
+    .mid { padding: 16px 18px 22px; overflow: auto; background: var(--win); min-width: 0; }
+    .mid-label {
+      font-size: 11px; font-weight: 750; color: var(--faint); margin-bottom: 12px;
+    }
+
+    .flow-title { font-size: 14px; font-weight: 700; margin: 0 0 14px; color: var(--muted); }
+    .block {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      background: var(--pane); margin-bottom: 12px;
+    }
+    .block .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft);
+      color: var(--accent); font-size: 12px; font-weight: 800; margin-right: 8px;
+    }
+    .block h3 { margin: 0 0 6px; font-size: 14px; display: flex; align-items: center; }
+    .block .hint { margin: 0 0 12px; font-size: 12px; color: var(--muted); max-width: 62ch; }
+    .key-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .keycap {
+      min-width: 96px; padding: 10px 16px; border-radius: 10px;
+      background: var(--keycap-bg); border: 1px solid var(--line);
+      font-weight: 800; font-size: 15px; letter-spacing: .02em;
+    }
+    .btn {
+      border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700;
+      background: var(--pane2); color: var(--muted); border: 1px solid var(--line);
+    }
+    .btn.pri { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+    .btn.ghost { background: transparent; }
+    .side-hint { font-size: 11px; color: var(--faint); }
+
+    .ime-hero {
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+      border-radius: 12px; border: 1.5px solid var(--accent-bd);
+      background: var(--accent-soft); margin-bottom: 12px;
+    }
+    .ime-hero .mic {
+      width: 40px; height: 40px; border-radius: 10px; background: var(--accent);
+      display: grid; place-items: center; color: var(--on-accent); font-size: 18px;
+    }
+    .ime-hero b { display: block; font-size: 20px; letter-spacing: .04em; }
+    .ime-hero span { font-size: 11px; color: var(--muted); }
+
+    .ime-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ime-ico {
+      width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--pane2); display: grid; place-items: center; font-size: 11px;
+      font-weight: 800; color: var(--muted);
+    }
+    .ime-ico.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); color: var(--text); }
+    .ime-ico.add { color: var(--accent); border-style: dashed; }
+    .ime-sub { margin-top: 10px; font-size: 11px; color: var(--faint); }
+
+    .finish-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 720px) { .finish-grid { grid-template-columns: 1fr; } }
+    .finish {
+      text-align: left; border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px 14px; background: var(--pane2); color: var(--text);
+    }
+    .finish.on { border-color: var(--accent); background: var(--accent-soft); }
+    .finish b { display: block; font-size: 13px; margin-bottom: 4px; }
+    .finish span { font-size: 11.5px; color: var(--muted); }
+    .extra { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .extra button {
+      text-align: left; background: none; border: 0; color: var(--muted);
+      font-size: 12px; padding: 6px 0; display: flex; justify-content: space-between; width: 100%;
+    }
+    .extra .val { color: var(--accent); font-weight: 700; }
+
+    .seq-path { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .seq-path b { color: var(--text); }
+    .title-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .title-row input {
+      flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--pane); font-size: 16px; font-weight: 700;
+      color: var(--text);
+    }
+    .title-row .danger {
+      border: 0; background: none; color: var(--danger); font-weight: 700; font-size: 12px;
+    }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 750; color: var(--faint); margin-bottom: 6px; }
+    .field select, .field .box {
+      width: 100%; max-width: 320px; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid var(--line); background: var(--pane2); color: var(--text);
+    }
+    .field .help { margin-top: 5px; font-size: 11px; color: var(--faint); }
+
+    .steps { display: flex; flex-direction: column; gap: 8px; }
+    .step {
+      display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: start;
+      padding: 10px 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--pane);
+    }
+    .step .idx {
+      width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft);
+      color: var(--accent); font-size: 11px; font-weight: 800; display: grid; place-items: center;
+    }
+    .step .body .kind { font-size: 12px; font-weight: 750; margin-bottom: 4px; }
+    .step .body .val {
+      display: inline-block; padding: 4px 8px; border-radius: 6px;
+      background: var(--keycap-bg); border: 1px solid var(--line); font-size: 12px; font-weight: 650;
+    }
+    .step .body .meta { margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .step .body .meta .cal { color: var(--ok); font-weight: 650; }
+    .step .ops { display: flex; gap: 4px; }
+    .step .ops button {
+      width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line);
+      background: transparent; color: var(--muted); font-size: 11px;
+    }
+    .step .ops button.x { color: var(--danger); border-color: transparent; }
+
+    .add-steps {
+      margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px;
+      padding-top: 12px; border-top: 1px solid var(--line);
+    }
+    .add-steps button {
+      border: 1px solid var(--line); background: var(--pane2); border-radius: 8px;
+      padding: 6px 10px; font-size: 11.5px; font-weight: 650; color: var(--muted);
+    }
+    .add-steps button:hover { color: var(--text); border-color: var(--accent-bd); }
+
+    .toast {
+      display: none; margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+      background: var(--toast-bg); border: 1px solid var(--toast-bd);
+      color: var(--habit); font-size: 12px; font-weight: 650;
+    }
+    .toast.on { display: block; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <strong>OneTone</strong> <em>按键 · 对齐 Mac</em>
+    <div class="theme-switch" aria-label="外观">
+      <span class="lbl">明暗</span>
+      <div class="seg">
+        <button type="button" data-theme-pick="light">浅色</button>
+        <button type="button" data-theme-pick="dark" class="is-on">暗色</button>
+      </div>
+      <span class="lbl">风格</span>
+      <div class="seg">
+        <button type="button" data-style-pick="blue" class="is-on">彩色</button>
+        <button type="button" data-style-pick="graphite">单色</button>
+      </div>
+    </div>
+    <nav>
+      <a class="nav is-here" href="./onetone-keys-after-habit.html">按键</a>
+      <a class="nav" href="./onetone-voice-after-habit.html">语音</a>
+      <a class="nav" href="./onetone-softpad-after-habit.html">虚拟键盘</a>
+      <a class="nav" href="./onetone-ia-left-nav-v2.html">习惯</a>
+      <a class="nav" href="./onetone-channel-after-index.html">索引</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <p class="brief">
+      <strong>对齐 mac-onetone · 双外观：</strong>
+      左栏第一项固定 <b>听写方式（输入法）</b>；其下多条自定义序列可切换。
+      顶栏可切 <b>暗色 / 浅色</b> 与 <b>彩色 / 单色（graphite）</b>，与产品 `data-theme` / `data-style` 一致。
+    </p>
+
+    <section class="shell" aria-label="按键工作台">
+      <div class="chrome">
+        <div class="scope">
+          <div class="avatar">默</div>
+          <div>
+            <strong>默认</strong>
+            <span>当前前台: Cursor</span>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <select aria-label="场景">
+          <option>Cursor Agent 场景</option>
+          <option>写作习惯</option>
+        </select>
+        <a class="link" href="./onetone-ia-left-nav-v2.html">管理习惯</a>
+      </div>
+
+      <aside class="rail" aria-label="改什么">
+        <button type="button" class="rail-tag">左 · 改什么</button>
+
+        <div class="g">本通道 · 听写</div>
+        <button type="button" class="item on" data-id="ime" id="railIme">
+          <span class="t">听写方式</span>
+          <span class="s" id="imeRailSub">ctrl + ' → fn</span>
+        </button>
+
+        <div class="g">本通道 · 动作序列</div>
+        <div id="railSeq"></div>
+
+        <div class="rail-foot">
+          <div class="rail-acts">
+            <button type="button" id="btnNew">+ 新建</button>
+            <button type="button" id="btnTpl">模板…</button>
+          </div>
+          <p class="rail-hint">只列按键通道可改卡 · 口令 / Soft Pad 不在此</p>
+        </div>
+      </aside>
+
+      <div class="mid">
+        <div class="mid-label" id="midLabel">中栏 · 触发 / IME / 收尾同一页</div>
+        <div id="mid"></div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./onetone-channel-after-theme.js"></script>
+  <script>
+    const ime = {
+      id: 'ime',
+      trigger: "ctrl + '",
+      target: 'fn',
+      finish: 'manual'
+    };
+
+    let sequences = [
+      {
+        id: 's1',
+        title: '粘贴并回车',
+        trigger: 'option + D',
+        folder: '改内容',
+        steps: [
+          { kind: '输入框', value: '先对准，再填入', meta: '已校准 · Cursor' },
+          { kind: '按键', value: 'cmd + V' },
+          { kind: '延迟', value: '120ms' },
+          { kind: '按键', value: '↩' }
+        ]
+      },
+      {
+        id: 's2',
+        title: '继续回复',
+        trigger: 'F8',
+        folder: 'AI 助手',
+        steps: [
+          { kind: '输入框', value: '先对准，再填入', meta: '已校准 · Cursor' },
+          { kind: '文本', value: '继续' },
+          { kind: '按键', value: '↩' }
+        ]
+      },
+      {
+        id: 's3',
+        title: '发送',
+        trigger: 'ctrl + enter',
+        folder: 'AI 助手',
+        steps: [{ kind: '按键', value: '↩' }]
+      }
+    ];
+
+    const PRESETS = [
+      {
+        title: '粘贴并回车',
+        trigger: 'option + V',
+        folder: '改内容',
+        steps: [
+          { kind: '输入框', value: '先对准，再填入', meta: '待校准' },
+          { kind: '按键', value: 'cmd + V' },
+          { kind: '延迟', value: '120ms' },
+          { kind: '按键', value: '↩' }
+        ]
+      },
+      {
+        title: '复制选中',
+        trigger: '未设置',
+        folder: '改内容',
+        steps: [{ kind: '按键', value: 'cmd + C' }]
+      }
+    ];
+
+    let selected = 'ime';
+    let uid = 4;
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('on');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => t.classList.remove('on'), 2200);
+    }
+
+    function renderRail() {
+      $('imeRailSub').textContent = ime.trigger + ' → ' + ime.target;
+      $('railIme').classList.toggle('on', selected === 'ime');
+
+      $('railSeq').innerHTML = sequences.map((s) => `
+        <button type="button" class="item${selected === s.id ? ' on' : ''}" data-id="${esc(s.id)}">
+          <span class="t">${esc(s.title)}</span>
+          <span class="s">${esc(s.trigger)} · ${s.steps.length}</span>
+          <span class="del" data-del="${esc(s.id)}" title="删除" aria-label="删除">🗑</span>
+        </button>
+      `).join('');
+
+      $('railSeq').querySelectorAll('.item').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          if (e.target.closest('[data-del]')) {
+            e.stopPropagation();
+            const id = e.target.closest('[data-del]').getAttribute('data-del');
+            sequences = sequences.filter((x) => x.id !== id);
+            if (selected === id) selected = 'ime';
+            render();
+            showToast('已删除序列');
+            return;
+          }
+          selected = btn.getAttribute('data-id');
+          render();
+        });
+      });
+    }
+
+    function renderIme() {
+      $('midLabel').textContent = '中栏 · 触发 / IME / 收尾同一页';
+      const finishManual = ime.finish === 'manual';
+      $('mid').innerHTML = `
+        <p class="flow-title">听写方式 · 输入法作为第一项</p>
+        <div class="block">
+          <h3><span class="num">①</span>触发键</h3>
+          <p class="hint">侧键或快捷键 · 按下后注入下方听写键</p>
+          <div class="key-row">
+            <span class="keycap">${esc(ime.trigger)}</span>
+            <button type="button" class="btn pri" data-act="retrigger">重新录入</button>
+            <span class="side-hint">侧键或快捷键</span>
+          </div>
+        </div>
+        <div class="block">
+          <h3><span class="num">②</span>打开语音</h3>
+          <p class="hint">上方大键帽是当前要注入的键（如 fn）。下方换输入法或自定义录制；进入本页即绑定触发 → 该键。</p>
+          <div class="ime-hero">
+            <div class="mic" aria-hidden="true">🎙</div>
+            <div>
+              <b>${esc(ime.target)}</b>
+              <span>当前注入键</span>
+            </div>
+          </div>
+          <div class="ime-row" id="imeIcons">
+            <button type="button" class="ime-ico" data-ime="豆包">豆</button>
+            <button type="button" class="ime-ico" data-ime="讯飞">讯</button>
+            <button type="button" class="ime-ico" data-ime="搜狗">搜</button>
+            <button type="button" class="ime-ico on" data-ime="fn">fn</button>
+            <button type="button" class="ime-ico" data-ime="Typeless">Ty</button>
+            <button type="button" class="ime-ico add" data-ime="+" title="自定义录制">+</button>
+          </div>
+          <p class="ime-sub">自定义听写键: ${esc(ime.target)}</p>
+        </div>
+        <div class="block">
+          <h3><span class="num">③</span>收尾</h3>
+          <p class="hint">发送方式 · 对准聊天框与语音页共用</p>
+          <div class="finish-grid">
+            <button type="button" class="finish${finishManual ? ' on' : ''}" data-finish="manual">
+              <b>手动发送</b>
+              <span>只结束听写，发送键自己按。</span>
+            </button>
+            <button type="button" class="finish${!finishManual ? ' on' : ''}" data-finish="auto">
+              <b>自动发送</b>
+              <span>开麦后等待，再按发送键发出。</span>
+            </button>
+          </div>
+          <div class="extra">
+            <button type="button">开麦前自动点进聊天框 <span class="val">Cursor 已设 ›</span></button>
+            <button type="button">取消听写方式 <span class="val">关 ›</span></button>
+          </div>
+        </div>
+      `;
+
+      $('mid').querySelector('[data-act="retrigger"]').onclick = () => {
+        ime.trigger = "ctrl + '";
+        showToast('演示：已重新录入触发键');
+        render();
+      };
+      $('mid').querySelectorAll('[data-ime]').forEach((el) => {
+        el.onclick = () => {
+          const v = el.getAttribute('data-ime');
+          if (v === '+') {
+            ime.target = '自定义';
+            showToast('演示：自定义录制听写键');
+          } else {
+            ime.target = v === 'fn' ? 'fn' : v;
+          }
+          render();
+        };
+      });
+      $('mid').querySelectorAll('[data-finish]').forEach((el) => {
+        el.onclick = () => {
+          ime.finish = el.getAttribute('data-finish');
+          render();
+        };
+      });
+    }
+
+    function renderSeq(s) {
+      $('midLabel').textContent = '中栏 · 触发 + 步骤同一页';
+      $('mid').innerHTML = `
+        <p class="seq-path">${esc(s.trigger)} → <b>${esc(s.title)}</b> · ${s.steps.length}</p>
+        <div class="title-row">
+          <input id="seqTitle" value="${esc(s.title)}" aria-label="序列名称" />
+          <button type="button" class="danger" id="seqDelete">删除</button>
+        </div>
+        <div class="field">
+          <label>习惯目录</label>
+          <select id="seqFolder">
+            <option${s.folder === '改内容' ? ' selected' : ''}>改内容</option>
+            <option${s.folder === 'AI 助手' ? ' selected' : ''}>AI 助手</option>
+            <option${s.folder === '听写' ? ' selected' : ''}>听写</option>
+            <option${s.folder === '工作区' ? ' selected' : ''}>工作区</option>
+          </select>
+          <p class="help">决定它出现在习惯页哪个分区</p>
+        </div>
+        <div class="field">
+          <label>触发键</label>
+          <div class="key-row">
+            <span class="keycap">${esc(s.trigger)}</span>
+            <button type="button" class="btn pri" id="seqRetrigger">重新录入</button>
+            <span class="side-hint">侧键或快捷键</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>动作步骤</label>
+          <div class="steps" id="seqSteps">
+            ${s.steps.map((st, i) => `
+              <div class="step" data-i="${i}">
+                <div class="idx">${i + 1}</div>
+                <div class="body">
+                  <div class="kind">${esc(st.kind)}</div>
+                  <span class="val">${esc(st.value)}</span>
+                  ${st.meta ? `<div class="meta"><span class="cal">${esc(st.meta)}</span>
+                    ${st.kind === '输入框' ? ' · <button type="button" class="btn ghost" style="display:inline;padding:0;border:0;color:var(--accent)">选 App</button> · <button type="button" class="btn ghost" style="display:inline;padding:0;border:0;color:var(--accent)">框选校准</button>' : ''}
+                  </div>` : ''}
+                </div>
+                <div class="ops">
+                  <button type="button" data-move="-1" title="上移">↑</button>
+                  <button type="button" data-move="1" title="下移">↓</button>
+                  <button type="button" class="x" data-rm="1" title="删除">🗑</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="add-steps" id="addSteps">
+            ${['按键', '文本', '延迟', '文件', '文件夹', '网址', '快捷指令', '输入框']
+              .map((k) => `<button type="button" data-add="${k}">+ ${k}</button>`).join('')}
+          </div>
+        </div>
+      `;
+
+      $('seqTitle').onchange = $('seqTitle').onblur = () => {
+        s.title = $('seqTitle').value.trim() || s.title;
+        renderRail();
+      };
+      $('seqFolder').onchange = () => { s.folder = $('seqFolder').value; };
+      $('seqDelete').onclick = () => {
+        sequences = sequences.filter((x) => x.id !== s.id);
+        selected = 'ime';
+        render();
+        showToast('已删除序列');
+      };
+      $('seqRetrigger').onclick = () => {
+        s.trigger = 'option + D';
+        showToast('演示：已重新录入触发键');
+        render();
+      };
+      $('seqSteps').querySelectorAll('.step').forEach((row) => {
+        const i = Number(row.getAttribute('data-i'));
+        row.querySelector('[data-move="-1"]').onclick = () => {
+          if (i <= 0) return;
+          const t = s.steps[i - 1]; s.steps[i - 1] = s.steps[i]; s.steps[i] = t;
+          render();
+        };
+        row.querySelector('[data-move="1"]').onclick = () => {
+          if (i >= s.steps.length - 1) return;
+          const t = s.steps[i + 1]; s.steps[i + 1] = s.steps[i]; s.steps[i] = t;
+          render();
+        };
+        row.querySelector('[data-rm]').onclick = () => {
+          s.steps.splice(i, 1);
+          render();
+        };
+      });
+      $('addSteps').querySelectorAll('[data-add]').forEach((btn) => {
+        btn.onclick = () => {
+          const kind = btn.getAttribute('data-add');
+          const defaults = {
+            '按键': 'cmd + C', '文本': '你好', '延迟': '100ms',
+            '文件': '选文件…', '文件夹': '选文件夹…', '网址': 'https://',
+            '快捷指令': '快捷指令名', '输入框': '先对准，再填入'
+          };
+          s.steps.push({
+            kind,
+            value: defaults[kind] || '',
+            meta: kind === '输入框' ? '待校准' : undefined
+          });
+          render();
+        };
+      });
+    }
+
+    function render() {
+      renderRail();
+      if (selected === 'ime') {
+        renderIme();
+        return;
+      }
+      const s = sequences.find((x) => x.id === selected);
+      if (!s) {
+        selected = 'ime';
+        renderIme();
+        return;
+      }
+      renderSeq(s);
+    }
+
+    $('railIme').onclick = () => { selected = 'ime'; render(); };
+
+    $('btnNew').onclick = () => {
+      const id = 's' + uid++;
+      sequences.push({
+        id,
+        title: '新序列',
+        trigger: '未设置',
+        folder: '改内容',
+        steps: [{ kind: '按键', value: '' }]
+      });
+      selected = id;
+      render();
+      showToast('已新建序列 · 在左侧切换');
+    };
+
+    $('btnTpl').onclick = () => {
+      const p = PRESETS[sequences.length % PRESETS.length];
+      const id = 's' + uid++;
+      sequences.push({
+        id,
+        title: p.title,
+        trigger: p.trigger,
+        folder: p.folder,
+        steps: p.steps.map((x) => ({ ...x }))
+      });
+      selected = id;
+      render();
+      showToast('已从模板添加「' + p.title + '」');
+    };
+
+    render();
+  </script>
+</body>
+</html>

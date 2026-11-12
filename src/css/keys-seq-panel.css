@@ -32,64 +32,109 @@
   height:100%;min-height:0;
 }
 #settingsPanelKeysSeq .keys-seq-mid-editor{
-  display:flex;flex-direction:column;gap:8px;padding:10px 12px 14px;
+  display:flex;flex-direction:column;gap:12px;padding:12px 14px 18px;
 }
 #settingsPanelKeysSeq .keys-seq-mid-label{
   margin:0;font-size:10px;font-weight:800;letter-spacing:.04em;
   text-transform:uppercase;color:var(--muted,#66768a);
 }
 #settingsPanelKeysSeq .keys-seq-mid-summary{
-  margin:0;font:12px/1.35 ui-monospace,Consolas,monospace;color:#3d4f61;
+  margin:0;font:12.5px/1.4 ui-monospace,Consolas,monospace;color:#3d4f61;
 }
-#settingsPanelKeysSeq .keys-seq-mid-trigger{
-  display:flex;flex-direction:column;gap:8px;
-  padding:10px 12px;border-radius:12px;
+#settingsPanelKeysSeq .keys-seq-mid-summary b{font-weight:750;color:inherit}
+#settingsPanelKeysSeq .keys-seq-meta-row{
+  display:grid;grid-template-columns:minmax(0,1.4fr) minmax(140px,.9fr);gap:12px 14px;
+  align-items:end;
+}
+@media (max-width:720px){
+  #settingsPanelKeysSeq .keys-seq-meta-row{grid-template-columns:1fr}
+}
+#settingsPanelKeysSeq .keys-seq-meta-name,
+#settingsPanelKeysSeq .keys-seq-meta-folder{
+  display:flex;flex-direction:column;gap:6px;min-width:0;
+}
+#settingsPanelKeysSeq .keys-seq-meta-row label{
+  margin:0;font-size:11px;font-weight:750;color:var(--muted,#66768a);
+}
+#settingsPanelKeysSeq .keys-seq-title-row{
+  display:flex;align-items:center;gap:8px;min-width:0;
+}
+#settingsPanelKeysSeq .keys-seq-title-in{
+  flex:1 1 auto;min-width:0;padding:9px 11px;border-radius:9px;
   border:1px solid var(--keys-line, var(--line,#e2e8f0));
-  background:#fff;
+  background:var(--surface,#fff);font:inherit;font-size:15px;font-weight:700;line-height:1.25;
+  color:var(--on-surface,#1a2d4a);outline:none;
 }
-#settingsPanelKeysSeq .keys-seq-mid-trigger.is-recording-active{
-  border-color:color-mix(in srgb, var(--accent,#1f7a8c) 45%, var(--line,#e2e8f0));
-  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent,#1f7a8c) 18%, transparent);
+#settingsPanelKeysSeq .keys-seq-title-in:focus,
+#settingsPanelKeysSeq .keys-seq-folder-sel:focus{
+  border-color:color-mix(in srgb, var(--accent,#2a9cc4) 55%, var(--line,#e2e8f0));
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent,#2a9cc4) 16%, transparent);
 }
-#settingsPanelKeysSeq .keys-seq-mid-trigger-hd{
-  display:flex;align-items:center;gap:8px;
+#settingsPanelKeysSeq .keys-seq-seq-del{
+  flex:0 0 auto;border:0;background:transparent;padding:6px 8px;
+  font:inherit;font-size:12px;font-weight:700;color:var(--danger,#c0392b);cursor:pointer;
+  border-radius:8px;
 }
-#settingsPanelKeysSeq .keys-seq-mid-trigger-body{
+#settingsPanelKeysSeq .keys-seq-seq-del:hover{
+  background:color-mix(in srgb, var(--danger,#c0392b) 10%, transparent);
+}
+#settingsPanelKeysSeq .keys-seq-field{margin:0}
+#settingsPanelKeysSeq .keys-seq-field > label{
+  display:block;margin:0 0 6px;font-size:11px;font-weight:750;color:var(--muted,#66768a);
+}
+#settingsPanelKeysSeq .keys-seq-folder-sel{
+  width:100%;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--keys-line, var(--line,#e2e8f0));
+  background:var(--surface-high,#f3f7fa);color:inherit;font:inherit;font-weight:650;
+}
+#settingsPanelKeysSeq .keys-seq-field-help{
+  margin:-4px 0 0;font-size:11px;color:var(--muted,#66768a);
+}
+#settingsPanelKeysSeq .keys-seq-key-row{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
 }
-#settingsPanelKeysSeq .keys-seq-mid-trigger-hint{
-  margin:0;font-size:12px;color:var(--muted,#66768a);
+#settingsPanelKeysSeq .keys-seq-key-row.is-recording-active .keys-seq-keycap{
+  border-color:color-mix(in srgb, var(--accent,#2a9cc4) 55%, var(--line,#e2e8f0));
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent,#2a9cc4) 18%, transparent);
+}
+#settingsPanelKeysSeq .keys-seq-keycap{
+  display:inline-flex;align-items:center;gap:0;margin:0;padding:0;min-width:96px;
+  border:1px solid var(--keys-line, var(--line,#e2e8f0));border-radius:10px;
+  background:var(--surface-high,#f3f7fa);cursor:pointer;font:inherit;color:inherit;
+}
+#settingsPanelKeysSeq .keys-seq-keycap .habit-basic-key-display{
+  margin:0;padding:10px 16px;border:0;background:transparent;min-height:0;
+  box-shadow:none;font-weight:800;font-size:15px;letter-spacing:.02em;
+}
+#settingsPanelKeysSeq .keys-seq-retrigger{
+  border:1px solid color-mix(in srgb, var(--accent,#2a9cc4) 40%, var(--line,#e2e8f0));
+  background:color-mix(in srgb, var(--accent,#2a9cc4) 12%, #fff);
+  color:#0f5f7a;border-radius:9px;padding:7px 12px;
+  font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+#settingsPanelKeysSeq .keys-seq-retrigger:hover{
+  background:color-mix(in srgb, var(--accent,#2a9cc4) 18%, #fff);
+}
+#settingsPanelKeysSeq .keys-seq-side-hint{
+  font-size:12px;color:var(--muted,#66768a);
+}
+#settingsPanelKeysSeq.is-seq-face #keysCaptureTargetActionsLbl,
+#settingsPanelKeysSeq.is-seq-face #keysCustomKeyMatchName,
+#settingsPanelKeysSeq.is-seq-face #keysCaptureTargetActionsHint,
+#settingsPanelKeysSeq.is-seq-face .keys-custom-key-detail > .keys-channel-group-label{
+  display:none !important;
 }
 #settingsPanelKeysSeq .keys-seq-actions-host.home-key-map-actions,
 #settingsPanelKeysSeq .keys-custom-key-detail .home-key-map-actions.is-keys-variant{
   margin:0;overflow:visible;max-height:none;
 }
 #settingsPanelKeysSeq .home-key-map-action-list.is-keys-inline{
-  display:flex;flex-direction:column;gap:12px;overflow:visible;max-height:none;
-}
-/* Full-bleed step cards — body under header so highlight wraps the whole step */
-#settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline{
-  display:grid;
-  grid-template-columns:32px minmax(52px,80px) minmax(0,1fr) auto;
-  grid-template-rows:auto auto;
-  gap:8px 12px;align-items:center;
-  padding:14px 16px;border-radius:14px;
-  background:#fff;border:1px solid var(--keys-line, var(--line,#e2e8f0));
-  box-shadow:0 1px 0 rgba(19,32,44,.03);
+  display:flex;flex-direction:column;gap:8px;overflow:visible;max-height:none;
 }
 #settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline.is-ime,
 #settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline.is-listen{
   border-color:color-mix(in srgb, var(--accent,#1f7a8c) 28%, var(--line,#e2e8f0));
   background:color-mix(in srgb, var(--accent,#1f7a8c) 5%, #fff);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent,#1f7a8c) 12%, transparent);
-}
-#settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline .keys-seq-body{
-  grid-column:1/-1;grid-row:2;min-width:0;overflow:visible;
-}
-#settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline .home-key-map-action-idx{grid-column:1;grid-row:1}
-#settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline .keys-seq-kind{grid-column:2;grid-row:1}
-#settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline .home-key-map-action-acts{
-  grid-column:4;grid-row:1;justify-self:end;
 }
 
 /* Left rail: catalog only (Mac Keys pick list) */
@@ -107,13 +152,176 @@
 #settingsPanelKeysSeq .keys-seq-rail-group-lab{
   flex:1 1 auto;font-size:11px;font-weight:700;color:var(--muted,#66768a);
 }
-#settingsPanelKeysSeq .keys-seq-rail-new{
-  width:100%;border:0;background:transparent;
+#settingsPanelKeysSeq .keys-seq-dictation-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  width:calc(100% - 8px);margin:2px 4px 8px;border:0;border-radius:8px;
+  background:transparent;padding:8px 6px 8px 10px;text-align:left;font:inherit;cursor:pointer;
+  color:#2a3a4a;
+}
+#settingsPanelKeysSeq .keys-seq-dictation-card:hover{
+  background:color-mix(in srgb, var(--accent,#1f7a8c) 5%, #fff);
+}
+#settingsPanelKeysSeq .keys-seq-dictation-card.is-active{
+  background:color-mix(in srgb, var(--accent,#1f7a8c) 10%, #fff);
+  box-shadow:inset 2px 0 0 var(--accent,#1f7a8c);
+}
+#settingsPanelKeysSeq .keys-seq-dictation-card-name{
+  font-size:12px;font-weight:650;
+}
+#settingsPanelKeysSeq .keys-seq-dictation-card-sub{
+  font-size:10px;color:var(--muted,#66768a);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
+#settingsPanelKeysSeq .keys-seq-rail-acts{
+  display:flex;align-items:center;gap:4px;padding:0 2px;
+}
+#settingsPanelKeysSeq .keys-seq-rail-new,
+#settingsPanelKeysSeq .keys-seq-rail-tpl{
+  flex:1 1 auto;border:0;background:transparent;
   border-radius:8px;padding:10px;font:inherit;font-size:12px;font-weight:700;
   color:var(--accent,#1f7a8c);cursor:pointer;text-align:left;
 }
-#settingsPanelKeysSeq .keys-seq-rail-new:hover{
+#settingsPanelKeysSeq .keys-seq-rail-new:hover,
+#settingsPanelKeysSeq .keys-seq-rail-tpl:hover{
   background:color-mix(in srgb, var(--accent,#1f7a8c) 8%, #fff);
+}
+#settingsPanelKeysSeq .keys-seq-rail-hint{
+  margin:4px 6px 0;font-size:10px;line-height:1.4;color:var(--muted,#66768a);
+}
+/* Live IME scheme: pack to content — don't stretch 听写键 into a tall empty card */
+#settingsPanelKeysSeq .keys-seq-ime-desk{
+  height:auto;max-height:100%;min-height:0;overflow:auto;
+  align-self:start;width:100%;
+  border:0;background:transparent;padding:0;box-shadow:none;
+}
+#settingsPanelKeysSeq .keys-seq-ime-editor{
+  height:auto;min-height:0;padding:10px 12px 16px;
+}
+#settingsPanelKeysSeq .keys-seq-ime-host{
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:0;flex:0 0 auto;min-height:0;width:100%;
+}
+#settingsPanelKeysSeq .keys-seq-ime-host > .keys-channel-pane-right,
+#settingsPanelKeysSeq .keys-seq-ime-host #keysChannelPaneRight{
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:8px;flex:0 0 auto;min-width:0;min-height:0;width:100%;
+  padding:4px 4px 8px;overflow:visible;align-self:stretch;
+}
+#settingsPanelKeysSeq .keys-seq-ime-host #keysCaptureHeroCard,
+#settingsPanelKeysSeq .keys-seq-ime-host #keysCaptureKeyPanel,
+#settingsPanelKeysSeq .keys-seq-ime-host #keysImeFinishStep,
+#settingsPanelKeysSeq .keys-seq-ime-host #keysCaptureKeycapZone,
+#settingsPanelKeysSeq .keys-seq-ime-host #keysImeStripWrap{
+  flex:0 0 auto !important;
+  height:auto !important;
+  min-height:0 !important;
+  align-self:stretch;
+}
+#settingsPanelKeysSeq .keys-seq-ime-host #keysChannelPanel:empty{
+  display:none !important;
+}
+
+/* Seq face: Mac mid = trigger (above) + live Keys custom-key detail (no nested match list) */
+#settingsPanelKeysSeq .keys-seq-key-desk{
+  height:auto;max-height:100%;min-height:0;overflow:auto;
+  align-self:start;width:100%;
+}
+#settingsPanelKeysSeq .keys-seq-key-host{
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:0;flex:0 0 auto;min-height:0;width:100%;margin-top:4px;
+}
+#settingsPanelKeysSeq.is-seq-face .keys-seq-key-host #keysChannelPaneRight{
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:0;flex:0 0 auto;min-width:0;min-height:0;width:100%;
+  padding:0;overflow:visible;
+}
+#settingsPanelKeysSeq.is-seq-face .keys-custom-key-match{
+  display:none !important;
+}
+#settingsPanelKeysSeq.is-seq-face .keys-custom-key-split{
+  display:block !important;
+  grid-template-columns:none !important;
+  height:auto !important;
+  min-height:0 !important;
+  overflow:visible !important;
+  background:transparent !important;
+}
+#settingsPanelKeysSeq.is-seq-face .keys-custom-key-detail{
+  display:flex !important;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+  padding:0;
+  height:auto !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+}
+#settingsPanelKeysSeq.is-seq-face #keysCaptureTargetActionsHost{
+  display:block !important;
+  height:auto !important;
+  min-height:0 !important;
+  flex:0 0 auto !important;
+  border:0 !important;
+  background:transparent !important;
+  padding:0 !important;
+  box-shadow:none !important;
+}
+#settingsPanelKeysSeq.is-seq-face .keys-custom-key-split{
+  border:0 !important;
+  background:transparent !important;
+  padding:0 !important;
+  box-shadow:none !important;
+}
+/* Compat twin must stay dead — only one add strip */
+#settingsPanelKeysSeq #keysSeqActions{
+  display:none !important;
+}
+#settingsPanelKeysSeq.is-seq-face #keysCaptureHeroCard,
+#settingsPanelKeysSeq.is-seq-face #keysImeFinishStep,
+#settingsPanelKeysSeq.is-seq-face #keysChannelPanel:empty{
+  display:none !important;
+}
+/* Strip under「动作步骤」; top rule only when steps already exist above */
+#settingsPanelKeysSeq.is-seq-face .keys-seq-add-strip{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin:0;padding:0;border-top:0;
+}
+#settingsPanelKeysSeq.is-seq-face .home-key-map-action-list.is-keys-inline + .keys-seq-add-strip{
+  margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--keys-line, var(--outline-variant, rgba(26,45,74,.12)));
+}
+#settingsPanelKeysSeq.is-seq-face .keys-seq-add-lab{display:none !important}
+html[data-theme="dark"] #settingsPanelKeysSeq.is-seq-face .keys-seq-add-strip button{
+  color:rgba(255,255,255,.88);border-color:rgba(255,255,255,.22);
+}
+html[data-theme="dark"] #settingsPanelKeysSeq.is-seq-face .keys-seq-add-strip button:hover{
+  background:rgba(90,200,250,.14);border-color:rgba(90,200,250,.45);color:#fff;
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-mid-summary{color:rgba(255,255,255,.72)}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-title-in{
+  color:rgba(255,255,255,.94);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-folder-sel,
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-keycap{
+  background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:rgba(255,255,255,.9);
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-retrigger{
+  background:rgba(90,200,250,.14);border-color:rgba(90,200,250,.35);color:#7dd3fc;
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline{
+  background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12);
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .home-key-map-action-row.is-keys-inline .home-key-map-action-idx{
+  background:rgba(90,200,250,.18);color:#7dd3fc;
+}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-dictation-card{color:rgba(255,255,255,.88)}
+html[data-theme="dark"] #settingsPanelKeysSeq .keys-seq-dictation-card.is-active{
+  background:color-mix(in srgb, var(--accent,#5ac8fa) 16%, transparent);
+}
+html[data-style="graphite"] #settingsPanelKeysSeq .keys-seq-dictation-card.is-active{
+  box-shadow:inset 2px 0 0 #8e8e93;
 }
 #settingsPanelKeysSeq .keys-seq-saved{display:flex;flex-direction:column;gap:2px;min-height:0;flex:1 1 auto}
 #settingsPanelKeysSeq .keys-seq-saved-count{

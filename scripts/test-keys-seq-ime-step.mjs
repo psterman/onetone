@@ -19,12 +19,23 @@ assert.match(html, /id="keysSeqSavedList"/, 'left catalog list always present');
 {
   const railStart = html.indexOf('id="keysSeqRail"');
   const mainStart = html.indexOf('id="keysSeqMain"');
+  const mainEnd = html.indexOf('id="keysSeqSceneActionsPanel"');
   const railChunk = railStart >= 0 && mainStart > railStart ? html.slice(railStart, mainStart) : '';
-  const mainChunk = mainStart >= 0 ? html.slice(mainStart, mainStart + 2500) : '';
+  const mainChunk =
+    mainStart >= 0 && mainEnd > mainStart ? html.slice(mainStart, mainEnd) : '';
   assert.ok(!/id="keysSeqTriggerRow"/.test(railChunk), 'trigger not in left rail');
+  assert.match(mainChunk, /id="keysSeqImeDesk"/, 'ime face desk in mid');
+  assert.match(mainChunk, /id="keysSeqImeHost"/, 'ime host mounts live Keys IME');
+  assert.match(mainChunk, /id="keysSeqSeqDesk"/, 'seq face desk in mid');
   assert.match(mainChunk, /id="keysSeqTriggerRow"/, 'trigger row in mid');
   assert.match(mainChunk, /id="keysSeqMidSummary"/, 'mid summary present');
 }
+assert.match(html, /id="keysChannelPaneRight"/, 'classic Keys IME pane source remains');
+assert.match(
+  readFileSync(path.join(root, 'src/js/features/mapping/keys-seq-panel.js'), 'utf8'),
+  /mountImeScheme[\s\S]*keysChannelPaneRight/,
+  'keysSeq mounts live Keys IME pane'
+);
 assert.match(html, /keys-page-body--two-col/, 'keysSeq two-col body');
 assert.match(html, /data-wb-nav="keysSeq"/, 'nav entry for keysSeq');
 assert.match(html, /keys-seq-panel\.js/, 'keys-seq-panel.js loaded');
@@ -73,7 +84,8 @@ assert.match(seqCss, /home-record-card-cancel/, 'record cancel button style');
 assert.match(seqCss, /grid-column:\s*1\/-1/, 'step body full-bleed under header');
 
 const seqJs = readFileSync(path.join(root, 'src/js/features/mapping/keys-seq-panel.js'), 'utf8');
-assert.match(seqJs, /hideAdd:\s*false/, 'middle shows ＋ add menu');
+assert.match(seqJs, /createCustomKeyMatchMapping|refreshKeysTargetActions/, 'seq face uses live custom-key editor');
+assert.match(seqJs, /keysSeqKeyHost|mountLivePane/, 'custom-key desk hosts live Keys pane');
 assert.match(seqJs, /paintSavedList/, 'catalog list painted on left');
 assert.match(seqJs, /keysSeqNewAction/, '新建动作 wired on left');
 assert.doesNotMatch(seqJs, /savedExpanded|keysSeqSavedToggle/, 'catalog always open (no accordion)');

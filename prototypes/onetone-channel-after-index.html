@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 通道页修改后 · 索引</title>
+  <style>
+    :root {
+      --ink: #14202c; --muted: #6a7a89; --line: #dbe3e8;
+      --teal: #117c79; --teal-soft: #e5f5f3;
+      --green: #1f8a55; --amber: #9a6118;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100%; background: #dfe8e9; color: var(--ink); font: 14px/1.5 var(--font); }
+    .bar { padding: 10px 18px; background: #10242b; color: #b9cbd0; font-size: 12px; }
+    .bar strong { color: #fff; }
+    .wrap { width: min(880px, calc(100% - 28px)); margin: 28px auto 48px; }
+    h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.02em; }
+    .lede { margin: 0 0 18px; color: var(--muted); max-width: 62ch; }
+    .rule {
+      margin: 0 0 18px; padding: 12px 14px; border-radius: 8px;
+      background: var(--teal-soft); color: #0b5d5b; font-size: 13px; font-weight: 650;
+    }
+    .grid { display: grid; gap: 12px; }
+    a.card {
+      display: block; padding: 16px 18px; border: 1px solid rgba(22,45,53,.14);
+      border-radius: 12px; background: #fff; text-decoration: none; color: inherit;
+      box-shadow: 0 12px 28px rgba(25,45,55,.08);
+    }
+    a.card:hover { border-color: #9bd5d1; }
+    a.card h2 { margin: 0 0 4px; font-size: 16px; color: var(--teal); }
+    a.card p { margin: 0; color: var(--muted); font-size: 13px; }
+    a.card .meta { margin-top: 10px; font-size: 11px; color: #83949c; font-weight: 700; }
+    table {
+      width: 100%; margin-top: 28px; border-collapse: collapse; background: #fff;
+      border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 12.5px;
+    }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f4f7f8; color: #83949c; font-size: 11px; font-weight: 800; }
+    td strong { display: block; }
+    td small { color: var(--muted); }
+    .keep { color: var(--green); font-weight: 700; }
+    .move { color: var(--amber); font-weight: 700; }
+    .cut { color: #c41e1e; font-weight: 700; text-decoration: line-through; }
+    .legacy { margin-top: 22px; font-size: 12px; color: var(--muted); }
+    .legacy a { color: var(--teal); font-weight: 650; }
+  </style>
+</head>
+<body>
+  <header class="bar"><strong>OneTone</strong> · 通道页修改后（比 capability-v2 更狠：左栏无跨通道 tab）</header>
+  <main class="wrap">
+    <h1>按键 / 语音 / 虚拟键盘 · 修改后</h1>
+    <p class="lede">习惯 = 命令中枢（唯一写口）。通道页 = 本通道物理层 + 已绑本通道精修。跨通道目录整段砍掉。</p>
+    <p class="rule">能力留页 · 匹配回习惯 · 左栏不再当半个习惯 · 三页顶栏可切暗色/浅色与彩色/单色（graphite）</p>
+
+    <div class="grid">
+      <a class="card" href="./onetone-keys-after-habit.html">
+        <h2>按键 · 修改后（对齐 Mac）</h2>
+        <p>听写方式（输入法）置顶；左侧动作序列多条自定义快捷键可切换；+ 新建 / 模板。口令 / Soft Pad 不在此。</p>
+        <div class="meta">onetone-keys-after-habit.html</div>
+      </a>
+      <a class="card" href="./onetone-voice-after-habit.html">
+        <h2>语音 · 对齐 Mac</h2>
+        <p>进门「口令」+ 会话「输入听写 / 口头卡」· LIVE 抽屉；键 / Pad / 手势整库已砍，挂载回习惯。</p>
+        <div class="meta">onetone-voice-after-habit.html</div>
+      </a>
+      <a class="card" href="./onetone-softpad-after-habit.html">
+        <h2>软键盘 · 修改后</h2>
+        <p>何时 / 皮肤布局 / 车道留页；点键去习惯绑命令。六通道挑源抽屉已砍。</p>
+        <div class="meta">onetone-softpad-after-habit.html</div>
+      </a>
+      <a class="card" href="./onetone-keyboard-mac-hub.html">
+        <h2>键盘 · Mac VK hub</h2>
+        <p>软键盘标签下方新页：左命令 · 中预览 · 右键详情（对齐 Mac 虚拟键盘实验截图）。</p>
+        <div class="meta">onetone-keyboard-mac-hub.html</div>
+      </a>
+      <a class="card" href="./onetone-ia-left-nav-v2.html">
+        <h2>习惯（匹配入口）</h2>
+        <p>三页「+ 在习惯添加」都指向这里：命令 × 四通道槽。</p>
+        <div class="meta">onetone-ia-left-nav-v2.html</div>
+      </a>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>页</th><th>KEEP（本页）</th><th>MOVE（习惯）</th><th>CUT</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>按键</strong></td>
+          <td><small class="keep">听写方式置顶 · ①触发②IME③收尾 · 左侧多序列切换 · 新建/模板</small></td>
+          <td><small class="move">跨通道口令/Pad 绑习惯</small></td>
+          <td><small class="cut">口头·Pad·手势整库 tab</small></td>
+        </tr>
+        <tr>
+          <td><strong>语音</strong></td>
+          <td><small class="keep">口令进门（命令键）· 输入听写 · 口头卡 · LIVE · 常驻唤醒高级关</small></td>
+          <td><small class="move">改/加说法 · 录键/Pad/手势挂载</small></td>
+          <td><small class="cut">自定义键 / Soft Pad / 手势整库 tab</small></td>
+        </tr>
+        <tr>
+          <td><strong>虚拟键盘</strong></td>
+          <td><small class="keep">何时出现 · 皮肤 · 布局 · Auto 车道 · 预览</small></td>
+          <td><small class="move">键位 ↔ 命令</small></td>
+          <td><small class="cut">六通道挑源 · 本页新建 oral</small></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="legacy">对照旧稿（仍保留六项左栏、标「习惯」标签）：
+      <a href="./onetone-channel-pages-index.html">capability-v2 索引</a>
+    </p>
+  </main>
+</body>
+</html>

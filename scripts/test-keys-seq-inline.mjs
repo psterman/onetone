@@ -24,8 +24,17 @@ check('buildKeysInlineRowHtml exists', /function buildKeysInlineRowHtml/.test(ho
 check('wireKeysInlineHandlers exists', /function wireKeysInlineHandlers/.test(home));
 check('keys variant uses is-keys-inline', /classList\.toggle\('is-keys-inline',\s*isKeys\)/.test(home));
 check('add strip not tile row', /keys-seq-add-strip/.test(home) && !/isKeys[\s\S]{0,200}is-tile/.test(home));
+check('empty strip has no 添加步骤 lab', !/emptyPlus[\s\S]{0,120}keys-seq-add-lab/.test(home));
+check(
+  'applyAndRefresh paints only keysCaptureTargetActions',
+  /getElementById\('keysCaptureTargetActions'\)/.test(home) &&
+    !/\['keysCaptureTargetActions',\s*'keysSeqActions'\]/.test(home)
+);
+check('Mac step body nests kind+val', /keys-seq-kind[\s\S]*keys-seq-val/.test(home) || /class="keys-seq-kind"[\s\S]*class="keys-seq-val"/.test(home));
+check('delay uses select not only pills', /data-inline-delay-select/.test(home) && /keys-seq-delay-sel/.test(home));
+check('add strip uses 输入框 for aim/ime', /keysCaptureSeqAddAim/.test(home));
 check('inline listen for key chip', /data-inline-rec/.test(home) && /startKeysInlineListen/.test(home));
-check('CSS for key chip + delay pills', /keys-seq-key-chip/.test(css) && /keys-seq-delay-pill/.test(css));
+check('CSS Mac step grid + delay select', /grid-template-columns:\s*28px minmax\(0,\s*1fr\) auto/.test(css) && /keys-seq-delay-sel/.test(css));
 
 if (fail) {
   console.error(fail + ' failed');

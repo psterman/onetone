@@ -1038,6 +1038,35 @@
   opacity:1 !important;
   padding-bottom:10px;
 }
+/* Empty live chip: no detail node → no border-top rail under the header. */
+.ha2-wb-page-turn--thinking.is-live:not([data-ha2-has-detail="1"]) .ha2-tool-step-detail{
+  display:none !important;
+  border-top:0;
+  padding:0;
+  height:0 !important;
+  max-height:0;
+  overflow:hidden;
+  opacity:0 !important;
+}
+/* Header-only live chip must stay a solid pill (not a 1px border rail). */
+.ha2-wb-page-turn--thinking.is-live:not([data-ha2-has-detail="1"]){
+  min-height:32px;
+  overflow:hidden;
+}
+.ha2-wb-page-turn--thinking.is-live:not([data-ha2-has-detail="1"]) .ha2-tool-step-hd{
+  min-height:30px;
+}
+/* Folded thinking must keep a solid chip — never crush to a 1px border line. */
+details.ha2-wb-page-turn--thinking{
+  min-height:32px;
+}
+details.ha2-wb-page-turn--thinking > summary.ha2-tool-step-hd{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  min-height:30px;
+  align-items:center;
+}
 .ha2-wb-page-turn--thinking .ha2-tool-step-badge{
   background:color-mix(in srgb, var(--ha2-accent, #087ea4) 16%, transparent);
   color:var(--ha2-ink, #16324a);

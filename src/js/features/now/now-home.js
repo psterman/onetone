@@ -1347,8 +1347,15 @@
     var composeHost = root.querySelector(
       '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
     );
-    if (!composeHost || composeHost.querySelector('[data-ha2-compose]')) return;
     var HA2 = global.OneToneHomeAgentV2;
+    // Live-swapped compose skips embedCompose — still heal orphaned exclusive cover
+    // (is-wb-chat-page + hidden host) or Focus stays blank after poll remount.
+    if (HA2 && typeof HA2.healWbChatPageCover === 'function') {
+      try {
+        HA2.healWbChatPageCover();
+      } catch (_) {}
+    }
+    if (!composeHost || composeHost.querySelector('[data-ha2-compose]')) return;
     if (HA2 && typeof HA2.embedCompose === 'function') {
       try {
         HA2.embedCompose(root);
@@ -1360,8 +1367,13 @@
       var host = root.querySelector(
         '[data-hf-ha2-compose-host],[data-ha2-dock-host]'
       );
-      if (!host || host.querySelector('[data-ha2-compose]')) return;
       var H = global.OneToneHomeAgentV2;
+      if (H && typeof H.healWbChatPageCover === 'function') {
+        try {
+          H.healWbChatPageCover();
+        } catch (_) {}
+      }
+      if (!host || host.querySelector('[data-ha2-compose]')) return;
       if (H && typeof H.embedCompose === 'function') {
         try {
           H.embedCompose(root);

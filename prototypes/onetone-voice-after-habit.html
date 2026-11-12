@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark" data-style="blue">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 语音 · 对齐 Mac</title>
+  <link rel="stylesheet" href="./onetone-channel-after-theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font); background: var(--page); color: var(--text);
+      font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--accent-bd); outline-offset: 2px;
+    }
+    a { color: var(--accent); text-decoration: none; font-weight: 650; }
+
+    .bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 16px; background: var(--bar); border-bottom: 1px solid var(--line);
+      color: var(--bar-text); font-size: 12px;
+    }
+    .bar strong { color: #fff; }
+    .bar em { font-style: normal; color: var(--bar-em); font-weight: 650; }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+    .bar a.nav {
+      color: #9ec9e8; border: 1px solid rgba(125,211,252,.28); border-radius: 6px;
+      padding: 5px 10px; font-size: 11px;
+    }
+    html[data-theme="light"] .bar a.nav { color: #7dd3fc; }
+    html[data-style="graphite"] .bar a.nav {
+      color: #d1d1d6; border-color: rgba(161,161,166,.35);
+    }
+    .bar a.nav.is-here { background: var(--accent-soft); color: #fff; border-color: transparent; }
+    html[data-theme="light"] .bar a.nav.is-here { color: var(--accent); background: var(--accent-soft); }
+
+    .wrap { width: min(1180px, calc(100% - 24px)); margin: 16px auto 48px; }
+    .brief {
+      margin-bottom: 12px; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--brief-bd); background: var(--brief-bg);
+      font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    }
+    .brief strong { color: var(--accent); }
+    .brief b { color: var(--text); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip {
+      padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--pane); font-size: 11px; font-weight: 700; color: var(--muted);
+    }
+    .chip.keep { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+    .chip.cut { color: var(--danger); border-color: var(--cut-bd); background: var(--cut-bg); }
+
+    .shell {
+      display: grid; grid-template-columns: 220px minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr auto;
+      min-height: 700px; border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; background: var(--bg); box-shadow: var(--shadow);
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--line); max-height: 280px; }
+    }
+
+    .tb {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--chrome);
+      min-height: 48px;
+    }
+    .tb h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .tb .edit { font-size: 11px; color: var(--faint); margin-top: 2px; }
+    .tb .spacer { flex: 1; }
+    .pill-live {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px; border: 0;
+      background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok);
+      font-size: 11.5px; font-weight: 700;
+    }
+    .pill-live .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .pill-live.is-idle { background: var(--pane2); color: var(--muted); }
+    .btn {
+      border-radius: 8px; padding: 6px 11px; font-size: 12px; font-weight: 700;
+      background: var(--pane2); color: var(--muted); border: 1px solid var(--line);
+    }
+    .btn.pri { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+    .btn.ghost { background: transparent; }
+    .btn.habit { background: var(--toast-bg); color: var(--habit); border-color: var(--toast-bd); }
+    .btn:disabled { opacity: .45; cursor: default; }
+
+    .habit-strip {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--rail);
+      font-size: 11.5px; color: var(--muted);
+    }
+    .habit-strip strong { color: var(--text); }
+    .sw {
+      width: 34px; height: 20px; border-radius: 999px; border: 0; background: var(--accent);
+      position: relative; vertical-align: middle; flex: none;
+    }
+    .sw::after {
+      content: ""; position: absolute; top: 2px; left: 16px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff;
+    }
+    .sw.off { background: rgba(128,128,128,.35); }
+    .sw.off::after { left: 2px; }
+
+    .rail {
+      background: var(--rail); border-right: 1px solid var(--line);
+      padding: 8px 6px 14px; display: flex; flex-direction: column; gap: 2px; min-height: 0;
+      overflow: auto;
+    }
+    .rail .g {
+      padding: 10px 10px 4px; font-size: 10px; font-weight: 800;
+      letter-spacing: .05em; color: var(--faint); text-transform: uppercase;
+    }
+    .rail .g.gate { color: var(--accent); }
+    .rail .item {
+      position: relative; width: calc(100% - 8px); margin: 2px 4px; text-align: left;
+      border: 0; background: transparent; border-radius: 10px; padding: 10px 28px 10px 12px;
+      color: var(--muted); display: block;
+    }
+    .rail .item:hover { background: var(--hover); color: var(--text); }
+    .rail .item.on {
+      background: var(--sel-bg); color: var(--item-on-text);
+      box-shadow: inset 3px 0 0 var(--sel-bar);
+    }
+    .rail .item .t { font-size: 12.5px; font-weight: 700; }
+    .rail .item .s {
+      display: block; margin-top: 3px; font-size: 10.5px; color: var(--faint);
+      font-weight: 600; font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .rail .item.on .s { color: var(--muted); }
+    .rail .item .del {
+      position: absolute; top: 10px; right: 6px; width: 22px; height: 22px; border: 0;
+      border-radius: 6px; background: transparent; color: var(--danger); font-size: 12px;
+      opacity: 0; display: grid; place-items: center;
+    }
+    .rail .item:hover .del, .rail .item.on .del { opacity: .85; }
+    .rail .item .del:hover { background: var(--cut-bg); opacity: 1; }
+
+    .rail-acts { display: flex; gap: 4px; align-items: center; padding: 10px 6px 4px; }
+    .rail-acts button {
+      background: none; border: 0; color: var(--accent); font-size: 12px; font-weight: 750; padding: 8px 6px;
+    }
+    .rail-acts button:disabled { opacity: .4; }
+    .rail .add {
+      margin: 8px 6px 0; padding: 10px; border-radius: 9px;
+      border: 1px dashed var(--toast-bd); background: var(--toast-bg);
+      color: var(--habit); font-size: 12px; font-weight: 750; text-align: left;
+      text-decoration: none; display: block;
+    }
+    .rail .add small { display: block; margin-top: 3px; font-weight: 600; opacity: .85; font-size: 10px; }
+    .rail-hint { padding: 8px 10px 0; font-size: 10.5px; color: var(--faint); line-height: 1.4; }
+
+    .mid { padding: 14px 16px 18px; overflow: auto; background: var(--win); min-width: 0; }
+    .mid-label {
+      font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--faint); margin-bottom: 10px;
+    }
+    .pane { display: none; }
+    .pane.on { display: block; }
+
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      background: var(--pane); margin-bottom: 12px;
+    }
+    .card.tint-gate {
+      background: color-mix(in srgb, var(--accent) 8%, var(--pane));
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+    }
+    .card.tint-dict {
+      background: color-mix(in srgb, #3b82f6 8%, var(--pane));
+      border-color: color-mix(in srgb, #3b82f6 26%, var(--line));
+    }
+    .card.tint-cmd {
+      background: color-mix(in srgb, #7c3aed 8%, var(--pane));
+      border-color: color-mix(in srgb, #7c3aed 26%, var(--line));
+    }
+    .banner {
+      margin-bottom: 12px; padding: 9px 11px; border-radius: 9px;
+      background: var(--accent-soft); border: 1px solid var(--accent-bd);
+      color: var(--accent); font-size: 12px; font-weight: 650; line-height: 1.4;
+    }
+    .card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 750; }
+    .blurb { margin: 0 0 12px; font-size: 12px; color: var(--muted); max-width: 62ch; }
+    .sec {
+      font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--faint); margin: 16px 0 8px;
+    }
+    .keycap {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 108px; padding: 12px 18px; border-radius: 10px;
+      background: var(--keycap-bg); border: 1px solid var(--line);
+      font-weight: 800; font-size: 16px; letter-spacing: .02em;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    .warn {
+      margin-top: 10px; font-size: 11.5px; font-weight: 650; color: var(--habit); line-height: 1.4;
+    }
+    .alt {
+      margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+      border: 1px dashed var(--line); background: var(--pane2);
+    }
+    .alt .t { font-size: 10px; font-weight: 800; color: var(--faint); letter-spacing: .04em; text-transform: uppercase; }
+    .chip-link {
+      display: inline-flex; gap: 4px; align-items: center; margin-top: 8px; margin-right: 6px;
+      padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+      background: var(--pane); color: var(--muted); font-size: 11.5px; font-weight: 650;
+    }
+    .chip-link b { color: var(--text); }
+
+    .adv {
+      margin-top: 14px; border: 1px dashed var(--toast-bd); border-radius: 10px;
+      background: var(--toast-bg); overflow: hidden;
+    }
+    .adv summary {
+      cursor: pointer; list-style: none; padding: 10px 12px;
+      font-size: 12px; font-weight: 750; color: var(--habit);
+    }
+    .adv summary::-webkit-details-marker { display: none; }
+    .adv .body { padding: 0 12px 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .adv .wake-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    .adv .warn-line {
+      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      background: var(--cut-bg); border: 1px solid var(--cut-bd); color: var(--cut-fg); font-size: 11px;
+    }
+
+    .phrase-box {
+      margin-top: 8px; padding: 12px 14px; border-radius: 10px;
+      background: var(--accent-soft); border: 1px solid var(--accent-bd);
+      font-size: 20px; font-weight: 750; color: var(--accent); letter-spacing: .02em;
+    }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 11px; font-weight: 750; color: var(--faint); margin-bottom: 6px; }
+    .field input, .field textarea, .field select {
+      width: 100%; max-width: 420px; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid var(--line); background: var(--pane2); color: var(--text);
+    }
+    .field textarea { min-height: 72px; resize: vertical; }
+    .field .help { margin-top: 5px; font-size: 11px; color: var(--faint); }
+    .alias {
+      display: inline-flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .alias span {
+      padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--pane2); font-size: 11px; color: var(--muted); font-weight: 650;
+    }
+
+    .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .steps span {
+      font-size: 10.5px; font-weight: 750; padding: 4px 9px; border-radius: 999px;
+      background: var(--pane2); color: var(--faint); border: 1px solid var(--line);
+    }
+    .steps span.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-bd); }
+
+    /* —— Product voice IME face (clone of settingsPanelVoiceWake IME pane) —— */
+    .voice-product-ime { width: 100%; max-width: none; }
+    .voice-match-chain {
+      margin: 0 0 10px; padding: 8px 10px; border-radius: 10px;
+      background: #e8f7ee; border: 1px solid #86efac;
+      font-size: 12px; font-weight: 650; color: #15803d;
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    html[data-theme="dark"] .voice-match-chain {
+      background: rgba(48, 209, 88, 0.12); border-color: rgba(48, 209, 88, 0.35); color: #86efac;
+    }
+    .voice-match-chain code {
+      font-family: inherit; font-size: 12px; background: #fff; border: 1px solid #86efac;
+      border-radius: 6px; padding: 1px 7px; color: #0f5f7a; font-weight: 650;
+    }
+    html[data-theme="dark"] .voice-match-chain code {
+      background: var(--pane); border-color: rgba(48, 209, 88, 0.35); color: #7dd3fc;
+    }
+    .voice-match-chain__arr { color: #2a9cc4; font-weight: 750; }
+
+    .voice-ime-desk,
+    .voice-finish-card {
+      margin: 0 0 12px; padding: 12px 14px 14px; border: 1px solid var(--line);
+      border-radius: 12px; background: var(--pane);
+    }
+    .voice-ime-step {
+      display: flex; align-items: center; gap: 8px; margin: 0 0 10px;
+      font-size: 13px; font-weight: 750; color: var(--text);
+    }
+    .voice-ime-step .n {
+      width: 20px; height: 20px; border-radius: 50%; background: #2a9cc4; color: #fff;
+      font-size: 11px; font-weight: 750; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .voice-ime-keycap-wrap { display: flex; justify-content: center; margin: 0 0 4px; }
+    .voice-ime-keycap {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-width: 120px; padding: 14px 22px; border-radius: 12px; cursor: pointer;
+      border: 1.5px solid #9bc6da; background: linear-gradient(180deg, #fff, #f4f8fb);
+      box-shadow: 0 2px 0 rgba(19, 32, 44, 0.06);
+      font-family: ui-monospace, Consolas, monospace; font-size: 18px; font-weight: 750; color: #0f5f7a;
+    }
+    html[data-theme="dark"] .voice-ime-keycap {
+      border-color: var(--accent-bd); background: var(--keycap-bg); color: var(--accent);
+      box-shadow: none;
+    }
+    .voice-ime-keycap-ico {
+      width: 22px; height: 22px; border-radius: 6px; object-fit: cover; flex: 0 0 auto;
+      border: 1px solid var(--line); background: #fff;
+    }
+    .voice-ime-strip-wrap { margin-top: 12px; }
+    .ime-preset-strip {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px;
+      width: 100%; padding: 2px 0;
+    }
+    .ime-preset-item {
+      position: relative; flex: 0 0 auto; width: 32px; height: 32px; min-width: 0;
+      padding: 0; border: 1.5px solid transparent; border-radius: 8px;
+      background: var(--pane2); cursor: pointer;
+    }
+    .ime-preset-item:hover { border-color: rgba(42, 156, 196, 0.35); }
+    .ime-preset-item.is-selected {
+      border-color: #2a9cc4; outline: 2px solid rgba(42, 156, 196, 0.22); outline-offset: 1px;
+    }
+    .ime-preset-icon { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
+    .ime-preset-item--custom {
+      display: grid; place-items: center; color: var(--muted); font-size: 16px; font-weight: 700;
+    }
+
+    .voice-finish-card { display: grid; gap: 10px; }
+    .voice-finish-sec-lbl {
+      margin: 2px 0 0; font-size: 11px; font-weight: 750; color: var(--muted);
+    }
+    .voice-finish-default-seg {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+      padding: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--pane2);
+    }
+    @media (max-width: 560px) { .voice-finish-default-seg { grid-template-columns: 1fr; } }
+    .voice-finish-seg {
+      border: 0; background: transparent; border-radius: 10px; padding: 10px 6px 8px;
+      font: inherit; color: var(--muted); cursor: pointer; display: grid; justify-items: center;
+      gap: 4px; text-align: center;
+    }
+    .voice-finish-seg.is-active {
+      background: var(--pane); color: var(--text);
+      box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 12%, transparent);
+    }
+    .voice-finish-seg-ico {
+      width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+      background: color-mix(in srgb, var(--line) 80%, var(--pane)); color: var(--muted);
+    }
+    .voice-finish-seg-ico svg { width: 14px; height: 14px; }
+    .voice-finish-seg.is-active .voice-finish-seg-ico {
+      background: color-mix(in srgb, #2a9cc4 16%, var(--pane)); color: #1e87ad;
+    }
+    .voice-finish-seg-t { font-size: 12px; font-weight: 800; line-height: 1.2; }
+    .voice-finish-seg-s { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .voice-causal-finish {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      padding: 9px 11px; border-radius: 10px;
+      background: color-mix(in srgb, #2a9cc4 8%, var(--pane));
+      font-size: 12px; color: var(--muted);
+    }
+    .voice-causal-finish strong { color: var(--text); font-weight: 750; }
+    .voice-causal-finish .arr { color: #2a9cc4; font-weight: 750; }
+    .voice-send-lite-notice {
+      margin: 0; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08);
+      font-size: 12px; line-height: 1.45; color: #9a6700;
+    }
+    html[data-theme="dark"] .voice-send-lite-notice { color: #fbbf24; }
+    .voice-mode-meta-link {
+      display: inline-block; margin-top: 6px; border: 0; background: none; padding: 0;
+      color: #2a9cc4; font: 650 12px inherit; cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .voice-finish-habit { display: grid; gap: 10px; }
+    .voice-finish-habit-primary {
+      padding: 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, #2a9cc4 28%, var(--line));
+      background: color-mix(in srgb, #2a9cc4 6%, var(--pane));
+    }
+    .voice-finish-habit-primary-head {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .voice-finish-habit-kind { font-size: 13px; font-weight: 800; color: var(--text); }
+    .voice-finish-habit-why-badge {
+      font-size: 10.5px; font-weight: 750; padding: 2px 7px; border-radius: 999px;
+      background: color-mix(in srgb, #2a9cc4 14%, transparent); color: #1e87ad;
+      border: 1px solid color-mix(in srgb, #2a9cc4 28%, transparent);
+    }
+    .flow-lang-toggle {
+      margin-left: auto; display: inline-flex; gap: 2px; padding: 2px;
+      border-radius: 8px; background: var(--pane2); border: 1px solid var(--line);
+    }
+    .flow-lang-btn {
+      border: 0; background: transparent; border-radius: 6px; padding: 3px 8px;
+      font-size: 11px; font-weight: 750; color: var(--muted);
+    }
+    .flow-lang-btn.is-on {
+      background: var(--pane); color: var(--text);
+      box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 10%, transparent);
+    }
+    .voice-finish-habit-why,
+    .voice-finish-habit-hint { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .voice-finish-habit-hint { font-size: 11px; margin-top: 8px; }
+    .voice-finish-habit-block-title { margin: 10px 0 2px; font-size: 12.5px; font-weight: 750; }
+    .voice-finish-habit-block-desc { margin: 0 0 8px; font-size: 11px; color: var(--faint); }
+    .voice-phrase-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .voice-phrase-tag {
+      display: inline-flex; align-items: center; gap: 0; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--pane2); overflow: hidden; max-width: 100%;
+    }
+    .voice-phrase-tag.is-active {
+      border-color: rgba(42, 156, 196, 0.35);
+      background: color-mix(in srgb, #2a9cc4 12%, var(--pane));
+    }
+    .voice-phrase-tag-btn {
+      border: none; background: transparent; font: inherit; font-size: 12px; font-weight: 600;
+      padding: 5px 10px; cursor: pointer; color: var(--muted); max-width: 180px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .voice-phrase-tag.is-active .voice-phrase-tag-btn { color: #1e87ad; font-weight: 700; }
+    .voice-phrase-tag-del {
+      width: 18px; height: 18px; margin-right: 4px; padding: 0; border: none; border-radius: 50%;
+      background: transparent; color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer;
+    }
+    .voice-phrase-tag-del:hover { background: rgba(220, 38, 38, 0.12); color: #dc2626; }
+    .voice-finish-habit-add { display: flex; gap: 6px; align-items: center; }
+    .voice-finish-habit-add input {
+      flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--pane2); font-size: 12px;
+    }
+    .voice-finish-habit-add-btn {
+      border: 1px solid rgba(42, 156, 196, 0.35); background: color-mix(in srgb, #2a9cc4 12%, var(--pane));
+      color: #1e87ad; border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 750; white-space: nowrap;
+    }
+    .voice-finish-habit-others {
+      border: 1px solid var(--line); border-radius: 10px; background: var(--pane2); overflow: hidden;
+    }
+    .voice-finish-habit-others-sum {
+      cursor: pointer; list-style: none; padding: 10px 12px; font-size: 12px; font-weight: 750;
+      color: var(--muted); display: flex; justify-content: space-between; align-items: center;
+    }
+    .voice-finish-habit-others-sum::-webkit-details-marker { display: none; }
+    .voice-finish-habit-others-chev::before { content: "▾"; color: var(--faint); }
+    .voice-finish-habit-others-body { padding: 0 12px 12px; display: grid; gap: 12px; }
+    .voice-finish-habit-block.danger .voice-finish-habit-block-title { color: var(--danger); }
+    .voice-finish-keys-bridge {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between;
+      margin: 0; font-size: 12px; color: var(--muted);
+    }
+    .voice-finish-keys-bridge-go {
+      border: 0; background: none; color: #2a9cc4; font: 650 12px inherit; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px; padding: 0;
+    }
+
+    .list { display: flex; flex-direction: column; gap: 6px; }
+    .hit {
+      display: flex; justify-content: space-between; gap: 8px; align-items: center;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--pane2); font-size: 12.5px;
+    }
+    .hit b { font-weight: 700; }
+    .hit code { font-size: 11px; color: var(--muted); }
+
+    .cut-note {
+      margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+      background: var(--cut-bg); border: 1px solid var(--cut-bd); color: var(--cut-fg);
+      font-size: 11.5px; line-height: 1.45;
+    }
+    .cut-note b { font-weight: 800; }
+
+    .status {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 8px 14px; border-top: 1px solid var(--line); background: var(--chrome);
+      font-size: 11px; color: var(--faint);
+    }
+    .status button {
+      display: inline-flex; align-items: center; gap: 6px; border: 0; background: none;
+      color: var(--accent); font-size: 11px; font-weight: 750; padding: 0;
+    }
+    .status .chip-ok, .status .chip-warn {
+      display: inline-flex; align-items: center; gap: 4px; color: var(--muted);
+    }
+    .status .chip-ok::before, .status .chip-warn::before {
+      content: ""; width: 5px; height: 5px; border-radius: 50%;
+    }
+    .status .chip-ok::before { background: var(--ok); }
+    .status .chip-warn::before { background: var(--habit); }
+
+    .drawer {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none;
+      align-items: flex-end; justify-content: flex-end; z-index: 40; padding: 16px;
+    }
+    .drawer.on { display: flex; }
+    .drawer .sheet {
+      width: min(360px, 100%); max-height: min(70vh, 520px); overflow: auto;
+      background: var(--pane); border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow); padding: 14px;
+    }
+    .drawer .sheet h3 { margin: 0 0 8px; font-size: 14px; }
+    .drawer .meter {
+      height: 8px; border-radius: 999px; background: var(--pane2); overflow: hidden; margin: 10px 0 14px;
+    }
+    .drawer .meter i {
+      display: block; height: 100%; width: 42%; background: var(--accent); border-radius: inherit;
+    }
+    .drawer .meta { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .drawer .close { float: right; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <strong>OneTone</strong> <em>语音 · 对齐 Mac</em>
+    <div class="theme-switch" aria-label="外观">
+      <span class="lbl">明暗</span>
+      <div class="seg">
+        <button type="button" data-theme-pick="light">浅色</button>
+        <button type="button" data-theme-pick="dark" class="is-on">暗色</button>
+      </div>
+      <span class="lbl">风格</span>
+      <div class="seg">
+        <button type="button" data-style-pick="blue" class="is-on">彩色</button>
+        <button type="button" data-style-pick="graphite">单色</button>
+      </div>
+    </div>
+    <nav>
+      <a class="nav" href="./onetone-keys-after-habit.html">按键</a>
+      <a class="nav is-here" href="./onetone-voice-after-habit.html">语音</a>
+      <a class="nav" href="./onetone-softpad-after-habit.html">虚拟键盘</a>
+      <a class="nav" href="./onetone-ia-left-nav-v2.html">习惯</a>
+      <a class="nav" href="./onetone-channel-after-index.html">索引</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <p class="brief">
+      <strong>对齐 mac WorkbenchVoiceLabView：</strong>
+      工具条 + 习惯条 · 左轨「进门 / 会话卡」· mid 编辑 · 底栏 LIVE（抽屉，非常驻右栏）。
+      本页管 <b>口令进门</b>、<b>输入听写</b>（原样保留现语音设置输入法面与按钮）、<b>口头指令卡</b>；键 / Soft Pad / 手势整库不在此。
+      <span class="chips">
+        <span class="chip keep">KEEP · 匹配链 + 听写键/方案图标 + 说完后/结束词</span>
+        <span class="chip cut">CUT · 自定义键 / Soft Pad / 手势整页目录</span>
+      </span>
+    </p>
+
+    <section class="shell" aria-label="语音工作台">
+      <div class="tb">
+        <div>
+          <h2>语音</h2>
+          <div class="edit">口令开助手窗 · 会话里听写与口头命令</div>
+        </div>
+        <div class="spacer"></div>
+        <button type="button" class="pill-live is-idle" id="livePill" title="打开 LIVE">
+          <span class="dot"></span><span id="livePillText">空闲 · 待口令</span>
+        </button>
+        <button type="button" class="btn pri" id="btnSave" disabled>已保存</button>
+      </div>
+
+      <div class="habit-strip">
+        习惯 · <strong>Cursor 写作</strong>
+        <span aria-hidden="true">·</span>
+        语音模式
+        <button type="button" class="sw" id="modeSw" aria-label="语音模式" title="总开关（与首页同源）"></button>
+        <strong id="modeLab">开</strong>
+        <span aria-hidden="true">·</span>
+        <a href="./onetone-ia-left-nav-v2.html">切换 → 习惯</a>
+      </div>
+
+      <aside class="rail" aria-label="进门与会话">
+        <div class="g gate">进门</div>
+        <button type="button" class="item on" data-pane="gate" id="railGate">
+          <span class="t">口令</span>
+          <span class="s">⌃⌥V · 醒关</span>
+        </button>
+
+        <div class="g">会话卡</div>
+        <button type="button" class="item" data-pane="dictation" id="railDict">
+          <span class="t">输入听写</span>
+          <span class="s">F2 · 讯飞 · 留下</span>
+        </button>
+        <button type="button" class="item" data-pane="oral-cont" data-oral="cont">
+          <span class="t">继续</span>
+          <span class="s">口头 · 注入 prompt</span>
+          <span class="del" title="删除" data-del>×</span>
+        </button>
+        <button type="button" class="item" data-pane="oral-fix" data-oral="fix">
+          <span class="t">修这个</span>
+          <span class="s">口头 · 注入 prompt</span>
+          <span class="del" title="删除" data-del>×</span>
+        </button>
+        <button type="button" class="item" data-pane="oral-send" data-oral="send">
+          <span class="t">发送</span>
+          <span class="s">口头 · 发送命令</span>
+          <span class="del" title="删除" data-del>×</span>
+        </button>
+
+        <div class="rail-acts">
+          <button type="button" id="btnNewOral">+ 新建</button>
+          <button type="button" id="btnTpl">模板…</button>
+        </div>
+        <a class="add" href="./onetone-ia-left-nav-v2.html">+ 在习惯管理通道<small>录键 · Soft Pad · 手势挂载</small></a>
+        <p class="rail-hint">常驻唤醒默认关 · 与口令进门同卡（高级）</p>
+      </aside>
+
+      <div class="mid">
+        <div class="mid-label" id="midLabel">口令进门 · 常驻唤醒</div>
+
+        <!-- GATE -->
+        <div class="pane on" data-pane="gate">
+          <div class="card tint-gate">
+            <div class="banner">按口令键打开短时助手窗 · 再在窗内说口头指令。不是常驻开麦。</div>
+            <h3>命令键</h3>
+            <p class="blurb">按下后打开命令窗。与听写进入键分开；本页是主配置面。</p>
+            <div class="keycap">⌃⌥V</div>
+            <div class="row">
+              <button type="button" class="btn pri" data-dirty>重录</button>
+              <button type="button" class="btn">试开助手窗</button>
+            </div>
+            <p class="warn">命令窗内按 Esc 或说「退出」关闭。</p>
+
+            <div class="alt">
+              <div class="t">可选旁路（摘要 · 深链）</div>
+              <a class="chip-link" href="./onetone-softpad-after-habit.html"><b>Soft Pad</b> →</a>
+              <span class="chip-link"><b>摄像头</b> →</span>
+            </div>
+
+            <details class="adv">
+              <summary>高级 · 常驻唤醒（默认关）</summary>
+              <div class="body">
+                <p>常驻麦克风听口令开听写。环境音可能误触；助手命令窗请用上方口令键。</p>
+                <div class="wake-row">
+                  <button type="button" class="sw off" id="wakeSw" aria-label="常驻唤醒"></button>
+                  <span>开启常驻麦克风监听</span>
+                </div>
+                <div class="field">
+                  <label for="wakePhrase">唤醒口令</label>
+                  <input id="wakePhrase" value="小助手" data-dirty />
+                  <div class="alias"><span>嘿助手</span><span>开始听写</span></div>
+                  <p class="help">常驻唤醒 ≠ 助手命令窗。口头卡只在命令窗内可说。</p>
+                </div>
+                <div class="warn-line">跳过前置闸门，易误触且与口头指令混淆。不推荐作为主路径。</div>
+              </div>
+            </details>
+          </div>
+          <div class="cut-note"><b>相对 Windows 现页：</b>砍掉左栏「自定义快捷键 / 应用快捷键 / Soft Pad / 手势」整库；匹配写入回习惯。</div>
+        </div>
+
+        <!-- DICTATION · keep product voice IME face + buttons -->
+        <div class="pane" data-pane="dictation">
+          <div class="voice-product-ime">
+            <div class="voice-match-chain is-on" id="voiceMatchChain" aria-live="polite">
+              <span>说</span>
+              <code id="voiceMatchChainPhrase">开始听写</code>
+              <span class="voice-match-chain__arr" aria-hidden="true">→</span>
+              <code id="voiceMatchChainIntent">输入法</code>
+            </div>
+
+            <div class="voice-ime-desk" id="voiceImeDesk">
+              <p class="voice-ime-step"><span class="n">1</span>听写键</p>
+              <div class="voice-ime-keycap-wrap">
+                <button type="button" class="voice-ime-keycap" id="voiceSettingsTargetKey" title="去按键页改听写键" data-dirty>
+                  <img class="voice-ime-keycap-ico" id="voiceSettingsTargetKeyIco" src="../src/icons/ime/xunfei.png" alt="" width="22" height="22" />
+                  <span class="voice-ime-keycap-chord" id="voiceSettingsTargetKeyChord">F2</span>
+                </button>
+              </div>
+              <div class="voice-ime-strip-wrap" id="voiceImeStripWrap">
+                <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice" role="listbox" aria-label="输入法方案">
+                  <button type="button" class="ime-preset-item is-selected" data-ime-id="xunfei" data-target-key="F2" data-ime-context="voice" title="讯飞" aria-label="讯飞" aria-pressed="true"><img class="ime-preset-icon" src="../src/icons/ime/xunfei.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="wechat" data-target-key="Ctrl+Shift+Win" data-ime-context="voice" title="微信" aria-label="微信" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/weixin.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="typeless" data-target-key="RAlt" data-ime-context="voice" title="Typeless" aria-label="Typeless" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/typeless.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="microsoft" data-target-key="Win+H" data-ime-context="voice" title="微软" aria-label="微软" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/microsoft.svg" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="zhipu" data-target-key="RAlt" data-ime-context="voice" title="智谱" aria-label="智谱" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/zhipu.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="qianwen" data-target-key="RAlt" data-ime-context="voice" title="通义" aria-label="通义" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/qianwen.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="shandianshuo" data-target-key="RAlt" data-ime-context="voice" title="闪电说" aria-label="闪电说" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/shandianshuo.jpg" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="sogou" data-target-key="Ctrl+Shift+Z" data-ime-context="voice" title="搜狗" aria-label="搜狗" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/sougou.png" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item" data-ime-id="baidu" data-target-key="Alt+`" data-ime-context="voice" title="百度" aria-label="百度" aria-pressed="false"><img class="ime-preset-icon" src="../src/icons/ime/baidu.svg" alt="" decoding="async" /></button>
+                  <button type="button" class="ime-preset-item ime-preset-item--custom" data-ime-custom="1" data-ime-context="voice" title="自定义" aria-label="自定义" aria-pressed="false">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="voice-finish-card voice-finish-card--c" id="voiceFinishCard">
+              <p class="voice-ime-step"><span class="n">2</span>说完后</p>
+              <p class="voice-finish-sec-lbl">停顿后默认</p>
+              <div class="voice-finish-default-seg voice-output-modes" id="voiceOutputModeSegments" role="radiogroup" aria-label="停顿后默认">
+                <button type="button" class="voice-finish-seg is-active is-recommended" data-voice-output-mode="confirm" role="radio" aria-checked="true">
+                  <span class="voice-finish-seg-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  </span>
+                  <span class="voice-finish-seg-t">留下</span>
+                  <span class="voice-finish-seg-s">自查 · 按回车</span>
+                </button>
+                <button type="button" class="voice-finish-seg" data-voice-output-mode="phrase" role="radio" aria-checked="false">
+                  <span class="voice-finish-seg-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                  </span>
+                  <span class="voice-finish-seg-t">说了才发</span>
+                  <span class="voice-finish-seg-s">要喊发送词</span>
+                </button>
+                <button type="button" class="voice-finish-seg" data-voice-output-mode="auto" role="radio" aria-checked="false">
+                  <span class="voice-finish-seg-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  </span>
+                  <span class="voice-finish-seg-t">停顿就发</span>
+                  <span class="voice-finish-seg-s">全自动</span>
+                </button>
+              </div>
+              <div class="voice-causal-finish" id="voiceFinishCausal" aria-live="polite">
+                <strong>听写停下</strong><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalMid">字留下</span><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalTail">你按回车</span>
+              </div>
+              <p class="voice-send-lite-notice" id="voiceSendLiteNotice">
+                <span>系统速识只能「先确认」；要自动发送请切到标准离线识别。</span>
+                <button type="button" class="voice-mode-meta-link" id="btnVoiceSendSwitchVosk">切换到标准离线识别</button>
+              </p>
+
+              <p class="voice-finish-sec-lbl">语音习惯 · 先改当前相关</p>
+              <div class="voice-finish-habit" id="voiceFinishHabit">
+                <div class="voice-finish-habit-primary" id="voiceFinishHabitPrimary">
+                  <div class="voice-finish-habit-primary-head">
+                    <span class="voice-finish-habit-kind" id="voiceFinishHabitKind">结束词</span>
+                    <span class="voice-finish-habit-why-badge" id="voiceFinishHabitWhyBadge">配合「留下自查」</span>
+                    <div class="flow-lang-toggle" role="group" aria-label="口令语言">
+                      <button type="button" class="flow-lang-btn is-on" data-lang="zh">中</button>
+                      <button type="button" class="flow-lang-btn" data-lang="en">EN</button>
+                    </div>
+                  </div>
+                  <p class="voice-finish-habit-why">说出下面任一词 = 停下听写，字留在框里。可加多个说法。</p>
+                  <div class="voice-finish-habit-block is-primary" data-habit-block="keep">
+                    <div class="voice-phrase-tags" id="voiceEndPhraseTags" role="listbox" aria-label="结束词">
+                      <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">结束输入</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                      <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">就这样</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                      <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">停止听写</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                    </div>
+                    <div class="voice-finish-habit-add">
+                      <input type="text" id="voiceFinishHabitAddKeep" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：好了" aria-label="添加结束词">
+                      <button type="button" class="voice-finish-habit-add-btn" data-habit-add="keep">+ 添加</button>
+                    </div>
+                  </div>
+                  <p class="voice-finish-habit-hint" id="voiceFinishHabitHint">当前默认不靠嘴发送；若要喊着发，可在「其他口令」里加发送词。</p>
+                </div>
+
+                <details class="voice-finish-habit-others" id="voiceFinishHabitOthers">
+                  <summary class="voice-finish-habit-others-sum">
+                    <span>其他口令 · 发送 / 取消（可选）</span>
+                    <span class="voice-finish-habit-others-chev" aria-hidden="true"></span>
+                  </summary>
+                  <div class="voice-finish-habit-others-body">
+                    <div class="voice-finish-habit-block" data-habit-block="send">
+                      <p class="voice-finish-habit-block-title">发送词</p>
+                      <p class="voice-finish-habit-block-desc">说出 = 把字发出去</p>
+                      <div class="voice-phrase-tags" role="listbox" aria-label="发送词">
+                        <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">发送</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                      </div>
+                      <div class="voice-finish-habit-add">
+                        <input type="text" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：发吧" aria-label="添加发送词">
+                        <button type="button" class="voice-finish-habit-add-btn" data-habit-add="send">+ 添加</button>
+                      </div>
+                    </div>
+                    <div class="voice-finish-habit-block danger" data-habit-block="discard">
+                      <p class="voice-finish-habit-block-title">取消词</p>
+                      <p class="voice-finish-habit-block-desc">说出 = 丢掉本轮</p>
+                      <div class="voice-phrase-tags" role="listbox" aria-label="取消词">
+                        <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">算了</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                      </div>
+                      <div class="voice-finish-habit-add">
+                        <input type="text" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：算了" aria-label="添加取消词">
+                        <button type="button" class="voice-finish-habit-add-btn" data-habit-add="discard">+ 添加</button>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <p class="voice-finish-keys-bridge" id="voiceFinishKeysBridge">
+                <span id="voiceFinishKeysBridgeText">键怎么收尾（按住 / 确认发送）</span>
+                <a class="voice-finish-keys-bridge-go" id="btnVoiceFinishOpenKeys" href="./onetone-keys-after-habit.html">按键设置 · 输入法 →</a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ORAL: 继续 -->
+        <div class="pane" data-pane="oral-cont">
+          <div class="card tint-cmd">
+            <div class="banner">进入依赖「进门 · 命令键」· 本卡只配窗内说法与动作</div>
+            <div class="steps"><span class="on">01 口令</span><span>02 动作</span></div>
+            <div class="row" style="justify-content:space-between;margin-top:0">
+              <h3 style="margin:0">继续</h3>
+              <button type="button" class="btn ghost" style="color:var(--danger)" data-del-mid>删除</button>
+            </div>
+            <p class="blurb">命令窗内说出 = 注入对应 prompt / 动作。</p>
+            <div class="field">
+              <label for="oralCont">说法（主 + 别名）</label>
+              <textarea id="oralCont" data-dirty>继续
+接着写
+往下</textarea>
+            </div>
+            <div class="list">
+              <div class="hit"><span><b>动作</b></span><code>注入 prompt · 继续回复</code></div>
+              <div class="hit"><span><b>写后</b></span><code>不自动发送</code></div>
+            </div>
+            <div class="row">
+              <button type="button" class="btn">试听匹配</button>
+              <a class="btn pri" href="./onetone-ia-left-nav-v2.html" style="display:inline-flex;align-items:center">在习惯中改</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ORAL: 修这个 -->
+        <div class="pane" data-pane="oral-fix">
+          <div class="card tint-cmd">
+            <div class="banner">进入依赖「进门 · 命令键」</div>
+            <div class="row" style="justify-content:space-between;margin-top:0">
+              <h3 style="margin:0">修这个</h3>
+              <button type="button" class="btn ghost" style="color:var(--danger)" data-del-mid>删除</button>
+            </div>
+            <div class="phrase-box">「修这个」</div>
+            <div class="list" style="margin-top:12px">
+              <div class="hit"><span><b>动作</b></span><code>注入 prompt · 修选区</code></div>
+            </div>
+            <div class="row">
+              <button type="button" class="btn">试听匹配</button>
+              <a class="btn pri" href="./onetone-ia-left-nav-v2.html" style="display:inline-flex;align-items:center">在习惯中改</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ORAL: 发送 -->
+        <div class="pane" data-pane="oral-send">
+          <div class="card tint-cmd">
+            <div class="banner">本通道口头卡 · 改说法优先回习惯</div>
+            <div class="row" style="justify-content:space-between;margin-top:0">
+              <h3 style="margin:0">发送</h3>
+              <button type="button" class="btn ghost" style="color:var(--danger)" data-del-mid>删除</button>
+            </div>
+            <div class="phrase-box">「发送」</div>
+            <div class="list" style="margin-top:12px">
+              <div class="hit"><span><b>动作</b></span><code>发送命令</code></div>
+            </div>
+            <div class="cut-note"><b>已砍：</b>在语音页配「我录的键 / Soft Pad / 手势」整库。需要硬件体感时从习惯深链到对应通道。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status">
+        <button type="button" id="statusLive"><span class="pill-live" style="padding:0;background:transparent"><span class="dot" style="background:var(--ok)"></span></span> LIVE · 试麦 ›</button>
+        <span class="chip-ok">语音识别</span>
+        <span class="chip-ok">麦克风</span>
+        <span id="statusWakeBit" hidden>常驻听</span>
+        <span style="margin-left:auto">前台 · Cursor</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="drawer" id="liveDrawer" role="dialog" aria-label="LIVE">
+    <div class="sheet">
+      <button type="button" class="btn close" id="liveClose">关闭</button>
+      <h3>LIVE · 试麦 / 口令</h3>
+      <div class="meter" aria-hidden="true"><i></i></div>
+      <p class="meta" id="liveMeta">
+        <strong>空闲 · 待口令</strong><br/>
+        命令键 ⌃⌥V<br/>
+        常驻唤醒 · 关
+      </p>
+      <div class="row">
+        <button type="button" class="btn pri">开始试麦</button>
+        <button type="button" class="btn">权限</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./onetone-channel-after-theme.js"></script>
+  <script>
+    (function () {
+      var labels = {
+        gate: '口令进门 · 常驻唤醒',
+        dictation: '听写 · 口令 · 输入法 · 收尾',
+        'oral-cont': '口头命令 · 注入',
+        'oral-fix': '口头命令 · 注入',
+        'oral-send': '口头命令 · 注入'
+      };
+      var liveCopy = {
+        gate: '<strong>空闲 · 待口令</strong><br/>命令键 ⌃⌥V<br/>常驻唤醒 · 关',
+        dictation: '<strong>听写会话</strong><br/>口令「小助手」<br/>IME · 豆包',
+        'oral-cont': '<strong>命令窗</strong><br/>可说：继续',
+        'oral-fix': '<strong>命令窗</strong><br/>可说：修这个',
+        'oral-send': '<strong>命令窗</strong><br/>可说：发送'
+      };
+      var pillText = {
+        gate: '空闲 · 待口令',
+        dictation: '可开听写',
+        'oral-cont': '可说 · 继续',
+        'oral-fix': '可说 · 修这个',
+        'oral-send': '可说 · 发送'
+      };
+
+      var saveBtn = document.getElementById('btnSave');
+      var dirty = false;
+      function markDirty() {
+        dirty = true;
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存到习惯';
+      }
+      function markClean() {
+        dirty = false;
+        saveBtn.disabled = true;
+        saveBtn.textContent = '已保存';
+      }
+      saveBtn.addEventListener('click', function () {
+        if (!dirty) return;
+        markClean();
+      });
+      document.querySelectorAll('[data-dirty]').forEach(function (el) {
+        el.addEventListener('input', markDirty);
+        el.addEventListener('click', function (e) {
+          if (el.tagName === 'BUTTON') markDirty();
+        });
+      });
+
+      function selectPane(id) {
+        document.querySelectorAll('.rail .item').forEach(function (el) {
+          el.classList.toggle('on', el.getAttribute('data-pane') === id);
+        });
+        document.querySelectorAll('.mid .pane').forEach(function (p) {
+          p.classList.toggle('on', p.getAttribute('data-pane') === id);
+        });
+        document.getElementById('midLabel').textContent = labels[id] || '';
+        document.getElementById('liveMeta').innerHTML = liveCopy[id] || '';
+        document.getElementById('livePillText').textContent = pillText[id] || '';
+        var pill = document.getElementById('livePill');
+        pill.classList.toggle('is-idle', id === 'gate');
+      }
+
+      document.querySelectorAll('.rail .item').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          if (e.target && e.target.hasAttribute('data-del')) {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.remove();
+            selectPane('gate');
+            markDirty();
+            return;
+          }
+          selectPane(btn.getAttribute('data-pane'));
+        });
+      });
+
+      document.querySelectorAll('[data-del-mid]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pane = btn.closest('.pane');
+          var id = pane && pane.getAttribute('data-pane');
+          var rail = id && document.querySelector('.rail .item[data-pane="' + id + '"]');
+          if (rail) rail.remove();
+          selectPane('gate');
+          markDirty();
+        });
+      });
+
+      var causal = {
+        confirm: { mid: '字留下', tail: '你按回车', kind: '结束词', why: '配合「留下自查」', hint: '当前默认不靠嘴发送；若要喊着发，可在「其他口令」里加发送词。' },
+        phrase: { mid: '等发送词', tail: '说出才发', kind: '发送词', why: '配合「说了才发」', hint: '只有说出发送词才会发出去；结束词只会停下。' },
+        auto: { mid: '短暂停顿', tail: '自动发送', kind: '发送词', why: '配合「停顿就发」', hint: '自然停顿后自动发送；也可说发送词马上发。' }
+      };
+      function applyFinishMode(mode) {
+        mode = causal[mode] ? mode : 'confirm';
+        document.querySelectorAll('[data-voice-output-mode]').forEach(function (x) {
+          var on = x.getAttribute('data-voice-output-mode') === mode;
+          x.classList.toggle('is-active', on);
+          x.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        var meta = causal[mode];
+        var mid = document.getElementById('voiceFinishCausalMid');
+        var tail = document.getElementById('voiceFinishCausalTail');
+        var kind = document.getElementById('voiceFinishHabitKind');
+        var why = document.getElementById('voiceFinishHabitWhyBadge');
+        var hint = document.getElementById('voiceFinishHabitHint');
+        if (mid) mid.textContent = meta.mid;
+        if (tail) tail.textContent = meta.tail;
+        if (kind) kind.textContent = meta.kind;
+        if (why) why.textContent = meta.why;
+        if (hint) hint.textContent = meta.hint;
+        var railSub = document.querySelector('#railDict .s');
+        var labels = { confirm: '留下', phrase: '说了才发', auto: '停顿就发' };
+        var chord = document.getElementById('voiceSettingsTargetKeyChord');
+        var selected = document.querySelector('#imePresetStripVoice .ime-preset-item.is-selected');
+        var name = selected ? (selected.getAttribute('title') || selected.getAttribute('data-ime-id') || '讯飞') : '讯飞';
+        var key = chord ? chord.textContent : 'F2';
+        if (railSub) railSub.textContent = key + ' · ' + name + ' · ' + labels[mode];
+      }
+      document.querySelectorAll('[data-voice-output-mode]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          applyFinishMode(btn.getAttribute('data-voice-output-mode'));
+          markDirty();
+        });
+      });
+      document.querySelectorAll('#imePresetStripVoice .ime-preset-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (btn.getAttribute('data-ime-custom') === '1') {
+            alert('原型：自定义听写键');
+            return;
+          }
+          document.querySelectorAll('#imePresetStripVoice .ime-preset-item').forEach(function (x) {
+            var on = x === btn;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          var chord = document.getElementById('voiceSettingsTargetKeyChord');
+          var ico = document.getElementById('voiceSettingsTargetKeyIco');
+          var key = btn.getAttribute('data-target-key') || 'F2';
+          if (chord) chord.textContent = key;
+          var img = btn.querySelector('img');
+          if (ico && img) ico.src = img.src;
+          applyFinishMode(
+            (document.querySelector('[data-voice-output-mode].is-active') || {}).getAttribute
+              ? document.querySelector('[data-voice-output-mode].is-active').getAttribute('data-voice-output-mode')
+              : 'confirm'
+          );
+          markDirty();
+        });
+      });
+      document.querySelectorAll('.flow-lang-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          btn.parentElement.querySelectorAll('.flow-lang-btn').forEach(function (x) {
+            x.classList.toggle('is-on', x === btn);
+          });
+          markDirty();
+        });
+      });
+      function bindTagDel(btn) {
+        btn.addEventListener('click', function () {
+          var tag = btn.closest('.voice-phrase-tag');
+          if (tag) tag.remove();
+          markDirty();
+        });
+      }
+      document.querySelectorAll('.voice-phrase-tag-del').forEach(bindTagDel);
+      document.querySelectorAll('[data-habit-add]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var wrap = btn.closest('.voice-finish-habit-block');
+          var input = wrap && wrap.querySelector('input');
+          var tags = wrap && wrap.querySelector('.voice-phrase-tags');
+          var val = input ? String(input.value || '').trim() : '';
+          if (!val || !tags) return;
+          var tag = document.createElement('span');
+          tag.className = 'voice-phrase-tag is-active';
+          tag.innerHTML =
+            '<button type="button" class="voice-phrase-tag-btn"></button>' +
+            '<button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button>';
+          tag.querySelector('.voice-phrase-tag-btn').textContent = val;
+          bindTagDel(tag.querySelector('.voice-phrase-tag-del'));
+          tags.appendChild(tag);
+          input.value = '';
+          markDirty();
+        });
+      });
+
+      function wireSw(id, onToggle) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', function () {
+          el.classList.toggle('off');
+          if (onToggle) onToggle(!el.classList.contains('off'));
+          markDirty();
+        });
+      }
+      wireSw('modeSw', function (on) {
+        document.getElementById('modeLab').textContent = on ? '开' : '关';
+      });
+      wireSw('wakeSw', function (on) {
+        document.getElementById('statusWakeBit').hidden = !on;
+        var bit = document.querySelector('#railGate .s');
+        if (bit) bit.textContent = on ? '⌃⌥V · 醒开' : '⌃⌥V · 醒关';
+      });
+      document.getElementById('btnNewOral').addEventListener('click', function () {
+        var rail = document.querySelector('.rail');
+        var acts = document.querySelector('.rail-acts');
+        var id = 'oral-new-' + Date.now();
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'item';
+        btn.setAttribute('data-pane', id);
+        btn.innerHTML = '<span class="t">新命令</span><span class="s">口头 · 未配置</span><span class="del" title="删除" data-del>×</span>';
+        rail.insertBefore(btn, acts);
+        labels[id] = '口头命令 · 注入';
+        liveCopy[id] = '<strong>命令窗</strong><br/>新命令 · 待配';
+        pillText[id] = '可说 · 新命令';
+        btn.addEventListener('click', function (e) {
+          if (e.target && e.target.hasAttribute('data-del')) {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.remove();
+            selectPane('gate');
+            markDirty();
+            return;
+          }
+          selectPane(id);
+        });
+        selectPane(id);
+        markDirty();
+      });
+
+      document.getElementById('btnTpl').addEventListener('click', function () {
+        alert('原型：从模板添加到本通道（继续 / 发送 / 修这个…）');
+      });
+
+      function openLive() {
+        document.getElementById('liveDrawer').classList.add('on');
+      }
+      function closeLive() {
+        document.getElementById('liveDrawer').classList.remove('on');
+      }
+      document.getElementById('livePill').addEventListener('click', openLive);
+      document.getElementById('statusLive').addEventListener('click', openLive);
+      document.getElementById('liveClose').addEventListener('click', closeLive);
+      document.getElementById('liveDrawer').addEventListener('click', function (e) {
+        if (e.target === this) closeLive();
+      });
+    })();
+  </script>
+</body>
+</html>

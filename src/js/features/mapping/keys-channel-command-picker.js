@@ -3113,7 +3113,10 @@
     opts = opts || {};
     var quiet = !!opts.quiet;
     var core = global.OneToneMappingCore;
-    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    var source =
+      mappingById(opts.sourceId) ||
+      mappingById(selectedMappingId()) ||
+      (core && core.selected ? core.selected() : null);
     if (!source || !core || typeof core.newMappingId !== 'function') {
       toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
       return null;
@@ -3133,6 +3136,13 @@
       actionInstanceId: '',
       kind: 'customKey'
     };
+    // Keep scene with the clone source (FG / stamped app).
+    if (opts.appTargetId) {
+      copy.appTargetId = String(opts.appTargetId || '').trim();
+    }
+    if (opts.keysSeqFamilyId) {
+      copy.keysSeqFamilyId = String(opts.keysSeqFamilyId || '').trim();
+    }
     var named = nextCustomKeyMatchLabel();
     copy.label = named;
     if (core.ensureMappingExtras) {
@@ -3142,8 +3152,9 @@
     }
     persistNewPeerMapping(copy);
     // Edit in library only — do not replace IME / blank「说完后」until steps exist.
-    customKeyMatchEditId = newId;
+    // setActiveTab may rehydrate editId from habit hero — set editId AFTER so create wins.
     setActiveTab('key', { skipHeroClear: true });
+    customKeyMatchEditId = newId;
     refreshKeysTargetActionsEditor();
     applyHero();
     refreshKeysCustomKeyMatchList();
@@ -8015,12 +8026,17 @@
       } catch (_) {}
     }
     if (ch === 'key') {
-      // Rehydrate match-edit cursor only from a persisted customKey hero (explicit prior selection).
-      // Do not seed the first list row — recognition keycap stays unset until the user picks.
-      var habit = mappingById(selectedMappingId());
-      var href = habit ? captureHeroRefForMapping(habit) : null;
-      if (href && href.kind === 'customKey' && href.bindingRef) {
-        customKeyMatchEditId = String(href.bindingRef);
+      // Rehydrate match-edit cursor only when unset. createCustomKeyMatchMapping sets
+      // editId then calls setActiveTab — must not clobber the just-created peer.
+      var curEdit = String(customKeyMatchEditId || '').trim();
+      if (!curEdit || !mappingById(curEdit)) {
+        var habit = mappingById(selectedMappingId());
+        var href = habit ? captureHeroRefForMapping(habit) : null;
+        if (href && href.kind === 'customKey' && href.bindingRef) {
+          customKeyMatchEditId = String(href.bindingRef);
+        } else if (habit && isCustomKeyMatchMapping(habit, { editId: String(habit.id) })) {
+          customKeyMatchEditId = String(habit.id);
+        }
       }
     }
     if (ch === 'ime' && selection) {
@@ -9197,6 +9213,16 @@
     oralTriggerKeyRaw: oralTriggerKeyRaw,
     getCustomKeyMatchEditId: function () {
       return String(customKeyMatchEditId || '').trim();
+    },
+    setCustomKeyMatchEditId: function (id, opts) {
+      opts = opts || {};
+      customKeyMatchEditId = String(id || '').trim();
+      if (opts.skipRefresh) return customKeyMatchEditId;
+      try {
+        refreshKeysTargetActionsEditor();
+        refreshKeysCustomKeyMatchList();
+      } catch (_) {}
+      return customKeyMatchEditId;
     },
     isChannelOpen: isChannelOpen,
     setActiveTab: setActiveTab,

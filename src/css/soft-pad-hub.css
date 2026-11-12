@@ -12829,3 +12829,268 @@ html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light
 #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
   overflow: visible !important;
 }
+
+/* ---- Keyboard page (Mac Virtual Keyboard hub) ---- */
+.soft-pad-page-mount,
+.keyboard-page-mount {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+.soft-pad-page-mount > .soft-pad-page-body,
+.keyboard-page-mount > .soft-pad-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+#settingsPanelKeyboard.keyboard-page,
+#settingsPanelKeyboard.soft-pad-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+#settingsPanelKeyboard.soft-pad-page::after { display: none; }
+
+.keyboard-page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--surface-hud, rgba(255, 255, 255, 0.72));
+}
+html[data-theme="dark"] .keyboard-page-toolbar {
+  background: rgba(12, 16, 24, 0.88);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+.keyboard-page-toolbar__copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.keyboard-page-toolbar__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.keyboard-page-toolbar__lab {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--primary, #2a9cc4);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(42, 156, 196, 0.12);
+}
+.keyboard-page-toolbar__sub {
+  margin: 0;
+  width: 100%;
+  font-size: 11px;
+  color: var(--on-surface-muted, #8494a6);
+}
+.keyboard-page-toolbar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.keyboard-page-live-pill,
+.keyboard-page-agent-link {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+.keyboard-page-live-pill {
+  color: var(--primary, #2a9cc4);
+  background: rgba(42, 156, 196, 0.12);
+}
+.keyboard-page-live-pill::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--primary, #2a9cc4);
+  vertical-align: 1px;
+}
+.keyboard-page-agent-link {
+  color: var(--primary, #2a9cc4);
+  background: transparent;
+}
+
+/* Soft Pad body under keyboard mount — keep three-col usable */
+#settingsPanelKeyboard .soft-pad-page-body.soft-pad-page-body--three-col,
+#settingsPanelKeyboard .soft-pad-page-body--three-col.has-scene-panel,
+#settingsPanelKeyboard .soft-pad-page-body--three-col:has(.soft-pad-scene-keys:not([hidden])),
+#settingsPanelKeyboard:has(#softPadSceneKeysPanel:not([hidden])) .soft-pad-page-body--three-col {
+  display: grid !important;
+  grid-template-columns: minmax(200px, 220px) minmax(0, 1fr) minmax(300px, 340px) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+#settingsPanelKeyboard .soft-pad-page-body--three-col > .soft-pad-page-rail {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--keys-rail-bg, #eef3f7);
+}
+html[data-theme="dark"] #settingsPanelKeyboard .soft-pad-page-body--three-col > .soft-pad-page-rail {
+  background: rgba(18, 24, 36, 0.92);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+#settingsPanelKeyboard .soft-pad-page-body--three-col > .soft-pad-page-main {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+}
+#settingsPanelKeyboard .soft-pad-page-body--three-col > .soft-pad-right-col {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* VK hub: 双栏铺满（盖过 three-col 第三轨 340px 留白）· 中预览加宽 */
+#settingsPanelSoftPad .soft-pad-page-body.soft-pad-page-body--three-col.is-vk-hub,
+#settingsPanelSoftPad .soft-pad-page-body--three-col.is-vk-hub.has-scene-panel,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub,
+.soft-pad-page-body.is-vk-hub {
+  display: grid !important;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub > .soft-pad-page-rail,
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-rail {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--keys-rail-bg, #eef3f7);
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body.is-vk-hub > .soft-pad-page-rail,
+html[data-theme="dark"] .soft-pad-page-body.is-vk-hub > .soft-pad-page-rail {
+  background: rgba(18, 24, 36, 0.92);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-rail > #softPadRailDirLbl,
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-rail > #softPadChannelNav {
+  display: none !important;
+}
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-rail > #keyboardKeycapCmdHost,
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-rail > #keyboardKeycapCmdHost[hidden] {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 0 12px;
+}
+.soft-pad-page-body.is-vk-hub .keyboard-keycap-cmds__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 4px;
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub > .soft-pad-right-col,
+.soft-pad-page-body.is-vk-hub > .soft-pad-right-col {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub > .soft-pad-page-main,
+.soft-pad-page-body.is-vk-hub > .soft-pad-page-main {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden;
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-hub-stage,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-root,
+.soft-pad-page-body.is-vk-hub .soft-pad-hub-stage,
+.soft-pad-page-body.is-vk-hub .soft-pad-face-root {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+/* 中预览加宽（盖过 desk 1.25fr/0.9fr）；右栏吃剩余 */
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid,
+.soft-pad-page-body.is-vk-hub .soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid,
+.soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid {
+  display: grid !important;
+  grid-template-columns: minmax(400px, 1.2fr) minmax(300px, 1fr) !important;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.soft-pad-page-body.is-vk-hub .soft-pad-mid-stack {
+  grid-column: 1;
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  overflow: auto;
+  min-width: 0;
+}
+.soft-pad-page-body.is-vk-hub .soft-pad-mid-ability {
+  grid-column: 2;
+  min-width: 0;
+  overflow: auto;
+}
+/* 键盘页：预览键帽略放大，吃满加宽后的中栏 */
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-mid-stack--fused #softPadPreviewHost.soft-pad-preview-host {
+  max-width: min(100%, 420px);
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost > [data-soft-pad-preview-paint],
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad__head,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-key-caption,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-preview__meta {
+  max-width: min(100%, 420px);
+}
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-wrap,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw,
+#settingsPanelSoftPad .soft-pad-page-body.is-vk-hub .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell .micro-hw {
+  width: min(100%, 420px) !important;
+  max-width: min(100%, 420px) !important;
+}
+/* 键盘页保留 改按钮 / 何时显示 / 皮肤 */

@@ -41,6 +41,7 @@
   <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
   <!-- After keys-workflow so KeysSeq desk overrides win (add menu / step cards). -->
   <link rel="stylesheet" href="css/keys-seq-panel.css" />
+  <link rel="stylesheet" href="css/voice-lab-panel.css" />
   <link rel="stylesheet" href="css/keys2-command-card.css" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
@@ -175,6 +176,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
                 <span data-i18n="homeWbNavSoftPad">软键盘</span>
               </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="keyboard" id="wbNavKeyboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>
+                <span data-i18n="homeWbNavKeyboard">键盘</span>
+              </button>
               <button type="button" class="wb-nav-item" data-wb-nav="agent" id="wbNavAgent">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/><path d="M16.5 7.5l1.5-1.5M19 10h2"/></svg>
                 <span data-i18n="homeWbNavAgent">Agent</span>
@@ -186,6 +191,10 @@
               <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                 <span data-i18n="homeWbNavVoice">语音设置</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="voiceLab" id="wbNavVoiceLab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M8 21h8"/></svg>
+                <span data-i18n="homeWbNavVoiceLab">语音</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="camera" id="wbNavCamera">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
@@ -610,7 +619,11 @@
                 <div class="settings-nav-group" id="settingsNavSoftPadGroup">
                 <button type="button" class="settings-nav-item" data-panel="softPad" id="settingsNavSoftPad">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
-                  <span id="settingsNavSoftPadLabel">软键盘</span>
+                  <span id="settingsNavSoftPadLabel" data-i18n="settingsNavSoftPad">软键盘</span>
+                </button>
+                <button type="button" class="settings-nav-item" data-panel="keyboard" id="settingsNavKeyboard">
+                  <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>
+                  <span id="settingsNavKeyboardLabel" data-i18n="settingsNavKeyboard">键盘</span>
                 </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavModelsGroup">
@@ -623,6 +636,10 @@
                   <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                     <span id="settingsNavVoiceWakeLabel">语音</span>
+                  </button>
+                  <button type="button" class="settings-nav-item" data-panel="voiceLab" id="settingsNavVoiceLab">
+                    <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/><path d="M8 22h8"/></svg>
+                    <span id="settingsNavVoiceLabLabel" data-i18n="settingsNavVoiceLab">语音</span>
                   </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavCameraGroup">
@@ -1357,44 +1374,80 @@
             <aside class="keys-page-rail keys-seq-catalog-rail" id="keysSeqRail" aria-label="本通道动作目录">
               <div class="keys-seq-rail-tools" id="keysSeqRailTools">
                 <span class="keys-seq-rail-role" data-i18n="keysSeqRailRole">左 · 改什么</span>
+                <div class="keys-seq-rail-group keys-seq-rail-group--ime">
+                  <span class="keys-seq-rail-group-lab" data-i18n="keysSeqRailImeGroup">本通道 · 听写</span>
+                </div>
+                <button type="button" class="keys-seq-dictation-card is-active" id="keysSeqImeCard" data-seq-face="ime" aria-pressed="true">
+                  <span class="keys-seq-dictation-card-name" data-i18n="keysSeqImeCardTitle">听写方式</span>
+                  <span class="keys-seq-dictation-card-sub" id="keysSeqImeCardSub">—</span>
+                </button>
                 <div class="keys-seq-saved" id="keysSeqSaved">
                   <div class="keys-seq-rail-group">
-                    <span class="keys-seq-rail-group-lab" data-i18n="keysSeqRailGroup">本通道 · 动作</span>
+                    <span class="keys-seq-rail-group-lab" data-i18n="keysSeqRailSeqGroup">本通道 · 动作序列</span>
                     <span class="keys-seq-saved-count" id="keysSeqSavedCount">0</span>
                   </div>
                   <div class="keys-seq-saved-list" id="keysSeqSavedList" role="list"></div>
                 </div>
-                <button type="button" class="keys-seq-rail-new" id="keysSeqNewAction" data-i18n="keysSceneActionsAdd">＋ 新建</button>
+                <div class="keys-seq-rail-acts">
+                  <button type="button" class="keys-seq-rail-new" id="keysSeqNewAction" data-i18n="keysSceneActionsAdd">＋ 新建</button>
+                  <button type="button" class="keys-seq-rail-tpl" id="keysSeqTplAction" data-i18n="keysSeqTpl">模板…</button>
+                </div>
+                <p class="keys-seq-rail-hint" data-i18n="keysSeqRailHint">只列按键通道可改卡 · 口令 / Soft Pad 不在此</p>
               </div>
             </aside>
             <div class="keys-page-main" id="keysSeqMain">
-              <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel is-custom-key-seq">
-                <div class="keys-custom-key-detail keys-seq-mid-editor">
+              <!-- Face: 听写方式 = 按键页输入法方案（听写键 + 说完后）；挂载 #keysChannelPaneRight -->
+              <div class="keys-detail-card keys-detail-card--options keys-seq-ime-desk" id="keysSeqImeDesk" hidden>
+                <div class="keys-seq-mid-editor keys-seq-ime-editor">
+                  <p class="keys-seq-mid-label" id="keysSeqImeMidLabel" data-i18n="keysSeqImeMidLabel">中栏 · 输入法方案（听写键 + 说完后）</p>
+                  <div class="keys-seq-ime-host" id="keysSeqImeHost"></div>
+                </div>
+              </div>
+              <!-- Face: 自定义键 / 动作序列 — Mac: 左栏目录 + 中栏触发；步骤编辑挂载按键页自定义键 detail -->
+              <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel is-custom-key-seq keys-seq-key-desk" id="keysSeqSeqDesk" hidden>
+                <div class="keys-seq-mid-editor keys-seq-key-editor">
                   <p class="keys-seq-mid-label" id="keysSeqMidLabel" data-i18n="keysSeqMidLabel">中栏 · 触发 + 步骤同一页</p>
                   <p class="keys-seq-mid-summary" id="keysSeqMidSummary">—</p>
-                  <div class="keys-seq-mid-trigger habit-flow-step home-key-map-step is-clickable is-active-step" id="keysSeqTriggerRow" data-edit-step="trigger" role="region" aria-labelledby="keysSeqTriggerTitle">
-                    <div class="keys-seq-mid-trigger-hd">
-                      <span class="keys-page-rail__badge" data-i18n="keysRailStartBadge">起点</span>
-                      <span class="keys-page-rail__title home-key-map-step-label" id="keysSeqTriggerTitle" data-i18n="keysSeqRecordTrigger">触发键</span>
+                  <div class="keys-seq-meta-row" role="group" aria-label="名称与习惯目录">
+                    <div class="keys-seq-meta-name">
+                      <label for="keysSeqSeqName" data-i18n="keysSeqNameField">按键名称</label>
+                      <div class="keys-seq-title-row">
+                        <input type="text" class="keys-seq-title-in" id="keysSeqSeqName" maxlength="48" data-i18n-placeholder="keysCustomKeyMatchNamePlaceholder" placeholder="命名这条动作" aria-label="按键名称" />
+                        <button type="button" class="keys-seq-seq-del" id="keysSeqSeqDelete" data-i18n="homeKeyMapActionDelete">删除</button>
+                      </div>
                     </div>
-                    <div class="keys-seq-mid-trigger-body">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysSeqTriggerCap" role="button" tabindex="0" aria-label="录制触发键">
-                        <div class="habit-basic-key-display display empty" id="keysSeqTriggerDisplay">
+                    <div class="keys-seq-meta-folder">
+                      <label for="keysSeqHabitFolder" data-i18n="keysSeqHabitFolder">习惯目录</label>
+                      <select id="keysSeqHabitFolder" class="keys-seq-folder-sel" aria-describedby="keysSeqHabitFolderHelp">
+                        <option value="改内容">改内容</option>
+                        <option value="AI 助手">AI 助手</option>
+                        <option value="听写">听写</option>
+                        <option value="工作区">工作区</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="keys-seq-field-help" id="keysSeqHabitFolderHelp" data-i18n="keysSeqHabitFolderHelp">决定它出现在习惯页哪个分区</p>
+                  <div class="keys-seq-field keys-seq-trigger-field">
+                    <label id="keysSeqTriggerTitle" data-i18n="keysSeqTriggerField">触发键</label>
+                    <div class="keys-seq-key-row" id="keysSeqTriggerRow" data-edit-step="trigger" role="group" aria-labelledby="keysSeqTriggerTitle">
+                      <button type="button" class="keys-seq-keycap" id="keysSeqTriggerCap" aria-label="录制触发键">
+                        <span class="habit-basic-key-display display empty" id="keysSeqTriggerDisplay">
                           <span class="habit-key-icon-host" aria-hidden="true"></span>
                           <span class="display-value" id="keysSeqTriggerView">未设置</span>
-                        </div>
-                      </div>
-                      <div class="habit-flow-step-act keys-step-record-act">
-                        <button type="button" class="habit-rerecord-link record-btn" id="keysSeqRecordTrigger">
-                          <span class="habit-rerecord-text" data-i18n="keysSeqRecordTrigger">录制触发键</span>
-                        </button>
-                      </div>
+                        </span>
+                      </button>
+                      <button type="button" class="keys-seq-retrigger" id="keysSeqRecordTrigger">
+                        <span class="habit-rerecord-text" id="keysSeqRecordTriggerLab" data-i18n="keysSeqRetrigger">重新录入</span>
+                      </button>
+                      <span class="keys-seq-side-hint" id="keysSeqTriggerSub" data-i18n="keysSeqTriggerSideHint">侧键或快捷键</span>
                     </div>
-                    <p class="keys-seq-mid-trigger-hint" id="keysSeqTriggerSub" data-i18n="keysSeqTriggerUnset">先录制触发键，再配置动作链</p>
                   </div>
-                  <p class="keys-channel-group-label" data-i18n="keysCaptureSeqTitle">动作序列</p>
-                  <p class="keys-capture-target-actions-hint" data-i18n="keysSeqBodyHint">点中间 ＋ 添加步骤；「语音输入法」会先对准输入框再发送激活键。</p>
-                  <div class="home-key-map-actions is-keys-variant keys-seq-actions-host" id="keysSeqActions"></div>
+                  <div class="keys-seq-field keys-seq-steps-field">
+                    <label data-i18n="keysSeqStepsLabel">动作步骤</label>
+                    <div class="keys-seq-key-host" id="keysSeqKeyHost"></div>
+                  </div>
+                  <!-- Compat host only — live steps paint into #keysCaptureTargetActions after mount -->
+                  <div class="keys-seq-actions-host" id="keysSeqActions" hidden aria-hidden="true"></div>
                 </div>
               </div>
             </div>
@@ -1417,8 +1470,20 @@
         <section class="settings-panel drawer-section keys2-page" id="settingsPanelKeys2" hidden aria-hidden="true">
           <div id="keys2CommandCardRoot" class="keys2-root" hidden></div>
         </section>
-        <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
+        <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden data-soft-pad-surface="softPad">
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerSoftPad" hidden role="status" aria-live="polite"></div>
+          <!-- 键盘 surface 顶栏（Mac VK hub）；软键盘 surface 时隐藏 -->
+          <div class="keyboard-page-toolbar" id="keyboardPageToolbar" hidden>
+            <div class="keyboard-page-toolbar__copy">
+              <h3 class="keyboard-page-toolbar__title" id="settingsPanelKeyboardTitle" data-i18n="settingsNavKeyboard">键盘</h3>
+              <span class="keyboard-page-toolbar__lab" data-i18n="keyboardPageLab">实验</span>
+              <p class="keyboard-page-toolbar__sub" id="settingsPanelKeyboardDesc" data-i18n="keyboardPageDesc">左键帽命令 · 中预览 · 右选中键说明（含何时显示 / 皮肤）</p>
+            </div>
+            <div class="keyboard-page-toolbar__actions">
+              <button type="button" class="keyboard-page-live-pill" id="btnKeyboardLiveScene" data-i18n="keyboardPageLive">LIVE · 场景</button>
+              <button type="button" class="keyboard-page-agent-link" id="btnKeyboardAgentLook" data-i18n="keyboardPageAgentLook">Agent 呈现</button>
+            </div>
+          </div>
           <!-- Thin chrome: brand only. Summaries / bind / actions live under right preview hint. -->
           <div class="page-status-bar soft-pad-status-bar soft-pad-status-bar--slim" id="softPadStatusBar">
             <div class="page-status-bar-main keys-scheme-status-main">
@@ -1438,6 +1503,7 @@
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelSoftPadDesc">管理 Soft Pad 的外观、出现时机与应用内行为</p>
             </div>
           </header>
+          <div class="soft-pad-page-mount" id="softPadPageMount">
           <div class="keys-page-body soft-pad-page-body soft-pad-page-body--three-col" id="softPadPageBody">
             <!-- 左：识别目录（对齐 prototypes/softpad-rail-merge） -->
             <aside class="soft-pad-page-rail" id="softPadPageRail" aria-label="识别目录">
@@ -1450,6 +1516,11 @@
                 <button type="button" class="soft-pad-page-rail__item is-active" role="tab" data-soft-pad-channel="softPad" id="softPadRailTabSoftPad" aria-selected="true"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabSoftPad">软键盘</span></button>
                 <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="camera" id="softPadRailTabCamera" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabCamera">手势</span></button>
               </nav>
+              <!-- 键盘页：现有键帽 → 命令列表（软键盘页保持识别目录） -->
+              <div class="keyboard-keycap-cmds" id="keyboardKeycapCmdHost" hidden>
+                <p class="soft-pad-page-rail__sec" id="keyboardKeycapCmdLbl" data-i18n="keyboardKeycapCmdLbl">本键盘命令</p>
+                <div class="keyboard-keycap-cmds__list" data-soft-pad-flat-bind="1" role="listbox" aria-label="键帽命令"></div>
+              </div>
             </aside>
             <div class="keys-page-main soft-pad-page-main">
               <div class="soft-pad-hub-stage" id="softPadHubStage" data-soft-pad-face="pad" role="tabpanel" aria-label="软键盘详情">
@@ -1622,6 +1693,7 @@
                 <button type="button" class="keys-hub-scheme-add" id="btnSoftPadEnsureCodex">+ 准备 Codex 软键盘</button>
               </section>
             </aside>
+          </div>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelModels" hidden>
@@ -3347,6 +3419,309 @@
             <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="voiceAppScopeChipsWrap">
               <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
               <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加</button>
+            </div>
+          </div>
+        </section>
+        <section class="settings-panel drawer-section voice-lab-page" id="settingsPanelVoiceLab" hidden>
+          <div class="page-status-bar" id="voiceLabStatusBar">
+            <div class="voice-lab-scene-chrome" id="voiceLabSceneChrome" role="status" aria-live="polite">
+              <span class="voice-lab-scene-app" id="voiceLabSceneApp" aria-hidden="true"></span>
+              <span class="voice-lab-scene-mode" id="voiceLabSceneMode" title="语音模式" aria-label="语音模式">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+              </span>
+              <div class="voice-lab-scene-copy">
+                <span class="voice-lab-scene-editing" id="voiceLabSceneEditing">语音 / 正在编辑：通用设置</span>
+                <span class="voice-lab-scene-fg" id="voiceLabSceneFg" hidden></span>
+                <span class="voice-lab-scene-aligned" id="voiceLabSceneAligned" hidden>已与前台一致</span>
+                <span class="voice-lab-scene-hint" id="voiceLabSceneHint">修改只作用于当前应用场景</span>
+              </div>
+            </div>
+            <div class="page-status-bar-actions">
+              <button type="button" class="voice-lab-legacy-link" id="voiceLabOpenLegacy" data-i18n="voiceLabOpenLegacy">打开原语音设置 →</button>
+            </div>
+          </div>
+          <div class="voice-lab-shell" aria-label="语音工作台">
+            <div class="voice-lab-tb">
+              <div>
+                <h2 data-i18n="voiceLabTitle">语音</h2>
+                <div class="edit">口令开助手窗，会话里听写与口头命令</div>
+              </div>
+              <div class="spacer"></div>
+              <button type="button" class="voice-lab-pill-live is-idle" id="voiceLabLivePill" title="打开 LIVE">
+                <span class="dot"></span><span id="voiceLabLivePillText">空闲 · 待口令</span>
+              </button>
+              <button type="button" class="voice-lab-btn pri" id="voiceLabBtnSave" disabled>已保存</button>
+            </div>
+
+            <div class="voice-lab-habit-strip">
+              <span class="voice-lab-habit-kicker">习惯</span>
+              <strong id="voiceLabHabitName">Cursor 写作</strong>
+              <span class="voice-lab-habit-mode">语音模式</span>
+              <button type="button" class="voice-lab-sw" id="voiceLabModeSw" aria-label="语音模式" title="总开关（与首页同源）"></button>
+              <strong id="voiceLabModeLab">开</strong>
+              <button type="button" class="voice-lab-habit-link" id="voiceLabHabitCta" data-vl-open-panel="habits">切换 → 习惯</button>
+            </div>
+
+            <aside class="voice-lab-rail" aria-label="进门与会话">
+              <div class="g gate">进门</div>
+              <button type="button" class="item on" data-pane="gate" id="voiceLabRailGate">
+                <span class="t">口令</span>
+                <span class="s">— · 醒关</span>
+              </button>
+
+              <div class="g">会话卡</div>
+              <button type="button" class="item" data-pane="dictation" id="voiceLabRailDict">
+                <span class="t">输入听写</span>
+                <span class="s">F2 · 讯飞 · 留下</span>
+              </button>
+              <button type="button" class="item" data-pane="oral-cont" data-oral="cont" id="voiceLabRailOralCont">
+                <span class="t">继续</span>
+                <span class="s">口头 · 注入 prompt</span>
+                <span class="del" title="删除" data-del>×</span>
+              </button>
+              <button type="button" class="item" data-pane="oral-fix" data-oral="fix" id="voiceLabRailOralFix">
+                <span class="t">修这个</span>
+                <span class="s">口头 · 注入 prompt</span>
+                <span class="del" title="删除" data-del>×</span>
+              </button>
+              <button type="button" class="item" data-pane="oral-send" data-oral="send" id="voiceLabRailOralSend">
+                <span class="t">发送</span>
+                <span class="s">口头 · 发送命令</span>
+                <span class="del" title="删除" data-del>×</span>
+              </button>
+
+              <div class="voice-lab-rail-acts">
+                <button type="button" id="voiceLabBtnNewOral">+ 新建</button>
+                <button type="button" id="voiceLabBtnTpl">模板…</button>
+              </div>
+              <button type="button" class="add" id="voiceLabHabitChannelCta" data-vl-open-panel="habits">+ 在习惯管理通道<small>录键 · Soft Pad · 手势挂载</small></button>
+              <p class="voice-lab-rail-hint">常驻唤醒默认关 · 与口令进门同卡（高级）</p>
+            </aside>
+
+            <div class="voice-lab-mid">
+              <div class="voice-lab-mid-label" id="voiceLabMidLabel">口令进门 常驻唤醒</div>
+
+              <div class="voice-lab-pane on" data-pane="gate">
+                <div class="voice-lab-card tint-gate">
+                  <div class="voice-lab-banner">按口令键打开短时助手窗 · 再在窗内说口头指令。不是常驻开麦。</div>
+                  <h3>命令键</h3>
+                  <p class="voice-lab-blurb">按下后打开命令窗。与听写进入键分开；本页是主配置面。</p>
+                  <button type="button" class="voice-lab-keycap is-empty" id="voiceLabOralKeycap" title="点击重录命令键">未绑定</button>
+                  <div class="voice-lab-row">
+                    <button type="button" class="voice-lab-btn pri" id="voiceLabOralRerecord">重录</button>
+                    <button type="button" class="voice-lab-btn" id="voiceLabOralTrial">试开助手窗</button>
+                  </div>
+                  <p class="voice-lab-trial-status" id="voiceLabOralTrialStatus" hidden aria-live="polite"></p>
+                  <p class="voice-lab-warn">未绑定也可试开 Soft Pad 口头模式；绑键后实体键可随时唤起。命令窗内按 Esc 或说「退出」关闭。</p>
+                  <div class="voice-lab-alt">
+                    <div class="t">可选旁路（摘要 · 深链）</div>
+                    <button type="button" class="voice-lab-chip-link" data-vl-open-panel="softPad"><b>Soft Pad</b> →</button>
+                    <button type="button" class="voice-lab-chip-link" data-vl-open-panel="camera"><b>摄像头</b> →</button>
+                    <button type="button" class="voice-lab-chip-link" data-vl-open-panel="keys"><b>按键</b> →</button>
+                  </div>
+                  <details class="voice-lab-adv">
+                    <summary>高级 · 常驻唤醒（默认关）</summary>
+                    <div class="body">
+                      <p>常驻麦克风听口令开听写。环境音可能误触；助手命令窗请用上方口令键。</p>
+                      <div class="voice-lab-wake-row">
+                        <button type="button" class="voice-lab-sw off" id="voiceLabWakeSw" aria-label="常驻唤醒"></button>
+                        <span>开启常驻麦克风监听</span>
+                      </div>
+                      <div class="voice-lab-field">
+                        <label for="voiceLabWakePhrase">唤醒口令</label>
+                        <input id="voiceLabWakePhrase" value="小助手" data-vl-dirty />
+                        <div class="voice-lab-alias"><span>嘿助手</span><span>开始听写</span></div>
+                        <p class="help">常驻唤醒 ≠ 助手命令窗。口头卡只在命令窗内可说。</p>
+                      </div>
+                      <div class="voice-lab-warn-line">跳过前置闸门，易误触且与口头指令混淆。不推荐作为主路径。</div>
+                    </div>
+                  </details>
+                </div>
+                <div class="voice-lab-cut-note"><b>相对 Windows 现页：</b>砍掉左栏「自定义快捷键 / 应用快捷键 / Soft Pad / 手势」整库；匹配写入回习惯。</div>
+              </div>
+
+              <div class="voice-lab-pane" data-pane="dictation">
+                <div class="voice-product-ime">
+                  <div class="voice-match-chain is-on" id="voiceLabMatchChain" aria-live="polite">
+                    <span>说</span>
+                    <code id="voiceLabMatchChainPhrase">开始听写</code>
+                    <span class="voice-match-chain__arr" aria-hidden="true">→</span>
+                    <code id="voiceLabMatchChainIntent">输入法</code>
+                  </div>
+
+                  <div class="voice-ime-desk" id="voiceLabImeDesk">
+                    <p class="voice-ime-step"><span class="n">1</span>听写键</p>
+                    <div class="voice-ime-keycap-wrap">
+                      <button type="button" class="voice-ime-keycap" id="voiceLabSettingsTargetKey" title="听写键" data-vl-dirty>
+                        <img class="voice-ime-keycap-ico" id="voiceLabSettingsTargetKeyIco" src="icons/ime/xunfei.png" alt="" width="22" height="22" />
+                        <span class="voice-ime-keycap-chord" id="voiceLabSettingsTargetKeyChord">F2</span>
+                      </button>
+                    </div>
+                    <div class="voice-ime-strip-wrap" id="voiceLabImeStripWrap">
+                      <div class="ime-preset-strip" id="voiceLabImePresetStrip" data-ime-context="voiceLab" role="listbox" aria-label="输入法方案">
+                        <button type="button" class="ime-preset-item is-selected" data-ime-id="xunfei" data-target-key="F2" data-ime-context="voiceLab" title="讯飞" aria-label="讯飞" aria-pressed="true"><img class="ime-preset-icon" src="icons/ime/xunfei.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="wechat" data-target-key="Ctrl+Shift+Win" data-ime-context="voiceLab" title="微信" aria-label="微信" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/weixin.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="typeless" data-target-key="RAlt" data-ime-context="voiceLab" title="Typeless" aria-label="Typeless" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/typeless.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="microsoft" data-target-key="Win+H" data-ime-context="voiceLab" title="微软" aria-label="微软" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/microsoft.svg" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="zhipu" data-target-key="RAlt" data-ime-context="voiceLab" title="智谱" aria-label="智谱" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/zhipu.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="qianwen" data-target-key="RAlt" data-ime-context="voiceLab" title="通义" aria-label="通义" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/qianwen.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="shandianshuo" data-target-key="RAlt" data-ime-context="voiceLab" title="闪电说" aria-label="闪电说" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/shandianshuo.jpg" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="sogou" data-target-key="Ctrl+Shift+Z" data-ime-context="voiceLab" title="搜狗" aria-label="搜狗" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/sougou.png" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item" data-ime-id="baidu" data-target-key="Alt+`" data-ime-context="voiceLab" title="百度" aria-label="百度" aria-pressed="false"><img class="ime-preset-icon" src="icons/ime/baidu.svg" alt="" decoding="async" /></button>
+                        <button type="button" class="ime-preset-item ime-preset-item--custom" data-ime-custom="1" data-ime-context="voiceLab" title="自定义" aria-label="自定义" aria-pressed="false">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="voice-finish-card voice-finish-card--c" id="voiceLabFinishCard">
+                    <p class="voice-ime-step"><span class="n">2</span>说完后</p>
+                    <p class="voice-finish-sec-lbl">停顿后默认</p>
+                    <div class="voice-finish-default-seg voice-output-modes" id="voiceLabOutputModeSegments" role="radiogroup" aria-label="停顿后默认">
+                      <button type="button" class="voice-finish-seg is-active is-recommended" data-vl-output-mode="confirm" role="radio" aria-checked="true">
+                        <span class="voice-finish-seg-ico" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        </span>
+                        <span class="voice-finish-seg-t">留下</span>
+                        <span class="voice-finish-seg-s">自查 · 按回车</span>
+                      </button>
+                      <button type="button" class="voice-finish-seg" data-vl-output-mode="phrase" role="radio" aria-checked="false">
+                        <span class="voice-finish-seg-ico" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                        </span>
+                        <span class="voice-finish-seg-t">说了才发</span>
+                        <span class="voice-finish-seg-s">要喊发送词</span>
+                      </button>
+                      <button type="button" class="voice-finish-seg" data-vl-output-mode="auto" role="radio" aria-checked="false">
+                        <span class="voice-finish-seg-ico" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        </span>
+                        <span class="voice-finish-seg-t">停顿就发</span>
+                        <span class="voice-finish-seg-s">全自动</span>
+                      </button>
+                    </div>
+                    <div class="voice-causal-finish" id="voiceLabFinishCausal" aria-live="polite">
+                      <strong>听写停下</strong><span class="arr" aria-hidden="true">→</span><span id="voiceLabFinishCausalMid">字留下</span><span class="arr" aria-hidden="true">→</span><span id="voiceLabFinishCausalTail">你按回车</span>
+                    </div>
+                    <p class="voice-send-lite-notice" id="voiceLabSendLiteNotice" hidden>
+                      <span>系统速识只能「先确认」；要自动发送请切到标准离线识别。</span>
+                    </p>
+
+                    <p class="voice-finish-sec-lbl">语音习惯 · 先改当前相关</p>
+                    <div class="voice-finish-habit" id="voiceLabFinishHabit">
+                      <div class="voice-finish-habit-primary" id="voiceLabFinishHabitPrimary">
+                        <div class="voice-finish-habit-primary-head">
+                          <span class="voice-finish-habit-kind" id="voiceLabFinishHabitKind">结束词</span>
+                          <span class="voice-finish-habit-why-badge" id="voiceLabFinishHabitWhyBadge">配合「留下自查」</span>
+                          <div class="flow-lang-toggle" role="group" aria-label="口令语言">
+                            <button type="button" class="flow-lang-btn is-on" data-lang="zh">中</button>
+                            <button type="button" class="flow-lang-btn" data-lang="en">EN</button>
+                          </div>
+                        </div>
+                        <p class="voice-finish-habit-why">说出下面任一词 = 停下听写，字留在框里。可加多个说法。</p>
+                        <div class="voice-finish-habit-block is-primary" data-habit-block="keep">
+                          <div class="voice-phrase-tags" id="voiceLabEndPhraseTags" role="listbox" aria-label="结束词">
+                            <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">结束输入</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                            <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">就这样</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                            <span class="voice-phrase-tag is-active"><button type="button" class="voice-phrase-tag-btn">停止听写</button><button type="button" class="voice-phrase-tag-del" aria-label="移除">×</button></span>
+                          </div>
+                          <div class="voice-finish-habit-add">
+                            <input type="text" id="voiceLabFinishHabitAddKeep" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：好了" aria-label="添加结束词">
+                            <button type="button" class="voice-finish-habit-add-btn" data-vl-habit-add="keep">+ 添加</button>
+                          </div>
+                        </div>
+                        <p class="voice-finish-habit-hint" id="voiceLabFinishHabitHint">当前默认不靠嘴发送；切换到「说了才发」后可用发送词。</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="voice-lab-aim" data-vl-aim-host data-vl-aim-for="dictation"></div>
+                </div>
+              </div>
+
+              <div class="voice-lab-pane" data-pane="oral-cont">
+                <div class="voice-lab-card tint-cmd">
+                  <div class="voice-lab-banner">进入依赖「进门 · 命令键」· 本卡只配窗内说法与动作</div>
+                  <div class="voice-lab-steps"><span class="on">01 口令</span><span>02 动作</span></div>
+                  <div class="voice-lab-row" style="justify-content:space-between;margin-top:0">
+                    <h3 style="margin:0">继续</h3>
+                    <button type="button" class="voice-lab-btn ghost" style="color:var(--vl-danger,#c41e1e)" data-del-mid>删除</button>
+                  </div>
+                  <p class="voice-lab-blurb">命令窗内说出 = 注入对应 prompt / 动作。</p>
+                  <div class="voice-lab-field">
+                    <label for="voiceLabOralCont">说法（主 + 别名）</label>
+                    <textarea id="voiceLabOralCont" data-vl-dirty>继续
+接着写
+往下</textarea>
+                  </div>
+                  <div class="voice-lab-list">
+                    <div class="voice-lab-hit"><span><b>动作</b></span><code>注入 prompt · 继续回复</code></div>
+                  </div>
+                  <div class="voice-lab-aim" data-vl-aim-host data-vl-aim-for="oral-cont"></div>
+                  <div class="voice-lab-row">
+                    <button type="button" class="voice-lab-btn">试听匹配</button>
+                    <button type="button" class="voice-lab-btn pri" data-vl-open-panel="habits">在习惯中改</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="voice-lab-pane" data-pane="oral-fix">
+                <div class="voice-lab-card tint-cmd">
+                  <div class="voice-lab-banner">进入依赖「进门 · 命令键」</div>
+                  <div class="voice-lab-row" style="justify-content:space-between;margin-top:0">
+                    <h3 style="margin:0">修这个</h3>
+                    <button type="button" class="voice-lab-btn ghost" style="color:var(--vl-danger,#c41e1e)" data-del-mid>删除</button>
+                  </div>
+                  <div class="voice-lab-phrase-box">「修这个」</div>
+                  <div class="voice-lab-list" style="margin-top:12px">
+                    <div class="voice-lab-hit"><span><b>动作</b></span><code>注入 prompt · 修选区</code></div>
+                  </div>
+                  <div class="voice-lab-aim" data-vl-aim-host data-vl-aim-for="oral-fix"></div>
+                  <div class="voice-lab-row">
+                    <button type="button" class="voice-lab-btn">试听匹配</button>
+                    <button type="button" class="voice-lab-btn pri" data-vl-open-panel="habits">在习惯中改</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="voice-lab-pane" data-pane="oral-send">
+                <div class="voice-lab-card tint-cmd">
+                  <div class="voice-lab-banner">本通道口头卡 · 改说法优先回习惯</div>
+                  <div class="voice-lab-row" style="justify-content:space-between;margin-top:0">
+                    <h3 style="margin:0">发送</h3>
+                    <button type="button" class="voice-lab-btn ghost" style="color:var(--vl-danger,#c41e1e)" data-del-mid>删除</button>
+                  </div>
+                  <div class="voice-lab-phrase-box">「发送」</div>
+                  <div class="voice-lab-list" style="margin-top:12px">
+                    <div class="voice-lab-hit"><span><b>动作</b></span><code>发送命令</code></div>
+                  </div>
+                  <div class="voice-lab-aim" data-vl-aim-host data-vl-aim-for="oral-send"></div>
+                  <div class="voice-lab-cut-note"><b>已砍：</b>在语音页配「我录的键 / Soft Pad / 手势」整库。需要硬件体感时从习惯深链到对应通道。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="voice-lab-status">
+              <button type="button" id="voiceLabStatusLive"><span class="voice-lab-pill-live" style="padding:0;background:transparent"><span class="dot" style="background:var(--vl-ok,#1f8a55)"></span></span> LIVE · 试麦 ›</button>
+              <span class="chip-ok">语音识别</span>
+              <span class="chip-ok">麦克风</span>
+              <span id="voiceLabStatusWakeBit" hidden>常驻听</span>
+              <span style="margin-left:auto">前台 · Cursor</span>
+            </div>
+          </div>
+
+          <div class="voice-lab-drawer" id="voiceLabLiveDrawer" role="dialog" aria-label="LIVE" aria-hidden="true">
+            <div class="sheet">
+              <button type="button" class="voice-lab-btn close" id="voiceLabLiveClose">关闭</button>
+              <h3>LIVE · 试麦 / 口令</h3>
+              <div class="meter" aria-hidden="true"><i></i></div>
+              <p class="meta" id="voiceLabLiveMeta">
+                <strong>空闲 · 待口令</strong><br/>
+                命令键 —<br/>
+                常驻唤醒 · 关
+              </p>
+              <div class="voice-lab-row">
+                <button type="button" class="voice-lab-btn pri">开始试麦</button>
+                <button type="button" class="voice-lab-btn">权限</button>
+              </div>
             </div>
           </div>
         </section>
@@ -5908,6 +6283,7 @@
   <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
   <script src="js/features/mapping/keys-seq-panel.js"></script>
+  <script src="js/features/voice/voice-lab-panel.js"></script>
   <script src="js/features/mapping/keys-channel-command-picker.js?v=prompt-autosave-2"></script>
   <script src="js/features/mapping/keys-scene-actions-panel.js?v=prompt-multi-1"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>

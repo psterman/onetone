@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark" data-style="blue">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 键盘 · Mac VK hub</title>
+  <link rel="stylesheet" href="./onetone-channel-after-theme.css" />
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font:13px/1.45 var(--font);background:var(--page);color:var(--text);
+      -webkit-font-smoothing:antialiased;
+    }
+    button{font:inherit;color:inherit;cursor:pointer}
+    button:focus-visible{outline:2px solid var(--accent-bd);outline-offset:2px}
+    a{color:var(--accent);text-decoration:none;font-weight:650}
+
+    .bar{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      padding:8px 16px;background:var(--bar);border-bottom:1px solid var(--line);
+      color:var(--bar-text);font-size:12px;
+    }
+    .bar strong{color:#fff}
+    .bar em{font-style:normal;color:var(--bar-em);font-weight:650}
+    .bar nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+    .bar a.nav{
+      color:#9ec9e8;border:1px solid rgba(125,211,252,.28);border-radius:6px;padding:5px 10px;font-size:11px;
+    }
+    .bar a.nav.is-here{background:var(--accent-soft);color:#fff;border-color:transparent}
+
+    .wrap{width:min(1180px,calc(100% - 24px));margin:16px auto 48px}
+    .brief{
+      margin-bottom:12px;padding:12px 14px;border-radius:10px;
+      border:1px solid var(--brief-bd);background:var(--brief-bg);
+      font-size:12.5px;color:var(--muted);line-height:1.5;
+    }
+    .brief b{color:var(--text)}
+    .brief strong{color:var(--accent)}
+
+    .shell{
+      display:grid;grid-template-rows:auto minmax(0,1fr);
+      min-height:680px;border:1px solid var(--line);border-radius:var(--radius);
+      overflow:hidden;background:var(--bg);box-shadow:var(--shadow);
+    }
+    .tb{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:var(--chrome);
+    }
+    .tb h2{margin:0;font-size:15px}
+    .tb .lab{
+      font-size:9px;font-weight:800;color:var(--accent);padding:2px 6px;border-radius:999px;
+      background:var(--accent-soft);
+    }
+    .tb .sub{width:100%;margin:0;font-size:11px;color:var(--faint)}
+    .tb .spacer{flex:1}
+    .tb .live,.tb .agent{
+      border:0;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;
+      color:var(--accent);background:var(--accent-soft);
+    }
+    .tb .agent{background:transparent}
+
+    .desk{
+      display:grid;grid-template-columns:220px minmax(300px,380px) minmax(0,1fr);
+      min-height:0;height:100%;
+    }
+    @media(max-width:900px){
+      .desk{grid-template-columns:1fr;grid-auto-rows:auto}
+    }
+
+    .left{
+      border-right:1px solid var(--line);background:var(--rail);overflow:auto;padding:10px 0 16px;
+    }
+    .left .role{
+      padding:4px 16px 8px;font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--accent);
+    }
+    .left .sec{
+      padding:10px 16px 4px;font-size:10px;font-weight:800;letter-spacing:.06em;
+      color:var(--faint);text-transform:uppercase;
+    }
+    .cmd{
+      width:calc(100% - 8px);margin:0 4px;text-align:left;border:0;background:transparent;
+      border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:flex-start;
+    }
+    .cmd:hover{background:rgba(255,255,255,.05)}
+    .cmd.is-on{background:var(--pane2);box-shadow:inset 3px 0 0 var(--accent)}
+    .cmd .dot{width:6px;height:6px;border-radius:50%;margin-top:6px;flex:none;background:var(--ok)}
+    .cmd .dot.warn{background:var(--habit)}
+    .cmd .dot.off{background:rgba(148,163,184,.45)}
+    .cmd strong{display:block;font-size:12.5px;font-weight:650}
+    .cmd small{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+
+    .mid{
+      border-right:1px solid var(--line);padding:14px;overflow:auto;
+      display:flex;flex-direction:column;gap:12px;
+    }
+    .pad-card{
+      border:1px solid rgba(125,211,252,.28);border-radius:14px;padding:12px;
+      background:linear-gradient(160deg,rgba(30,41,59,.92),rgba(15,23,42,.88));
+      box-shadow:0 0 0 1px rgba(125,211,252,.08),0 18px 40px rgba(0,0,0,.28);
+    }
+    .pad-card .lbl{margin:0 0 8px;font-size:11px;color:#93c5fd;font-weight:650}
+    .pad-top{display:flex;gap:6px;margin-bottom:8px}
+    .pad-top i{
+      width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.08);
+      display:grid;place-items:center;font-size:9px;font-style:normal;color:#cbd5e1;
+    }
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+    .key{
+      aspect-ratio:1;border-radius:10px;border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);display:flex;flex-direction:column;
+      align-items:flex-start;justify-content:space-between;padding:8px;color:#e2e8f0;
+    }
+    .key.is-hot{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.35)}
+    .key.is-on{box-shadow:0 0 0 2px #38bdf8}
+    .key b{font-size:10px;opacity:.55}
+    .key span{font-size:11px;font-weight:750}
+    .skin{margin:8px 0 0;font-size:10.5px;color:#94a3b8}
+
+    .stats{
+      border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--pane);
+    }
+    .stats .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .stats .head strong{font-size:13px}
+    .metrics{display:flex;gap:14px;margin-bottom:10px}
+    .metrics div{font-size:18px;font-weight:800;letter-spacing:-.02em}
+    .metrics small{display:block;font-size:10px;font-weight:650;color:var(--faint)}
+    .recent{display:grid;gap:6px}
+    .recent div{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+    .recent b{color:var(--text);font-weight:650}
+    .recent code{font-size:10.5px;color:var(--faint)}
+
+    .right{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:12px;min-width:0}
+    .right .role{font-size:11px;font-weight:700;color:var(--muted)}
+    .card{
+      border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--pane);
+    }
+    .card .ttl{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .card h3{margin:0;font-size:15px}
+    .card .chord{
+      font-size:11px;font-weight:750;padding:3px 7px;border-radius:6px;
+      border:1px solid var(--line);background:var(--pane2);color:var(--muted);
+    }
+    .card .meta{margin:6px 0 0;font-size:11px;color:var(--faint)}
+    .flow{margin-top:10px;display:grid;gap:6px}
+    .flow .row{
+      display:grid;grid-template-columns:76px 1fr auto;gap:8px;align-items:center;
+      padding:7px 8px;border-radius:8px;background:var(--pane2);font-size:11.5px;
+    }
+    .flow .row.is-on{outline:1px solid var(--accent-bd);background:var(--accent-soft)}
+    .flow .k{color:var(--faint);font-weight:650}
+    .flow .v{font-weight:650}
+    .flow .go{border:0;background:transparent;color:var(--accent);font-weight:750;font-size:11px}
+
+    .caps .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+    .caps .tabs button{
+      border:1px solid var(--line);background:var(--pane2);border-radius:8px;
+      padding:5px 8px;font-size:11px;font-weight:650;color:var(--muted);
+    }
+    .caps .tabs button.is-on{border-color:var(--accent-bd);background:var(--accent-soft);color:var(--accent)}
+    .caps .seg{display:flex;gap:6px;margin-bottom:8px}
+    .caps .seg button{
+      flex:1;border:1px solid var(--line);background:var(--pane2);border-radius:8px;
+      padding:7px 8px;font-size:11.5px;font-weight:700;color:var(--muted);
+    }
+    .caps .seg button.is-on{border-color:var(--accent-bd);background:var(--accent-soft);color:var(--accent)}
+    .caps input{
+      width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;
+      padding:7px 10px;background:var(--pane2);margin-bottom:8px;font-size:12px;
+    }
+    .caps .list{display:grid;gap:4px;max-height:220px;overflow:auto}
+    .caps .list button{
+      text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;
+      padding:7px 8px;display:flex;justify-content:space-between;font-size:12px;
+    }
+    .caps .list button:hover,.caps .list button.is-on{background:var(--accent-soft);border-color:var(--accent-bd)}
+    .caps .list code{font-size:10.5px;color:var(--faint)}
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <strong>OneTone</strong> <em>键盘 · Mac VK hub</em>
+    <div class="theme-switch" aria-label="外观">
+      <span class="lbl">明暗</span>
+      <div class="seg">
+        <button type="button" data-theme-pick="light">浅</button>
+        <button type="button" data-theme-pick="dark" class="on">深</button>
+      </div>
+      <span class="lbl">风格</span>
+      <div class="seg">
+        <button type="button" data-style-pick="blue" class="on">青</button>
+        <button type="button" data-style-pick="graphite">石墨</button>
+      </div>
+    </div>
+    <nav>
+      <a class="nav" href="./onetone-channel-after-index.html">索引</a>
+      <a class="nav" href="./onetone-softpad-after-habit.html">软键盘</a>
+      <a class="nav is-here" href="./onetone-keyboard-mac-hub.html">键盘</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <div class="brief">
+      产品侧：设置导航 <b>软键盘</b> 下方新增 <strong>键盘</strong>。键盘页挂载现有 Soft Pad 正文，套 Mac Virtual Keyboard 三栏（左命令 · 中预览 · 右键详情）。
+      软键盘页保留何时显示 / 皮肤。
+    </div>
+
+    <section class="shell" aria-label="键盘页">
+      <header class="tb">
+        <h2>键盘</h2>
+        <span class="lab">实验</span>
+        <span class="spacer"></span>
+        <button type="button" class="live">LIVE · 场景</button>
+        <button type="button" class="agent">Agent 呈现</button>
+        <p class="sub">左命令·模板 · 中预览与数据 · 右键详情与流程</p>
+      </header>
+
+      <div class="desk">
+        <aside class="left" aria-label="左 · 命令与模板">
+          <div class="role">左 · 命令与模板</div>
+          <div class="sec">本习惯命令</div>
+          <button type="button" class="cmd"><span class="dot warn"></span><span><strong>撤销</strong><small>Pad</small></span></button>
+          <button type="button" class="cmd"><span class="dot warn"></span><span><strong>点到输入框</strong><small>Pad</small></span></button>
+          <button type="button" class="cmd"><span class="dot"></span><span><strong>好的</strong><small>语</small></span></button>
+          <button type="button" class="cmd is-on" id="cmdPalette"><span class="dot"></span><span><strong>命令面板</strong><small>Pad</small></span></button>
+          <button type="button" class="cmd"><span class="dot"></span><span><strong>搜索文件</strong><small>Pad</small></span></button>
+          <button type="button" class="cmd"><span class="dot off"></span><span><strong>新对话</strong><small>未配置</small></span></button>
+          <button type="button" class="cmd"><span class="dot"></span><span><strong>终端</strong><small>Pad</small></span></button>
+          <div class="sec">备用能力</div>
+          <button type="button" class="cmd"><span class="dot off"></span><span><strong>中断</strong><small>Soft Pad 内建</small></span></button>
+          <button type="button" class="cmd"><span class="dot off"></span><span><strong>批准</strong><small>Soft Pad 内建</small></span></button>
+        </aside>
+
+        <section class="mid" aria-label="预览与数据">
+          <div class="pad-card">
+            <p class="lbl">Codex · 空闲 · 窗口余 75%</p>
+            <div class="pad-top" aria-hidden="true"><i>C</i><i>Ob</i><i>Ar</i><i>…</i></div>
+            <div class="grid" id="padGrid"></div>
+            <p class="skin">皮肤 Spatial Glass · 已绑 16 键</p>
+          </div>
+          <div class="stats">
+            <div class="head"><strong>Cursor</strong><span style="font-size:11px;color:var(--faint)">近 7 天</span></div>
+            <div class="metrics">
+              <div>3<small>已绑定</small></div>
+              <div>0<small>今日</small></div>
+              <div>64%<small>额度</small></div>
+            </div>
+            <div class="recent">
+              <div><b>批准</b><code>Enter</code></div>
+              <div><b>命令面板</b><code>⌘K</code></div>
+              <div><b>新建</b><code>⌥⌘N</code></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="right" aria-label="选中键 · 说明与流程">
+          <div class="role">选中键 · 说明与流程</div>
+          <div class="card">
+            <div class="ttl">
+              <h3>命令面板</h3>
+              <span class="chord">⌘K</span>
+            </div>
+            <p class="meta">ACT06 · 第 1 行 · 左起第 1 颗 · 打开 Agent 命令菜单</p>
+            <div class="flow">
+              <div class="row"><span class="k">硬件键</span><span class="v">未配置</span><button type="button" class="go">去按键 →</button></div>
+              <div class="row is-on"><span class="k">Soft Pad</span><span class="v">ACT06 · 命令面板</span><span></span></div>
+              <div class="row"><span class="k">能力</span><span class="v">命令菜单</span><span></span></div>
+              <div class="row"><span class="k">语音说法</span><span class="v">未配置</span><button type="button" class="go">去语音 →</button></div>
+            </div>
+          </div>
+          <div class="card caps">
+            <div class="tabs" role="tablist">
+              <button type="button" class="is-on">Soft Pad 内建</button>
+              <button type="button">口头指令</button>
+              <button type="button">我录的键</button>
+              <button type="button">软件自带</button>
+              <button type="button">手势</button>
+            </div>
+            <div class="seg">
+              <button type="button" class="is-on">控制 Agent</button>
+              <button type="button">OneTone</button>
+            </div>
+            <input type="search" placeholder="搜索能力…" />
+            <div class="list">
+              <button type="button">中断 <code>Esc</code></button>
+              <button type="button" class="is-on">批准 <code>Enter</code></button>
+              <button type="button">取消 <code>Esc</code></button>
+              <button type="button">发送 <code>Enter</code></button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <script src="./onetone-channel-after-theme.js"></script>
+  <script>
+    (function () {
+      var icons = ['⚙','🎤','⌕','↩','⌨','✓','▸','⌘','☐','↗','↻','✦','1','2','3','↵'];
+      var hot = {6:1,7:1,8:1};
+      var grid = document.getElementById('padGrid');
+      for (var i = 0; i < 16; i++) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'key' + (hot[i] ? ' is-hot' : '') + (i === 0 ? ' is-on' : '');
+        b.innerHTML = '<b>' + i + '</b><span>' + icons[i] + '</span>';
+        grid.appendChild(b);
+      }
+      grid.addEventListener('click', function (e) {
+        var key = e.target.closest('.key');
+        if (!key) return;
+        grid.querySelectorAll('.key').forEach(function (el) { el.classList.toggle('is-on', el === key); });
+      });
+    })();
+  </script>
+</body>
+</html>

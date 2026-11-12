@@ -1505,11 +1505,65 @@
     }, 80);
   }
 
+  function isKeyboardSurface() {
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.softPadSurface === 'keyboard') return true;
+    } catch (_) {}
+    var body = document.getElementById('softPadPageBody');
+    return !!(body && body.classList && body.classList.contains('is-vk-hub'));
+  }
+
+  /** 键盘页左栏：现有键帽 → 命令；软键盘页仍用识别目录。 */
+  function syncKeyboardKeycapCmds(entry) {
+    var host = document.getElementById('keyboardKeycapCmdHost');
+    var rail = document.getElementById('softPadPageRail');
+    var kb = isKeyboardSurface();
+    if (host) {
+      if (kb) host.removeAttribute('hidden');
+      else host.setAttribute('hidden', '');
+    }
+    if (rail) {
+      rail.setAttribute('aria-label', kb
+        ? t('keyboardKeycapCmdLbl', '本键盘命令')
+        : t('softPadRailDirLbl', '识别目录'));
+    }
+    if (!kb) return;
+    entry = entry || resolveSoftPadEntry();
+    var m = hasMapping(entry) ? entry.mapping : null;
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (!m || !Pad) return;
+    if (typeof Pad.refreshSoftPadFlatBindList === 'function') {
+      try { Pad.refreshSoftPadFlatBindList(m); } catch (_) {}
+    }
+    if (typeof Pad.bindSoftPadFlatBindList === 'function') {
+      try { Pad.bindSoftPadFlatBindList(host, m); } catch (_) {}
+    }
+  }
+
   /** Right dock = Keys「本场景动作」(same rows / chrome). Soft Pad no longer lists pad keys. */
   function refreshSoftPadSceneKeys(entry) {
     entry = entry || resolveSoftPadEntry();
     var e = els();
     ensureSoftPadThreeColLayout();
+    // 键盘页：去掉右侧本场景抽屉，左栏改挂键帽命令列表。
+    if (isKeyboardSurface()) {
+      if (e.sceneKeys) {
+        e.sceneKeys.setAttribute('hidden', '');
+        e.sceneKeys.setAttribute('aria-hidden', 'true');
+      }
+      if (e.rightCol) {
+        e.rightCol.setAttribute('hidden', '');
+        e.rightCol.setAttribute('aria-hidden', 'true');
+      }
+      if (e.pageBody) e.pageBody.classList.remove('has-scene-panel');
+      syncKeyboardKeycapCmds(entry);
+      return;
+    }
+    if (e.pageBody && e.pageBody.querySelector) {
+      var kbHost = document.getElementById('keyboardKeycapCmdHost');
+      if (kbHost) kbHost.setAttribute('hidden', '');
+    }
     var Panel = global.OneToneKeysSceneActionsPanel;
     var face = softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) !== 'skin';
     var show = face && hasMapping(entry);
@@ -1647,7 +1701,10 @@
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
     var matchBtn = document.getElementById('btnSoftPadHabitMatch');
     if (matchBtn) {
-      var matchShow = show && normalizeSoftPadPadMode(softPadPadMode) === 'keys';
+      // 键盘页本页配键，不露出「去习惯匹配」。
+      var matchShow = show &&
+        normalizeSoftPadPadMode(softPadPadMode) === 'keys' &&
+        !isKeyboardSurface();
       matchBtn.hidden = !matchShow;
       matchBtn.setAttribute('aria-hidden', matchShow ? 'false' : 'true');
     }
@@ -3193,7 +3250,8 @@
       e.pageBody.classList.toggle('is-need-agent', need);
     }
     if (e.rightCol) {
-      if (need) {
+      // 键盘页不挂本场景动作抽屉；软键盘页仍按 Agent 就绪显隐。
+      if (need || isKeyboardSurface()) {
         e.rightCol.setAttribute('hidden', '');
         e.rightCol.setAttribute('aria-hidden', 'true');
       } else {
@@ -6122,6 +6180,26 @@
       habitMatchBtn.addEventListener('click', function (ev) {
         ev.preventDefault();
         openHabitCommandMatch({ matchChannel: 'softPad' });
+      });
+    }
+    var kbAgent = document.getElementById('btnKeyboardAgentLook');
+    if (kbAgent && !kbAgent.__otKbAgentBound) {
+      kbAgent.__otKbAgentBound = true;
+      kbAgent.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.open) {
+          global.OneToneSettingsDrawer.open({ panel: 'agent', agentSub: null, focus: 'softPadDisplay' });
+        } else {
+          setSoftPadPadMode('show', { fromUser: true });
+        }
+      });
+    }
+    var kbLive = document.getElementById('btnKeyboardLiveScene');
+    if (kbLive && !kbLive.__otKbLiveBound) {
+      kbLive.__otKbLiveBound = true;
+      kbLive.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        handleStatusAction('test-fg');
       });
     }
     if (e.subBack && !(global.__otSoftPadDetailChromeMounted)) {

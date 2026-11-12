@@ -251,9 +251,13 @@
     return !!(ui && ui.settingsPanel === 'softPad');
   }
 
-  /** Soft Pad dock only beside the pad face (not agent / timeline). */
+  /** Soft Pad dock only beside the pad face (not agent / timeline / 键盘页). */
   function softPadSceneDockAllowed() {
     if (!onSoftPadPage()) return false;
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.softPadSurface === 'keyboard') return false;
+    } catch (_) {}
     try {
       var Hub = global.OneToneSoftPadHub;
       if (Hub && typeof Hub.getSoftPadFace === 'function') {

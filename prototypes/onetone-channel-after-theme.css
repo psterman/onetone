@@ -1,0 +1,158 @@
+/* Shared appearance for channel after-habit prototypes.
+   Mirrors app theme-manager: data-theme=light|dark, data-style=blue|graphite(单色). */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --ok: #1f8a55;
+  --danger: #c41e1e;
+  --habit: #9a6118;
+  --radius: 14px;
+}
+
+/* —— Light (default / 浅色) —— */
+html[data-theme="light"] {
+  --page: #d8e0e4;
+  --bg: #f5f6f8;
+  --pane: #ffffff;
+  --pane2: #f0f2f5;
+  --win: #fbfbfc;
+  --rail: #eef2f4;
+  --chrome: #fafbfc;
+  --bar: #10242b;
+  --bar-text: #b9cbd0;
+  --bar-em: #70d7cf;
+  --line: rgba(22, 45, 53, 0.12);
+  --text: #1a2430;
+  --muted: #6b7a88;
+  --faint: #95a3ae;
+  --on-accent: #ffffff;
+  --item-on-text: #0b5d8a;
+  --keycap-bg: #ffffff;
+  --shadow: 0 14px 36px rgba(20, 40, 55, 0.08);
+  --brief-bd: rgba(17, 124, 121, 0.28);
+  --brief-bg: rgba(229, 245, 243, 0.9);
+  --rail-dim: transparent;
+  --hover: rgba(0, 0, 0, 0.04);
+  --sel-bg: rgba(10, 132, 255, 0.1);
+  --sel-bar: var(--accent);
+  --toast-bg: #fff4df;
+  --toast-bd: #f0c988;
+  --cut-bg: #fdecec;
+  --cut-bd: #f0b4b4;
+  --cut-fg: #8d3f38;
+}
+
+/* —— Dark (暗色) —— */
+html[data-theme="dark"] {
+  --page: #050506;
+  --bg: #0c0c0e;
+  --pane: #141416;
+  --pane2: #1c1c1f;
+  --win: #101012;
+  --rail: rgba(0, 0, 0, 0.28);
+  --chrome: rgba(20, 20, 22, 0.95);
+  --bar: #0a0a0c;
+  --bar-text: rgba(255, 255, 255, 0.48);
+  --bar-em: #7dd3fc;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.48);
+  --faint: rgba(255, 255, 255, 0.3);
+  --on-accent: #ffffff;
+  --item-on-text: #ffffff;
+  --keycap-bg: #0a0a0c;
+  --shadow: none;
+  --brief-bd: rgba(10, 132, 255, 0.28);
+  --brief-bg: rgba(10, 132, 255, 0.07);
+  --rail-dim: transparent;
+  --hover: rgba(255, 255, 255, 0.04);
+  --sel-bg: rgba(10, 132, 255, 0.14);
+  --sel-bar: var(--accent);
+  --toast-bg: rgba(255, 159, 10, 0.12);
+  --toast-bd: rgba(255, 159, 10, 0.35);
+  --cut-bg: rgba(255, 69, 58, 0.12);
+  --cut-bd: rgba(255, 69, 58, 0.35);
+  --cut-fg: #ff8a80;
+  --ok: #30d158;
+  --danger: #ff453a;
+  --habit: #ff9f0a;
+}
+
+/* —— Style: blue (彩色) —— */
+html[data-style="blue"] {
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.16);
+  --accent-bd: rgba(10, 132, 255, 0.4);
+}
+html[data-theme="light"][data-style="blue"] {
+  --accent: #2f7eb8;
+  --accent-soft: #e8f3fa;
+  --accent-bd: #b7d4e8;
+  --bar-em: #70d7cf;
+}
+
+/* —— Style: graphite (单色) —— */
+html[data-style="graphite"] {
+  --accent: #8e8e93;
+  --accent-soft: rgba(142, 142, 147, 0.18);
+  --accent-bd: rgba(142, 142, 147, 0.4);
+  --bar-em: #a1a1a6;
+  --habit: #8e8e93;
+}
+html[data-theme="light"][data-style="graphite"] {
+  --accent: #5c5c62;
+  --accent-soft: #ececee;
+  --accent-bd: #c7c7cc;
+  --page: #e8e8ea;
+  --bg: #f2f2f4;
+  --rail: #ececef;
+  --brief-bd: rgba(92, 92, 98, 0.25);
+  --brief-bg: #f0f0f2;
+}
+html[data-theme="dark"][data-style="graphite"] {
+  --accent: #a1a1a6;
+  --accent-soft: rgba(161, 161, 166, 0.16);
+  --sel-bg: rgba(161, 161, 166, 0.14);
+  --brief-bd: rgba(161, 161, 166, 0.28);
+  --brief-bg: rgba(161, 161, 166, 0.08);
+  --bar-em: #d1d1d6;
+}
+
+/* —— Theme switcher chrome —— */
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.theme-switch .seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--pane2);
+}
+.theme-switch .seg button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.theme-switch .seg button + button {
+  border-left: 1px solid var(--line);
+}
+.theme-switch .seg button.is-on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.theme-switch .lbl {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--faint);
+  margin-left: 4px;
+  margin-right: 2px;
+  letter-spacing: 0.04em;
+}

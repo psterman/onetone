@@ -43,14 +43,27 @@ assert.ok(/function openChatTask\([\s\S]*?openExclusiveChat\(/.test(js), 'chat r
 assert.ok(!/setOpenLane|accordion toggle/.test(js), 'no accordion toggle path');
 
 const ha2 = fs.readFileSync(path.join(root, 'src/js/features/now/home-agent-v2.js'), 'utf8');
+const nowHome = fs.readFileSync(path.join(root, 'src/js/features/now/now-home.js'), 'utf8');
 assert.ok(/function wbTranscriptHtml[\s\S]*?return '';/.test(ha2), 'home dock hides inline transcript');
 assert.ok(ha2.includes('openWbChatPage: openWbChatPage'), 'exports openWbChatPage');
 assert.ok(
-  /function embedCompose\([\s\S]*?is-wb-chat-page/.test(ha2),
-  'embedCompose clears orphaned exclusive cover after Focus remount'
+  /function healWbChatPageCover\([\s\S]*?is-wb-chat-page/.test(ha2),
+  'healWbChatPageCover clears orphaned exclusive cover after Focus remount'
+);
+assert.ok(
+  /healWbChatPageCover:\s*healWbChatPageCover/.test(ha2),
+  'exports healWbChatPageCover for Focus paint'
+);
+assert.ok(
+  /function tryEmbedHa2Compose\([\s\S]*?healWbChatPageCover/.test(nowHome),
+  'Focus remount heals exclusive cover even when compose is live-swapped'
+);
+const nowHomeCss = fs.readFileSync(path.join(root, 'src/css/now-home.css'), 'utf8');
+assert.ok(
+  /is-wb-chat-page:has\(\.ha2-wb-page-host:not\(\[hidden\]\)\)/.test(nowHomeCss),
+  'CSS only hides hn-stage when exclusive host is visible'
 );
 
-const nowHome = fs.readFileSync(path.join(root, 'src/js/features/now/now-home.js'), 'utf8');
 const setIntentAt = nowHome.indexOf("kind === 'set_intent'");
 const setIntentFn = nowHome.slice(setIntentAt, nowHome.indexOf("kind === 'open_soft_pad'", setIntentAt));
 assert.ok(setIntentFn.includes('closeWbChatPage'), '提问/投递 closes exclusive');

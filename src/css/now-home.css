@@ -2045,7 +2045,9 @@
   inset: 0;
   z-index: 240;
 }
-.now-home.is-hf-ha2-compose.is-wb-chat-page .hn-stage {
+/* Only hide the desk when the exclusive host is actually showing — orphaned
+   is-wb-chat-page + [hidden] host used to blank Focus after poll remount. */
+.now-home.is-hf-ha2-compose.is-wb-chat-page:has(.ha2-wb-page-host:not([hidden])) .hn-stage {
   visibility: hidden;
   pointer-events: none;
 }

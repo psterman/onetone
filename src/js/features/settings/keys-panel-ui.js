@@ -13,9 +13,18 @@
     return !!(panel && !panel.hidden);
   }
 
+  function keysSeqHostsLive(){
+    try{
+      var seq=global.OneToneKeysSeqPanel;
+      if(seq&&typeof seq.hostsLiveKeysChrome==='function') return !!seq.hostsLiveKeysChrome();
+      return !!(seq&&typeof seq.hostsImeScheme==='function'&&seq.hostsImeScheme());
+    }catch(_){ return false; }
+  }
+
   function keysPanelActive(){
     var drawer=global.OneToneSettingsDrawer;
     if(drawer&&drawer.isKeysPanel&&drawer.isKeysPanel()) return true;
+    if(keysSeqHostsLive()) return true;
     return keysPanelVisible();
   }
 

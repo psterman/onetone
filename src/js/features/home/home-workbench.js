@@ -3161,10 +3161,12 @@
     keysSeq:'keysSeq',
     keys2:'schemes',
     softPad:'softPad',
+    keyboard:'keyboard',
     agent:'agent',
     agentData:'agent',
     composerHistory:'composerHistory',
     voiceWake:'voice',
+    voiceLab:'voiceLab',
     models:'voice',
     camera:'camera',
     camera2:'camera2',
@@ -3180,6 +3182,10 @@
     if(!panel||panel==='home') return 'home';
     if(panel==='debug') return 'runtime';
     if(panel==='agent'||panel==='agentData') return 'agent';
+    if(panel==='softPad'){
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&ui.softPadSurface==='keyboard') return 'keyboard';
+    }
     return NAV_PANEL_MAP[panel]||'general';
   }
 

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-style="blue">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 虚拟键盘 · 修改后</title>
+  <link rel="stylesheet" href="./onetone-channel-after-theme.css" />
+  <style>
+    html {
+      --ink: var(--text);
+      --wash: var(--rail);
+      --panel: var(--pane);
+      --pad: var(--accent);
+      --pad-soft: var(--accent-soft);
+      --pad-bd: var(--accent-bd);
+      --teal: var(--accent);
+      --teal-soft: var(--accent-soft);
+      --green: var(--ok);
+      --green-soft: var(--accent-soft);
+      --amber: var(--habit);
+      --amber-soft: var(--toast-bg);
+    }
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%}
+    body{background:var(--page);color:var(--text);font:13px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+    .bar{background:var(--bar)!important;color:var(--bar-text)!important;border-bottom:1px solid var(--line)}
+    .bar strong{color:#fff}.bar em{color:var(--bar-em)!important}
+    .shell{background:var(--bg)!important;border-color:var(--line)!important;box-shadow:var(--shadow)}
+    .tb,.habit-strip,.rail,.mid,.live,.card,.pad-cell{border-color:var(--line);color:var(--text)}
+    .rail{background:var(--rail)!important}
+    .mid{background:var(--win)!important}
+    .pad-cell{background:var(--pane)!important}
+    .pad-cell:hover,.pad-cell.is-focus{background:var(--accent-soft)!important;border-color:var(--accent-bd)!important}
+    html[data-theme="dark"] .brief{background:var(--brief-bg);border-color:var(--brief-bd);color:var(--muted)}
+
+    button{font:inherit;cursor:pointer}
+    button:focus-visible{outline:2px solid rgba(91,77,184,.5);outline-offset:2px}
+
+    .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:42px;padding:8px 16px;background:#10242b;color:#b9cbd0;font-size:12px}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#c4b5e8;font-weight:650}
+    .bar nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+    .bar a{color:#7dd3fc;font-weight:700;text-decoration:none;border:1px solid rgba(125,211,252,.35);border-radius:6px;padding:5px 10px}
+    .bar a.is-here{background:rgba(125,211,252,.12)}
+
+    .wrap{width:min(1120px,calc(100%-24px));margin:18px auto 48px}
+    .brief{margin-bottom:12px;padding:14px 16px;border:1px solid rgba(22,45,53,.12);border-radius:10px;background:rgba(255,255,255,.92)}
+    .brief h1{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
+    .brief p{margin:0;color:var(--muted);max-width:78ch}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .chip{padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:11px;font-weight:700}
+    .chip.keep{background:var(--green-soft);color:var(--green);border-color:#9ad4b4}
+    .chip.cut{background:#fdecec;color:#c41e1e;border-color:#f0b4b4}
+
+    .shell{display:grid;grid-template-columns:200px minmax(0,1fr) 168px;min-height:640px;overflow:hidden;border:1px solid rgba(22,45,53,.14);border-radius:12px;background:var(--panel);box-shadow:var(--shadow)}
+    @media(max-width:960px){.shell{grid-template-columns:180px 1fr}.live{display:none}}
+
+    .tb{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#fafbfc;min-height:48px}
+    .tb h2{margin:0;font-size:14px;font-weight:750}.tb .edit{font-size:11px;color:var(--faint);margin-top:2px}
+    .tb .spacer{flex:1}
+    .tb .lane{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--pad-soft);color:var(--pad);border:1px solid var(--pad-bd)}
+    .tb .btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:650;color:var(--muted);text-decoration:none}
+    .tb .btn.pri{background:var(--pad-soft);color:var(--pad);border-color:var(--pad-bd)}
+    .habit-strip{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--line);background:var(--wash);font-size:11px;color:var(--muted)}
+    .habit-strip strong{color:var(--ink)}
+    .habit-strip a{color:var(--habit);font-weight:700;text-decoration:none}
+
+    .rail{border-right:1px solid var(--line);background:var(--wash);padding:10px 8px;display:flex;flex-direction:column;gap:4px}
+    .rail .g{padding:8px 8px 4px;font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+    .rail .item{width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:9px 10px;color:#4d5d6a;font-size:12.5px;font-weight:700}
+    .rail .item:hover{background:rgba(255,255,255,.7)}
+    .rail .item.on{background:#fff;color:var(--pad);box-shadow:0 0 0 1.5px rgba(91,77,184,.35)}
+    .rail .item .s{display:block;margin-top:2px;font-size:10px;font-weight:600;color:var(--faint)}
+    .rail .add{margin-top:8px;border:1px dashed #e0b07a;background:var(--amber-soft);color:var(--habit);border-radius:8px;padding:9px 10px;font-size:12px;font-weight:750;text-align:left;text-decoration:none;display:block}
+    .rail .add small{display:block;margin-top:3px;font-weight:600;opacity:.85;font-size:10px}
+
+    .mid{padding:14px 16px;overflow:auto}
+    .panel{display:none}.panel.on{display:block}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+    .panel-head h3{margin:0;font-size:16px}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px;max-width:52ch}
+    .own{flex:none;padding:3px 8px;border-radius:999px;background:var(--green-soft);color:var(--green);font-size:10px;font-weight:800;border:1px solid #9ad4b4}
+
+    .card{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fbfcfd;margin-bottom:10px}
+    .card h4{margin:0 0 6px;font-size:13px}.card p{margin:0;color:var(--muted);font-size:11.5px}
+    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .pill{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;font-size:11.5px;font-weight:650;color:var(--muted)}
+    .pill.on{border-color:var(--pad-bd);background:var(--pad-soft);color:var(--pad)}
+
+    .pad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+    .pad-cell{
+      display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:78px;
+      padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff;text-align:left;color:var(--ink);
+      text-decoration:none;
+    }
+    .pad-cell:hover{border-color:var(--pad-bd);background:var(--pad-soft)}
+    .pad-cell strong{font-size:11px;color:var(--faint);font-weight:800}
+    .pad-cell span{font-size:12.5px;font-weight:750}
+    .pad-cell small{font-size:10px;color:var(--muted);margin-top:auto}
+    .pad-cell.is-empty{border-style:dashed;color:var(--faint)}
+    .pad-cell.is-empty span{color:var(--faint);font-weight:650}
+    .pad-cell.is-focus{box-shadow:0 0 0 2px rgba(91,77,184,.45)}
+
+    .toast{
+      display:none;margin-top:12px;padding:10px 12px;border-radius:8px;
+      background:var(--amber-soft);border:1px solid #f0c988;color:var(--habit);font-size:12px;font-weight:650;
+    }
+    .toast.on{display:block}
+    .toast a{color:var(--habit);font-weight:800}
+
+    .live{border-left:1px solid var(--line);background:#f7f9fa;padding:12px;font-size:11.5px;color:var(--muted);line-height:1.5}
+    .live .ttl{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--pad);margin-bottom:8px}
+    .live b{color:var(--ink)}
+    .cut-note{margin-top:14px;padding:10px 12px;border-radius:8px;background:#fdecec;border:1px solid #f0b4b4;color:#8d3f38;font-size:11.5px;line-height:1.45}
+    .cut-note b{color:#c41e1e}
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <strong>OneTone</strong> <em>虚拟键盘 · 修改后</em>
+    <div class="theme-switch" aria-label="外观">
+      <span class="lbl">明暗</span>
+      <div class="seg">
+        <button type="button" data-theme-pick="light" class="is-on">浅色</button>
+        <button type="button" data-theme-pick="dark">暗色</button>
+      </div>
+      <span class="lbl">风格</span>
+      <div class="seg">
+        <button type="button" data-style-pick="blue" class="is-on">彩色</button>
+        <button type="button" data-style-pick="graphite">单色</button>
+      </div>
+    </div>
+    <nav>
+      <a href="./onetone-keys-after-habit.html">按键</a>
+      <a href="./onetone-voice-after-habit.html">语音</a>
+      <a class="is-here" href="./onetone-softpad-after-habit.html">虚拟键盘</a>
+      <a href="./onetone-ia-left-nav-v2.html">习惯</a>
+      <a href="./onetone-channel-after-index.html">索引</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <div class="brief">
+      <h1>布局与车道留这，键位绑命令回习惯</h1>
+      <p>何时出现、皮肤、布局、Auto 车道本页配。点键只预览或跳习惯选命令；禁止在本页新建 oral / 听写整案，也不开六通道挑源抽屉。</p>
+      <div class="chips">
+        <span class="chip keep">KEEP · 何时 / 皮肤 / 布局 / 车道</span>
+        <span class="chip cut">CUT · 六通道挑源 · 本页新建 oral</span>
+      </div>
+    </div>
+
+    <section class="shell" aria-label="虚拟键盘修改后">
+      <div class="tb">
+        <div>
+          <h2>虚拟键盘</h2>
+          <div class="edit">键外观在此 · 命令内容在习惯</div>
+        </div>
+        <div class="spacer"></div>
+        <span class="lane">Auto · Cursor</span>
+        <button type="button" class="btn">↻ 跟前台</button>
+        <a class="btn pri" href="./onetone-ia-left-nav-v2.html">切换 → 习惯</a>
+      </div>
+      <div class="habit-strip">
+        习惯 · <strong>Cursor 写作</strong>
+        <a href="./onetone-ia-left-nav-v2.html">键位 ↔ 命令在习惯匹配</a>
+      </div>
+
+      <aside class="rail">
+        <div class="g">物理层</div>
+        <button type="button" class="item on" data-panel="when">
+          何时出现
+          <span class="s">迷你栏 / 展开</span>
+        </button>
+        <button type="button" class="item" data-panel="skin">
+          皮肤与布局
+          <span class="s">预览 · 拖位</span>
+        </button>
+        <button type="button" class="item" data-panel="lane">
+          用途与车道
+          <span class="s">Auto · 只读跟随</span>
+        </button>
+        <div class="g">键 → 命令</div>
+        <button type="button" class="item" data-panel="bound">
+          已绑摘要
+          <span class="s">点键去习惯</span>
+        </button>
+        <a class="add" href="./onetone-ia-left-nav-v2.html">+ 在习惯添加命令<small>绑到空位 · 不在此建 oral</small></a>
+      </aside>
+
+      <div class="mid">
+        <div class="panel on" data-panel="when">
+          <div class="panel-head">
+            <div>
+              <h3>何时出现</h3>
+              <p>迷你栏形态记忆、展开时机 — 本页能力。</p>
+            </div>
+            <span class="own">KEEP · 本页</span>
+          </div>
+          <div class="card">
+            <h4>显示</h4>
+            <div class="row">
+              <span class="pill on">Cursor 前台显示迷你栏</span>
+              <span class="pill">记住上次 mini / 展开</span>
+              <span class="pill">离开 Cursor 收起</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="skin">
+          <div class="panel-head">
+            <div>
+              <h3>皮肤与布局</h3>
+              <p>键位长什么样、拖拽改位留此。绑哪条命令点格子去习惯。</p>
+            </div>
+            <span class="own">KEEP · 预览</span>
+          </div>
+          <div class="card">
+            <h4>工作习惯 · 当前布局</h4>
+            <p>已绑 / 空位均可点 → 习惯（演示）。</p>
+            <div class="pad-grid" id="padGrid">
+              <a class="pad-cell" href="./onetone-ia-left-nav-v2.html" data-slot="AG01"><strong>AG01</strong><span>新建对话</span><small>已绑 · 点改→习惯</small></a>
+              <a class="pad-cell" href="./onetone-ia-left-nav-v2.html" data-slot="AG02"><strong>AG02</strong><span>继续回复</span><small>已绑 · 点改→习惯</small></a>
+              <a class="pad-cell" href="./onetone-ia-left-nav-v2.html" data-slot="AG03"><strong>AG03</strong><span>发送</span><small>已绑 · 点改→习惯</small></a>
+              <a class="pad-cell is-empty" href="./onetone-ia-left-nav-v2.html" data-slot="AG04"><strong>AG04</strong><span>空位</span><small>去习惯补绑</small></a>
+              <a class="pad-cell is-empty" href="./onetone-ia-left-nav-v2.html" data-slot="AG05"><strong>AG05</strong><span>空位</span><small>去习惯补绑</small></a>
+              <a class="pad-cell is-empty" href="./onetone-ia-left-nav-v2.html" data-slot="AG06"><strong>AG06</strong><span>空位</span><small>去习惯补绑</small></a>
+              <a class="pad-cell" href="./onetone-ia-left-nav-v2.html" data-slot="AG07"><strong>AG07</strong><span>总结修改</span><small>已绑 · 点改→习惯</small></a>
+              <a class="pad-cell is-empty" href="./onetone-ia-left-nav-v2.html" data-slot="AG08"><strong>AG08</strong><span>空位</span><small>去习惯补绑</small></a>
+            </div>
+            <div class="toast" id="toast">不会在本页写绑定 — 打开习惯为 <b id="toastSlot">AG04</b> 补绑。 <a href="./onetone-ia-left-nav-v2.html">前往 →</a></div>
+          </div>
+          <div class="cut-note"><b>已砍：</b>点键弹出「口头 / 按键 / 摄像 / 内置」六通道挑源抽屉；也不在此新建听写整案。</div>
+        </div>
+
+        <div class="panel" data-panel="lane">
+          <div class="panel-head">
+            <div>
+              <h3>用途与车道</h3>
+              <p>Soft Pad 主控始终 Auto；Hub 标签只浏览配置。</p>
+            </div>
+            <span class="own">KEEP · Auto</span>
+          </div>
+          <div class="card">
+            <h4>当前控制</h4>
+            <p>AppliedDecision · Cursor（needs_input &gt; foreground &gt; fallback）</p>
+            <div class="row">
+              <span class="pill on">Auto</span>
+              <span class="pill">不可钉死</span>
+              <span class="pill">观察灯 ≠ 抢主控</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="bound">
+          <div class="panel-head">
+            <div>
+              <h3>已绑摘要</h3>
+              <p>只列习惯里 Pad 槽已设的命令；改绑去习惯。</p>
+            </div>
+            <span class="own">摘要 · 深链</span>
+          </div>
+          <div class="card">
+            <h4>3 个已绑 · 5 个空位</h4>
+            <div class="row" style="flex-direction:column;align-items:stretch">
+              <a class="pill on" href="./onetone-ia-left-nav-v2.html" style="text-decoration:none">AG01 · 新建对话 → 习惯</a>
+              <a class="pill on" href="./onetone-ia-left-nav-v2.html" style="text-decoration:none">AG02 · 继续回复 → 习惯</a>
+              <a class="pill on" href="./onetone-ia-left-nav-v2.html" style="text-decoration:none">AG03 · 发送 → 习惯</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="live">
+        <div class="ttl">LIVE · 契约</div>
+        <p id="live">键外观在此。<br/><b>命令内容在习惯。</b></p>
+      </aside>
+    </section>
+  </main>
+
+  <script src="./onetone-channel-after-theme.js"></script>
+  <script>
+    const live = {
+      when: '迷你栏时机本页 · 不抢习惯写口。',
+      skin: '点格子 → 习惯补绑；本页不写 binding。',
+      lane: 'Auto 车道只读跟随 AppliedDecision。',
+      bound: '已绑摘要深链习惯 · 空位同路径。'
+    };
+    document.querySelectorAll('.rail .item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.rail .item').forEach((x) => x.classList.remove('on'));
+        btn.classList.add('on');
+        const id = btn.dataset.panel;
+        document.querySelectorAll('.mid .panel').forEach((p) => p.classList.toggle('on', p.dataset.panel === id));
+        document.getElementById('live').innerHTML = live[id] || '';
+        if (id === 'skin') document.querySelector('.rail .item[data-panel="skin"]').classList.add('on');
+      });
+    });
+    document.querySelectorAll('.pad-cell').forEach((cell) => {
+      cell.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.pad-cell').forEach((c) => c.classList.remove('is-focus'));
+        cell.classList.add('is-focus');
+        document.getElementById('toastSlot').textContent = cell.dataset.slot;
+        const toast = document.getElementById('toast');
+        toast.classList.add('on');
+        document.querySelectorAll('.rail .item').forEach((x) => x.classList.remove('on'));
+        document.querySelector('.rail .item[data-panel="skin"]').classList.add('on');
+        document.querySelectorAll('.mid .panel').forEach((p) => p.classList.toggle('on', p.dataset.panel === 'skin'));
+        document.getElementById('live').innerHTML = '选中 ' + cell.dataset.slot + ' · <b>去习惯补绑，本页不写。</b>';
+      });
+    });
+  </script>
+</body>
+</html>

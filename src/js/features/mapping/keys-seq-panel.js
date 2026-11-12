@@ -1,11 +1,16 @@
 /**
  * Keys sequence desk — Mac Keys shell: left catalog / mid trigger+steps.
- * Parallel to legacy #settingsPanelKeys (听写仍归原按键页).
+ * Catalog faces: ime (挂载按键页输入法方案) | seq (动作序列).
  */
 (function (global) {
   'use strict';
 
   var triggerRecordArming = false;
+  /** Catalog face: ime (听写方式 first) | seq (动作序列). */
+  var catalogFace = 'ime';
+  /** Home slot for #keysChannelPaneRight while hosted in keysSeq. */
+  var imeHomeParent = null;
+  var imeHomeNext = null;
 
   function t(key, fallback) {
     if (global.OneToneI18n && typeof global.OneToneI18n.t === 'function') {
@@ -196,11 +201,17 @@
     } catch (_) {}
   }
 
-  /** Peers under the same app / keysSeq family (action-chain rows for the left list). */
+  /** Custom-key sequences for this channel (Mac left rail · 动作序列). */
   function listSavedActions(anchor) {
+    var picker = global.OneToneKeysChannelCommandPicker;
+    if (picker && typeof picker.listCustomKeyMappingsForCurrentApp === 'function') {
+      try {
+        var live = picker.listCustomKeyMappingsForCurrentApp();
+        if (Array.isArray(live)) return live;
+      } catch (_) {}
+    }
     if (!anchor) return [];
     var appId = resolveCurrentAppId(anchor) || String(anchor.appTargetId || '').trim();
-    var fam = keysSeqFamilyId(anchor);
     var maps = configMaps();
     var out = [];
     var i;
@@ -208,13 +219,14 @@
       var m = maps[i];
       if (!m || !m.id) continue;
       if (isPromptInject(m)) continue;
-      if (appId) {
-        if (String(m.appTargetId || '').trim() !== appId) continue;
-      } else if (fam) {
-        if (keysSeqFamilyId(m) !== fam) continue;
-      } else if (String(m.id) !== String(anchor.id)) {
-        continue;
+      if (picker && typeof picker.isCustomKeyMatchMapping === 'function') {
+        try {
+          if (!picker.isCustomKeyMatchMapping(m)) continue;
+        } catch (_) {
+          continue;
+        }
       }
+      if (appId && String(m.appTargetId || '').trim() !== appId) continue;
       out.push(m);
     }
     out.sort(function (a, b) {
@@ -298,14 +310,62 @@
     }
   }
 
+  function habitFolderOf(m) {
+    var folder = String((m && (m.keysSeqFolder || m.group)) || '').trim();
+    if (folder && folder !== '通用设置') return folder;
+    return '改内容';
+  }
+
+  function sceneFolderLabel(m) {
+    var appId = resolveCurrentAppId(m);
+    if (!appId) return '';
+    try {
+      if (global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.presetById) {
+        var pr = global.OneToneAppTargetPresets.presetById(appId);
+        var base = pr && (pr.title || pr.name || pr.id) ? String(pr.title || pr.name || pr.id).trim() : '';
+        if (base) {
+          return /场景$/.test(base) ? base : base + t('keysSeqSceneSuffix', ' 场景');
+        }
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function syncHabitFolderOptions(folderSel, m) {
+    if (!folderSel) return;
+    var fixed = ['改内容', 'AI 助手', '听写', '工作区'];
+    var scene = sceneFolderLabel(m);
+    var cur = habitFolderOf(m);
+    var wanted = fixed.slice();
+    if (scene && wanted.indexOf(scene) < 0) wanted.push(scene);
+    if (cur && wanted.indexOf(cur) < 0) wanted.push(cur);
+    var html = wanted
+      .map(function (v) {
+        return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+      })
+      .join('');
+    if (folderSel.innerHTML !== html) folderSel.innerHTML = html;
+    folderSel.value = cur;
+    if (folderSel.value !== cur && cur) {
+      folderSel.insertAdjacentHTML(
+        'beforeend',
+        '<option value="' + esc(cur) + '">' + esc(cur) + '</option>'
+      );
+      folderSel.value = cur;
+    }
+  }
+
   function paintTrigger(m) {
     var view = document.getElementById('keysSeqTriggerView');
     var disp = document.getElementById('keysSeqTriggerDisplay');
-    var sub = document.getElementById('keysSeqTriggerSub');
     var pill = document.getElementById('keysSeqHabitPill');
     var summary = document.getElementById('keysSeqMidSummary');
+    var nameIn = document.getElementById('keysSeqSeqName');
+    var folderSel = document.getElementById('keysSeqHabitFolder');
+    var recLab = document.getElementById('keysSeqRecordTriggerLab');
     var trig = m ? String(m.triggerKey || '').trim() : '';
     var steps = m && Array.isArray(m.targetActions) ? m.targetActions.length : 0;
+    var name = actionDisplayName(m);
     var label = '';
     if (trig && global.OneToneKeyLabels && typeof global.OneToneKeyLabels.triggerBaseLabel === 'function') {
       try {
@@ -332,25 +392,41 @@
         } catch (_) {}
       }
       pill.textContent = m
-        ? (appName ? appName + ' · ' : '') + actionDisplayName(m)
+        ? (appName ? appName + ' · ' : '') + name
         : t('keysSeqNeedHabit', '请先选择习惯');
     }
-    if (sub) {
-      sub.textContent = trig
-        ? t('keysSeqTriggerHint', '按下后按顺序执行下方动作')
-        : t('keysSeqTriggerUnset', '先录制触发键，再配置动作链');
+    if (nameIn && document.activeElement !== nameIn) {
+      nameIn.value = m ? name : '';
+      nameIn.disabled = !m;
     }
+    if (folderSel && document.activeElement !== folderSel) {
+      syncHabitFolderOptions(folderSel, m);
+      folderSel.disabled = !m;
+    }
+    if (recLab) {
+      recLab.textContent = trig
+        ? t('keysSeqRetrigger', '重新录入')
+        : t('keysSeqRecordTrigger', '录制触发键');
+    }
+    // Mac path: option + D → 粘贴并回车 · 4
     if (summary) {
       if (!m) {
         summary.textContent = '—';
       } else {
         var trigLab = trig ? label : t('badgeNotRecorded', '未设置');
-        summary.textContent =
-          trigLab +
-          ' · ' +
-          (steps
-            ? steps + t('keysCustomKeyMatchSteps', '步')
-            : t('keysCustomKeyMatchNoActions', '尚无动作'));
+        summary.innerHTML = '';
+        summary.appendChild(document.createTextNode(trigLab + ' → '));
+        var b = document.createElement('b');
+        b.textContent = name;
+        summary.appendChild(b);
+        summary.appendChild(
+          document.createTextNode(
+            ' · ' +
+              (steps
+                ? String(steps)
+                : t('keysCustomKeyMatchNoActions', '尚无动作'))
+          )
+        );
       }
     }
     var row = document.getElementById('keysSeqTriggerRow');
@@ -362,20 +438,224 @@
   }
 
   function paintActions(m) {
+    // Live Keys custom-key detail owns steps when face=seq; keep legacy host empty.
     var host = document.getElementById('keysSeqActions');
-    if (!host) return;
-    if (!m) {
-      host.innerHTML =
-        '<div class="home-key-map-action-empty is-keys"><b>' +
-        esc(t('keysSeqNeedHabit', '请先选择习惯')) +
-        '</b></div>';
-      return;
+    if (host) {
+      host.hidden = true;
+      host.innerHTML = '';
     }
-    var HT = global.OneToneHomeTargetActions;
-    if (HT && typeof HT.render === 'function') {
-      // Middle ＋ opens the step menu (titles = capability tooltips).
-      HT.render(host, m, { mode: 'picker', variant: 'keys', hideAdd: false });
+    if (catalogFace !== 'seq') return;
+    void m;
+    try {
+      var picker = global.OneToneKeysChannelCommandPicker;
+      if (picker && typeof picker.refreshKeysTargetActions === 'function') {
+        picker.refreshKeysTargetActions();
+      }
+    } catch (_) {}
+  }
+
+  function findDictationPeer(anchor) {
+    var appId = resolveCurrentAppId(anchor);
+    var maps = configMaps();
+    var i;
+    var fallback = null;
+    for (i = 0; i < maps.length; i++) {
+      var m = maps[i];
+      if (!m || !m.id || isPromptInject(m)) continue;
+      if (appId && String(m.appTargetId || '').trim() !== appId) continue;
+      if (String(m.imePresetId || '').trim() || String(m.targetKey || '').trim()) {
+        if (!mappingHasChainContent(m) || String(m.imePresetId || '').trim()) return m;
+        if (!fallback) fallback = m;
+      }
     }
+    return fallback;
+  }
+
+  function paintDictation(anchor) {
+    var peer = findDictationPeer(anchor) || anchor;
+    var trig = peer ? String(peer.triggerKey || '').trim() : '';
+    var target = peer ? String(peer.targetKey || '').trim() : '';
+    var preset = peer ? String(peer.imePresetId || '').trim() : '';
+    var trigLab = trig ? friendlyKey(trig) : t('badgeNotRecorded', '未设置');
+    var targetLab = target ? friendlyKey(target) : t('badgeNotRecorded', '未设置');
+    var presetLab = preset;
+    if (preset && global.OneToneImePresets && global.OneToneImePresets.presetById) {
+      try {
+        var p = global.OneToneImePresets.presetById(preset);
+        if (p && (p.title || p.name)) presetLab = String(p.title || p.name);
+      } catch (_) {}
+    }
+    var subEl = document.getElementById('keysSeqImeCardSub');
+    if (subEl) {
+      subEl.textContent =
+        trigLab +
+        ' → ' +
+        (targetLab !== t('badgeNotRecorded', '未设置') ? targetLab : presetLab || targetLab);
+    }
+    var card = document.getElementById('keysSeqImeCard');
+    if (card) {
+      card.classList.toggle('is-active', catalogFace === 'ime');
+      card.setAttribute('aria-pressed', catalogFace === 'ime' ? 'true' : 'false');
+    }
+  }
+
+  function hostsImeScheme() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.settingsPanel === 'keysSeq' && catalogFace === 'ime');
+  }
+
+  function hostsCustomKey() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.settingsPanel === 'keysSeq' && catalogFace === 'seq');
+  }
+
+  /** True while 动作链 mid hosts live Keys chrome (IME or 自定义键). */
+  function hostsLiveKeysChrome() {
+    return hostsImeScheme() || hostsCustomKey();
+  }
+
+  function mountLivePane(hostId) {
+    var host = document.getElementById(hostId);
+    var pane = document.getElementById('keysChannelPaneRight');
+    if (!host || !pane) return false;
+    if (pane.parentElement !== host) {
+      if (!imeHomeParent) {
+        imeHomeParent = pane.parentElement;
+        imeHomeNext = pane.nextSibling;
+      }
+      host.appendChild(pane);
+    }
+    return true;
+  }
+
+  function unmountImeScheme() {
+    var pane = document.getElementById('keysChannelPaneRight');
+    if (!pane || !imeHomeParent) return;
+    if (imeHomeNext && imeHomeNext.parentNode === imeHomeParent) {
+      imeHomeParent.insertBefore(pane, imeHomeNext);
+    } else {
+      imeHomeParent.appendChild(pane);
+    }
+    imeHomeParent = null;
+    imeHomeNext = null;
+  }
+
+  function refreshImeSchemePaint() {
+    try {
+      if (global.OneToneKeysPageState && typeof global.OneToneKeysPageState.setStep === 'function') {
+        global.OneToneKeysPageState.setStep('target', { smooth: false });
+      }
+    } catch (_) {}
+    try {
+      var picker = global.OneToneKeysChannelCommandPicker;
+      if (picker && typeof picker.setActiveTab === 'function') {
+        picker.setActiveTab('ime', { skipHeroClear: true });
+      } else if (picker && typeof picker.refresh === 'function') {
+        picker.refresh();
+      }
+    } catch (_) {}
+    try {
+      if (global.OneToneHabitKeyMappingTable && global.OneToneHabitKeyMappingTable.mount) {
+        global.OneToneHabitKeyMappingTable.mount();
+      }
+    } catch (_) {}
+    try {
+      var finish = global.OneToneKeyFinishFlowRender;
+      if (finish && typeof finish.renderKeyFinishFlowPanel === 'function') {
+        finish.renderKeyFinishFlowPanel();
+      }
+    } catch (_) {}
+    try {
+      if (global.OneToneImePresets && typeof global.OneToneImePresets.refresh === 'function') {
+        global.OneToneImePresets.refresh('mapping');
+      }
+    } catch (_) {}
+    try {
+      var kui = global.OneToneKeysPanelUi;
+      if (kui && typeof kui.render === 'function') kui.render();
+    } catch (_) {}
+  }
+
+  function refreshCustomKeyPaint() {
+    try {
+      if (global.OneToneKeysPageState && typeof global.OneToneKeysPageState.setStep === 'function') {
+        global.OneToneKeysPageState.setStep('target', { smooth: false });
+      }
+    } catch (_) {}
+    try {
+      var picker = global.OneToneKeysChannelCommandPicker;
+      if (!picker) return;
+      if (typeof picker.setActiveTab === 'function') {
+        picker.setActiveTab('key', { skipHeroClear: true });
+      }
+      var cur = selectedHabit();
+      var editId =
+        typeof picker.getCustomKeyMatchEditId === 'function'
+          ? String(picker.getCustomKeyMatchEditId() || '').trim()
+          : '';
+      if (
+        cur &&
+        typeof picker.isCustomKeyMatchMapping === 'function' &&
+        picker.isCustomKeyMatchMapping(cur)
+      ) {
+        if (typeof picker.setCustomKeyMatchEditId === 'function') {
+          picker.setCustomKeyMatchEditId(cur.id, { skipRefresh: true });
+        }
+      } else if (
+        (!editId || !mappingById(editId)) &&
+        typeof picker.listCustomKeyMappingsForCurrentApp === 'function'
+      ) {
+        var rows = picker.listCustomKeyMappingsForCurrentApp() || [];
+        if (rows[0] && rows[0].id && typeof picker.setCustomKeyMatchEditId === 'function') {
+          picker.setCustomKeyMatchEditId(rows[0].id, { skipRefresh: true });
+        }
+      }
+      if (typeof picker.refreshKeysTargetActions === 'function') {
+        picker.refreshKeysTargetActions();
+      } else if (typeof picker.refresh === 'function') {
+        picker.refresh();
+      }
+    } catch (_) {}
+    try {
+      var kui = global.OneToneKeysPanelUi;
+      if (kui && typeof kui.render === 'function') kui.render();
+    } catch (_) {}
+  }
+
+  function paintCatalogFace() {
+    var imeDesk = document.getElementById('keysSeqImeDesk');
+    var seqDesk = document.getElementById('keysSeqSeqDesk');
+    var root = document.getElementById('settingsPanelKeysSeq');
+    var isIme = catalogFace === 'ime';
+    if (root) {
+      root.classList.toggle('is-ime-face', isIme);
+      root.classList.toggle('is-seq-face', !isIme);
+    }
+    if (imeDesk) imeDesk.hidden = !isIme;
+    if (seqDesk) seqDesk.hidden = isIme;
+    var card = document.getElementById('keysSeqImeCard');
+    if (card) {
+      card.classList.toggle('is-active', isIme);
+      card.setAttribute('aria-pressed', isIme ? 'true' : 'false');
+    }
+    var list = document.getElementById('keysSeqSavedList');
+    if (list) {
+      list.querySelectorAll('.keys-seq-saved-card').forEach(function (el) {
+        if (isIme) el.classList.remove('is-active');
+      });
+    }
+    if (isIme) {
+      mountLivePane('keysSeqImeHost');
+      refreshImeSchemePaint();
+    } else {
+      mountLivePane('keysSeqKeyHost');
+      refreshCustomKeyPaint();
+    }
+  }
+
+  function setCatalogFace(face) {
+    catalogFace = face === 'seq' ? 'seq' : 'ime';
+    paintCatalogFace();
   }
 
   function paintSavedList(m) {
@@ -405,7 +685,7 @@
           (steps
             ? steps + t('keysCustomKeyMatchSteps', '步')
             : t('keysCustomKeyMatchNoActions', '尚无动作'));
-        var on = String(row.id) === curId;
+        var on = catalogFace === 'seq' && String(row.id) === curId;
         return (
           '<div class="keys-seq-saved-card' +
           (on ? ' is-active' : '') +
@@ -437,6 +717,7 @@
   function selectSaved(id) {
     var mid = String(id || '').trim();
     if (!mid) return;
+    catalogFace = 'seq';
     var row = mappingById(mid);
     var core = global.OneToneMappingCore;
     if (core && typeof core.focus === 'function') {
@@ -450,6 +731,12 @@
     } else if (global.OneToneState && global.OneToneState.state) {
       global.OneToneState.state.selectedMappingId = mid;
     }
+    try {
+      var picker = global.OneToneKeysChannelCommandPicker;
+      if (picker && typeof picker.setCustomKeyMatchEditId === 'function') {
+        picker.setCustomKeyMatchEditId(mid, { skipRefresh: true });
+      }
+    } catch (_) {}
     // Re-read after focus — paint from the loaded peer so keycap / steps never stay stale.
     var m = mappingById(mid) || row || selectedHabit();
     if (m && !m.enabled && mappingHasChainContent(m)) {
@@ -467,8 +754,9 @@
     syncDeskClass();
     bindOnce();
     paintTrigger(m);
-    paintActions(m);
     paintSavedList(m);
+    paintDictation(m);
+    paintCatalogFace();
   }
 
   function deleteSaved(id) {
@@ -539,8 +827,10 @@
   }
 
   function startNewAction() {
-    var m = selectedHabit();
-    if (!m || !m.id) {
+    catalogFace = 'seq';
+    var picker = global.OneToneKeysChannelCommandPicker;
+    var anchor = ensureAppScopedSelection() || selectedHabit();
+    if (!anchor || !anchor.id) {
       try {
         if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
           global.OneToneApp.toast(t('keysSeqNeedHabit', '请先选择习惯'));
@@ -548,62 +838,47 @@
       } catch (_) {}
       return;
     }
-    // Flush editor → mapping, then keep this row in 已存 before opening a blank peer.
-    try {
-      var coreFlush = global.OneToneMappingCore;
-      if (coreFlush && typeof coreFlush.flushAllEditor === 'function') coreFlush.flushAllEditor();
-      else if (coreFlush && typeof coreFlush.flushEditor === 'function') coreFlush.flushEditor(m);
-    } catch (_) {}
-    if (!mappingHasChainContent(m)) {
+    ensureKeysSeqFamily(anchor);
+    var appId = resolveCurrentAppId(anchor);
+    if (appId && !String(anchor.appTargetId || '').trim()) {
+      anchor.appTargetId = appId;
       try {
-        if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
-          global.OneToneApp.toast(
-            t('keysSeqNewNeedContent', '请先录制触发键或添加步骤，再新建')
-          );
-        }
+        persistMaps('keys-seq-new-stamp-app');
       } catch (_) {}
-      return;
     }
-    var fam = ensureKeysSeqFamily(m);
-    labelSavedChain(m);
-    var appId = resolveCurrentAppId(m);
-    if (appId && !String(m.appTargetId || '').trim()) m.appTargetId = appId;
-    // Keep the saved peer live so its trigger still fires after we switch to the blank.
-    if (!m.enabled) {
-      try {
-        if (global.OneToneMappingEditActions && global.OneToneMappingEditActions.setMappingEnabled) {
-          global.OneToneMappingEditActions.setMappingEnabled(m.id, true);
-        } else {
-          m.enabled = true;
-        }
-      } catch (_) {
-        m.enabled = true;
-      }
-    }
-    persistMaps('keys-seq-save-before-new');
-    var picker = global.OneToneKeysChannelCommandPicker;
     var created = null;
-    if (picker && typeof picker.createBlankSceneActionMapping === 'function') {
+    // Mac / Keys: mint a real custom-key sequence peer (not a blank scene orphan).
+    if (picker && typeof picker.createCustomKeyMatchMapping === 'function') {
       try {
-        created = picker.createBlankSceneActionMapping();
-      } catch (_) {
+        created = picker.createCustomKeyMatchMapping({
+          quiet: true,
+          sourceId: anchor.id,
+          appTargetId: appId || String(anchor.appTargetId || '').trim(),
+          keysSeqFamilyId: keysSeqFamilyId(anchor)
+        });
+      } catch (err) {
+        try {
+          console.warn('[keys-seq] createCustomKeyMatchMapping failed', err);
+        } catch (_) {}
         created = null;
       }
     }
-    if (created && created.id) {
-      created.keysSeqFamilyId = fam;
-      if (appId) created.appTargetId = appId;
-      ensureKeysSeqFamily(created);
-      persistMaps('keys-seq-new-blank');
-    } else {
+    if (!created || !created.id) {
       try {
         if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
-          global.OneToneApp.toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+          global.OneToneApp.toast(t('keysSeqNeedHabit', '请先选择习惯'));
         }
       } catch (_) {}
       return;
     }
-    render();
+    selectSaved(created.id);
+    try {
+      if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
+        global.OneToneApp.toast(
+          t('keysCustomKeyMatchCreated', '已新建。请录制触发键，再加步骤。')
+        );
+      }
+    } catch (_) {}
   }
 
   function applyTriggerChord(mappingId, chord) {
@@ -735,31 +1010,101 @@
       e.stopPropagation();
       startTriggerRecord();
     }
-    // Whole trigger card is clickable (cap + 录制 link + empty display).
-    var row = document.getElementById('keysSeqTriggerRow');
+    // Mac: only keycap + 重新录入 arm record (not the whole field).
     var cap = document.getElementById('keysSeqTriggerCap');
-    if (row) {
-      row.addEventListener('click', onTriggerClick);
-      row.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          var host = e.target && e.target.closest && e.target.closest('#keysSeqTriggerCap, #keysSeqRecordTrigger');
-          if (!host && e.target !== row) return;
-          onTriggerClick(e);
-        }
-      });
-    } else if (cap) {
+    var recBtn = document.getElementById('keysSeqRecordTrigger');
+    if (cap) {
       cap.addEventListener('click', onTriggerClick);
       cap.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') onTriggerClick(e);
+      });
+    }
+    if (recBtn) recBtn.addEventListener('click', onTriggerClick);
+
+    var nameIn = document.getElementById('keysSeqSeqName');
+    if (nameIn && !nameIn.__keysSeqNameBound) {
+      nameIn.__keysSeqNameBound = true;
+      var commitName = function () {
+        var m = selectedHabit();
+        if (!m || !m.id) return;
+        var next = String(nameIn.value || '').trim();
+        if (!next) {
+          nameIn.value = actionDisplayName(m);
+          return;
+        }
+        var picker = global.OneToneKeysChannelCommandPicker;
+        if (picker && typeof picker.renameCustomKeyMatch === 'function') {
+          try {
+            picker.renameCustomKeyMatch(m.id, next);
+          } catch (_) {
+            m.label = next;
+            persistMaps('keys-seq-rename');
+          }
+        } else {
+          m.label = next;
+          persistMaps('keys-seq-rename');
+        }
+        paintTrigger(selectedHabit() || m);
+        paintSavedList(selectedHabit() || m);
+      };
+      nameIn.addEventListener('change', commitName);
+      nameIn.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          nameIn.blur();
+        }
+      });
+    }
+
+    var folderSel = document.getElementById('keysSeqHabitFolder');
+    if (folderSel && !folderSel.__keysSeqFolderBound) {
+      folderSel.__keysSeqFolderBound = true;
+      folderSel.addEventListener('change', function () {
+        var m = selectedHabit();
+        if (!m || !m.id) return;
+        m.keysSeqFolder = String(folderSel.value || '').trim() || '改内容';
+        persistMaps('keys-seq-folder');
+      });
+    }
+
+    var delBtn = document.getElementById('keysSeqSeqDelete');
+    if (delBtn && !delBtn.__keysSeqDelBound) {
+      delBtn.__keysSeqDelBound = true;
+      delBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var m = selectedHabit();
+        if (!m || !m.id) return;
+        deleteSaved(m.id);
       });
     }
     var rail = document.getElementById('keysSeqRailTools');
     if (rail) {
       rail.addEventListener('click', function (e) {
         var el = e.target;
+        var imeCard = el && el.closest ? el.closest('#keysSeqImeCard') : null;
+        if (imeCard && rail.contains(imeCard)) {
+          e.preventDefault();
+          setCatalogFace('ime');
+          paintDictation(selectedHabit());
+          return;
+        }
         if (el && el.closest && el.closest('#keysSeqNewAction')) {
           e.preventDefault();
+          e.stopPropagation();
           startNewAction();
+          return;
+        }
+        if (el && el.closest && el.closest('#keysSeqTplAction')) {
+          e.preventDefault();
+          setCatalogFace('seq');
+          startNewAction();
+          try {
+            if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
+              global.OneToneApp.toast(
+                t('keysSeqTplHint', '已打开新建；模板库稍后接入，可先手动加步骤')
+              );
+            }
+          } catch (_) {}
           return;
         }
         var del = el && el.closest ? el.closest('[data-seq-del]') : null;
@@ -791,7 +1136,17 @@
         m.appTargetId = appId;
         stamped = true;
       }
-      ensureImeStepOnHabit(m);
+      // Never force-migrate IME onto custom-key sequence peers.
+      try {
+        var pickerHeal = global.OneToneKeysChannelCommandPicker;
+        var isCustom =
+          pickerHeal &&
+          typeof pickerHeal.isCustomKeyMatchMapping === 'function' &&
+          pickerHeal.isCustomKeyMatchMapping(m);
+        if (!isCustom) ensureImeStepOnHabit(m);
+      } catch (_) {
+        ensureImeStepOnHabit(m);
+      }
       // Bound chords only fire when enabled — heal after popup-record / import.
       if (!m.enabled && mappingHasChainContent(m) && String(m.triggerKey || '').trim()) {
         try {
@@ -811,6 +1166,8 @@
     paintTrigger(m);
     paintActions(m);
     paintSavedList(m);
+    paintDictation(m);
+    paintCatalogFace();
     // Keep right dock suppressed (HOSTS still registered for API compat).
     var dock = document.getElementById('keysSeqSceneActionsPanel');
     if (dock) {
@@ -825,6 +1182,8 @@
     var m = selectedHabit();
     paintTrigger(m);
     paintSavedList(m);
+    paintDictation(m);
+    paintCatalogFace();
   }
 
   global.OneToneKeysSeqPanel = {
@@ -833,6 +1192,16 @@
     startTriggerRecord: startTriggerRecord,
     startNewAction: startNewAction,
     selectSaved: selectSaved,
+    setCatalogFace: setCatalogFace,
+    catalogFace: function () {
+      return catalogFace;
+    },
+    hostsImeScheme: hostsImeScheme,
+    hostsCustomKey: hostsCustomKey,
+    hostsLiveKeysChrome: hostsLiveKeysChrome,
+    unmountImeScheme: unmountImeScheme,
+    refreshImeSchemePaint: refreshImeSchemePaint,
+    refreshCustomKeyPaint: refreshCustomKeyPaint,
     syncTrigger: function () {
       paintTrigger(selectedHabit());
     },

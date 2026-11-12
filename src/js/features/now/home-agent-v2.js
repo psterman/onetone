@@ -79,6 +79,8 @@
   /** taskId → stall heal already fired (first-turn hang). */
   var chatStallTried = Object.create(null);
   var chatLastProgressByTask = Object.create(null);
+  /** taskId → highest thinking step already sealed as think_<tid>_s{n}. */
+  var chatThinkSealedTurnByTask = Object.create(null);
   /** First model turn can hang inside next_tool_json; FE cancel only helps between turns / after HTTP timeout. */
   var CHAT_STALL_MS = 45000;
   /** Turn-0 empty quiet hang: redrive sooner than full stall notice. */
@@ -472,6 +474,7 @@
     var J = global.OneToneHomeTaskJournal;
     chatLoopTaskId = '';
     chatLoopSyncedEv = {};
+    chatThinkSealedTurnByTask = Object.create(null);
     chatStopPendingId = '';
     chatHealTried = Object.create(null);
     chatRecoveryEmitted = Object.create(null);
@@ -1585,6 +1588,10 @@
       var stopped = String(turn.text || '').trim();
       return stopped || t('ha2WbChatCancelled', '已停止');
     }
+    var turnId = String(turn.id || '');
+    if (/^think_.+_s\d+$/.test(turnId)) {
+      return t('ha2ToolThinkingDone', '已思考');
+    }
     var live =
       !!turn.streaming ||
       (!!wbChatBusy &&
@@ -1598,27 +1605,51 @@
     return t('ha2ToolThinkingIdle', '思考');
   }
 
+  /** True when a thinking row would paint as a border-only rail (no usable body). */
+  function isEmptyThinkingHusk(turn) {
+    turn = turn || {};
+    if (turn.toolName !== 'thinking') return false;
+    if (turn.streaming || turn.collapsed === false) return false;
+    var detail = sanitizeThinkingDetail(String(turn.detail || '').trim());
+    if (detail) return false;
+    var text = String(turn.text || '').trim();
+    // Labels alone with no CoT body become 1px border strips in WebView2.
+    return !text || /^(已思考|已停止|思考|思考中…?|模型思考中|工具循环中)/.test(text);
+  }
+
   function wbToolStepHtml(turn) {
     turn = turn || {};
     var tool = turn.toolName || '';
     var isThinking = tool === 'thinking';
+    if (isThinking && isEmptyThinkingHusk(turn)) return '';
     var label = isThinking
       ? thinkingChipLabel(turn)
       : chatToolStepLabel(tool) || turn.text || tool;
     var open = turn.collapsed === false;
     var ok = turn.toolOk !== false;
     var detail = String(turn.detail || '').trim();
+    if (isThinking) detail = sanitizeThinkingDetail(detail);
     var thinkSub = '';
     if (isThinking) {
       // Summary subtitle must stay visible (badge-only was washing out on light themes).
+      // Live progress lines ("模型思考中 · 第 N 步") are not a folded history summary.
       thinkSub = String(turn.text || '').trim();
-      if (!thinkSub || thinkSub === label) {
+      if (
+        !thinkSub ||
+        thinkSub === label ||
+        /思考中|工具循环|等待模型|可点停止/.test(thinkSub)
+      ) {
         thinkSub = detail.split('\n')[0] || '';
       }
-      if (!thinkSub) {
+      if (thinkSub.length > 72) thinkSub = thinkSub.slice(0, 72) + '…';
+      if (!thinkSub && (open || turn.streaming)) {
         thinkSub = t('ha2ChatLoopWaitingModel', '正在等待模型回应…');
       }
-      if (!detail) detail = thinkSub;
+      // Folded chip: keep a short preview under「已思考」so it cannot crush to a rail.
+      if (!thinkSub && !open && !turn.streaming && detail) {
+        thinkSub = detail.split('\n')[0].slice(0, 72);
+      }
+      if (!detail && (open || turn.streaming)) detail = thinkSub;
     }
     var turnId = turn.id ? String(turn.id) : '';
     if (turn.kind === 'needs_input') {
@@ -1684,6 +1715,8 @@
     }
     // Empty chips (no badge text) paint as purple/grey border rails — skip.
     if (!String(label || '').trim() && !detail && !thinkSub) return '';
+    // Folded thinking with no body is a border-only rail — drop it.
+    if (isThinking && !open && !turn.streaming && !detail && !thinkSub) return '';
     if (!String(label || '').trim()) {
       label = isThinking
         ? thinkSub || t('ha2ToolThinkingLive', '思考中…')
@@ -1770,11 +1803,14 @@
     ) {
       return '';
     }
+    var bubbleId = turn.id ? String(turn.id) : '';
     return (
       '<div class="ha2-wb-page-turn ha2-wb-page-turn--' +
       role +
       (turn.streaming ? ' is-streaming' : '') +
-      '"><span class="ha2-wb-page-turn-role">' +
+      '"' +
+      (bubbleId ? ' data-ha2-turn-id="' + esc(bubbleId) + '"' : '') +
+      '><span class="ha2-wb-page-turn-role">' +
       wbTurnRoleHtml(role, turn.model || model, turn.providerId, turn.fallbackFrom) +
       '</span>' +
       wbTurnBodyHtml(turn.text || '', !!turn.streaming) +
@@ -10030,28 +10066,39 @@
     if (wbChatPageOpen) paintWbChatPage();
   }
 
+  function isSealedThinkingTurnId(id) {
+    return /^think_.+_s\d+$/.test(String(id || ''));
+  }
+
   function wbPageTurnsForPaint() {
-    var list = wbChatTurns.slice();
+    // Drop border-only thinking husks before paint (WebView2 → grey/blue rails).
+    var list = wbChatTurns.filter(function (row) {
+      return !isEmptyThinkingHusk(row);
+    });
     if (wbChatBusy) {
-      var thinkId = wbThinkingTurnId || 'stream_think';
+      // Live chip only — never fall back onto sealed think_<tid>_s{n} history.
+      var thinkId =
+        wbThinkingTurnId ||
+        (chatLoopTaskId ? 'think_' + chatLoopTaskId : 'stream_think');
+      if (isSealedThinkingTurnId(thinkId)) {
+        thinkId = chatLoopTaskId ? 'think_' + chatLoopTaskId : 'stream_think';
+      }
       var sid = wbStreamingTurnId || 'stream_live';
       var i;
       var foundThink = -1;
       var foundAns = -1;
       for (i = 0; i < list.length; i++) {
         if (!list[i]) continue;
-        if (String(list[i].id) === String(thinkId)) foundThink = i;
-        if (String(list[i].id) === String(sid)) foundAns = i;
-        if (
-          foundThink < 0 &&
-          list[i].toolName === 'thinking' &&
-          list[i].kind === 'tool_step'
-        ) {
+        var rowId = String(list[i].id || '');
+        if (rowId === String(thinkId) && !isSealedThinkingTurnId(rowId)) {
           foundThink = i;
-          if (!wbThinkingTurnId) thinkId = String(list[i].id);
         }
+        if (rowId === String(sid)) foundAns = i;
       }
       // Thinking chip — never dump CoT into the answer bubble. Open while live.
+      // Never Object.assign onto a sealed _sN row (that was wiping step history).
+      // Never reopen a settled/collapsed chip while the answer streams — that
+      // produced empty is-live shells (border-only horizontal rails).
       if (wbStreamingReasoning) {
         var thinkRow = {
           id: thinkId,
@@ -10067,10 +10114,15 @@
         if (foundThink >= 0) list[foundThink] = Object.assign({}, list[foundThink], thinkRow);
         else list.push(thinkRow);
         foundThink = foundThink >= 0 ? foundThink : list.length - 1;
-      } else if (foundThink >= 0 && list[foundThink]) {
+      } else if (
+        foundThink >= 0 &&
+        list[foundThink] &&
+        list[foundThink].collapsed !== true &&
+        !wbStreamingText
+      ) {
         list[foundThink] = Object.assign({}, list[foundThink], {
           streaming: true,
-          collapsed: list[foundThink].collapsed === false ? false : list[foundThink].collapsed
+          collapsed: false
         });
       }
       // Answer bubble only once content starts. While CoT/thinking chip is live,
@@ -11791,9 +11843,21 @@
       paintWbChatPage();
       return;
     }
-    var textEl = root.querySelector(
-      '.ha2-wb-page-turn.is-streaming .ha2-wb-page-turn-text'
-    );
+    // Prefer the live answer id — a loose .is-streaming query used to patch an
+    // older bubble while a new one also painted → stacked / ghost text.
+    var textEl = null;
+    if (wbStreamingTurnId) {
+      var safeId = String(wbStreamingTurnId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      textEl = root.querySelector(
+        '.ha2-wb-page-turn[data-ha2-turn-id="' + safeId + '"] .ha2-wb-page-turn-text'
+      );
+    }
+    if (!textEl) {
+      var streamTurns = root.querySelectorAll(
+        '.ha2-wb-page-turn.is-streaming .ha2-wb-page-turn-text'
+      );
+      textEl = streamTurns.length ? streamTurns[streamTurns.length - 1] : null;
+    }
     if (textEl) {
       textEl.textContent = wbStreamingText || '…';
       var transcript = root.querySelector('[data-ha2-wb-page-transcript]');
@@ -12978,10 +13042,117 @@
       .replace('{n}', String(turn));
   }
 
+  /** Strip markdown thematic breaks so CoT does not paint as empty horizontal rails. */
+  function sanitizeThinkingDetail(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var out = [];
+    var blank = 0;
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (
+        /^\s*-{3,}\s*$/.test(line) ||
+        /^\s*\*{3,}\s*$/.test(line) ||
+        /^\s*_{3,}\s*$/.test(line)
+      ) {
+        continue;
+      }
+      if (!String(line || '').trim()) {
+        blank += 1;
+        if (blank > 1) continue;
+        out.push('');
+        continue;
+      }
+      blank = 0;
+      out.push(line);
+    }
+    return out.join('\n').replace(/^\n+|\n+$/g, '');
+  }
+
+  function thinkingStepSummary(detail, stepN) {
+    var clean = sanitizeThinkingDetail(detail);
+    var first = '';
+    var lines = clean.split('\n');
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var s = String(lines[i] || '').trim();
+      if (s) {
+        first = s;
+        break;
+      }
+    }
+    if (first.length > 80) first = first.slice(0, 80) + '…';
+    var stepLbl = t('ha2ThinkingStepN', '第 {n} 步').replace('{n}', String(stepN));
+    return first ? stepLbl + ' · ' + first : stepLbl;
+  }
+
+  /**
+   * Seal live think_<tid> into a collapsed think_<tid>_s{n} so prior CoT survives
+   * the next step's upsert (which would otherwise overwrite the same id).
+   */
+  function sealLiveThinkingChip(tid, stepN) {
+    tid = String(tid || '');
+    stepN = Number(stepN) || 0;
+    if (!tid || stepN < 1) return false;
+    var sealedTurn = chatThinkSealedTurnByTask[tid] || 0;
+    if (sealedTurn >= stepN) return false;
+    var liveId = 'think_' + tid;
+    var sealedId = 'think_' + tid + '_s' + stepN;
+    var live = null;
+    var i;
+    for (i = 0; i < wbChatTurns.length; i++) {
+      if (wbChatTurns[i] && String(wbChatTurns[i].id) === liveId) {
+        live = wbChatTurns[i];
+        break;
+      }
+    }
+    // Missing/empty live body: do NOT advance the sealed counter — otherwise this
+    // step number is permanently skipped and history never lands.
+    if (!live) return false;
+    var detail = String(live.detail || live.text || '').trim();
+    if (!detail) return false;
+    // Progress-only labels are not worth sealing as a step body.
+    if (/^(模型思考中|工具循环中|思考中|正在等待模型)/.test(detail) && detail.length < 80) {
+      return false;
+    }
+    appendWbChatTurn({
+      id: sealedId,
+      role: 'assistant',
+      kind: 'tool_step',
+      toolName: 'thinking',
+      text: thinkingStepSummary(detail, stepN),
+      detail: sanitizeThinkingDetail(detail),
+      collapsed: true,
+      streaming: false,
+      toolOk: true
+    });
+    chatThinkSealedTurnByTask[tid] = stepN;
+    wbChatTurns = wbChatTurns.filter(function (r) {
+      return !(r && String(r.id) === liveId);
+    });
+    if (wbThinkingTurnId === liveId) wbThinkingTurnId = '';
+    // Drop overlay CoT so paint cannot reopen the just-sealed body on a new live chip.
+    wbStreamingReasoning = '';
+    saveWbChatTurns();
+    return true;
+  }
+
+  /** When ATR currentTurn advances, seal the prior live thinking segment. */
+  function maybeSealThinkingForTurn(task) {
+    var tid = String((task && task.taskId) || chatLoopTaskId || '');
+    if (!tid) return;
+    var turn = task && task.currentTurn != null ? Number(task.currentTurn) : 0;
+    var sealed = chatThinkSealedTurnByTask[tid] || 0;
+    if (turn > 1 && sealed < turn - 1) {
+      sealLiveThinkingChip(tid, turn - 1);
+    }
+  }
+
   /** Persist collapsible progress chip — must survive cancel (streaming alone evaporates). */
   function upsertChatLoopProgressTurn(task) {
     var tid = String((task && task.taskId) || chatLoopTaskId || '');
     if (!tid) return null;
+    maybeSealThinkingForTurn(task);
     var text = chatLoopProgressText(task);
     if (!text) return null;
     var live = chatLiveProjection(task);
@@ -12997,7 +13168,8 @@
       wbStreamingText = live.text;
       // Keep any prior thinking chip; do not recycle it as the answer id.
       if (!wbThinkingTurnId) wbThinkingTurnId = 'think_' + tid;
-      // Settle the thinking fold once the answer starts streaming.
+      // Settle the live thinking fold once the answer starts streaming.
+      // Leave sealed think_<tid>_s{n} rows alone.
       var ti;
       for (ti = 0; ti < wbChatTurns.length; ti++) {
         if (
@@ -13013,6 +13185,7 @@
           break;
         }
       }
+      wbStreamingReasoning = '';
       return answerRow;
     }
     // Live thinking body: prefer CoT/status payload; fall back to progress label.
@@ -13025,7 +13198,7 @@
     } else if (text) {
       detailBits.push(String(text));
     }
-    var detailText = detailBits.join('\n');
+    var detailText = sanitizeThinkingDetail(detailBits.join('\n'));
     // Drive the paint overlay so CoT keeps streaming even if a turn upsert races.
     wbStreamingReasoning = detailText || text || wbStreamingReasoning;
     var row = appendWbChatTurn({
@@ -13313,6 +13486,8 @@
       var row = wbChatTurns[i];
       if (!row || row.toolName !== 'thinking') continue;
       var rowId = String(row.id || '');
+      // Sealed step history (think_<tid>_sN) must keep its own summary/detail.
+      if (/^think_.+_s\d+$/.test(rowId)) continue;
       if (!targets[rowId] && !row.streaming) continue;
       var prev = String(row.text || '');
       var m = prev.match(/第\s*(\d+)\s*步/);
@@ -13325,8 +13500,16 @@
               String(step)
             )
           : t('ha2WbChatCancelled', '已停止'));
+      var detail = sanitizeThinkingDetail(String(row.detail || '').trim());
+      // Empty husk → drop (border rail). Keep only folds that have CoT body.
+      if (!detail) {
+        wbChatTurns[i] = null;
+        touched = true;
+        continue;
+      }
       wbChatTurns[i] = Object.assign({}, row, {
         text: text,
+        detail: detail,
         toolOk: opts.toolOk === true,
         collapsed: true,
         streaming: false
@@ -13334,6 +13517,7 @@
       touched = true;
     }
     if (touched) {
+      wbChatTurns = wbChatTurns.filter(Boolean);
       wbThinkingTurnId = '';
       wbStreamingReasoning = '';
       saveWbChatTurns();
@@ -13667,6 +13851,14 @@
         continue;
       }
       if (kind === 'tool_call') {
+        // Seal live CoT before the tool chip so step history is not overwritten.
+        var turnForSeal =
+          task && task.currentTurn != null ? Number(task.currentTurn) : 0;
+        if (turnForSeal >= 1) {
+          sealLiveThinkingChip(tid, turnForSeal);
+        } else {
+          sealLiveThinkingChip(tid, (chatThinkSealedTurnByTask[tid] || 0) + 1);
+        }
         // Persist call chip immediately — cancel mid-think must leave a foldable step.
         var callDetail = '';
         try {
@@ -16497,6 +16689,27 @@
   }
 
   /**
+   * Focus remount (innerHTML) recreates a hidden empty [data-ha2-wb-page-host]
+   * while root may still carry is-wb-chat-page → CSS hides .hn-stage → blank home
+   * with only the top chrome. Heal after every Focus paint, even when compose is
+   * live-swapped and embedCompose itself is skipped.
+   */
+  function healWbChatPageCover() {
+    if (!root) return;
+    if (wbChatPageOpen) {
+      ensureChatPageHost();
+      paintWbChatPage();
+      return;
+    }
+    root.classList.remove('is-wb-chat-page');
+    var orphanHost = root.querySelector('[data-ha2-wb-page-host]');
+    if (orphanHost) {
+      orphanHost.innerHTML = '';
+      orphanHost.hidden = true;
+    }
+  }
+
+  /**
    * Focus home: paint ha2 compose into [data-hf-ha2-compose-host] without
    * replacing Focus chrome. Reuses the same click/send/model handlers.
    */
@@ -16516,19 +16729,7 @@
     }
     var snap = S.getSnapshot();
     ensureShell(snap);
-    // Focus remount (innerHTML) destroys [data-ha2-wb-page-host] but can leave
-    // is-wb-chat-page on root → hn-stage stays visibility:hidden → blank home.
-    if (wbChatPageOpen) {
-      ensureChatPageHost();
-      paintWbChatPage();
-    } else {
-      root.classList.remove('is-wb-chat-page');
-      var orphanHost = root.querySelector('[data-ha2-wb-page-host]');
-      if (orphanHost) {
-        orphanHost.innerHTML = '';
-        orphanHost.hidden = true;
-      }
-    }
+    healWbChatPageCover();
     // Do not maybeOpenAtrWbPage here — auto ATR/wb full-page was covering Focus
     // and eating clicks. sendWbLocal may still open the page on purpose.
     // Never skip patch while Agent picker / + menu open — that was the "no reaction" bug.
@@ -16688,6 +16889,7 @@
   global.OneToneHomeAgentV2 = {
     mount: mount,
     embedCompose: embedCompose,
+    healWbChatPageCover: healWbChatPageCover,
     stashLiveComposeDrafts: stashLiveComposeDrafts,
     show: show,
     hide: hide,

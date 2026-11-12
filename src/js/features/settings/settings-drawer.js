@@ -14,7 +14,7 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keysSeq:'settingsPanelKeysSeq',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',models:'settingsPanelModels',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',keysSeq:'settingsPanelKeysSeq',keys2:'settingsPanelKeys2',softPad:'settingsPanelSoftPad',models:'settingsPanelModels',voiceWake:'settingsPanelVoiceWake',voiceLab:'settingsPanelVoiceLab',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
@@ -24,10 +24,41 @@
 
   };
 
+  /** 键盘页与软键盘共用 Soft Pad 正文；只切 surface / VK hub 样式，不搬 DOM（样式仍挂在 #settingsPanelSoftPad）。 */
+  function mountSoftPadPageBody(target){
+    target=target==='keyboard'?'keyboard':'softPad';
+    var body=$('softPadPageBody');
+    var mount=$('softPadPageMount');
+    if(body&&mount&&body.parentElement!==mount) mount.appendChild(body);
+    if(body){
+      body.classList.toggle('is-vk-hub',target==='keyboard');
+      body.setAttribute('data-soft-pad-surface',target);
+    }
+    var panel=$('settingsPanelSoftPad');
+    if(panel) panel.setAttribute('data-soft-pad-surface',target);
+    var kbBar=$('keyboardPageToolbar');
+    if(kbBar){
+      if(target==='keyboard') kbBar.removeAttribute('hidden');
+      else kbBar.setAttribute('hidden','');
+    }
+    var slim=$('softPadStatusBar');
+    if(slim){
+      if(target==='keyboard') slim.setAttribute('hidden','');
+      else slim.removeAttribute('hidden');
+    }
+  }
+
   function resolveSettingsPanelRequest(panel,opts){
     opts=opts||{};
     if(panel==='voiceEnd') panel='voiceWake';
     if(panel==='actionHistory') panel='habits';
+    // 键盘 = Soft Pad 绑键面（Mac VK hub）；DOM 仍用 softPad 面板，导航高亮 keyboard。
+    if(panel==='keyboard'){
+      return {
+        panel:'softPad',
+        opts:Object.assign({},opts,{softPadSurface:'keyboard',focus:opts.focus||'softPadLayout'})
+      };
+    }
     if(panel==='agentData'){
       return {
         panel:'agent',
@@ -217,7 +248,9 @@
     }
 
     if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadPurpose'){
-      setSettingsPanel('softPad');
+      // 绑键进键盘 surface；何时显示/皮肤仍在软键盘 surface。
+      if(focus==='softPadLayout') setSettingsPanel('keyboard');
+      else setSettingsPanel('softPad',{softPadSurface:'softPad'});
       setTimeout(function(){
         var flowId=(focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData')
           ?'softPadFlowNodeAgent':'softPadFlowNodePad';
@@ -281,8 +314,8 @@
           },80);
         }
         try{
-          // Only re-sync if still on softPad — keys/habits open can win the same tick.
-          if(ui.settingsPanel==='softPad'&&global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
+          if(ui.settingsPanel==='softPad'&&
+              global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
             global.OneToneHomeWorkbench.syncNavActiveState('softPad',{focus:focus});
           }
         }catch(_){}
@@ -421,8 +454,23 @@
         try{ global.OneToneKeysSeqPanel.render(); }
         catch(err){ console.error('keys seq refresh',err); }
       }
+      // 听写方式 / 自定义键面挂载了按键页 DOM — 同步刷新。
+      try{
+        var seq=global.OneToneKeysSeqPanel;
+        if(seq&&typeof seq.hostsImeScheme==='function'&&seq.hostsImeScheme()){
+          if(typeof seq.refreshImeSchemePaint==='function') seq.refreshImeSchemePaint();
+        }else if(seq&&typeof seq.hostsCustomKey==='function'&&seq.hostsCustomKey()){
+          if(typeof seq.refreshCustomKeyPaint==='function') seq.refreshCustomKeyPaint();
+        }
+      }catch(err){ console.error('keys seq live refresh',err); }
       return;
     }
+    // Leaving keysSeq: put IME pane back before classic Keys paints.
+    try{
+      if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.unmountImeScheme==='function'){
+        global.OneToneKeysSeqPanel.unmountImeScheme();
+      }
+    }catch(_){}
 
     if(global.OneToneHabitKeyMappingTable&&global.OneToneHabitKeyMappingTable.mount){
       global.OneToneHabitKeyMappingTable.mount();
@@ -588,6 +636,8 @@
     if(panel==='scenes') return 'habits';
     // Agent → 数据仍高亮主导航 Agent（页内标签高亮「数据」）
     if(panel==='agent'||panel==='agentData') return 'agent';
+    // softPad 面板在键盘 surface 时高亮「键盘」导航
+    if(panel==='softPad'&&ui.softPadSurface==='keyboard') return 'keyboard';
     return panel;
   }
 
@@ -804,6 +854,11 @@
     var leavingPanel=lastPanel;
 
     ui.settingsPanel=panel;
+    if(panel==='softPad'){
+      ui.softPadSurface=opts.softPadSurface==='keyboard'?'keyboard':'softPad';
+    }else if(panel!=='keyboard'){
+      ui.softPadSurface='softPad';
+    }
     if(panel==='agent'){
       ui.agentSub=opts.agentSub==='data'
         ?'data'
@@ -829,6 +884,9 @@
       const nav=document.querySelector('.settings-nav-item[data-panel="'+key+'"]');
       if(nav) nav.classList.toggle('is-active',highlight===key);
     });
+    // keyboard 是 softPad surface，不在 PANEL_IDS — 单独点亮设置侧栏
+    var kbNav=document.querySelector('.settings-nav-item[data-panel="keyboard"]');
+    if(kbNav) kbNav.classList.toggle('is-active',highlight==='keyboard');
 
     // Leave camera family / open non-camera: pause infer before heavy paint.
     if(ui.drawerOpen&&!isCameraFamilyPanel(panel)&&(panelChanged||isCameraFamilyPanel(leavingPanel))){
@@ -857,10 +915,21 @@
     if(panelChanged&&leavingPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
     }
+    // Leaving 动作链听写面: restore Keys IME pane to classic panel before next paint.
+    if(panelChanged&&leavingPanel==='keysSeq'&&panel!=='keysSeq'){
+      try{
+        if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.unmountImeScheme==='function'){
+          global.OneToneKeysSeqPanel.unmountImeScheme();
+        }
+      }catch(_){}
+    }
     if(panelChanged&&leavingPanel==='agent'&&panel!=='agent'){
       closeAgentCapsuleDesk();
     }
-    if(panelChanged&&leavingPanel==='softPad'&&panel!=='softPad'){
+    // softPad ↔ keyboard share Soft Pad body — only tear down when leaving the family.
+    var leavingSoftFamily=leavingPanel==='softPad'||leavingPanel==='keyboard';
+    var enteringSoftFamily=panel==='softPad'||panel==='keyboard';
+    if(panelChanged&&leavingSoftFamily&&!enteringSoftFamily){
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
       }
@@ -1037,6 +1106,17 @@
         },0);
       });
 
+    }else if(panel==='voiceLab'){
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='voiceLab') return;
+          if(global.OneToneVoiceLabPanel&&typeof global.OneToneVoiceLabPanel.render==='function'){
+            try{ global.OneToneVoiceLabPanel.render(); }
+            catch(err){ console.error('voice lab panel',err); }
+          }
+        },0);
+      });
+
     }else if(panel==='keys2'){
 
       // Parallel preview: command-card mock only — never refreshKeysPanel / islands.
@@ -1057,9 +1137,12 @@
     }else if(panel==='softPad'){
 
       // Defer heavy Soft Pad paint ??sync render on open used to ?? the drawer.
+      var softSurface=ui.softPadSurface==='keyboard'?'keyboard':'softPad';
+      mountSoftPadPageBody(softSurface);
       var softOpts={
         mappingId:opts.mappingId||'',
-        skipHookRefresh:!!opts.skipHookRefresh
+        skipHookRefresh:!!opts.skipHookRefresh,
+        surface:softSurface
       };
       var softOpenGen=0;
       try{
@@ -1087,6 +1170,12 @@
         }catch(_){}
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
           try{
+            if(softSurface==='keyboard'&&typeof global.OneToneSoftPadHub.setSoftPadPadMode==='function'){
+              global.OneToneSoftPadHub.setSoftPadPadMode('keys',{fromUser:true});
+            }else if(softSurface==='softPad'&&opts.focus==='softPadDisplay'&&
+                     typeof global.OneToneSoftPadHub.setSoftPadPadMode==='function'){
+              global.OneToneSoftPadHub.setSoftPadPadMode('show',{fromUser:true});
+            }
             global.OneToneSoftPadHub.render(softOpts);
           }catch(err){
             console.error('softPad panel defer render',err);

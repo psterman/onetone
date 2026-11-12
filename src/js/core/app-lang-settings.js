@@ -6,10 +6,12 @@
   function applySettingsTexts(d){
     var settingsNavBasic=$('settingsNavBasicLabel'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     var settingsNavKeys=$('settingsNavKeysLabel'); if(settingsNavKeys) settingsNavKeys.textContent=d.settingsNavKeys;
-    var settingsNavSoftPad=$('settingsNavSoftPadLabel'); if(settingsNavSoftPad) settingsNavSoftPad.textContent=d.settingsNavSoftPad||'虚拟键盘';
+    var settingsNavSoftPad=$('settingsNavSoftPadLabel'); if(settingsNavSoftPad) settingsNavSoftPad.textContent=d.settingsNavSoftPad||'软键盘';
+    var settingsNavKeyboard=$('settingsNavKeyboardLabel'); if(settingsNavKeyboard) settingsNavKeyboard.textContent=d.settingsNavKeyboard||'键盘';
     var settingsNavScenes=$('settingsNavScenesLabel'); if(settingsNavScenes) settingsNavScenes.textContent=d.settingsNavScenes;
     var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
+    var settingsNavVoiceLab=$('settingsNavVoiceLabLabel'); if(settingsNavVoiceLab) settingsNavVoiceLab.textContent=d.settingsNavVoiceLab||d.homeWbNavVoiceLab||'语音';
     var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
     var settingsNavTray=$('settingsNavTrayLabel'); if(settingsNavTray) settingsNavTray.textContent=d.homeWbNavTray||'托盘菜单';
     var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'模型提供方';

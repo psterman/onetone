@@ -11,12 +11,14 @@
     triggers: { panel: 'keys', home: false, deep: true, pro: false, note: 'mid' },
     keysSeq: { panel: 'keysSeq', home: false, deep: false, pro: false, note: 'action-chain' },
     keys2: { panel: 'habits', home: false, deep: true, pro: false, note: 'redirect-habits-lanes' },
-    // Soft Pad = 绑键动作面；Agent / 数据 = 独立配置目录（见 design-mock/agent-settings-dir-proto）
-    softPad: { panel: 'softPad', home: false, deep: true, pro: false, note: 'mid', focus: 'softPadLayout' },
+    // Soft Pad = 外观/何时显示；键盘 = Mac VK hub 绑键动作面（共用 Soft Pad 正文）
+    softPad: { panel: 'softPad', home: false, deep: true, pro: false, note: 'mid', focus: 'softPadDisplay' },
+    keyboard: { panel: 'keyboard', home: false, deep: true, pro: false, note: 'vk-hub', focus: 'softPadLayout' },
     agent: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-dir' },
     composerHistory: { panel: 'composerHistory', home: false, deep: false, pro: false, note: 'send-journal' },
     agentData: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-data-leaf', agentSub: 'data' },
     voice: { panel: 'voiceWake', home: false, deep: true, pro: false, note: 'mid' },
+    voiceLab: { panel: 'voiceLab', home: false, deep: false, pro: false, note: 'mac-voice-lab' },
     camera: { panel: 'camera', home: false, deep: true, pro: true, note: 'pro-no-home-cta' },
     camera2: { panel: 'camera2', home: false, deep: true, pro: false, note: 'goal-mgmt' },
     tray: { panel: 'tray', home: false, deep: true, pro: false, note: 'mid' },
