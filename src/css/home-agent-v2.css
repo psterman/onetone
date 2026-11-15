@@ -1009,13 +1009,15 @@
 }
 .ha2-wb-page-turn--tool.is-err{border-color:color-mix(in srgb, #c45c2a 45%, var(--ha2-line))}
 .ha2-wb-page-turn--thinking{
+  /* Opaque — translucent chips let CoT from neighbors bleed through as layered text. */
   border-color:color-mix(in srgb, var(--ha2-accent, #087ea4) 28%, var(--ha2-line));
-  background:color-mix(in srgb, var(--ha2-surface, #fff) 88%, var(--ha2-accent, #087ea4));
+  background:var(--ha2-surface, #fff);
+  isolation:isolate;
 }
 /* Live thinking is a plain block (not <details>) so WebView2 cannot crush it to a rail. */
 .ha2-wb-page-turn--tool.ha2-wb-page-turn--thinking.is-live{
   display:block !important;
-  overflow:visible;
+  overflow:hidden;
   min-height:0;
   padding:0;
 }
@@ -1025,8 +1027,8 @@
 }
 .ha2-wb-page-turn--thinking.is-live .ha2-tool-step-label{
   white-space:normal;
-  overflow:visible;
-  text-overflow:clip;
+  overflow:hidden;
+  text-overflow:ellipsis;
   line-height:1.35;
 }
 .ha2-wb-page-turn--thinking.is-live .ha2-tool-step-detail{
@@ -1037,6 +1039,8 @@
   overflow:auto;
   opacity:1 !important;
   padding-bottom:10px;
+  position:relative;
+  z-index:0;
 }
 /* Empty live chip: no detail node → no border-top rail under the header. */
 .ha2-wb-page-turn--thinking.is-live:not([data-ha2-has-detail="1"]) .ha2-tool-step-detail{
@@ -1059,6 +1063,11 @@
 /* Folded thinking must keep a solid chip — never crush to a 1px border line. */
 details.ha2-wb-page-turn--thinking{
   min-height:32px;
+  overflow:hidden;
+  background:var(--ha2-surface, #fff);
+}
+details.ha2-wb-page-turn--thinking:not([open]){
+  max-height:44px;
 }
 details.ha2-wb-page-turn--thinking > summary.ha2-tool-step-hd{
   display:flex !important;
@@ -1066,9 +1075,23 @@ details.ha2-wb-page-turn--thinking > summary.ha2-tool-step-hd{
   opacity:1 !important;
   min-height:30px;
   align-items:center;
+  position:relative;
+  background:var(--ha2-surface, #fff);
+  z-index:1;
+}
+details.ha2-wb-page-turn--thinking > summary.ha2-tool-step-hd::after{
+  content:'▾';
+  margin-left:auto;
+  flex:0 0 auto;
+  font-size:10px;
+  color:var(--ha2-muted, #718395);
+  opacity:.7;
+}
+details.ha2-wb-page-turn--thinking[open] > summary.ha2-tool-step-hd::after{
+  content:'▴';
 }
 .ha2-wb-page-turn--thinking .ha2-tool-step-badge{
-  background:color-mix(in srgb, var(--ha2-accent, #087ea4) 16%, transparent);
+  background:color-mix(in srgb, var(--ha2-accent, #087ea4) 16%, #fff);
   color:var(--ha2-ink, #16324a);
   font-weight:700;
   flex:0 0 auto;
@@ -1077,10 +1100,17 @@ details.ha2-wb-page-turn--thinking > summary.ha2-tool-step-hd{
   color:var(--ha2-ink, #16324a);
   font-weight:650;
   min-width:0;
+  flex:1 1 auto;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .ha2-wb-page-turn--thinking .ha2-tool-step-detail{
   font-size:12px;line-height:1.45;
   color:var(--ha2-ink, #16324a);
+  position:relative;
+  z-index:0;
+  background:var(--ha2-surface, #fff);
 }
 .ha2-wb-page-turn--tool.is-needs-input,
 .ha2-wb-page-turn--tool.is-deliver-approval{
@@ -2209,3 +2239,71 @@ html[data-theme="dark"] .ha2-picker.is-menu .ha2-picker-row:focus-visible{outlin
   white-space:nowrap;
 }
 .ha2-softpad-key-link:hover{opacity:.85;text-decoration:underline}
+.ot-team-card{margin:8px 0;padding:10px;border:1px solid rgba(120,130,150,.25);border-radius:10px;background:rgba(20,24,34,.5);font-size:12px}.ot-team-card__head{display:flex;justify-content:space-between;gap:8px}.ot-team-card__goal{margin:6px 0;opacity:.8}.ot-team-card__nodes{display:flex;flex-wrap:wrap;gap:4px}.ot-team-node{padding:2px 5px;border-radius:5px;background:rgba(120,130,150,.16)}.ot-team-node--done{background:rgba(50,180,110,.2)}.ot-team-node--failed{background:rgba(220,80,80,.2)}.ot-team-card button{margin-top:6px}
+.ot-team-card__bridge{margin-top:6px;word-break:break-all;opacity:.8}.ot-team-card__error{margin-top:6px;color:#e66}
+.ot-team-card__timeline{display:flex;gap:4px;margin:8px 0;overflow:auto}.ot-team-card__timeline span{font-size:10px;padding:3px 6px;border-radius:10px;background:#eef1f4;color:#667085;white-space:nowrap}.ot-team-card__timeline span.is-done{background:#dcefe5;color:#176b43}.ot-team-card__attention{margin-top:8px;padding:8px;border-radius:8px;background:#fff4e5;color:#8a4b08;font-size:12px}
+.ot-team-card__intro{margin:6px 0;color:#667085;font-size:12px;line-height:1.45}.ot-team-card__tag{font-size:10px;color:#087ea4;border:1px solid #9bd8e8;border-radius:10px;padding:2px 6px}
+.ha2-team-option{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-top:6px;padding:8px 10px;border:1px solid rgba(20,130,170,.18);border-radius:9px;background:rgba(20,130,170,.06);color:inherit;text-align:left;cursor:pointer}.ha2-team-option:hover{background:rgba(20,130,170,.13)}.ha2-team-option small{font-size:11px;opacity:.65;margin-top:2px}
+.ha2-team-top-btn{color:#167e9f!important}.ha2-team-top-btn:hover{background:rgba(20,130,170,.1)}
+.ot-team-drawer{position:fixed;z-index:1200;top:0;right:0;width:min(390px,92vw);height:100vh;padding:22px 20px;background:#fff;border-left:1px solid #d9e3e8;box-shadow:-18px 0 45px rgba(16,45,61,.16);display:flex;flex-direction:column;gap:14px}.ot-team-drawer[hidden]{display:none}.ot-team-drawer__head{display:flex;justify-content:space-between;align-items:flex-start;color:#123047}.ot-team-drawer__head small{display:block;margin-top:4px;color:#718395;font-size:12px}.ot-team-drawer__head button{border:0;background:transparent;font-size:24px;color:#718395;cursor:pointer}.ot-team-drawer__intro{font-size:13px;line-height:1.6;color:#5e7180;background:#f3f8fa;padding:12px;border-radius:10px}.ot-team-drawer textarea{min-height:150px;resize:vertical;border:1px solid #cbdbe2;border-radius:10px;padding:12px;font:inherit;line-height:1.5;outline:none}.ot-team-drawer textarea:focus{border-color:#2e9fc0;box-shadow:0 0 0 3px rgba(46,159,192,.12)}.ot-team-drawer__start{border:0;border-radius:9px;padding:11px 14px;background:#167e9f;color:#fff;font-weight:600;cursor:pointer}.ot-team-drawer__live{padding:12px;border-top:1px solid #e5edf0;color:#607783;font-size:13px}
+/* Focus home: docked right panel — compose stays left; chat + workflow on right. */
+.ot-team-panel{
+  position:absolute;z-index:40;top:0;right:0;bottom:0;
+  width:min(380px,40vw);padding:16px 14px 18px;
+  background:#fff;border-left:1px solid #d9e3e8;
+  box-shadow:-10px 0 28px rgba(16,45,61,.08);
+  display:flex;flex-direction:column;gap:10px;overflow:auto;
+}
+.ot-team-panel[hidden]{display:none!important}
+.ot-team-panel__head{display:flex;align-items:center;gap:8px;color:#123047}
+.ot-team-panel__head b{font-size:15px}
+.ot-team-panel__head span{margin-left:auto;font-size:12px;color:#167e9f}
+.ot-team-panel__head button{border:0;background:transparent;font-size:22px;line-height:1;color:#718395;cursor:pointer}
+.ot-team-panel__empty{display:flex;flex-direction:column;gap:10px;color:#5e7180;font-size:13px;line-height:1.55}
+.ot-team-panel__empty b{color:#123047;font-size:15px}
+.ot-team-panel__cta{border:0;border-radius:9px;padding:10px 12px;background:#167e9f;color:#fff;font-weight:650;cursor:pointer}
+.ot-team-panel__ghost{border:1px solid #cbdbe2;border-radius:9px;padding:9px 12px;background:#fff;color:#167e9f;cursor:pointer}
+.ot-team-panel__live{margin-top:auto;padding-top:10px;border-top:1px solid #e5edf0;color:#607783;font-size:12.5px;min-height:1.4em}
+.ot-team-panel__chat{display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow:auto;padding:4px 0}
+.ot-team-turn{padding:8px 10px;border-radius:10px;background:#f3f8fa;font-size:12.5px;line-height:1.45}
+.ot-team-turn.is-user{background:#e8f4f8}
+.ot-team-turn b{display:block;margin-bottom:2px;font-size:11px;color:#167e9f}
+.ot-team-turn p{margin:0;color:#243746;white-space:pre-wrap}
+.ot-team-panel__sub{display:block;margin-top:2px;color:#718395;font-size:12px}
+.ot-team-panel__status{font-size:13px;color:#243746;line-height:1.45}
+.ot-team-steps{display:flex;gap:6px;flex-wrap:wrap}
+.ot-team-steps span{font-size:11px;padding:4px 8px;border-radius:999px;background:#eef3f6;color:#718395}
+.ot-team-steps span.is-on{background:#d7eef5;color:#0f6f8c;font-weight:650}
+.ot-team-steps span.is-done{background:#dcefe5;color:#176b43}
+.ot-team-section{display:flex;flex-direction:column;gap:6px}
+.ot-team-section b{font-size:12px;color:#123047}
+.ot-team-section p{margin:0;font-size:12.5px;line-height:1.45;color:#445868}
+.ot-team-member{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #d9e3e8;border-radius:9px;padding:8px 10px;background:#fff;text-align:left;cursor:pointer;color:#123047}
+.ot-team-member.is-on{border-color:#2e9fc0;background:#f3fafc}
+.ot-team-member:disabled{opacity:.55;cursor:default}
+.ot-team-member__st{margin-left:auto;font-size:11px;color:#718395}
+.ot-team-member__err{display:block;width:100%;margin-top:2px;color:#b42318;font-size:11px}
+.ot-team-feed{display:flex;flex-direction:column;gap:4px;max-height:22vh;overflow:auto;padding:6px 0}
+.ot-team-feed__row{font-size:12px;color:#5e7180;line-height:1.4}
+.ot-team-details{margin:0;padding:8px;border-radius:8px;background:#f3f8fa;font-size:11px;overflow:auto;max-height:18vh;white-space:pre-wrap}
+
+/* Team workbench: calm status-first hierarchy. */
+.ot-team-statusline{display:flex;align-items:center;gap:8px;min-height:28px;padding:2px 0 4px}
+.ot-team-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.01em;background:#eef3f6;color:#526574}
+.ot-team-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.ot-team-badge.is-active{background:#e7f4f8;color:#116f8d}.ot-team-badge.is-success{background:#e5f3ea;color:#176b43}.ot-team-badge.is-warning{background:#fff3db;color:#9a6200}.ot-team-badge.is-danger{background:#fce9e7;color:#b42318}.ot-team-badge.is-muted{background:#eef0f2;color:#6a7782}
+.ot-team-provider{margin-left:auto;color:#718395;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
+.ot-team-steps{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px 0 8px}
+.ot-team-steps::before{content:"";position:absolute;left:8px;right:8px;top:15px;height:1px;background:#dce5e9;z-index:0}
+.ot-team-steps span{position:relative;z-index:1;text-align:center;font-size:10px;padding:19px 3px 2px;background:transparent;color:#8a99a4}
+.ot-team-steps span::before{content:"";position:absolute;top:9px;left:50%;width:10px;height:10px;transform:translateX(-50%);border:2px solid #d6e0e5;border-radius:50%;background:#fff}
+.ot-team-steps span.is-on{color:#116f8d;font-weight:700}.ot-team-steps span.is-on::before{border-color:#2e9fc0;background:#2e9fc0;box-shadow:0 0 0 4px rgba(46,159,192,.12)}
+.ot-team-steps span.is-done{color:#176b43;font-weight:650}.ot-team-steps span.is-done::before{border-color:#4da878;background:#4da878}
+.ot-team-section{padding-top:4px}.ot-team-section> b,.ot-team-evidence>b{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#718395}
+.ot-team-member{min-height:48px;transition:border-color .16s ease,background .16s ease,transform .16s ease}.ot-team-member:hover{border-color:#9fcbd8;background:#f7fcfd;transform:translateY(-1px)}
+.ot-team-member:focus-visible,.ot-team-panel__cta:focus-visible,.ot-team-panel__ghost:focus-visible,.ot-team-panel__head button:focus-visible{outline:3px solid rgba(46,159,192,.28);outline-offset:2px}
+.ot-team-member__st{font-variant-numeric:tabular-nums}.ot-team-evidence{padding:10px 11px;border:1px solid #e0eaee;border-radius:10px;background:#fbfdfe}.ot-team-evidence p{margin:5px 0 0;font-size:12px;line-height:1.45;color:#445868;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ot-team-feed{border-top:1px solid #edf2f4;padding-top:8px}.ot-team-feed__row{padding-left:10px;position:relative}.ot-team-feed__row::before{content:"";position:absolute;left:0;top:.55em;width:4px;height:4px;border-radius:50%;background:#9fb5c0}
+.ot-team-panel__cta,.ot-team-panel__ghost{transition:background .16s ease,border-color .16s ease,transform .16s ease}.ot-team-panel__cta:hover,.ot-team-panel__ghost:hover{transform:translateY(-1px)}.ot-team-panel__cta:hover{background:#126f8d}.ot-team-panel__ghost:hover{border-color:#7fb7c8;background:#f6fbfc}
+@media (max-width:760px){.ot-team-panel{position:fixed;top:auto;left:0;right:0;bottom:0;width:auto;height:min(82vh,680px);max-height:82vh;border-left:0;border-top:1px solid #d9e3e8;border-radius:18px 18px 0 0;box-shadow:0 -16px 35px rgba(16,45,61,.16);padding:18px 16px 22px}.ot-team-panel__chat{max-height:24vh}.ot-team-feed{max-height:16vh}.ot-team-provider{max-width:44%}}
+@media (prefers-reduced-motion:reduce){.ot-team-member,.ot-team-panel__cta,.ot-team-panel__ghost{transition:none}.ot-team-member:hover,.ot-team-panel__cta:hover,.ot-team-panel__ghost:hover{transform:none}}

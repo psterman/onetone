@@ -16,17 +16,24 @@
   var MOUNTS = {
     mapping: 'imePresetStripMapping',
     onboarding: 'imePresetStripOnboard',
-    voice: 'imePresetStripVoice'
+    voice: 'imePresetStripVoice',
+    // Lab 听写条与经典 voice 同源键 / imePresetId
+    voiceLab: 'voiceLabImePresetStrip'
   };
 
   var CARD_ICONS = {
     mapping: 'targetImeIconMapping',
     onboarding: 'onboardTargetImeIcon',
-    voice: 'voiceSettingsTargetImeIcon'
+    voice: 'voiceSettingsTargetImeIcon',
+    voiceLab: 'voiceLabSettingsTargetKeyIco'
   };
 
-  var selectedByContext = { mapping:'', onboarding:'', voice:'' };
+  var selectedByContext = { mapping:'', onboarding:'', voice:'', voiceLab:'' };
   var bound = false;
+
+  function isVoiceCtx(ctx){
+    return ctx === 'voice' || ctx === 'voiceLab';
+  }
 
   function $(id){ return document.getElementById(id); }
 
@@ -77,7 +84,7 @@
       selectedByContext.onboarding = (m && m.imePresetId) ? String(m.imePresetId) : '';
       return;
     }
-    if(ctx === 'voice'){
+    if(isVoiceCtx(ctx)){
       // Habit mapping is the write authority; config.imePresetId is fallback mirror only.
       var voiceId = '';
       try{
@@ -91,6 +98,7 @@
         voiceId = cfg && cfg.imePresetId ? String(cfg.imePresetId) : '';
       }
       selectedByContext.voice = voiceId;
+      selectedByContext.voiceLab = voiceId;
     }
   }
 
@@ -120,13 +128,14 @@
       var m = a && a.getActiveMapping ? a.getActiveMapping() : null;
       return m && m.targetKey ? m.targetKey : '';
     }
-    if(ctx === 'voice'){
+    if(isVoiceCtx(ctx)){
       var st = global.OneToneState && global.OneToneState.state;
       var cfg = st && st.config;
       if(!cfg) return '';
       var sapi = cfg.voiceSapi || cfg.voice_sapi || {};
       var vosk = cfg.voiceVosk || cfg.voice_vosk || {};
-      return normalizeKey(sapi.targetKey || vosk.targetKey || '');
+      var end = cfg.voiceEnd || cfg.voice_end || {};
+      return normalizeKey(sapi.targetKey || vosk.targetKey || end.targetKey || '');
     }
     return '';
   }
@@ -192,6 +201,16 @@
     if(ctx === 'onboarding'){
       var a = global.OneToneApp;
       if(a && a.startTargetRecord) a.startTargetRecord();
+      return;
+    }
+    // Lab / classic voice：自定义听写键 → Lab 居中录键（与命令键同源）
+    if(isVoiceCtx(ctx)){
+      try{
+        var Lab = global.OneToneVoiceLabPanel;
+        if(Lab && typeof Lab.rerecordDictationKey === 'function'){
+          Lab.rerecordDictationKey({ custom: true });
+        }
+      }catch(_){}
     }
   }
 
@@ -369,6 +388,7 @@
       // refresh('voice') repaints keycap chord + IME icon; don't wipe button children.
       if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
       refresh('voice');
+      refresh('voiceLab');
       try{
         var hdr=global.OneToneVoicePageHeaderRender;
         var scopeM=hdr&&typeof hdr.resolveScopeMapping==='function'?hdr.resolveScopeMapping(null):null;
@@ -420,11 +440,18 @@
         a.saveConfigPatch(function(m){ m.imePresetId = ''; });
       }
     }
-    if(ctx === 'voice'){
+    if(isVoiceCtx(ctx)){
       var st = global.OneToneState && global.OneToneState.state;
       if(st && st.config) st.config.imePresetId = '';
+      setSelectedId('voice', '');
+      setSelectedId('voiceLab', '');
     }
-    refresh(ctx);
+    if(isVoiceCtx(ctx)){
+      refresh('voice');
+      refresh('voiceLab');
+    }else{
+      refresh(ctx);
+    }
   }
 
   function applyPreset(ctx, preset){
@@ -433,7 +460,7 @@
     if(isContextDisabled(ctx)) return;
     if(ctx === 'mapping') applyMappingTarget(preset.targetKey, preset.id);
     else if(ctx === 'onboarding') applyOnboardingTarget(preset.targetKey, preset.id);
-    else if(ctx === 'voice') applyVoiceTarget(preset.targetKey, preset.id);
+    else if(isVoiceCtx(ctx)) applyVoiceTarget(preset.targetKey, preset.id);
   }
 
   function friendlyChord(combo){
@@ -527,38 +554,56 @@
       +'</button>';
     host.innerHTML = html;
     renderCardBadge(ctx);
-    if(ctx === 'voice'){
-      var confirmEl = $('imePresetConfirmVoice');
-      if(confirmEl){
-        confirmEl.hidden = true;
-        confirmEl.textContent = '';
-      }
-      var display = $('voiceSettingsTargetKey');
-      var chordEl = $('voiceSettingsTargetKeyChord');
-      var icoEl = $('voiceSettingsTargetKeyIco');
+    if(isVoiceCtx(ctx)){
       var chord = friendlyChord(key || (presetById(selectedId)||{}).targetKey || '');
       var preset = presetById(selectedId);
-      if(chordEl) chordEl.textContent = chord || '—';
-      else if(display && chord) display.textContent = chord || '—';
-      if(icoEl){
-        if(preset && String(preset.icon || '').trim()){
-          icoEl.src = preset.icon;
-          icoEl.alt = t(preset.shortKey || preset.nameKey || '');
-          icoEl.hidden = false;
-          if(display) display.classList.add('has-ime-ico');
-        }else{
-          icoEl.hidden = true;
-          icoEl.removeAttribute('src');
-          icoEl.alt = '';
-          if(display) display.classList.remove('has-ime-ico');
+      if(ctx === 'voice'){
+        var confirmEl = $('imePresetConfirmVoice');
+        if(confirmEl){
+          confirmEl.hidden = true;
+          confirmEl.textContent = '';
+        }
+        var display = $('voiceSettingsTargetKey');
+        var chordEl = $('voiceSettingsTargetKeyChord');
+        var icoEl = $('voiceSettingsTargetKeyIco');
+        if(chordEl) chordEl.textContent = chord || '—';
+        else if(display && chord) display.textContent = chord || '—';
+        if(icoEl){
+          if(preset && String(preset.icon || '').trim()){
+            icoEl.src = preset.icon;
+            icoEl.alt = t(preset.shortKey || preset.nameKey || '');
+            icoEl.hidden = false;
+            if(display) display.classList.add('has-ime-ico');
+          }else{
+            icoEl.hidden = true;
+            icoEl.removeAttribute('src');
+            icoEl.alt = '';
+            if(display) display.classList.remove('has-ime-ico');
+          }
+        }
+        var hint = $('voiceImeDeskHint');
+        if(hint){
+          var p2 = presetById(selectedId);
+          if(p2){
+            hint.textContent =
+              '已选 ' + t(p2.shortKey || p2.nameKey) + '，听写键是 ' + chord + '。说 01 口令 = 注入该键。';
+          }
         }
       }
-      var hint = $('voiceImeDeskHint');
-      if(hint){
-        var p2 = presetById(selectedId);
-        if(p2){
-          hint.textContent =
-            '已选 ' + t(p2.shortKey || p2.nameKey) + '，听写键是 ' + chord + '。说 01 口令 = 注入该键。';
+      if(ctx === 'voiceLab'){
+        var labChord = $('voiceLabSettingsTargetKeyChord');
+        var labIco = $('voiceLabSettingsTargetKeyIco');
+        if(labChord) labChord.textContent = chord || '—';
+        if(labIco){
+          if(preset && String(preset.icon || '').trim()){
+            labIco.src = preset.icon;
+            labIco.alt = t(preset.shortKey || preset.nameKey || '');
+            labIco.hidden = false;
+          }else{
+            labIco.hidden = true;
+            labIco.removeAttribute('src');
+            labIco.alt = '';
+          }
         }
       }
     }
@@ -571,11 +616,10 @@
   }
 
   function bind(){
-    if(bound) return;
-    bound = true;
     Object.keys(MOUNTS).forEach(function(ctx){
       var host = $(MOUNTS[ctx]);
-      if(!host) return;
+      if(!host || host.dataset.imeBound === '1') return;
+      host.dataset.imeBound = '1';
       host.addEventListener('click', function(ev){
         var pickerBtn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-picker]') : null;
         if(pickerBtn && !pickerBtn.disabled){
@@ -657,12 +701,15 @@
   global.OneToneImePresets = {
     init: init,
     refresh: refresh,
+    bind: bind,
     applyLang: applyLang,
     presets: PRESETS,
     presetById: presetById,
     buildLabeledStripHtml: buildLabeledStripHtml,
     confirmLineText: confirmLineText,
     friendlyChord: friendlyChord,
+    /** 写入 sapi/vosk/end.targetKey + imePresetId（voice / voiceLab 同源） */
+    setVoiceTarget: applyVoiceTarget,
     clearSelectedForManualRecord: clearSelectedForManualRecord,
     renderCardBadge: renderCardBadge,
     renderMappingTargetImeBadge: renderMappingTargetImeBadge

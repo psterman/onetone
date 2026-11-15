@@ -272,8 +272,10 @@ pub const MAX_IDENTICAL_TOOL: u32 = 3;
 pub const MAX_NO_PROGRESS: u32 = 4;
 /// Hard cap on tool invocations (budget), independent of turn count.
 pub const MAX_TOOL_CALLS: u32 = 48;
-/// Wall-clock budget from task created_at (ms).
+/// Wall-clock budget from task created_at (ms). Work/edit lane.
 pub const MAX_WALL_MS: u64 = 15 * 60 * 1000;
+/// Chat / Team Lead lane — orchestration waits on workers and SSE; 15m is too tight.
+pub const MAX_WALL_MS_READ_ONLY: u64 = 60 * 60 * 1000;
 /// Chat lane: soft-cap web_search attempts — engine nudges force-finish (not stuck_loop).
 pub const CHAT_WEB_SEARCH_CAP: u32 = 3;
 /// Chat lane: after this many failed/empty web_search results, nudge force-finish.
@@ -281,7 +283,7 @@ pub const CHAT_WEB_SEARCH_FAIL_CAP: u32 = 2;
 
 #[cfg(test)]
 mod tests {
-    use super::WaitingReason;
+    use super::{WaitingReason, MAX_WALL_MS, MAX_WALL_MS_READ_ONLY};
 
     #[test]
     fn waiting_reason_roundtrip() {
@@ -296,5 +298,12 @@ mod tests {
         }
         assert!(WaitingReason::require("bogus").is_err());
         assert!(WaitingReason::parse("external_change").is_none());
+    }
+
+    #[test]
+    fn read_only_wall_is_looser_than_edit() {
+        assert!(MAX_WALL_MS_READ_ONLY > MAX_WALL_MS);
+        assert_eq!(MAX_WALL_MS, 15 * 60 * 1000);
+        assert_eq!(MAX_WALL_MS_READ_ONLY, 60 * 60 * 1000);
     }
 }

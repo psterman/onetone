@@ -8,16 +8,18 @@
   var NAV = {
     home: { panel: null, home: true, deep: false, pro: false, note: 'now-cockpit' },
     schemes: { panel: 'habits', home: false, deep: false, pro: false, note: 'primary' },
-    triggers: { panel: 'keys', home: false, deep: true, pro: false, note: 'mid' },
+    // Classic Keys nav redirects to action-chain desk (multi-dir page kept as DOM host only).
+    triggers: { panel: 'keysSeq', home: false, deep: false, pro: false, note: 'redirect-keysSeq' },
     keysSeq: { panel: 'keysSeq', home: false, deep: false, pro: false, note: 'action-chain' },
     keys2: { panel: 'habits', home: false, deep: true, pro: false, note: 'redirect-habits-lanes' },
-    // Soft Pad = 外观/何时显示；键盘 = Mac VK hub 绑键动作面（共用 Soft Pad 正文）
-    softPad: { panel: 'softPad', home: false, deep: true, pro: false, note: 'mid', focus: 'softPadDisplay' },
+    // Soft Pad 入口并入键盘（共用 Soft Pad 正文 + keyboard surface）
+    softPad: { panel: 'keyboard', home: false, deep: true, pro: false, note: 'alias-keyboard', focus: 'softPadDisplay' },
     keyboard: { panel: 'keyboard', home: false, deep: true, pro: false, note: 'vk-hub', focus: 'softPadLayout' },
     agent: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-dir' },
     composerHistory: { panel: 'composerHistory', home: false, deep: false, pro: false, note: 'send-journal' },
     agentData: { panel: 'agent', home: false, deep: true, pro: false, note: 'agent-data-leaf', agentSub: 'data' },
-    voice: { panel: 'voiceWake', home: false, deep: true, pro: false, note: 'mid' },
+    // Product voice entry is voiceLab; classic voiceWake remains for legacy:true opens.
+    voice: { panel: 'voiceLab', home: false, deep: false, pro: false, note: 'alias-voiceLab' },
     voiceLab: { panel: 'voiceLab', home: false, deep: false, pro: false, note: 'mac-voice-lab' },
     camera: { panel: 'camera', home: false, deep: true, pro: true, note: 'pro-no-home-cta' },
     camera2: { panel: 'camera2', home: false, deep: true, pro: false, note: 'goal-mgmt' },

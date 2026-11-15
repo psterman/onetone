@@ -286,6 +286,13 @@
     const endPhrases=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]));
     const cancelPhrases=((endSnap.cancelPhrasesZh||endSnap.cancel_phrases_zh||[]).concat(endSnap.cancelPhrasesEn||endSnap.cancel_phrases_en||[]));
     const sendPhrases=((endSnap.sendPhrasesZh||endSnap.send_phrases_zh||[]).concat(endSnap.sendPhrasesEn||endSnap.send_phrases_en||[]));
+    const Scope=global.OneToneVoiceScope;
+    const scope=Scope&&Scope.describeScope
+      ?Scope.describeScope(Scope.resolveEditMapping({habitMapping:mapping}))
+      :null;
+    const statusSnap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.getVoiceStatusSnapshot
+      ?global.OneToneVoiceUiState.getVoiceStatusSnapshot()
+      :null;
     const vm={
       loading:loading,
       mode:mode,
@@ -308,7 +315,13 @@
       habitOverrideEnabled:false,
       voiceOn:!!(summary&&summary.voiceOn),
       statusLine:summary?summary.statusLine:'',
-      lite:hooks().voiceEndUiUsesLiteMode()
+      lite:hooks().voiceEndUiUsesLiteMode(),
+      scope:scope,
+      scopeIsGlobal:scope?!!scope.isGlobal:true,
+      scopeOverrideLabel:scope?scope.overrideLabel:'',
+      saveImpactLabel:scope?scope.saveImpactLabel:'',
+      resourceReady:statusSnap?!!statusSnap.resourceReady:true,
+      statusSnapshot:statusSnap
     };
     vm.finishChipLabel=loading?t('homeLiveLoading'):resolveFinishChipLabel(vm);
     vm.endDetectionLabel=vm.finishChipLabel;

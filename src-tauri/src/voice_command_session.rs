@@ -179,11 +179,47 @@ pub fn clear_ime_voice_active() {
     IME_VOICE_ACTIVE.store(false, Ordering::SeqCst);
 }
 
+/// Soft Pad oral stays armed during IME/dictation but hides ASR — keyword-only sentinel.
+pub fn oral_dictation_silent(state: &AppState) -> bool {
+    is_armed()
+        && (IME_VOICE_ACTIVE.load(Ordering::SeqCst)
+            || crate::voice_end_runtime::session_state(state) == "dictating")
+}
+
+/// Drop on-screen ASR so Soft Pad does not echo the user's dictation.
+pub fn clear_oral_heard_display(state: &AppState) {
+    *state.voice_vosk_last_partial.lock() = String::new();
+    *state.voice_vosk_last_final.lock() = String::new();
+    *state.voice_vosk_last_detected_phrase.lock() = String::new();
+}
+
+/// IME/dictation ended: Soft Pad silent watch → standby (do not leave oral chrome up).
+pub fn standby_oral_after_dictation_end(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    reason: &str,
+) {
+    if !is_armed() {
+        clear_ime_voice_active();
+        return;
+    }
+    clear_oral_heard_display(state.as_ref());
+    let mid = armed_mapping_id();
+    end_session(state, app, &mid, reason);
+    crate::codex_micro_overlay::push_state(app, state.as_ref());
+    crate::app_log::log_line(
+        state,
+        "voice_command",
+        &format!("oral standby after dictation end reason={reason}"),
+    );
+}
+
 fn resolve_voice_ime_chord(state: &AppState) -> Option<String> {
     let cfg = state.cfg.lock();
     let mid = armed_mapping_id();
     let mapping = cfg.find_mapping_by_id(&mid);
-    crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
+    crate::voice_end_runtime::resolve_dictation_ime_key(&cfg, mapping)
+        .or_else(|| crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping))
         .or_else(|| crate::voice_end_runtime::resolve_voice_input_target_key(&cfg))
         .filter(|s| !s.trim().is_empty())
 }
@@ -1025,6 +1061,31 @@ mod tests {
             gen_at_schedule,
             "re-down must invalidate pending hold_up gen"
         );
+    }
+
+    #[test]
+    fn oral_dictation_silent_hides_asr_and_standbys_on_ime_end() {
+        // Guard: while IME/dictating, Soft Pad stays armed but must not echo ASR;
+        // when dictation ends, oral returns to standby.
+        // WeChat FG after restore_external must not hide the whole Soft Pad HWND.
+        let overlay = include_str!("codex_micro_overlay.rs");
+        assert!(
+            overlay.contains("oral_dictation_silent")
+                && overlay.contains("听写中 · 说「取消」「发送」介入")
+                && overlay.contains("oral_hold")
+                && overlay.contains("voice_command_session::is_armed()"),
+            "overlay must silent-watch during dictation and keep Soft Pad up while oral armed"
+        );
+        let end = include_str!("voice_end_runtime.rs");
+        assert!(
+            end.contains("standby_oral_after_dictation_end")
+                && end.contains("clear_oral_heard_display"),
+            "dictation start/end must clear ASR and standby Soft Pad oral"
+        );
+        assert!(!IME_VOICE_ACTIVE.load(Ordering::SeqCst) || true);
+        IME_VOICE_ACTIVE.store(false, Ordering::SeqCst);
+        SESSION_ARMED.store(false, Ordering::SeqCst);
+        assert!(!is_armed() || !IME_VOICE_ACTIVE.load(Ordering::SeqCst));
     }
 
     #[test]

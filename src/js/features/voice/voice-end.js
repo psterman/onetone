@@ -766,6 +766,12 @@
     var catalog=endCatalogForLang(lang);
     var model=pc.buildPhraseTagModel(catalog,active);
     pc.renderPhraseTags('voiceEndPhraseTags',model);
+    // Lab 听写「留下」才挂结束词；说了才发/停顿就发由 renderSendPhraseTags 接管
+    var labModeBtn=document.querySelector('#voiceLabOutputModeSegments [data-vl-output-mode].is-active');
+    var labMode=labModeBtn?labModeBtn.getAttribute('data-vl-output-mode'):'confirm';
+    if(!labMode || labMode==='confirm'){
+      pc.renderPhraseTags('voiceLabEndPhraseTags',model);
+    }
     var legacy=$('voiceEndCustomChips');
     if(legacy){ legacy.hidden=true; legacy.innerHTML=''; }
   }
@@ -992,7 +998,11 @@
     var lists=currentCancelPhraseLists();
     var active=lang==='en'?lists.en:lists.zh;
     var catalog=catalogForLang('#voiceCancelPresetsZh','#voiceCancelPresetsEn',lang);
-    pc.renderPhraseTags('voiceCancelPhraseTags',pc.buildPhraseTagModel(catalog,active));
+    var model=pc.buildPhraseTagModel(catalog,active);
+    pc.renderPhraseTags('voiceCancelPhraseTags',model);
+    if(document.getElementById('voiceLabCancelPhraseTags')){
+      pc.renderPhraseTags('voiceLabCancelPhraseTags',model);
+    }
   }
 
   function renderSendPhraseTags(){
@@ -1002,7 +1012,14 @@
     var lists=currentSendPhraseLists();
     var active=lang==='en'?lists.en:lists.zh;
     var catalog=catalogForLang('#voiceSendPresetsZh','#voiceSendPresetsEn',lang);
-    pc.renderPhraseTags('voiceSendPhraseTags',pc.buildPhraseTagModel(catalog,active));
+    var model=pc.buildPhraseTagModel(catalog,active);
+    pc.renderPhraseTags('voiceSendPhraseTags',model);
+    // Lab 听写「说了才发 / 停顿就发」主词条挂同一宿主
+    var labModeBtn=document.querySelector('#voiceLabOutputModeSegments [data-vl-output-mode].is-active');
+    var labMode=labModeBtn?labModeBtn.getAttribute('data-vl-output-mode'):'';
+    if(labMode==='phrase'||labMode==='auto'){
+      pc.renderPhraseTags('voiceLabEndPhraseTags',model);
+    }
   }
 
   function syncCancelPresets(zh,en){

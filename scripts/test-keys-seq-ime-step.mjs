@@ -13,6 +13,15 @@ const root = path.join(__dirname, '..');
 const html = readFileSync(path.join(root, 'src/index.html'), 'utf8');
 assert.match(html, /id="settingsPanelKeys"/, 'legacy keys panel must remain');
 assert.match(html, /id="settingsPanelKeysSeq"/, 'new keysSeq panel present');
+assert.doesNotMatch(html, /id="keysSeqOpenLegacy"/, 'no open-classic-Keys link on keysSeq');
+assert.match(html, /id="keysSeqTriggerChrome"/, 'keysSeq hosts trigger mode/conflict chrome');
+assert.match(html, /id="keysSeqTriggerModesSlot"/, 'trigger modes mount slot');
+assert.match(html, /id="keysSeqTriggerConflictSlot"/, 'trigger conflict mount slot');
+assert.match(
+  html,
+  /id="wbNavTriggers"[^>]*\bhidden\b/,
+  'classic Keys nav entry hidden'
+);
 assert.match(html, /id="keysSeqTriggerCap"/, 'keysSeq trigger keycap');
 assert.match(html, /id="keysSeqNewAction"/, '新建 on left catalog');
 assert.match(html, /id="keysSeqSavedList"/, 'left catalog list always present');
@@ -55,14 +64,25 @@ assert.match(scene, /onKeysSeqPage\(\)[\s\S]{0,200}OneToneKeysSeqPanel/, 'jump/n
 
 const drawer = readFileSync(path.join(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
 assert.match(drawer, /keysSeq:'settingsPanelKeysSeq'/, 'PANEL_IDS keysSeq');
-assert.match(drawer, /panel==='keysSeq'/, 'drawer render hook');
+assert.match(drawer, /panel==='keysSeq'|panel==='keys'\|\|panel==='keysSeq'/, 'drawer keysSeq render hook');
 assert.match(drawer, /settingsPanel\)==='keysSeq'/, 'refreshKeysPanel routes to keysSeq');
+assert.match(
+  drawer,
+  /keyWake['"]?\s*\|\|\s*panel===['"]keys['"][\s\S]*?return ['"]keysSeq['"]/,
+  'normalizePanel maps keys/keyWake → keysSeq'
+);
+assert.match(
+  drawer,
+  /function isKeysPanel[\s\S]*?return panel==='keysSeq'/,
+  'isKeysPanel treats keysSeq as Keys surface'
+);
+assert.match(drawer, /unmountLiveKeysChrome/, 'leaving keysSeq restores live chrome');
 
 const homeLive = readFileSync(path.join(root, 'src/js/features/home/home-live.js'), 'utf8');
 assert.match(homeLive, /id:'ime'/, 'add menu includes ime');
 assert.match(homeLive, /type:'ime'/, 'ime step shape in editor');
 assert.match(homeLive, /keysSeqAddHint/, 'step menu capability tooltips');
-assert.match(homeLive, /emptyPlus/, 'empty middle shows hero ＋');
+assert.match(homeLive, /keys-seq-add-strip|keys-seq-add-plus/, 'step add strip markup');
 assert.match(homeLive, /data-inline-ime-preset-pick/, 'ime preset chips with icons');
 assert.match(homeLive, /data-inline-ime-aim-demo/, 'ime aim demo toggle');
 assert.match(homeLive, /data-inline-ime-finish-mode/, 'ime finish modes');
@@ -86,6 +106,15 @@ assert.match(seqCss, /grid-column:\s*1\/-1/, 'step body full-bleed under header'
 const seqJs = readFileSync(path.join(root, 'src/js/features/mapping/keys-seq-panel.js'), 'utf8');
 assert.match(seqJs, /createCustomKeyMatchMapping|refreshKeysTargetActions/, 'seq face uses live custom-key editor');
 assert.match(seqJs, /keysSeqKeyHost|mountLivePane/, 'custom-key desk hosts live Keys pane');
+assert.match(seqJs, /mountTriggerChrome|unmountTriggerChrome|unmountLiveKeysChrome/, 'trigger chrome mount/unmount');
+assert.match(seqJs, /keysTriggerModeHost|keysTriggerConflict/, 'trigger hosts remounted into keysSeq');
+assert.match(seqJs, /focusDictationPeerForIme/, 'IME face focuses dictation peer before strip paint');
+assert.doesNotMatch(seqJs, /keysSeqOpenLegacy|panel:\s*['"]keys['"]/, 'no legacy Keys open from keysSeq');
+assert.match(
+  readFileSync(path.join(root, 'src/index.html'), 'utf8'),
+  /id="keysSeqImePurpose"/,
+  'IME face states dictation purpose'
+);
 assert.match(seqJs, /paintSavedList/, 'catalog list painted on left');
 assert.match(seqJs, /keysSeqNewAction/, '新建动作 wired on left');
 assert.doesNotMatch(seqJs, /savedExpanded|keysSeqSavedToggle/, 'catalog always open (no accordion)');
@@ -153,6 +182,19 @@ assert.match(ver, /Action::Ime \{ value/, 'single Ime counts as wake key');
 
 const shell = readFileSync(path.join(root, 'src/js/shared/shell-ia-convergence.js'), 'utf8');
 assert.match(shell, /keysSeq:\s*\{\s*panel:\s*'keysSeq'/, 'shell-ia keysSeq');
+assert.match(shell, /triggers:\s*\{\s*panel:\s*'keysSeq'/, 'shell-ia triggers → keysSeq');
+
+const i18n = readFileSync(path.join(root, 'src/js/core/i18n.js'), 'utf8');
+assert.doesNotMatch(
+  i18n,
+  /keysSeqDesc:'[^']*原「按键设置」|keysSeqImeOpenKeys:'去按键设置精修|keysSeqImeFinishSummary:'[^']*完整配置在原按键设置/,
+  'zh keysSeq copy no longer points at classic Keys'
+);
+assert.doesNotMatch(
+  i18n,
+  /classic Keys page is unchanged|Refine in classic Keys|full config on classic Keys/,
+  'en keysSeq copy no longer points at classic Keys'
+);
 
 let committed = null;
 const mapping = {

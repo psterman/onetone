@@ -2570,6 +2570,96 @@ pub fn quick_focus_app_target_for_hold(_app_target_id: &str) -> bool {
     false
 }
 
+/// Lab「微信」听写键 (Ctrl+Shift+Win) is a WeChat global hotkey. Soft Pad oral
+/// `oral_composer_init` often leaves Cursor FG — then WeChat pops its floating
+/// intermediate strip instead of attaching to the chat caret. Prefer WeChatAppEx.
+#[cfg(windows)]
+pub fn focus_wechat_family_for_dictation() -> bool {
+    use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
+    use winapi::shared::windef::{HWND, RECT};
+    use winapi::um::winuser::{
+        EnumWindows, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowRect,
+        IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
+    };
+
+    if let Some(id) = crate::app_identity::foreground_app_identity() {
+        if crate::config::is_wechat_family_identity(&id)
+            && id.exe_name.eq_ignore_ascii_case("WeChatAppEx.exe")
+        {
+            return true;
+        }
+    }
+
+    struct EnumCtx {
+        candidates: Vec<(HWND, bool, bool, i64)>,
+    }
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let ctx = &mut *(lparam as *mut EnumCtx);
+        if IsWindowVisible(hwnd) == 0 {
+            return TRUE;
+        }
+        if !GetWindow(hwnd, GW_OWNER).is_null() {
+            return TRUE;
+        }
+        if GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW as i32 != 0 {
+            return TRUE;
+        }
+        let Some(identity) = crate::app_identity::identity_for_window(hwnd) else {
+            return TRUE;
+        };
+        if !crate::config::is_wechat_family_identity(&identity) {
+            return TRUE;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        let area = if GetWindowRect(hwnd, &mut rect) != 0 {
+            ((rect.right - rect.left) as i64 * (rect.bottom - rect.top) as i64).max(0)
+        } else {
+            0
+        };
+        if area < 20_000 {
+            return TRUE;
+        }
+        let class_name = window_class_name(hwnd);
+        if is_helper_app_window(&identity.window_title, &class_name, area) {
+            return TRUE;
+        }
+        let prefers_chat = identity.exe_name.eq_ignore_ascii_case("WeChatAppEx.exe");
+        let is_fg = GetForegroundWindow() == hwnd;
+        ctx.candidates.push((hwnd, prefers_chat, is_fg, area));
+        TRUE
+    }
+
+    let mut ctx = EnumCtx {
+        candidates: Vec::new(),
+    };
+    unsafe {
+        EnumWindows(Some(enum_proc), &mut ctx as *mut EnumCtx as LPARAM);
+    }
+    let Some((hwnd, _, _, _)) = ctx
+        .candidates
+        .into_iter()
+        .max_by_key(|(hwnd, prefers, is_fg, area)| (*prefers, *is_fg, *area, *hwnd as isize))
+    else {
+        return false;
+    };
+    if !crate::keyboard::focus_window(hwnd) {
+        return false;
+    }
+    crate::keyboard::note_last_external_hwnd(hwnd as isize);
+    std::thread::sleep(Duration::from_millis(50));
+    true
+}
+
+#[cfg(not(windows))]
+pub fn focus_wechat_family_for_dictation() -> bool {
+    false
+}
+
 #[cfg(windows)]
 pub fn quick_focus_codex_for_hold() -> bool {
     quick_focus_app_target_for_hold(CODEX_APP_TARGET_ID)

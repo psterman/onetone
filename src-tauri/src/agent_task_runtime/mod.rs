@@ -12,6 +12,8 @@ mod providers;
 mod resume;
 mod scope;
 mod store;
+pub mod team;
+mod team_tools;
 mod tools;
 mod verify_accept;
 mod workbuddy;
@@ -28,6 +30,21 @@ pub use engine::{
 };
 pub use providers::{parse_provider_id, probe_workbuddy_edit, provider_ready_snapshot};
 pub use resume::{abandon_task, on_process_start, resume_task};
+pub use team::{
+    add_artifact as api_team_add_artifact, advance as api_team_advance,
+    confirm_plan as api_team_confirm_plan, dispatch_read_only as api_team_dispatch_read_only,
+    reconcile_team as api_team_reconcile, reconcile_only as api_team_reconcile_only,
+    recover_all as api_team_recover_all, resume_team as api_team_resume, team_tick as api_team_tick,
+    set_node_status as api_team_set_node_status, snapshot as api_team_snapshot,
+    start as api_team_start, StartTeamRequest, TeamArtifactRequest, TeamConfirmPlanRequest,
+    task_create as api_team_task_create, task_get as api_team_task_get,
+    task_list as api_team_task_list, TeamAdvanceRequest,
+    TeamDispatchRequest, TeamIdRequest, TeamNodeStatusRequest, TeamRunDto, TeamTaskIdRequest,
+    TeamTaskCreateRequest, TeamTaskListRequest,
+    cancel_team_children as api_team_cancel_children, events as api_team_events,
+    snapshot_by_parent_task as api_team_snapshot_by_parent, TeamEventDto, TeamEventsRequest,
+    TeamParentTaskRequest, TeamToolCaller,
+};
 pub use verify_accept::{ensure_chat_scratch, ensure_verify_sandbox, evaluate_verify};
 
 use engine::{approve_patch as eng_approve, reject_patch as eng_reject, start_task, StartOpts};

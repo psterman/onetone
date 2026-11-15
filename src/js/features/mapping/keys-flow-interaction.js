@@ -62,7 +62,7 @@
     if(e.__vpKeysPanelHandled) return;
     if(!isKeysPanelActive()) return;
 
-    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch],[data-delay-ms],[data-delay-custom],[data-cancel-win],[data-cancel-channel],[data-cancel-gesture],[data-cancel-phrase-remove],[data-cancel-phrase-add]')){
+    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch],[data-dictation-press],[data-gesture-scheme],[data-delay-ms],[data-delay-custom],[data-cancel-win],[data-cancel-channel],[data-cancel-gesture],[data-cancel-phrase-remove],[data-cancel-phrase-add]')){
       dispatchFinishClick(e);
     }
   }

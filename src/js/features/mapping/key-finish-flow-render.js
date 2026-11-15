@@ -1217,37 +1217,47 @@
       refreshAfterGestureChange();
       return true;
     }
-    var schemeBtn=el.closest&&el.closest('[data-gesture-scheme]');
-    if(schemeBtn){
-      var sch=String(schemeBtn.getAttribute('data-gesture-scheme')||'off').toLowerCase();
-      var gest=String(schemeBtn.getAttribute('data-gesture')||'tap').toLowerCase();
-      var midSch=String(schemeBtn.getAttribute('data-mapping-id')||'').trim();
-      var rowSch=midSch?appState().config.mappings.find(function(x){return x.id===midSch;}):hooks().selectedMapping();
-      if(!rowSch) return false;
+    var pressBtn=el.closest&&el.closest('[data-dictation-press]');
+    if(pressBtn){
+      var press=String(pressBtn.getAttribute('data-dictation-press')||'tap').toLowerCase();
+      var rowPress=hooks().selectedMapping();
+      if(!rowPress) return false;
       e.stopPropagation();
-      if(sch==='voiceinput'||sch==='voice_input') sch='dictation';
-      if(sch==='voice_command'||sch==='oral') sch='voiceCommand';
-      if(sch!=='dictation'&&sch!=='voiceCommand') sch='off';
-      if(gest!=='double'&&gest!=='long') gest='tap';
-      var modes=rowSch.gestureModes&&typeof rowSch.gestureModes==='object'
-        ?{tap:rowSch.gestureModes.tap,double:rowSch.gestureModes.double,long:rowSch.gestureModes.long}
-        :null;
-      if(!modes){
-        // Seed from legacy single triggerMode so other gestures stay off.
-        var ui=String(rowSch.triggerMode||'tap').toLowerCase();
-        if(ui==='hold'||ui==='longpress'||ui==='perpress') modes={tap:'off',double:'off',long:'dictation'};
-        else if(ui==='double') modes={tap:'off',double:'dictation',long:'off'};
-        else modes={tap:'dictation',double:'off',long:'off'};
+      if(press!=='double'&&press!=='long') press='tap';
+      if(press==='long'){
+        var gateApiP=global.OneToneHomeWorkbenchCompat;
+        var gateP=gateApiP&&gateApiP.canUseHoldMode
+          ?gateApiP.canUseHoldMode(rowPress.id,{currentMode:rowPress.triggerMode})
+          :{ok:true};
+        if(gateP&&gateP.ok===false){
+          if(global.OneToneApp&&global.OneToneApp.toast){
+            global.OneToneApp.toast(t(gateP.messageKey||'keysHoldGateUntested'),'warn');
+          }
+          return true;
+        }
       }
-      modes[gest]=sch;
-      rowSch.gestureModes=modes;
-      // Keep triggerMode aligned with the primary non-off gesture for legacy readers.
-      if(modes.long&&modes.long!=='off') rowSch.triggerMode='longpress';
-      else if(modes.double&&modes.double!=='off') rowSch.triggerMode='double';
-      else rowSch.triggerMode='tap';
+      var prevPressG=startGesture(rowPress);
+      rowPress.triggerMode=press==='long'?'longpress':press;
+      rowPress.gestureModes={
+        tap:press==='tap'?'dictation':'off',
+        double:press==='double'?'dictation':'off',
+        long:press==='long'?'dictation':'off'
+      };
+      if(global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.applyFinishMode){
+        if(press==='long'){
+          global.OneToneSceneFlowSummary.applyFinishMode(rowPress,'perpress');
+        }else if(prevPressG==='hold'){
+          global.OneToneSceneFlowSummary.applyFinishMode(rowPress,'confirm');
+        }
+      }
       persistGestureChange();
       refreshAfterGestureChange();
       return true;
+    }
+    var schemeBtn=el.closest&&el.closest('[data-gesture-scheme]');
+    if(schemeBtn){
+      // Legacy matrix removed from UI; keep handler for any leftover markup.
+      return false;
     }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
     if(timingToggle){

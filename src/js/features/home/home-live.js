@@ -1575,9 +1575,41 @@
     var renderChord=function(parts){
       if(kbdEl) kbdEl.textContent=parts.length?parts.join('+'):'—';
     };
-    var isMod=function(k){ return k==='Control'||k==='Shift'||k==='Alt'||k==='Meta'; };
-    var onKeyUp=function(ev){
-      if(isMod(ev.key)) return;
+    // Sided tokens for solo mods (RAlt / LWin…); multi-mod stays Ctrl+Shift+Win style.
+    var sidedFromCode=function(code){
+      switch(String(code||'')){
+        case 'ControlLeft': return 'LCtrl';
+        case 'ControlRight': return 'RCtrl';
+        case 'ShiftLeft': return 'LShift';
+        case 'ShiftRight': return 'RShift';
+        case 'AltLeft': return 'LAlt';
+        case 'AltRight': return 'RAlt';
+        case 'MetaLeft': return 'LWin';
+        case 'MetaRight': return 'RWin';
+        default: return '';
+      }
+    };
+    var isModKey=function(k){ return k==='Control'||k==='Shift'||k==='Alt'||k==='Meta'; };
+    var heldCodes={};
+    var peakParts=[];
+    var snapshotMods=function(){
+      var codes=Object.keys(heldCodes);
+      if(!codes.length) return [];
+      if(codes.length===1) return [heldCodes[codes[0]]];
+      var p=[];
+      var hasCtrl=false,hasShift=false,hasAlt=false,hasWin=false;
+      for(var i=0;i<codes.length;i++){
+        var tok=heldCodes[codes[i]];
+        if(tok==='LCtrl'||tok==='RCtrl') hasCtrl=true;
+        else if(tok==='LShift'||tok==='RShift') hasShift=true;
+        else if(tok==='LAlt'||tok==='RAlt') hasAlt=true;
+        else if(tok==='LWin'||tok==='RWin') hasWin=true;
+      }
+      if(hasCtrl) p.push('Ctrl');
+      if(hasShift) p.push('Shift');
+      if(hasAlt) p.push('Alt');
+      if(hasWin) p.push('Win');
+      return p;
     };
     if(cancelBtn){
       cancelBtn.addEventListener('click', function(ev){
@@ -1585,25 +1617,26 @@
         finish('');
       });
     }
+    try{ window.focus(); }catch(_){}
     var onKey=function(ev){
       if(ev.key==='Escape'){ ev.preventDefault(); finish(''); return; }
-      if(isMod(ev.key)){
+      var sided=sidedFromCode(ev.code);
+      if(sided||isModKey(ev.key)){
         ev.preventDefault();
-        var p=[];
-        if(ev.ctrlKey) p.push('Ctrl');
-        if(ev.altKey) p.push('Alt');
-        if(ev.shiftKey) p.push('Shift');
-        if(ev.metaKey) p.push('Win');
-        renderChord(p);
+        if(sided) heldCodes[ev.code]=sided;
+        peakParts=snapshotMods();
+        renderChord(peakParts);
         return;
       }
       ev.preventDefault();
       ev.stopPropagation();
-      var p=[];
-      if(ev.ctrlKey) p.push('Ctrl');
-      if(ev.altKey) p.push('Alt');
-      if(ev.shiftKey) p.push('Shift');
-      if(ev.metaKey) p.push('Win');
+      var p=snapshotMods();
+      if(!p.length){
+        if(ev.ctrlKey) p.push('Ctrl');
+        if(ev.altKey) p.push('Alt');
+        if(ev.shiftKey) p.push('Shift');
+        if(ev.metaKey) p.push('Win');
+      }
       var main=ev.key;
       if(main===' ') main='Space';
       // Normalize single character keys to upper case so they match
@@ -1611,6 +1644,17 @@
       if(main.length===1) main=main.toUpperCase();
       p.push(main);
       finish(p.join('+'));
+    };
+    // Modifier-only chords (RAlt, Ctrl+Shift+Win): commit on last mod keyup.
+    var onKeyUp=function(ev){
+      var sided=sidedFromCode(ev.code);
+      if(!sided) return;
+      if(heldCodes[ev.code]) delete heldCodes[ev.code];
+      if(Object.keys(heldCodes).length) return;
+      if(!peakParts.length) return;
+      var chord=peakParts.join('+');
+      peakParts=[];
+      finish(chord);
     };
     doc.addEventListener('keydown',onKey,true);
     doc.addEventListener('keyup',onKeyUp,true);

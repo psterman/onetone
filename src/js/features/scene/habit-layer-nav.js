@@ -158,7 +158,9 @@
 
   function pollForegroundApp(){
     if(!global.OneToneIpc||!panelActive()) return;
-    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+    var broker=global.OneToneForegroundContext;
+    var req=broker?Promise.resolve(broker.get()):global.OneToneIpc.invoke('cmd_foreground_app',{});
+    req.then(function(res){
       foregroundIdentity=res||null;
       foregroundAppId=res&&res.appId?String(res.appId):'';
       try{

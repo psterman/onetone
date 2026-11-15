@@ -14,6 +14,7 @@
   /** Focus home embeds dock only — never wipe Focus chrome with ha2-shell. */
   var embedMode = false;
   var matMenuOpen = false;
+  var teamPending = false;
   /** Custom model-route dropdown (native <select> cannot show brand icons on Windows). */
   var modelRouteMenuOpen = false;
   /** Text material ids currently expanded for full read/edit. */
@@ -2789,13 +2790,20 @@
         live: true
       });
     } else if (!evs.length && (pendingGoal || busy)) {
+      var pendingDetail =
+        task &&
+        String(task.permissionMode || task.permission_mode || '').toLowerCase().indexOf(
+          'read_only'
+        ) >= 0
+          ? t('ha2AtrChatStarting', '正在启动对话任务…')
+          : t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…');
       rows.push({
         ms: now,
         time: atrFormatClock(now),
         durationMs: 0,
         duration: '',
         title: t('ha2AtrEvPending', '等待模型下一步…'),
-        detail: t('ha2AtrPageStarting', '已打开步骤窗口，正在启动编辑任务…'),
+        detail: pendingDetail,
         tool: '',
         files: [],
         kind: 'pending',
@@ -3363,6 +3371,28 @@
     } catch (_) {}
   }
 
+  function atrLaneKind(task) {
+    var goal = String((task && task.goal) || '');
+    if (
+      /You are the Team Lead/i.test(goal) ||
+      (global.OneToneAgentTeam &&
+        global.OneToneAgentTeam.isTeamLeadGoal &&
+        global.OneToneAgentTeam.isTeamLeadGoal(goal))
+    ) {
+      return 'team';
+    }
+    var pm = String((task && (task.permissionMode || task.permission_mode)) || '').toLowerCase();
+    if (pm === 'read_only' || pm === 'readonly') return 'chat';
+    return 'edit';
+  }
+
+  function atrLaneFailedTitle(task) {
+    var kind = atrLaneKind(task);
+    if (kind === 'team') return t('ha2AtrTeamFailedTitle', '团队任务失败');
+    if (kind === 'chat') return t('ha2AtrChatFailedTitle', '对话任务失败');
+    return t('ha2AtrFailedTitle', '编辑任务失败');
+  }
+
   /** Main-column gate — Approve must be visible without hunting the left rail. */
   function atrMainGateHtml(snap) {
     // Confirm for a new goal must win over a prior done/failed card on the work page.
@@ -3376,6 +3406,7 @@
     var fileLine = files.length ? files.join(', ') : path;
     var title = '';
     var detail = '';
+    var lane = atrLaneKind(task);
     if (st === 'done') {
       var stagesDone = atrEditStages(snap);
       // Quiet strip: no write → one line; wrote → file names only. No stage-pill wall.
@@ -3383,7 +3414,13 @@
         return (
           '<div class="ha2-wb-page-gate is-quiet" data-ha2-atr-gate data-atr-status="done">' +
           '<div class="ha2-wb-page-gate-copy"><span>' +
-          esc(t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')) +
+          esc(
+            lane === 'team'
+              ? t('ha2AtrTeamDoneQuiet', '团队回合结束')
+              : lane === 'chat'
+                ? t('ha2AtrChatDoneQuiet', '对话回合结束')
+                : t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')
+          ) +
           '</span></div></div>'
         );
       }
@@ -3396,14 +3433,19 @@
         '</span></div></div>'
       );
     } else if (st === 'failed') {
-      title = t('ha2AtrFailedTitle', '编辑任务失败');
+      title = atrLaneFailedTitle(task);
       detail =
         atrFailureNextHint(snap) +
         (fileLine
           ? '\n' + t('ha2AtrWroteButFail', '已写入') + ' ' + fileLine
           : '');
     } else if (st === 'interrupted') {
-      title = t('ha2AtrInterruptedTitle', '编辑任务已中断');
+      title =
+        lane === 'team'
+          ? t('ha2AtrTeamInterruptedTitle', '团队任务已中断')
+          : lane === 'chat'
+            ? t('ha2AtrChatInterruptedTitle', '对话任务已中断')
+            : t('ha2AtrInterruptedTitle', '编辑任务已中断');
       detail = t('ha2AtrNextResume', '下一步：恢复当前任务，或放弃后按新目标重发。');
     } else if (st === 'waiting' && atrNeedsApproval(snap)) {
       title = t('ha2AtrNeedsYou', '编辑任务等待确认');
@@ -3470,18 +3512,31 @@
         ? modelRouting.routes.toolDecision
         : '';
     var routeLabel = provider || routeProvider;
+    var laneHead = atrLaneKind(task);
     var title =
       st === 'waiting'
         ? t('ha2AtrNeedsYou', '编辑任务等待确认')
         : st === 'interrupted'
-          ? t('ha2AtrInterruptedTitle', '编辑任务已中断')
+          ? laneHead === 'team'
+            ? t('ha2AtrTeamInterruptedTitle', '团队任务已中断')
+            : laneHead === 'chat'
+              ? t('ha2AtrChatInterruptedTitle', '对话任务已中断')
+              : t('ha2AtrInterruptedTitle', '编辑任务已中断')
           : st === 'failed'
-            ? t('ha2AtrFailedTitle', '编辑任务失败')
+            ? atrLaneFailedTitle(task)
             : st === 'done'
               ? files.length
                 ? t('ha2AtrDoneQuietWrote', '已写入')
-                : t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')
-              : t('ha2AtrDrivingTitle', '编辑任务执行中');
+                : laneHead === 'team'
+                  ? t('ha2AtrTeamDoneQuiet', '团队回合结束')
+                  : laneHead === 'chat'
+                    ? t('ha2AtrChatDoneQuiet', '对话回合结束')
+                    : t('ha2AtrDoneQuietNoWrite', '编辑回合结束 · 未写入文件')
+              : laneHead === 'team'
+                ? t('ha2AtrTeamDrivingTitle', '团队任务执行中')
+                : laneHead === 'chat'
+                  ? t('ha2AtrChatDrivingTitle', '对话任务执行中')
+                  : t('ha2AtrDrivingTitle', '编辑任务执行中');
     var progressBits = [];
     if (routeLabel) progressBits.push('模型 ' + String(routeLabel));
     if (task.providerId || task.modelProvider) {
@@ -4336,7 +4391,12 @@
     var session = (snap && snap.session) || {};
     var wm = String((snap && snap.workMode) || session.mode || 'think');
     // Research is product-hidden; never surface it as the active segment.
-    var mode = wm === 'edit' || session.mode === 'edit' ? 'edit' : 'think';
+    var mode =
+      wm === 'team'
+        ? 'team'
+        : wm === 'edit' || session.mode === 'edit'
+          ? 'edit'
+          : 'think';
     var effective = !!session.modeEffective;
     var AtrMode = global.OneToneHomeAgentTask;
     var editOk =
@@ -4368,6 +4428,12 @@
               session.capabilities.write_project.reason) ||
               t('ha2AtrNeedFlag', '开启 Agent Task Runtime')),
         disabled: !editOk
+      },
+      {
+        id: 'team',
+        label: t('ha2ModeTeam', '团队'),
+        title: t('ha2ModeTeamHint', '让团队协作分析并汇总'),
+        disabled: false
       }
     ];
     var modeBtns = modes
@@ -4379,6 +4445,7 @@
           '<button type="button" class="ha2-mode-btn' +
           (on ? ' is-on' : '') +
           (m.disabled ? ' is-disabled' : '') +
+          (m.id === 'team' ? ' ha2-team-top-btn' : '') +
           '"' +
           (m.disabled ? ' disabled aria-disabled="true"' : '') +
           ' role="radio" aria-checked="' +
@@ -4399,7 +4466,7 @@
       '<div class="ha2-mode-row ha2-mode-row--segment ha2-mode-row--tabs' +
       (opts.compact ? ' is-compact' : '') +
       '" role="radiogroup" aria-label="' +
-      esc(t('ha2WorkMode', '提问 / 投递')) +
+      esc(t('ha2WorkMode', '提问 / 投递 / 团队')) +
       '">' +
       modeBtns +
       '</div>'
@@ -5578,6 +5645,12 @@
       return t(
         'ha2AtrFormatNext',
         '模型未按工具格式行动。可换引擎/模型，或改写目标后重试；也可放弃当前任务。'
+      );
+    }
+    if (/budget_time/i.test(err)) {
+      return t(
+        'ha2AtrBudgetTimeNext',
+        '任务超时。可点「恢复当前任务」继续（会重新计时），或放弃后按新目标重发。'
       );
     }
     if (err) return err.slice(0, 200);
@@ -9744,7 +9817,7 @@
     el.innerHTML = snap.view === 'agent' ? detailContentHtml(snap) : homeContentHtml(snap);
   }
 
-  /** Focus embed: delivery / work-confirm under compose (no full-page content). */
+  /** Focus embed: delivery / work-confirm / permission / needsYou under compose. */
   function patchFocusNotice(snap) {
     if (!root) return;
     var host = root.querySelector('[data-hf-home-notice]');
@@ -9753,9 +9826,87 @@
     if (workConfirmOpen && atrEditPathOn(snap)) {
       html = workConfirmGateHtml(snap) || '';
     } else {
-      html = homeNoticeHtml(snap) || '';
+      var banner = primaryBannerHtml(snap);
+      if (
+        banner &&
+        banner.html &&
+        (banner.kind === 'permission' ||
+          banner.kind === 'needsYou' ||
+          banner.kind === 'alert')
+      ) {
+        html = banner.html;
+      } else {
+        html = homeNoticeHtml(snap) || '';
+      }
     }
     if (host.innerHTML !== html) host.innerHTML = html;
+  }
+
+  /** Count live workspace items for Focus history badge. */
+  function workspaceItemCount(snap) {
+    snap = snap || (store() && store().getSnapshot && store().getSnapshot()) || {};
+    var n = ((store() && store().workRows && store().workRows(5)) || []).length;
+    if (workspaceResumeRowHtml(snap)) n += 1;
+    if (workHistoryRowsHtml(snap)) n += 1;
+    return n;
+  }
+
+  function syncFocusHistBadge(snap) {
+    if (!root || !embedMode) return;
+    var badge = root.querySelector('[data-hf-hist-badge]');
+    if (!badge) return;
+    var n = workspaceItemCount(snap);
+    if (n > 0) {
+      badge.hidden = false;
+      badge.setAttribute('aria-hidden', 'false');
+      badge.textContent = n > 9 ? '9+' : String(n);
+    } else {
+      badge.hidden = true;
+      badge.setAttribute('aria-hidden', 'true');
+      badge.textContent = '';
+    }
+  }
+
+  /** Paint listHtml into a Focus stage / drawer host. */
+  function fillFocusWorkspaceList(listEl, snap) {
+    if (!listEl) return;
+    snap = snap || (store() && store().getSnapshot && store().getSnapshot()) || {};
+    var html = listHtml(snap);
+    if (listEl.innerHTML !== html) listEl.innerHTML = html;
+  }
+
+  /**
+   * Focus desk: paint the same dynamic work list that pure ha2 put in ha2-content.
+   * Quiet idle stays empty — only show when there are live rows / resume / history.
+   */
+  function patchFocusWorkspace(snap) {
+    if (!root || !embedMode) return;
+    syncFocusHistBadge(snap);
+    var host = root.querySelector('[data-hf-ha2-workspace]');
+    var list = host && host.querySelector('[data-ha2-list]');
+    var drawerList = root.querySelector('[data-hf-drawer-ha2-list]');
+    var rows = (store() && store().workRows && store().workRows(5)) || [];
+    var resume = workspaceResumeRowHtml(snap);
+    var history = workHistoryRowsHtml(snap);
+    var phase = String((snap && snap.loadPhase) || '');
+    var show =
+      rows.length > 0 ||
+      !!resume ||
+      !!history ||
+      phase === 'loading' ||
+      phase === 'error';
+    var html = show ? listHtml(snap) : '';
+    if (host && list) {
+      host.hidden = !show;
+      if (!show) {
+        if (list.innerHTML) list.innerHTML = '';
+      } else if (list.innerHTML !== html) {
+        list.innerHTML = html;
+      }
+    }
+    if (drawerList && html && drawerList.innerHTML !== html) {
+      drawerList.innerHTML = html;
+    }
   }
 
   function patchDockMeta(snap) {
@@ -9958,6 +10109,7 @@
       // (menus never got HTML). modelRouteMenuOpen already returns above.
       patchDockMeta(snap);
       patchFocusNotice(snap);
+      patchFocusWorkspace(snap);
       paintWbTranscript();
       return;
     }
@@ -10244,7 +10396,21 @@
         pending: true
       });
     }
-    return list;
+    // Collapse accidental duplicate stack rows (same taskId).
+    var seen = Object.create(null);
+    var out = [];
+    for (i = 0; i < list.length; i++) {
+      var row = list[i];
+      var tid = row && row.task ? String(row.task.taskId || '') : '';
+      if (!tid) continue;
+      if (seen[tid] != null) {
+        out[seen[tid]] = row;
+        continue;
+      }
+      seen[tid] = out.length;
+      out.push(row);
+    }
+    return out;
   }
 
   function atrLogPlainFromItem(item) {
@@ -12773,37 +12939,9 @@
     return out;
   }
 
+  /** Reply-tone UI removed; stub kept for call sites / smokes. */
   function replyToneSegmentHtml() {
-    var cur = readChatReplyTone();
-    var opts = [
-      { id: 'natural', label: t('ha2ReplyToneNatural', '自然') },
-      { id: 'concise', label: t('ha2ReplyToneConcise', '简洁') },
-      { id: 'colleague', label: t('ha2ReplyToneColleague', '同事') }
-    ];
-    return (
-      '<div class="ha2-reply-tone" role="group" aria-label="' +
-      esc(t('ha2ReplyTone', '回复语气')) +
-      '">' +
-      '<span class="ha2-reply-tone-lab">' +
-      esc(t('ha2ReplyTone', '语气')) +
-      '</span>' +
-      opts
-        .map(function (o) {
-          return (
-            '<button type="button" class="ha2-reply-tone-btn' +
-            (o.id === cur ? ' is-on' : '') +
-            '" data-ha2-reply-tone="' +
-            esc(o.id) +
-            '"' +
-            (o.id === cur ? ' aria-pressed="true"' : ' aria-pressed="false"') +
-            '>' +
-            esc(o.label) +
-            '</button>'
-          );
-        })
-        .join('') +
-      '</div>'
-    );
+    return '';
   }
 
   function chatLoopHonestFailText(code, fallback) {
@@ -15438,7 +15576,7 @@
     var el = eventEl(e);
     if (!el || !el.closest) return;
     var tEl = el.closest(
-      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-reply-tone],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-chat-needs-reply],[data-ha2-chat-deliver-approve],[data-ha2-chat-deliver-reject],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
+      '[data-ha2-model-route-trigger],[data-ha2-model-route-opt],[data-ha2-menu-picker],[data-ha2-agent-toggle],[data-ha2-picker],[data-ha2-picker-close],[data-ha2-pick-follow],[data-ha2-pick],[data-ha2-detail],[data-ha2-home],[data-ha2-action],[data-ha2-open-center],[data-ha2-open-model-providers],[data-ha2-go-agent],[data-ha2-habit-hub],[data-ha2-alert-action],[data-ha2-session],[data-ha2-refresh],[data-ha2-send],[data-ha2-retry],[data-ha2-organize],[data-ha2-organize-cancel],[data-ha2-pcx],[data-ha2-consult-clarify],[data-ha2-consult-confirm],[data-ha2-consult-compile],[data-ha2-consult-find],[data-ha2-consult-skip-all],[data-ha2-consult-skip],[data-ha2-consult-answer],[data-ha2-consult-adopt],[data-ha2-assist-keys],[data-ha2-wb-login-cta],[data-ha2-atr-wb-login-open],[data-ha2-atr-wb-login],[data-ha2-atr-wb-login-cancel],[data-ha2-atr-wb-login-dismiss],[data-ha2-enable-metered],[data-ha2-remove],[data-ha2-aim-clear],[data-ha2-aim],[data-ha2-cap],[data-ha2-team-focus],[data-ha2-compose-more],[data-ha2-add],[data-ha2-mat],[data-ha2-select],[data-ha2-tm],[data-ha2-mat-expand],[data-ha2-mat-collapse],[data-ha2-wb-mode],[data-ha2-wb-transcript-toggle],[data-ha2-wb-chat-clear],[data-ha2-open-wb-config],[data-ha2-work-mode],[data-ha2-work-confirm-start],[data-ha2-work-confirm-cancel],[data-ha2-handoff-open],[data-ha2-handoff-apply],[data-ha2-handoff-cancel],[data-ha2-research-start],[data-ha2-research-confirm],[data-ha2-research-replan],[data-ha2-research-clarify],[data-ha2-research-clarify-submit],[data-ha2-research-cancel],[data-ha2-research-restart],[data-ha2-research-export],[data-ha2-research-file],[data-ha2-wb-page-back],[data-ha2-wb-page-clear],[data-ha2-wb-page-send],[data-ha2-wb-page-stop],[data-ha2-chat-needs-reply],[data-ha2-chat-deliver-approve],[data-ha2-chat-deliver-reject],[data-ha2-atr-open-page],[data-ha2-atr-open-history],[data-ha2-atr-log-toggle],[data-ha2-atr-log-copy],[data-ha2-atr-approve],[data-ha2-atr-approve-all],[data-ha2-atr-reject],[data-ha2-atr-input],[data-ha2-atr-continue],[data-ha2-atr-keep-draft],[data-ha2-atr-resume],[data-ha2-atr-retry-action],[data-ha2-atr-replan],[data-ha2-atr-abandon],[data-ha2-atr-abandon-send],[data-ha2-atr-verify-engine],[data-ha2-atr-accept-recommend],[data-ha2-atr-switch-deepseek],[data-ha2-atr-toggle-beginner],[data-ha2-atr-advanced]'
     );
     if (!tEl) return;
     var S = store();
@@ -15882,8 +16020,16 @@
       var nextMode = tEl.getAttribute('data-ha2-work-mode');
       // Research chrome is hidden — ignore stray research switches.
       if (nextMode === 'research') nextMode = 'think';
+      if (nextMode !== 'team') {
+        var TeamExit = global.OneToneAgentTeam;
+        if (TeamExit && TeamExit.isActive && TeamExit.isActive() && TeamExit.exitTeamMode) {
+          try {
+            TeamExit.exitTeamMode();
+          } catch (_) {}
+        }
+      }
       if (S && S.setWorkMode) S.setWorkMode(nextMode);
-      // Keep home chrome 提问/投递 in sync with compose segment.
+      // Keep home chrome 提问/投递/团队 in sync with compose segment.
       var HomePaint = global.OneToneNowHome;
       if (HomePaint && typeof HomePaint.paint === 'function' && HomePaint.isVisible && HomePaint.isVisible()) {
         try {
@@ -16501,11 +16647,8 @@
       else if (cap === 'camera' && D) D.toggleCamera();
       return;
     }
-    if (tEl.hasAttribute('data-ha2-reply-tone')) {
-      writeChatReplyTone(tEl.getAttribute('data-ha2-reply-tone') || 'natural');
-      // Soft prompt only — next reply picks it up; no toast spam.
-      paint(S && S.getSnapshot ? S.getSnapshot() : null);
-      if (wbChatPageOpen) paintWbChatPage();
+    if (tEl.hasAttribute('data-ha2-team-focus')) {
+      if (global.OneToneAgentTeam && global.OneToneAgentTeam.openDrawer) global.OneToneAgentTeam.openDrawer();
       return;
     }
     if (tEl.hasAttribute('data-ha2-compose-more')) {
@@ -16733,7 +16876,11 @@
     // Do not maybeOpenAtrWbPage here — auto ATR/wb full-page was covering Focus
     // and eating clicks. sendWbLocal may still open the page on purpose.
     // Never skip patch while Agent picker / + menu open — that was the "no reaction" bug.
-    if (!modelRouteMenuOpen) patchDockMeta(snap);
+    if (!modelRouteMenuOpen) {
+      patchDockMeta(snap);
+      patchFocusNotice(snap);
+      patchFocusWorkspace(snap);
+    }
   }
 
   function show() {
@@ -16891,6 +17038,8 @@
     embedCompose: embedCompose,
     healWbChatPageCover: healWbChatPageCover,
     stashLiveComposeDrafts: stashLiveComposeDrafts,
+    fillFocusWorkspaceList: fillFocusWorkspaceList,
+    workspaceItemCount: workspaceItemCount,
     show: show,
     hide: hide,
     refresh: refresh,

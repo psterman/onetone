@@ -3,6 +3,8 @@
   var $=function(id){ return global.OneToneDom.$(id); };
 
   function currentMapping(){
+    var Scope=global.OneToneVoiceScope;
+    if(Scope&&typeof Scope.resolveEditMapping==='function') return Scope.resolveEditMapping();
     var hdr=global.OneToneVoicePageHeaderRender;
     if(hdr&&hdr.resolveScopeMapping) return hdr.resolveScopeMapping(null);
     var core=global.OneToneMappingCore;

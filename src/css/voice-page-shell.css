@@ -3311,6 +3311,20 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   color: var(--on-surface, #1a1a1a);
 }
 #settingsPanelSounds .voice-sounds-advanced > summary::-webkit-details-marker { display: none; }
+#settingsPanelSounds .sound-acoustic-egg{
+  margin-top:14px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px dashed color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  background:color-mix(in srgb, var(--on-surface) 2%, #fff);
+}
+#settingsPanelSounds .sound-acoustic-egg > summary{
+  list-style:none;cursor:pointer;font-weight:700;font-size:12.5px;color:var(--on-surface-variant,#5c5c5c);
+}
+#settingsPanelSounds .sound-acoustic-egg > summary::-webkit-details-marker{display:none}
+#settingsPanelSounds .sound-acoustic-egg .voice-finish-habit-block-title{
+  margin:0 0 6px;font-size:13px;font-weight:750;
+}
 .voice-finish-outcome.is-on {
   border-color: var(--primary, #00658F);
   background: color-mix(in srgb, var(--primary, #00658F) 12%, #fff);

@@ -45,16 +45,19 @@ assert.match(html, /data-ot-defer="home-agent"[^>]*home-agent-v2-dock\.js|home-a
 assert.match(html, /data-ot-defer="home-agent"[^>]*home-agent-v2\.js|home-agent-v2\.js[^>]*data-ot-defer="home-agent"/);
 assert.match(html, /data-wb-nav="homeV2"/);
 assert.match(html, />新首页</);
-assert.match(now, /homeAgentV2/);
-assert.match(now, /onetone\.homeSurface/);
+assert.match(html, /data-i18n="homeWbNavHome">对话</);
+assert.match(now, /function detectHomeAgentV2/);
+assert.match(now, /return false/);
+assert.match(now, /function showAgentV2Surface/);
+assert.match(now, /onetone\.homeSurface|homeSurface/);
 assert.match(now, /ensureHomeAgentScripts/);
 assert.match(now, /loadGroup\(['"]home-agent['"]\)/);
-assert.match(now, /OneToneHomeAgentV2\.mount|HA2\.mount/);
-assert.match(now, /detectHomeAgentV2\(\)[\s\S]*ensureHomeAgentScripts[\s\S]*showAgentV2Surface/);
-assert.match(now, /ls === 'focus' \|\| ls === 'classic'/);
-assert.match(now, /ls === 'agentV2'/);
-assert.match(now, /return false/);
 assert.match(now, /tryEmbedHa2Compose|embedCompose/);
+// Product home is Focus — pure HA2.mount shell is no longer the agentV2 path.
+assert.doesNotMatch(
+  now,
+  /function showAgentV2Surface[\s\S]*?HA2\.mount\(root\)/
+);
 assert.match(shell, /function ensureHomeAgentReadyThenSend/);
 assert.match(shell, /loadGroup\(['"]home-agent['"]\)/);
 assert.match(shell, /ensureHomeAgentReadyThenSend\(\)/);
@@ -63,6 +66,16 @@ assert.match(storeSrc, /controller_create_failed/);
 assert.match(workbench, /onetone\.homeSurface/);
 assert.match(workbench, /action==='homeV2'/);
 assert.match(workbench, /homeSurface','focus'/);
+assert.match(workbench, /openChatNav/);
+assert.match(focusView, /data-hf-ha2-workspace/);
+assert.match(focusView, /data-hf-hist-badge/);
+assert.match(focusView, /data-hf-drawer-ha2-list/);
+assert.match(shell, /function patchFocusWorkspace/);
+assert.match(shell, /patchFocusWorkspace\(snap\)/);
+assert.match(shell, /fillFocusWorkspaceList/);
+assert.match(shell, /primaryBannerHtml\(snap\)/);
+assert.match(now, /fillFocusWorkspaceList/);
+assert.match(now, /工作区/);
 
 const capsSrc = read('src/js/features/now/home-agent-capabilities.js');
 assert.match(capsSrc, /OneToneHomeAgentCapabilities/);
@@ -777,19 +790,19 @@ assert.equal(Caps.looksLikeWeatherAsk('今天天气'), true);
 var promptChat = Caps.buildLocalChatSystemPrompt({ workMode: 'think', projectPath: 'E:/x' });
 assert.match(promptChat, /对话模式/);
 assert.match(promptChat, /禁止把|自己用工具查/);
-assert.match(promptChat, /回复语气：/);
 assert.match(promptChat, /轻量 Markdown/);
+assert.doesNotMatch(promptChat, /回复语气：/);
 assert.doesNotMatch(promptChat, /请用户点顶部|后再发目标/);
 var promptWork = Caps.buildLocalChatSystemPrompt({ workMode: 'edit', projectPath: 'E:/x' });
 assert.match(promptWork, /已在「工作」/);
 assert.match(promptWork, /禁止再说/);
-assert.match(promptWork, /回复语气：/);
+assert.doesNotMatch(promptWork, /回复语气：/);
 assert.equal(Caps.normalizeChatReplyTone('concise'), 'concise');
 assert.equal(Caps.normalizeChatReplyTone('weird'), 'natural');
-assert.match(Caps.chatReplyToneHint('colleague'), /同事口吻/);
-assert.match(Caps.withChatReplyToneMaterials('user: hi', 'natural'), /^reply_tone:/);
-assert.match(shell, /onetone\.chat\.replyTone|REPLY_TONE_KEY/);
-assert.match(shell, /data-ha2-reply-tone|replyToneSegmentHtml/);
+assert.equal(Caps.chatReplyToneHint('colleague'), '');
+assert.equal(Caps.withChatReplyToneMaterials('user: hi', 'natural'), 'user: hi');
+assert.match(shell, /function replyToneSegmentHtml/);
+assert.doesNotMatch(shell, /data-ha2-reply-tone/);
 assert.match(shell, /withChatReplyToneMaterials/);
 // Work-mode send must not regex-kick to chat.
 assert.doesNotMatch(
@@ -1109,7 +1122,8 @@ assert.match(shell, /atrOwnsHomeChrome/);
   assert.doesNotMatch(withPath, /你是 OneTone 首页的 WorkBuddy 本机讨论助手/);
   const noPath = Caps.buildLocalChatSystemPrompt({});
   assert.match(noPath, /未选定/);
-  assert.match(withPath, /回复语气：|轻量 Markdown/);
+  assert.match(withPath, /轻量 Markdown/);
+  assert.doesNotMatch(withPath, /回复语气：/);
 
   assert.equal(typeof Caps.formatChatBodyHtml, 'function');
   const mdHtml = Caps.formatChatBodyHtml('# 标题\n\n- 一项\n\n**粗体** 与 `code`');

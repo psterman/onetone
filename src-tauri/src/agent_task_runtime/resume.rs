@@ -27,6 +27,12 @@ pub fn resume_task(conn: &mut Connection, task_id: &str) -> Result<TaskRow, Stri
         return Err("not_resumable".into());
     }
     if matches!(st, Some(TaskStatus::Failed)) {
+        let prev_err = task.last_error.clone().unwrap_or_default();
+        // ponytail: wall clock is anchored on created_at — re-anchor on budget resume
+        // so 「恢复」is not an instant budget_time loop. Upgrade: dedicated wall_started_at.
+        if prev_err.contains("budget_time") {
+            task.created_at = now_ms();
+        }
         task.last_error = None;
     }
 

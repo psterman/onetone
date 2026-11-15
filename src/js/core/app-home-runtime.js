@@ -47,7 +47,11 @@
     if(global.OneToneOnboarding&&global.OneToneOnboarding.isV2Done&&global.OneToneOnboarding.isV2Done()) return true;
     try{ if(localStorage.getItem('vp_onboarding_v2_done')==='1') return true; }catch(_){}
     // 新首页 / Soft Pad 试验用户：已过首跑收敛，勿再折叠 Soft Pad·按键等入口。
-    try{ if(localStorage.getItem('onetone.homeSurface')==='agentV2') return true; }catch(_){}
+    try{
+      var surf=localStorage.getItem('onetone.homeSurface');
+      // agentV2 legacy key still counts as product-home trial (now Focus).
+      if(surf==='agentV2'||surf==='focus') return true;
+    }catch(_){}
     return false;
   }
 

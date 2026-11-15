@@ -67,13 +67,13 @@
       run: function () { jumpAndHighlight('voiceWake', 'voiceSettingsWakeBody'); },
     },
 
-    // --- keys panel ---
+    // --- action-chain desk (classic Keys redirects here) ---
     {
       id: 'triggers',
-      title: t('homeWbNavTriggers'),
-      keywords: ['按键', 'keys', 'hotkey', 'trigger', '快捷键', '触发键', '热键'],
+      title: t('homeWbNavKeysSeq'),
+      keywords: ['按键', 'keys', 'hotkey', 'trigger', '快捷键', '触发键', '热键', '动作链'],
       group: group,
-      run: function () { jumpAndHighlight('keys'); },
+      run: function () { jumpAndHighlight('keysSeq'); },
     },
 
     // --- softPad / Agent directories ---

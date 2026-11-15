@@ -161,11 +161,10 @@ pub fn resolve_idle_effective_scene(cfg: &VoiceConfig) -> Option<EffectiveSceneC
     resolve_effective_scene(cfg, &idle_scene_ctx(cfg))
 }
 
-/// Wake/dispatch follows the foreground Agent overlay when it has `voiceOverride`; else baseline.
+/// Wake/dispatch follows the foreground Agent habit; else default baseline.
 /// Idle grammar/fingerprint stay on `active_scene_id` so Alt-Tab does not restart Vosk.
 pub fn resolve_dispatch_effective_scene(cfg: &VoiceConfig) -> Option<EffectiveSceneConfig> {
     let scene_id = crate::config::live_pack_mapping(cfg)
-        .filter(|m| m.voice_override.is_some())
         .map(|m| m.id.clone())
         .or_else(|| crate::config::find_global_baseline_mapping(cfg).map(|m| m.id.clone()))
         .unwrap_or_else(|| cfg.active_scene_id.clone());
@@ -746,6 +745,18 @@ fn resolve_effective_target_key(
             return k.to_string();
         }
     }
+    // Habit Lab 听写键 (IME-bound) before global vosk RAlt seed.
+    let ime_bound = !mapping.ime_preset_id.trim().is_empty()
+        || mapping
+            .capture_hero_ref
+            .as_ref()
+            .is_some_and(|r| r.kind.trim().eq_ignore_ascii_case("ime"));
+    if ime_bound {
+        let t = mapping.target_key.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
     if is_workflow_app_target(&mapping.app_target_id) {
         if let Some(key) = global_voice_input_target_key(cfg) {
             return key;
@@ -762,6 +773,13 @@ fn resolve_effective_target_key(
 }
 
 fn global_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
+    // Same Lab chip authority as voice_end_runtime::resolve_voice_input_target_key.
+    if let Some(k) = crate::voice_end_runtime::ime_preset_target_key(&cfg.ime_preset_id) {
+        let t = crate::config::canonical_trigger(k);
+        if !t.is_empty() {
+            return Some(t);
+        }
+    }
     let vosk_key = cfg.voice_vosk.target_key.trim();
     let sapi_key = cfg.voice_sapi.target_key.trim();
 

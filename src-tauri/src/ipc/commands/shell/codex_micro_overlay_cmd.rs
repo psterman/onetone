@@ -113,6 +113,12 @@ pub fn cmd_codex_micro_overlay_note_drag_begin() {
     codex_micro_overlay::note_overlay_drag_begin();
 }
 
+/// Clear orphan drag latch when start_drag IPC fails after note_drag_begin.
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_clear_drag() {
+    codex_micro_overlay::clear_overlay_drag_latch();
+}
+
 /// Await this before fire-and-forget start_drag — pauses main camera and yields
 /// so eval lands before Soft Pad SC_MOVE blocks the UI thread.
 #[tauri::command]
@@ -124,13 +130,11 @@ pub async fn cmd_codex_micro_overlay_prepare_drag(app: AppHandle) {
 /// Used as the grab offset so a late-arriving invoke does not bake its own delay
 /// into the offset (pad rides a constant distance away from the cursor).
 ///
-/// Async + spawn_blocking: as a sync command the whole body (HWND cache, two
-/// emit broadcasts, camera eval, scale_factor dispatch) ran ON the UI thread —
-/// the Drag Lag panel measured fe_invoke_ok at 14..222ms, i.e. the main thread
-/// was pinned for up to 222ms on every single pointerdown (pad starts following
-/// late = "拖动很慢"; the same stalls starve the main window's modal move loop).
+/// This is intentionally synchronous: the body only latches state and spawns the
+/// dedicated follow/native worker. An async command adds a scheduler hop before
+/// the first move, which is enough for a short mini-bar drag to miss the button-up.
 #[tauri::command]
-pub async fn cmd_codex_micro_overlay_start_drag(
+pub fn cmd_codex_micro_overlay_start_drag(
     window: WebviewWindow,
     cx: Option<f64>,
     cy: Option<f64>,
@@ -139,11 +143,10 @@ pub async fn cmd_codex_micro_overlay_start_drag(
         (Some(x), Some(y)) => Some((x, y)),
         _ => None,
     };
-    tauri::async_runtime::spawn_blocking(move || {
-        codex_micro_overlay::start_overlay_drag(&window, anchor)
-    })
-    .await
-    .map_err(|e| format!("start_drag join failed: {e}"))?
+    // Keep the latch and worker handoff in one IPC command. A separate
+    // note_drag_begin invoke can queue ahead of start_drag during a busy UI turn.
+    codex_micro_overlay::note_overlay_drag_begin();
+    codex_micro_overlay::start_overlay_drag(&window, anchor)
 }
 
 #[tauri::command]

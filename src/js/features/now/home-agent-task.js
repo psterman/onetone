@@ -306,6 +306,128 @@
     });
   }
 
+  // P1 Bug Fix Team surface. The team API intentionally stays a thin client so the
+  // existing ATR controller remains the only writer/approval path.
+  function teamStart(opts) {
+    opts = opts || {};
+    return invoke('cmd_agent_team_start', {
+      goal: String(opts.goal || ''),
+      workspaceRoot: String(opts.workspaceRoot || ''),
+      leadProvider: opts.leadProvider || readProvider() || null,
+      materialsSummary: opts.materialsSummary || null,
+      useFakeDriver: !!opts.useFakeDriver,
+      autonomousWrite: !!opts.autonomousWrite,
+      writeScopes: Array.isArray(opts.writeScopes) ? opts.writeScopes : [],
+      autoPlan: !!opts.autoPlan
+    });
+  }
+
+  function teamEvents(teamId, after, limit) {
+    return invoke('cmd_agent_team_events', {
+      teamId: String(teamId || ''),
+      after: after || null,
+      limit: limit == null ? 100 : Number(limit)
+    });
+  }
+
+  function teamSnapshot(teamId) {
+    return invoke('cmd_agent_team_snapshot', { teamId: String(teamId || '') });
+  }
+
+  function teamTick(teamId) {
+    return invoke('cmd_agent_team_tick', { teamId: String(teamId || '') });
+  }
+
+  function teamReconcile(teamId) {
+    return invoke('cmd_agent_team_reconcile', { teamId: String(teamId || '') });
+  }
+
+  function teamResume(teamId) {
+    return invoke('cmd_agent_team_resume', { teamId: String(teamId || '') });
+  }
+
+  function teamCancel(teamId) {
+    return invoke('cmd_agent_team_cancel', { teamId: String(teamId || '') });
+  }
+
+  function teamByParent(parentTaskId) {
+    return invoke('cmd_agent_team_by_parent', {
+      parentTaskId: String(parentTaskId || '')
+    });
+  }
+
+  function teamTaskGet(nodeId) {
+    return invoke('cmd_agent_team_task_get', { nodeId: String(nodeId || '') });
+  }
+
+  function teamTaskList(teamId) {
+    return invoke('cmd_agent_team_task_list', { teamId: String(teamId || '') });
+  }
+
+  function teamTaskCreate(opts) {
+    opts = opts || {};
+    return invoke('cmd_agent_team_task_create', {
+      teamId: String(opts.teamId || ''), subject: String(opts.subject || ''),
+      description: String(opts.description || ''), role: String(opts.role || 'explorer'),
+      dependsOn: Array.isArray(opts.dependsOn) ? opts.dependsOn : [],
+      writeScopes: Array.isArray(opts.writeScopes) ? opts.writeScopes : []
+    });
+  }
+
+  function teamConfirmPlan(teamId, plan) {
+    return invoke('cmd_agent_team_confirm_plan', { teamId: String(teamId || ''), plan: plan || null });
+  }
+
+  function teamDispatchReadOnly(teamId, provider, maxSteps, opts) {
+    opts = opts || {};
+    return invoke('cmd_agent_team_dispatch_read_only', {
+      teamId: String(teamId || ''),
+      provider: provider || readProvider() || null,
+      maxSteps: maxSteps == null ? 4 : Number(maxSteps), useFakeDriver: !!opts.useFakeDriver
+    });
+  }
+
+  function teamAdvance(teamId, opts) {
+    opts = opts || {};
+    return invoke('cmd_agent_team_advance', {
+      teamId: String(teamId || ''), provider: opts.provider || readProvider() || null,
+      maxSteps: opts.maxSteps == null ? 6 : Number(opts.maxSteps), useFakeDriver: !!opts.useFakeDriver
+    });
+  }
+
+  function teamSetNodeStatus(nodeId, status, error) {
+    return invoke('cmd_agent_team_node_status', {
+      nodeId: String(nodeId || ''), status: String(status || ''), error: error || null
+    });
+  }
+
+  function teamAddArtifact(teamId, nodeId, kind, body, confidence) {
+    return invoke('cmd_agent_team_add_artifact', {
+      teamId: String(teamId || ''), nodeId: String(nodeId || ''), kind: String(kind || ''),
+      body: body == null ? {} : body, confidence: confidence == null ? null : Number(confidence)
+    });
+  }
+
+  function teamBridgeStart(portOrOpts, token) {
+    var opts =
+      portOrOpts && typeof portOrOpts === 'object' && !Array.isArray(portOrOpts)
+        ? portOrOpts
+        : { port: portOrOpts || null, token: token || null };
+    return invoke('cmd_agent_team_bridge_start', {
+      port: opts.port || null,
+      token: opts.token || null,
+      force: !!opts.force
+    });
+  }
+
+  function teamBridgeStop() {
+    return invoke('cmd_agent_team_bridge_stop', {});
+  }
+
+  function teamBridgeStatus() {
+    return invoke('cmd_agent_team_bridge_status', {});
+  }
+
   function codedError(code, message) {
     var err = new Error(message || code);
     err.code = code;
@@ -727,6 +849,25 @@
     drive: drive,
     driveDeepseek: driveDeepseek,
     driveFake: driveFake,
+    teamStart: teamStart,
+    teamEvents: teamEvents,
+    teamSnapshot: teamSnapshot,
+    teamTick: teamTick,
+    teamReconcile: teamReconcile,
+    teamResume: teamResume,
+    teamCancel: teamCancel,
+    teamByParent: teamByParent,
+    teamTaskGet: teamTaskGet,
+    teamTaskList: teamTaskList,
+    teamTaskCreate: teamTaskCreate,
+    teamConfirmPlan: teamConfirmPlan,
+    teamDispatchReadOnly: teamDispatchReadOnly,
+    teamAdvance: teamAdvance,
+    teamSetNodeStatus: teamSetNodeStatus,
+    teamAddArtifact: teamAddArtifact,
+    teamBridgeStart: teamBridgeStart,
+    teamBridgeStop: teamBridgeStop,
+    teamBridgeStatus: teamBridgeStatus,
     runGoal: runGoal
   };
 })(typeof window !== 'undefined' ? window : globalThis);

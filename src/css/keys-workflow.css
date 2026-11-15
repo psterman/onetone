@@ -5381,6 +5381,27 @@
   display: none !important;
 }
 
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;
+  margin:10px 0 0;padding:0;
+}
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press__lab{
+  font-size:11px;font-weight:750;color:var(--muted,#66768a);margin:0;
+}
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press__schemes{
+  display:flex;flex-wrap:wrap;gap:6px;
+}
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press__btn{
+  appearance:none;border:1px solid #c5d0dc;background:#fff;color:#1e2a36;
+  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:650;cursor:pointer;line-height:1.2;
+}
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press__btn.is-on{
+  border-color:#3b82f6;background:#e8f1ff;color:#1d4ed8;
+}
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-dictation-press__hint{
+  flex:1 1 100%;margin:0;font-size:11px;line-height:1.4;color:#66768a;
+}
+
 :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-capture-ime-block .habit-flow-subsection-title {
   margin: 0 0 2px;
   min-height: 0;
@@ -7415,8 +7436,8 @@
   background: color-mix(in srgb, #f59e0b 8%, var(--surface-soft));
 }
 
-/* 按法 → 方案矩阵（语音输入 / 口头指令） */
-#settingsPanelKeys .keys-gesture-modes,
+/* 按法 → 方案矩阵（语音输入 / 口头指令）；动作链 mid 也挂同一宿主 */
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes,
 .habit-scenario-keys-advanced .keys-gesture-modes {
   display: flex;
   flex-direction: column;
@@ -7424,7 +7445,7 @@
   width: 100%;
   margin: 0 0 4px;
 }
-#settingsPanelKeys .keys-gesture-modes__head,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes__head,
 .habit-scenario-keys-advanced .keys-gesture-modes__head {
   display: flex;
   flex-wrap: wrap;
@@ -7435,7 +7456,7 @@
   font-weight: 650;
   color: var(--ot-ink, #1f2937);
 }
-#settingsPanelKeys .keys-gesture-modes__head em,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes__head em,
 .habit-scenario-keys-advanced .keys-gesture-modes__head em {
   font-style: normal;
   font-weight: 500;
@@ -7447,27 +7468,27 @@
   overflow: visible;
   line-height: 1.35;
 }
-#settingsPanelKeys .keys-gesture-modes__row,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes__row,
 .habit-scenario-keys-advanced .keys-gesture-modes__row {
   display: grid;
   grid-template-columns: 2.6rem minmax(0, 1fr);
   gap: 6px;
   align-items: center;
 }
-#settingsPanelKeys .keys-gesture-modes__gest,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes__gest,
 .habit-scenario-keys-advanced .keys-gesture-modes__gest {
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--ot-muted, #6b7280);
 }
-#settingsPanelKeys .keys-gesture-modes__schemes,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-modes__schemes,
 .habit-scenario-keys-advanced .keys-gesture-modes__schemes {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   min-width: 0;
 }
-#settingsPanelKeys .keys-gesture-scheme,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-scheme,
 .habit-scenario-keys-advanced .keys-gesture-scheme {
   appearance: none;
   border: 1px solid color-mix(in srgb, var(--ot-line, #d1d5db) 90%, transparent);
@@ -7480,30 +7501,30 @@
   line-height: 1.2;
   cursor: pointer;
 }
-#settingsPanelKeys .keys-gesture-scheme:hover,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-scheme:hover,
 .habit-scenario-keys-advanced .keys-gesture-scheme:hover {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
 }
-#settingsPanelKeys .keys-gesture-scheme.is-on,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-scheme.is-on,
 .habit-scenario-keys-advanced .keys-gesture-scheme.is-on {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, transparent);
   background: color-mix(in srgb, var(--primary, #2a9cc4) 14%, transparent);
   color: var(--primary-strong, #0f5f7a);
 }
-#settingsPanelKeys .keys-gesture-scheme[data-gesture-scheme="voiceCommand"].is-on,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-scheme[data-gesture-scheme="voiceCommand"].is-on,
 .habit-scenario-keys-advanced .keys-gesture-scheme[data-gesture-scheme="voiceCommand"].is-on {
   border-color: color-mix(in srgb, #7c6cf0 55%, transparent);
   background: color-mix(in srgb, #7c6cf0 14%, transparent);
   color: #4c3eb8;
 }
-#settingsPanelKeys .keys-gesture-scheme[data-gesture-scheme="off"].is-on,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-gesture-scheme[data-gesture-scheme="off"].is-on,
 .habit-scenario-keys-advanced .keys-gesture-scheme[data-gesture-scheme="off"].is-on {
   border-color: color-mix(in srgb, var(--ot-line, #d1d5db) 90%, transparent);
   background: color-mix(in srgb, var(--ot-wash, #f3f4f6) 80%, transparent);
   color: var(--ot-muted, #6b7280);
 }
 
-#settingsPanelKeys .keys-hold-risk-text,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-hold-risk-text,
 .habit-scenario-keys-advanced .keys-hold-risk-text {
   margin: 0 0 8px;
   font-size: var(--type-caption);
@@ -7511,14 +7532,14 @@
   line-height: 1.4;
 }
 
-#settingsPanelKeys .keys-hold-risk-actions,
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-hold-risk-actions,
 .habit-scenario-keys-advanced .keys-hold-risk-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-#settingsPanelKeys .keys-hold-support-hint {
+:is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-hold-support-hint {
   margin: 6px 0 0;
   font-size: var(--type-caption);
   color: var(--on-surface-muted);

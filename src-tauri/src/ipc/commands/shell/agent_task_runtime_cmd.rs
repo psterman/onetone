@@ -4,7 +4,29 @@ use crate::agent_task_runtime::{
     self, ApprovePatchRequest, ConfirmPlanRequest, StartTaskRequest, SubmitUserInputRequest,
     TaskDto, TaskEventDto, TaskIdRequest,
 };
+use crate::agent_task_runtime::{
+    StartTeamRequest, TeamAdvanceRequest, TeamArtifactRequest, TeamConfirmPlanRequest,
+    TeamDispatchRequest, TeamEventsRequest, TeamIdRequest, TeamNodeStatusRequest,
+    TeamParentTaskRequest, TeamTaskCreateRequest, TeamTaskIdRequest, TeamTaskListRequest,
+};
 use serde::Deserialize;
+use crate::team_protocol_server::{TeamBridgeStartRequest, TeamBridgeStartResult, TeamBridgeStatus};
+
+#[tauri::command]
+pub fn cmd_agent_team_bridge_start(args: TeamBridgeStartRequest) -> Result<TeamBridgeStartResult, String> {
+    crate::team_protocol_server::start(args)
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_bridge_stop() -> Result<serde_json::Value, String> {
+    crate::team_protocol_server::stop()?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_bridge_status() -> TeamBridgeStatus {
+    crate::team_protocol_server::status()
+}
 
 #[tauri::command]
 pub fn cmd_agent_task_start(args: StartTaskRequest) -> Result<TaskDto, String> {
@@ -135,6 +157,114 @@ pub async fn cmd_agent_task_drive(args: DriveArgs) -> Result<TaskDto, String> {
 #[tauri::command]
 pub fn cmd_agent_task_ready() -> Result<serde_json::Value, String> {
     Ok(agent_task_runtime::provider_ready_snapshot())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_start(args: StartTeamRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_start(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_snapshot(args: TeamIdRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_snapshot(&args.team_id)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn cmd_agent_team_tick(args: TeamIdRequest) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let value = agent_task_runtime::api_team_tick(&args.team_id)?;
+        serde_json::to_value(value).map_err(|e| e.to_string())
+    }).await.map_err(|e| format!("team_tick_join: {e}"))?
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_reconcile(args: TeamIdRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_reconcile_only(&args.team_id)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_resume(args: TeamIdRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_resume(&args.team_id)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_cancel(args: TeamIdRequest) -> Result<serde_json::Value, String> {
+    agent_task_runtime::api_team_cancel_children(&args.team_id)?;
+    Ok(serde_json::json!({"teamId": args.team_id, "status": "cancelled"}))
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_recover_all() -> Result<serde_json::Value, String> {
+    let count = agent_task_runtime::api_team_recover_all()?;
+    Ok(serde_json::json!({"recovered": count}))
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_by_parent(args: TeamParentTaskRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_snapshot_by_parent(&args.parent_task_id)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_task_get(args: TeamTaskIdRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_task_get(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_task_create(args: TeamTaskCreateRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_task_create(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_task_list(args: TeamTaskListRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_task_list(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_node_status(args: TeamNodeStatusRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_set_node_status(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_confirm_plan(args: TeamConfirmPlanRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_confirm_plan(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn cmd_agent_team_dispatch_read_only(args: TeamDispatchRequest) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let value = agent_task_runtime::api_team_dispatch_read_only(args)?;
+        serde_json::to_value(value).map_err(|e| e.to_string())
+    }).await.map_err(|e| format!("team_dispatch_join: {e}"))?
+}
+
+#[tauri::command]
+pub async fn cmd_agent_team_advance(args: TeamAdvanceRequest) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let value = agent_task_runtime::api_team_advance(args)?;
+        serde_json::to_value(value).map_err(|e| e.to_string())
+    }).await.map_err(|e| format!("team_advance_join: {e}"))?
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_add_artifact(args: TeamArtifactRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_add_artifact(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cmd_agent_team_events(args: TeamEventsRequest) -> Result<serde_json::Value, String> {
+    let value = agent_task_runtime::api_team_events(args)?;
+    serde_json::to_value(value).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

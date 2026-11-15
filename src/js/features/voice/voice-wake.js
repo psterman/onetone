@@ -1936,7 +1936,8 @@
   function settingsPanelNeedsVoicePoll(){
     if(!ui().drawerOpen) return false;
     const p=ui().settingsPanel;
-    return p==='voiceWake'||p==='debug';
+    // voiceLab needs live status; voiceWake stays park-only (no status IPC while open).
+    return p==='voiceWake'||p==='voiceLab'||p==='debug';
   }
 
   function practicePhraseOpen(){
@@ -2072,6 +2073,10 @@
   function maybeNudgeVoskOnHome(voskRes){
     if(settingsVoiceParked()||runtime().paused) return;
     if(mainWindowDragActive()) return;
+    // Native SoftPad/mini drag owns the pointer and HWND. Avoid starting
+    // voice status IPC or repaint work while the pointer is down; those calls
+    // used to congest the WebView queue and race drag start/finish.
+    if(global.__onetoneOverlayDragging) return;
     // Soft Pad 口头收听中: home "正在监听" must not force-restart Vosk (kills mic).
     if(voskRes&&(voskRes.oralArmed||voskRes.oral_armed)) return;
     if(!voskRes||voskListeningOk(voskRes)){
@@ -3440,6 +3445,10 @@
     const overlayStatus=$('voiceSetupOverlayStatus');
     const setupDl=$('btnVoiceSetupDownload');
     const overlayDl=$('btnVoiceSetupOverlayDownload');
+    const labWrap=$('voiceLabResourceProgress');
+    const labFill=$('voiceLabResourceProgressFill');
+    const labStatus=$('voiceLabResourceProgressStatus');
+    const labDl=$('voiceLabResourceDownload');
     const active=!!phase&&phase!=='done'&&phase!=='error';
     const pct=String(Math.max(0,Math.min(100,percent||0)))+'%';
     const statusText=phase==='extracting'
@@ -3461,9 +3470,11 @@
     }
     syncBar(bannerWrap,bannerFill,bannerStatus);
     syncBar(overlayWrap,overlayFill,overlayStatus);
+    syncBar(labWrap,labFill,labStatus);
     if(dlBtn) dlBtn.disabled=!!voskDownloadInFlight;
     if(setupDl) setupDl.disabled=!!voskDownloadInFlight;
     if(overlayDl) overlayDl.disabled=!!voskDownloadInFlight;
+    if(labDl) labDl.disabled=!!voskDownloadInFlight;
   }
 
   function setVoiceSetupOverlayStatus(text,showProgress,percent){

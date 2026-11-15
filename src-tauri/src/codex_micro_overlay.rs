@@ -20,8 +20,10 @@ pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 /// second WebView2 during boot / SAPI SetInput 假死'd the UI (Responding=false).
 static OVERLAY_BOOT_HOLD: AtomicBool = AtomicBool::new(true);
 static OVERLAY_BOOT_SHOW_SCHEDULED: AtomicBool = AtomicBool::new(false);
-/// First Soft Pad show after cmd_ready waits so wake engine can finish SetInput first.
-const OVERLAY_POST_READY_DELAY_MS: u64 = 4500;
+/// Give the initial WebView a brief head start without making Soft Pad feel
+/// unavailable during application startup. Longer waits made the pad appear
+/// present but immovable for several seconds on every launch.
+const OVERLAY_POST_READY_DELAY_MS: u64 = 800;
 
 const OVERLAY_WIDTH: f64 = 432.0;
 /// Extra logical width when Soft Pad materials rail is open (pad | vertical list).
@@ -41,9 +43,9 @@ const OVERLAY_HEIGHT_FULL_MAX: f64 = 720.0;
 /// 6 agent chips + full usage (`Cu · N次`) + expand/close; bar grows horizontally.
 const OVERLAY_WIDTH_MINI: f64 = 400.0;
 /// Top strip only (agents + pill + win). Matches `.overlay-mini__row` ~40px + border.
-const OVERLAY_HEIGHT_MINI: f64 = 48.0;
+const OVERLAY_HEIGHT_MINI: f64 = 46.0;
 /// Top strip + reserved tools row (hover/pinned). Tools ~40px + dashed divider.
-const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 92.0;
+const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 84.0;
 /// Top strip + listen/tip band (2-line copy + padding). Stack gap included.
 const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 112.0;
 /// Tools row + listen/tip band — must fit without mid-glyph clip.
@@ -87,6 +89,12 @@ static OVERLAY_MATS_RAIL: AtomicBool = AtomicBool::new(false);
 static OVERLAY_MINI_MATS: AtomicBool = AtomicBool::new(false);
 /// User is dragging the overlay — skip all origin-changing geometry until snap.
 static OVERLAY_DRAGGING: AtomicBool = AtomicBool::new(false);
+/// Exactly one native drag worker may own the HWND at a time.  Multiple
+/// pointerdown IPC calls used to create competing workers and leave orphaned
+/// generations behind, which showed up as `arm` without `return` and moves=0.
+static OVERLAY_DRAG_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// Wall-clock ms when note_overlay_drag_begin armed the latch (0 = clear).
+static OVERLAY_DRAG_ARMED_AT_MS: AtomicU64 = AtomicU64::new(0);
 /// Main camera pause already sent for this Soft Pad gesture (prepare vs start).
 static OVERLAY_CAMERA_PAUSE_SENT: AtomicBool = AtomicBool::new(false);
 /// Soft Pad drag generation — stale finish must not clear latch / resume camera.
@@ -336,6 +344,16 @@ impl SoftPadSendPassGuard {
 
 impl Drop for SoftPadSendPassGuard {
     fn drop(&mut self) {
+        // Mid-drag EXSTYLE is owned by the follow loop — still stamp desired pass so
+        // finish_overlay_drag reconcile does not re-apply a stale click-through
+        // (Soft Pad "偶发拖不动": pointer goes through forever).
+        if overlay_is_dragging() {
+            *last_pass_through().lock() = self.restore_pass;
+            if let Some(win) = self.app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+                let _ = win.set_ignore_cursor_events(self.restore_pass);
+            }
+            return;
+        }
         set_overlay_click_through_impl(self.restore_pass, true, true);
         if let Some(win) = self.app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
             let _ = win.set_ignore_cursor_events(self.restore_pass);
@@ -348,7 +366,11 @@ impl Drop for SoftPadSendPassGuard {
 fn set_overlay_click_through_impl(pass: bool, force: bool, allow_show: bool) {
     // Soft Pad drag owns EXSTYLE (LAYERED stripped). Do not punch/restore mid-gesture —
     // that re-ORs WS_EX_LAYERED and starves SetWindowPos (setposMaxMs 748).
+    // Still stamp `last` on force so Drop/reconcile after drag sees the intended mode.
     if overlay_is_dragging() {
+        if force {
+            *last_pass_through().lock() = pass;
+        }
         return;
     }
     let mut last = last_pass_through().lock();
@@ -425,6 +447,12 @@ fn soft_pad_pass_through_decision(
 }
 
 fn soft_pad_pass_through_for_needs_input(snap: &CodexMicroOverlaySnapshot) -> bool {
+    // Oral listening owns the visible SoftPad surface. If an agent is also in
+    // needs_input, letting that state punch the HWND through makes the mini bar
+    // visibly present but impossible to drag while speech is being received.
+    if crate::voice_command_session::is_armed() || oral_pad_listening_chrome() {
+        return false;
+    }
     soft_pad_pass_through_decision(
         snap.visible,
         snap.app_state_enabled,
@@ -564,13 +592,71 @@ fn resolve_minimized_on_mapping_change(
     *runtime_minimized
 }
 
-fn sync_minimized_for_mapping(mapping_id: &str, pad: &CodexMicroPadConfig) -> bool {
+/// Soft Pad is one HWND — mini/full is shared. Older toggles only wrote the active
+/// mapping, so cold boot could seed `full` from a never-toggled pad while another
+/// still had `mini`. Prefer mini when presentations disagree (default is full).
+///
+/// ponytail: expand-only-on-one-pad with siblings still mini wrongly seeds mini once;
+/// next toggle + `apply_presentation_to_overlay_pads` converges. Ceiling: rare; upgrade = top-level softPadPresentation.
+fn shared_overlay_presentation_is_mini(cfg: &VoiceConfig, pad: &CodexMicroPadConfig) -> bool {
+    let mut mini = 0usize;
+    let mut full = 0usize;
+    for m in &cfg.mappings {
+        if !m.enabled {
+            continue;
+        }
+        let Some(p) = m.codex_micro_pad.as_ref() else {
+            continue;
+        };
+        if !p.overlay_enabled {
+            continue;
+        }
+        if presentation_is_mini(p) {
+            mini += 1;
+        } else {
+            full += 1;
+        }
+    }
+    if mini > 0 && full > 0 {
+        return true;
+    }
+    if mini > 0 {
+        return true;
+    }
+    if full > 0 {
+        return false;
+    }
+    presentation_is_mini(pad)
+}
+
+fn apply_presentation_to_overlay_pads(cfg: &mut VoiceConfig, presentation: &str) -> bool {
+    let presentation = normalize_presentation(presentation);
+    let mut dirty = false;
+    for m in &mut cfg.mappings {
+        if !m.enabled {
+            continue;
+        }
+        let Some(pad) = m.codex_micro_pad.as_mut() else {
+            continue;
+        };
+        if !pad.overlay_enabled {
+            continue;
+        }
+        if pad.presentation != presentation {
+            pad.presentation = presentation.into();
+            dirty = true;
+        }
+    }
+    dirty
+}
+
+fn sync_minimized_for_mapping(mapping_id: &str, pad_is_mini: bool) -> bool {
     let mut runtime = overlay_minimized().lock();
     let mut last_mid = overlay_presentation_mapping_id().lock();
     let before = last_mid.clone();
     let out = resolve_minimized_on_mapping_change(
         mapping_id,
-        presentation_is_mini(pad),
+        pad_is_mini,
         &mut last_mid,
         &mut runtime,
     );
@@ -616,10 +702,52 @@ pub fn overlay_is_dragging() -> bool {
 /// FE pointerdown must call this before async start_drag so scheduler cannot fight the drag.
 pub fn note_overlay_drag_begin() {
     OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
+    OVERLAY_DRAG_ARMED_AT_MS.store(crate::runtime_event::now_ms(), Ordering::SeqCst);
+    // If start_drag never lands (IPC fail), latch must not stick forever — blocks
+    // pass-through updates and feels like Soft Pad "拖不动".
+    let armed_gen = OVERLAY_DRAG_GEN.load(Ordering::SeqCst);
+    crate::app_log::sync_emergency_line(
+        "softpad_drag",
+        &format!("arm gen={armed_gen}"),
+    );
+    let _ = std::thread::Builder::new()
+        .name("overlay-drag-arm-watch".into())
+        .spawn(move || {
+            std::thread::sleep(Duration::from_millis(2800));
+            if !OVERLAY_DRAGGING.load(Ordering::SeqCst) {
+                return;
+            }
+            // start_overlay_drag bumps gen; same gen + still dragging ⇒ orphan latch.
+            if OVERLAY_DRAG_GEN.load(Ordering::SeqCst) != armed_gen {
+                return;
+            }
+            #[cfg(windows)]
+            if overlay_lmb_down() {
+                return;
+            }
+            clear_overlay_dragging();
+            OVERLAY_CAMERA_PAUSE_SENT.store(false, Ordering::SeqCst);
+            crate::window_layout::try_emit_drag_trace(
+                "overlay_drag_arm_timeout",
+                "softpad",
+                serde_json::json!({ "gen": armed_gen }),
+            );
+            crate::app_log::sync_emergency_line(
+                "softpad_drag",
+                &format!("arm_timeout gen={armed_gen}"),
+            );
+        });
 }
 
 fn clear_overlay_dragging() {
     OVERLAY_DRAGGING.store(false, Ordering::SeqCst);
+    OVERLAY_DRAG_ARMED_AT_MS.store(0, Ordering::SeqCst);
+}
+
+/// FE start_drag IPC fail — clear Rust latch left by note_overlay_drag_begin.
+pub fn clear_overlay_drag_latch() {
+    clear_overlay_dragging();
+    OVERLAY_CAMERA_PAUSE_SENT.store(false, Ordering::SeqCst);
 }
 
 /// Single geometry entry: one Win32 SetWindowPos (queued while dragging).
@@ -2824,6 +2952,7 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
         // does not keep「口头收听中」after session_end.
         if snapshot.cursor_beginner_arm_hint.contains("口头收听")
             || snapshot.cursor_beginner_flow_hint.contains("退出收听")
+            || snapshot.cursor_beginner_flow_hint.contains("听写中")
         {
             snapshot.cursor_beginner_arm_hint.clear();
             snapshot.cursor_beginner_flow_hint.clear();
@@ -2834,6 +2963,22 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
         return;
     }
     snapshot.oral_listen_armed = true;
+    // IME/dictation owns speech — Soft Pad stays armed but silent (keyword sentinel).
+    // activation_hub is applied just before this; ime_voice_active covers Soft「说话」.
+    let silent =
+        crate::voice_command_session::ime_voice_active() || snapshot.activation_hub_active;
+    if silent {
+        // Quiet chrome: no ASR echo / no command chips, but keep oral arm + thin hint
+        // so the Soft Pad HWND stays visibly "watching" (not vanished).
+        snapshot.oral_listen_hint.clear();
+        snapshot.oral_listen_flow_hint = "听写中 · 说「取消」「发送」介入".into();
+        snapshot.oral_listen_micro_keys = crate::voice_command_session::listen_micro_keys(cfg);
+        snapshot.oral_listen_commands.clear();
+        snapshot.cursor_beginner_arm_hint.clear();
+        snapshot.cursor_beginner_flow_hint = snapshot.oral_listen_flow_hint.clone();
+        snapshot.cursor_beginner_armed = true;
+        return;
+    }
     snapshot.oral_listen_hint = crate::voice_command_session::listen_hint(cfg);
     snapshot.oral_listen_flow_hint = crate::voice_command_session::listen_flow_hint();
     snapshot.oral_listen_micro_keys = crate::voice_command_session::listen_micro_keys(cfg);
@@ -2887,6 +3032,13 @@ fn now_epoch_ms() -> u64 {
 }
 
 fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState) {
+    // During IME dictation Soft Pad must not echo the user's speech — keyword-only.
+    if crate::voice_command_session::oral_dictation_silent(state) {
+        snapshot.voice_heard_partial.clear();
+        snapshot.voice_heard_final.clear();
+        snapshot.voice_heard_matched = false;
+        return;
+    }
     let partial = state.voice_vosk_last_partial.lock().clone();
     let mut final_text = state.voice_vosk_last_final.lock().clone();
     // Grammar Detected often sets phrase without a free-mode Final — still show it on Soft Pad.
@@ -3274,8 +3426,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     };
 
     let mut status_light_micro_key_id = resolve_status_light_micro_key_id(pad);
-    // Runtime expand/minimize is sticky; pad.presentation only seeds on mapping switch.
-    let minimized = sync_minimized_for_mapping(&mapping.id, pad);
+    // Runtime expand/minimize is sticky; shared presentation only seeds on first attach.
+    let minimized = sync_minimized_for_mapping(
+        &mapping.id,
+        shared_overlay_presentation_is_mini(cfg, pad),
+    );
     let applied_kind = crate::soft_pad_runtime::applied_lane()
         .map(|(k, mid)| if mid == mapping.id { Some(k) } else { None })
         .flatten()
@@ -3690,7 +3845,10 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     // "保持在最前" (require_foreground=false): stay visible while Soft Pad is enabled,
     // except over OneTone (main or focus-steal race). Still not "hijack any app" for key dispatch.
     // Home `softPadForceOpen` bypasses FG / OneTone-main host gates (settings drawer still gated).
-    let host_ok = if cfg.soft_pad_force_open {
+    // Oral silent-watch (听写中盯关键词) must keep Soft Pad up even when FG is WeChat/…
+    // — restore_external for Lab chord must not hide the whole pad.
+    let oral_hold = crate::voice_command_session::is_armed();
+    let host_ok = if cfg.soft_pad_force_open || oral_hold {
         true
     } else if !pad.require_foreground {
         if crate::app_identity::foreground_is_self() {
@@ -3726,7 +3884,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     } else {
         show
     };
-    let session_ok = cfg.soft_pad_force_open || !is_overlay_session_dismissed();
+    let session_ok =
+        cfg.soft_pad_force_open || oral_hold || !is_overlay_session_dismissed();
     let ag_light_gates = build_ag_light_gates(
         cfg,
         Some(mapping),
@@ -4513,7 +4672,8 @@ pub fn overlay_runtime_minimized() -> bool {
     *overlay_minimized().lock()
 }
 
-/// Set overlay mini/full chrome and persist `presentation` on the active overlay mapping.
+/// Set overlay mini/full chrome and persist `presentation` on every overlay Soft Pad.
+/// One HWND — writing only the FG mapping left siblings on `full` and cold-boot seeded wrong.
 pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimized: bool) {
     *overlay_minimized().lock() = minimized;
     if minimized {
@@ -4527,16 +4687,7 @@ pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimize
     let presentation = if minimized { "mini" } else { "full" };
     let dirty = {
         let mut cfg = state.cfg.lock();
-        if let Some(pad) = active_codex_mapping_with_overlay_mut(&mut cfg) {
-            if pad.presentation != presentation {
-                pad.presentation = presentation.into();
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
+        apply_presentation_to_overlay_pads(&mut cfg, presentation)
     };
     if dirty {
         // Clone then save — never hold cfg across disk I/O (watcher / scheduler can need the lock).
@@ -4546,56 +4697,6 @@ pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimize
     }
     // Always push so FE intent lock can confirm against a fresh minimized bit.
     push_state(app, state);
-}
-
-fn active_codex_mapping_with_overlay_mut(
-    cfg: &mut VoiceConfig,
-) -> Option<&mut CodexMicroPadConfig> {
-    // Same order as active_codex_mapping_with_overlay: surface owner → Applied → baseline → Codex.
-    let surface_tid = soft_pad_surface_owner().map(|(tid, _)| tid);
-    let prefer_id = crate::soft_pad_runtime::applied_lane().map(|(_, mid)| mid);
-
-    let idx = if let Some(tid) = surface_tid.as_deref() {
-        cfg.mappings
-            .iter()
-            .position(|m| {
-                m.enabled
-                    && m.app_target_id.trim() == tid.trim()
-                    && m.codex_micro_pad
-                        .as_ref()
-                        .map(|p| p.overlay_enabled)
-                        .unwrap_or(false)
-            })
-            .or_else(|| {
-                cfg.mappings.iter().position(|m| {
-                    m.enabled && m.app_target_id.trim() == tid.trim() && m.codex_micro_pad.is_some()
-                })
-            })
-    } else {
-        prefer_id
-            .as_ref()
-            .and_then(|mid| {
-                cfg.mappings.iter().position(|m| {
-                    m.enabled
-                        && m.id == *mid
-                        && m.codex_micro_pad
-                            .as_ref()
-                            .map(|p| p.overlay_enabled)
-                            .unwrap_or(false)
-                })
-            })
-            .or_else(|| {
-                cfg.mappings.iter().position(|m| {
-                    m.enabled
-                        && m.app_target_id.trim() == CODEX_APP_TARGET_ID
-                        && m.codex_micro_pad
-                            .as_ref()
-                            .map(|p| p.overlay_enabled)
-                            .unwrap_or(false)
-                })
-            })
-    }?;
-    cfg.mappings.get_mut(idx)?.codex_micro_pad.as_mut()
 }
 
 pub fn normalize_presentation(raw: &str) -> &'static str {
@@ -4744,28 +4845,38 @@ pub async fn prepare_overlay_drag(app: &AppHandle) {
 }
 
 pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Result<(), String> {
+    // A busy WebView can deliver duplicate pointerdown/start IPC calls while a
+    // previous worker is still polling LMB.  Do not let a second worker race
+    // the first one over the same HWND; the existing worker owns this gesture
+    // until button-up and will perform the single finish transition.
+    if OVERLAY_DRAG_WORKER_ACTIVE
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        crate::app_log::sync_emergency_line(
+            "softpad_drag",
+            "duplicate_start_ignored worker_active=true",
+        );
+        return Ok(());
+    }
     // Latch + gen first so scheduler cannot fight the HWND; spawn follow ASAP.
     let gen = OVERLAY_DRAG_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
-    cache_overlay_hwnd_from_window(win);
+    // The mini bar has no editable grid and should use the OS move loop directly.
+    // This avoids routing every cross-monitor pixel through WebView2 + SetWindowPos.
+    let native_mini_drag = overlay_runtime_minimized();
+    #[cfg(windows)]
+    if *overlay_hwnd_cache().lock() == 0 {
+        cache_overlay_hwnd_from_window(win);
+    }
     // Grab-offset captured at pointerdown (CSS px) — the invoke can land tens of ms
     // later; sampling GetCursorPos *here* would bake that delay into the offset and
     // the pad would ride offset from the cursor for the whole gesture.
-    let anchor_phys = anchor.map(|(cx, cy)| {
-        let scale = win.scale_factor().unwrap_or(1.0);
-        ((cx * scale).round() as i32, (cy * scale).round() as i32)
-    });
-    crate::window_layout::emit_drag_trace(
-        win.app_handle(),
-        "overlay_drag_begin",
-        "softpad",
-        serde_json::json!({
-            "hwnd": *overlay_hwnd_cache().lock(),
-            "overlayDragging": true,
-            "gen": gen,
-        }),
-    );
-
+    // Recompute the grab offset inside the native worker from the live cursor
+    // and HWND rect. Converting WebView CSS coordinates here uses the wrong DPI
+    // after a mixed-DPI monitor crossing and makes the pad visibly float.
+    let _ = anchor;
+    let anchor_phys: Option<(i32, i32)> = None;
     // FE must NOT await this invoke — worker blocks until LMB up.
     // Drag end is owned here: follow-loop return → snap + clear latch
     // (not FE pointercancel — ReleaseCapture fires cancel mid-gesture).
@@ -4778,9 +4889,34 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
     {
         if *overlay_hwnd_cache().lock() != 0 {
             let win_done = win.clone();
-            let _ = std::thread::Builder::new()
+            let drag_thread = std::thread::Builder::new()
                 .name("overlay-drag".into())
                 .spawn(move || {
+                    struct WorkerGuard;
+                    impl Drop for WorkerGuard {
+                        fn drop(&mut self) {
+                            OVERLAY_DRAG_WORKER_ACTIVE.store(false, Ordering::SeqCst);
+                        }
+                    }
+                    let _worker_guard = WorkerGuard;
+                    if native_mini_drag {
+                        // Tauri's `start_dragging()` is a platform message loop and
+                        // may return immediately when invoked from this worker after
+                        // WebView pointerdown. That produced `mini_native_return`
+                        // without a single SetWindowPos, i.e. the mini bar looked
+                        // armed but never moved. Use the same HWND follow loop as
+                        // the full pad so the native path has an observable move.
+                        let mut ok = start_overlay_drag_win32(anchor_phys);
+                        if !ok && overlay_lmb_down() {
+                            cache_overlay_hwnd_from_window(&win_done);
+                            ok = start_overlay_drag_win32(anchor_phys);
+                        }
+                        if !ok && overlay_lmb_down() {
+                            let _ = win_done.start_dragging();
+                        }
+                        finish_overlay_drag(&win_done, gen);
+                        return;
+                    }
                     let mut ok = start_overlay_drag_win32(anchor_phys);
                     // Stale HWND (window recreated after cache) makes every
                     // SetWindowPos fail — pad sits still while the cursor moves.
@@ -4813,6 +4949,36 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
                         }
                     }
                 });
+            if drag_thread.is_err() {
+                OVERLAY_DRAG_WORKER_ACTIVE.store(false, Ordering::SeqCst);
+                clear_overlay_dragging();
+                OVERLAY_CAMERA_PAUSE_SENT.store(false, Ordering::SeqCst);
+                crate::app_log::sync_emergency_line(
+                    "softpad_drag",
+                    &format!("worker_spawn_failed gen={gen}"),
+                );
+                return Err("failed to spawn Soft Pad drag worker".into());
+            }
+            // Diagnostics used to run before spawning the follow worker. Event fan-out
+            // can stall WebView2 long enough for a short drag to end before its first
+            // SetWindowPos, which feels like delayed or ignored dragging. Once the
+            // worker owns the gesture, tracing cannot hold up the first move.
+            let trace_app = win.app_handle().clone();
+            let trace_hwnd = *overlay_hwnd_cache().lock();
+            let _ = std::thread::Builder::new()
+                .name("overlay-drag-trace".into())
+                .spawn(move || {
+                    crate::window_layout::emit_drag_trace(
+                        &trace_app,
+                        "overlay_drag_begin",
+                        "softpad",
+                        serde_json::json!({
+                            "hwnd": trace_hwnd,
+                            "overlayDragging": true,
+                            "gen": gen,
+                        }),
+                    );
+                });
             let win_eval = win.clone();
             let need_cam = !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
             // Gen-guard: a short flick can finish before this task runs — must not
@@ -4833,8 +4999,17 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
         }
     }
 
+    // No worker was started (for example HWND cache was unavailable). Release
+    // the admission latch so the next pointerdown can retry.
+    OVERLAY_DRAG_WORKER_ACTIVE.store(false, Ordering::SeqCst);
     #[cfg(not(windows))]
     let _ = anchor_phys;
+    crate::window_layout::emit_drag_trace(
+        win.app_handle(),
+        "overlay_drag_begin",
+        "softpad",
+        serde_json::json!({ "overlayDragging": true, "gen": gen }),
+    );
     if !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst) {
         crate::window_layout::emit_camera_frame_pump(win.app_handle(), true);
     }
@@ -4896,12 +5071,27 @@ impl Drop for TimerResGuard {
 #[cfg(windows)]
 fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
     use winapi::um::winuser::{
-        GetCursorPos, GetWindowRect, IsWindow, SetWindowPos, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE,
-        SWP_NOSENDCHANGING, SWP_NOSIZE, SWP_NOZORDER,
+        GetCursorPos, GetWindowRect, IsWindow, SetWindowPos, SWP_ASYNCWINDOWPOS,
+        SWP_NOACTIVATE, SWP_NOSENDCHANGING, SWP_NOSIZE, SWP_NOZORDER,
     };
 
     let hwnd = *overlay_hwnd_cache().lock();
-    if hwnd == 0 || !overlay_lmb_down() {
+    if hwnd == 0 {
+        return false;
+    }
+    // The command can arrive a few milliseconds after WebView pointerdown when
+    // the UI thread is busy. Do not turn that IPC head delay into a zero-move
+    // drag; give the physical button a short grace window before abandoning the
+    // native follow loop.
+    let lmb_deadline = Instant::now() + Duration::from_millis(1000);
+    while !overlay_lmb_down() && Instant::now() < lmb_deadline {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    if !overlay_lmb_down() {
+        crate::app_log::sync_emergency_line(
+            "softpad_drag",
+            "follow_start_lmb_not_down",
+        );
         return false;
     }
     let t_enter = Instant::now();
@@ -4938,6 +5128,10 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                 "softpad",
                 serde_json::json!({ "hwnd": hwnd as isize }),
             );
+            crate::app_log::sync_emergency_line(
+                "softpad_drag",
+                &format!("stale_hwnd hwnd={}", hwnd as isize),
+            );
             return false;
         }
 
@@ -4966,16 +5160,11 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
         let mut setpos_max_ms = 0u64;
         let mut setpos_sum_ms = 0u64;
         let mut first_post_ms: Option<u64> = None;
-        // Queue backlog measured as lagAvgPx 32-163 / lagMaxPx 427 with pure
-        // async posts: each request costs the owner thread 15-20ms (layered
-        // recomposite), fast drags pile up 5-20 of them, and the pad renders a
-        // position from tens of ms ago. Synchronous posts serialize on the
-        // owner thread instead — each call applies the CURRENT cursor sample,
-        // so there is nothing to fall behind. Escape hatch: if one call ever
-        // blocks >40ms (owner thread sick), fall back to async so the loop
-        // cannot freeze again.
-        let mut force_async = false;
-        let mut async_ok_streak = 0u32;
+        // Never let one owner-thread repaint block the drag worker for a second
+        // (recent traces showed SetWindowPos costs of 1136/1162ms). Async posts
+        // keep the pointer loop alive; the 12ms gate limits queue growth so the
+        // window does not accumulate an unbounded trail of stale coordinates.
+        let mut last_post_at = Instant::now() - Duration::from_millis(16);
         // Follow "stickiness": `moves` only counts posts, it says nothing about
         // whether the pad is actually where the cursor is. Read the committed
         // rect back every few posts and record how far behind the window really
@@ -4990,17 +5179,15 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                 let x = pt.x - off_x;
                 let y = pt.y - off_y;
                 // Skip no-op posts — keeps the first flicks snappy when cursor barely moves.
-                if x != last_x || y != last_y {
+                if (x != last_x || y != last_y)
+                    && last_post_at.elapsed() >= Duration::from_millis(12)
+                {
                     let t0 = Instant::now();
-                    // Synchronous by default (no SWP_ASYNCWINDOWPOS): the call
-                    // returns after the move is applied, so the next sample is
-                    // taken fresh — backlog cannot build. NOSENDCHANGING skips
-                    // one owner-thread roundtrip per move.
-                    let flags = if force_async {
-                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS
-                    } else {
-                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING
-                    };
+                    let flags = SWP_NOSIZE
+                        | SWP_NOZORDER
+                        | SWP_NOACTIVATE
+                        | SWP_NOSENDCHANGING
+                        | SWP_ASYNCWINDOWPOS;
                     let rc = SetWindowPos(hwnd, std::ptr::null_mut(), x, y, 0, 0, flags);
                     let cost = t0.elapsed().as_millis() as u64;
                     setpos_sum_ms = setpos_sum_ms.saturating_add(cost);
@@ -5008,29 +5195,28 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                         setpos_max_ms = cost;
                     }
                     if cost > 40 {
-                        force_async = true;
-                        async_ok_streak = 0;
                         crate::window_layout::try_emit_drag_trace(
                             "overlay_drag_follow_slow_setpos",
                             "softpad",
                             serde_json::json!({ "costMs": cost }),
                         );
-                    } else if force_async {
+                        crate::app_log::sync_emergency_line(
+                            "softpad_drag",
+                            &format!("slow_setpos cost_ms={cost}"),
+                        );
+                    } else if false {
                         // Owner thread recovered — go back to synchronous after a
                         // short confirmation streak so lag stays at its best.
                         if cost < 16 {
-                            async_ok_streak = async_ok_streak.saturating_add(1);
-                            if async_ok_streak >= 5 {
-                                force_async = false;
-                                async_ok_streak = 0;
-                            }
+                            // Keep async mode for the rest of this gesture; queued
+                            // positions are coalesced below.
                         } else {
-                            async_ok_streak = 0;
                         }
                     }
                     if rc != 0 {
                         last_x = x;
                         last_y = y;
+                        last_post_at = Instant::now();
                         moves = moves.saturating_add(1);
                         if first_post_ms.is_none() {
                             first_post_ms = Some(t_enter.elapsed().as_millis() as u64);
@@ -5080,6 +5266,18 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                 "lmbDown": overlay_lmb_down(),
             }),
         );
+        crate::app_log::sync_emergency_line(
+            "softpad_drag",
+            &format!(
+                "return moves={moves} blocked_ms={} setpos_avg_ms={} setpos_max_ms={} lag_avg_px={} lag_max_px={} failed={failed} lmb_down={}",
+                t_enter.elapsed().as_millis(),
+                if moves > 0 { setpos_sum_ms / moves as u64 } else { 0 },
+                setpos_max_ms,
+                if lag_samples > 0 { lag_sum_px / lag_samples as u64 } else { 0 },
+                lag_max_px,
+                overlay_lmb_down(),
+            ),
+        );
         return moves > 0 || !overlay_lmb_down();
     }
 }
@@ -5094,7 +5292,41 @@ pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
     }
 }
 
+/// Once per process: unify mixed per-mapping `presentation` so cold boot matches the
+/// shared Soft Pad chrome (see `shared_overlay_presentation_is_mini`).
+fn heal_shared_overlay_presentation_if_needed(state: &AppState) {
+    static HEALED: AtomicBool = AtomicBool::new(false);
+    if HEALED.load(Ordering::SeqCst) {
+        return;
+    }
+    let presentation = {
+        let cfg = state.cfg.lock();
+        let Some((_, pad)) = active_codex_mapping_with_overlay(&cfg) else {
+            // Overlay may attach later — don't burn the once-flag yet.
+            return;
+        };
+        if shared_overlay_presentation_is_mini(&cfg, pad) {
+            "mini"
+        } else {
+            "full"
+        }
+    };
+    if HEALED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let dirty = {
+        let mut cfg = state.cfg.lock();
+        apply_presentation_to_overlay_pads(&mut cfg, presentation)
+    };
+    if dirty {
+        let cfg = state.cfg.lock().clone();
+        crate::config::save_config(&cfg);
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+    }
+}
+
 pub fn push_state(app: &AppHandle, state: &AppState) {
+    heal_shared_overlay_presentation_if_needed(state);
     request_overlay_push(app, state, true);
     crate::tray_state::emit_tray_segment(app, state, "channels");
 }
@@ -5686,7 +5918,11 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
     let gate_reason = overlay_runtime_gate_reason(state);
     let force_open = state.cfg.lock().soft_pad_force_open;
     // Home force-open bypasses OneTone-main / FG host latch; settings/setup/recording still gate.
-    let host_ok = gate_reason.is_none() && (force_open || overlay_should_be_visible_host());
+    // Oral armed (incl. silent dictation watch) keeps Soft Pad visible on WeChat FG.
+    let host_ok = gate_reason.is_none()
+        && (force_open
+            || crate::voice_command_session::is_armed()
+            || overlay_should_be_visible_host());
     let is_fg = *last_foreground_codex().lock();
 
     if force_open && is_overlay_session_dismissed() && gate_reason.is_none() {
@@ -6655,6 +6891,27 @@ mod tests {
         assert!(overlay_is_dragging());
         clear_overlay_dragging();
         assert!(!overlay_is_dragging());
+    }
+
+    #[test]
+    fn pass_through_force_stamps_last_while_dragging() {
+        // SoftPadSendPassGuard Drop mid-drag must not leave last_pass_through=true
+        // or finish_overlay_drag re-applies click-through (pad undraggable).
+        clear_overlay_dragging();
+        *last_pass_through().lock() = false;
+        note_overlay_drag_begin();
+        assert!(overlay_is_dragging());
+        set_overlay_click_through_impl(true, true, false);
+        assert!(
+            *last_pass_through().lock(),
+            "force pass during drag must stamp last"
+        );
+        set_overlay_click_through_impl(false, true, false);
+        assert!(
+            !*last_pass_through().lock(),
+            "force restore during drag must stamp last for finish reconcile"
+        );
+        clear_overlay_dragging();
     }
 
     #[test]
@@ -9612,6 +9869,41 @@ mod tests {
             false,
             &mut last,
             &mut runtime
+        ));
+    }
+
+    #[test]
+    fn shared_presentation_prefers_mini_when_mappings_disagree() {
+        let mut cfg = VoiceConfig::default();
+        let mut a = CodexMicroPadConfig {
+            overlay_enabled: true,
+            presentation: "mini".into(),
+            ..Default::default()
+        };
+        let mut b = CodexMicroPadConfig {
+            overlay_enabled: true,
+            presentation: "full".into(),
+            ..Default::default()
+        };
+        let mut ma = codex_mapping(a.clone());
+        ma.id = "pad-a".into();
+        let mut mb = codex_mapping(b.clone());
+        mb.id = "pad-b".into();
+        mb.app_target_id = "wechat".into();
+        cfg.mappings = vec![ma, mb];
+        // Active pad is full, sibling is mini — cold boot must not seed full.
+        assert!(shared_overlay_presentation_is_mini(&cfg, &b));
+        assert!(apply_presentation_to_overlay_pads(&mut cfg, "mini"));
+        a = cfg.mappings[0].codex_micro_pad.clone().unwrap();
+        b = cfg.mappings[1].codex_micro_pad.clone().unwrap();
+        assert!(presentation_is_mini(&a));
+        assert!(presentation_is_mini(&b));
+        assert!(!apply_presentation_to_overlay_pads(&mut cfg, "mini"));
+        assert!(shared_overlay_presentation_is_mini(&cfg, &a));
+        assert!(apply_presentation_to_overlay_pads(&mut cfg, "full"));
+        assert!(!shared_overlay_presentation_is_mini(
+            &cfg,
+            cfg.mappings[0].codex_micro_pad.as_ref().unwrap()
         ));
     }
 

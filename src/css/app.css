@@ -1591,7 +1591,7 @@
     .home-key-map-action-add-lbl{line-height:1.25;text-align:center}
     /* ── inline key recorder modal (added 2026-09) ── */
     .home-record-overlay{
-      position:fixed;inset:0;z-index:13000;
+      position:fixed;inset:0;z-index:16000;
       display:grid;place-items:center;
       background:rgba(15,23,42,.45);backdrop-filter:blur(4px);
     }
@@ -1815,6 +1815,8 @@
       border:none;border-radius:12px;background:transparent;font:inherit;font-size:13px;font-weight:600;
       color:var(--on-surface-muted);cursor:pointer;text-align:left;white-space:nowrap;
     }
+    /* display:flex above beats UA [hidden] — Soft Pad 等已并入项必须真正消失 */
+    .settings-nav-item[hidden]{display:none!important}
     .settings-nav-item:hover{background:var(--primary-soft);color:var(--on-surface)}
     .settings-nav-item.is-active{background:var(--primary-soft);color:var(--primary);font-weight:700}
     .settings-nav-badge{
@@ -2701,8 +2703,8 @@
     .habit-flow-cancel-block{margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-variant)}
     .habit-flow-cancel-label{display:block;font-size:9px;font-weight:700;color:var(--on-surface-muted);margin-bottom:6px}
     .habit-flow-arrow{align-self:center}
-    #settingsPanelKeys .habit-flow-step-slot .voice-end-key-mode-panel{margin:0}
-    #settingsPanelKeys .habit-flow-step-slot .habit-finish-mode-option{padding:4px 6px}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-step-slot .voice-end-key-mode-panel{margin:0}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-step-slot .habit-finish-mode-option{padding:4px 6px}
     #settingsPanelKeys .habit-flow-step-act .habit-rerecord-link.is-primary{padding:3px 7px;font-size:9px}
     @media(max-width:900px){
       .habit-default-flow{grid-template-columns:1fr;gap:8px}
@@ -2723,7 +2725,7 @@
     .habit-app-rule-pill.is-confirm.is-active{color:#b86e00}
     .habit-app-rule-pill.is-manual.is-active{color:#6a4c93}
 
-    #settingsPanelKeys .habit-flow-step-slot .habit-finish-mode-title{font-size:10px}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-step-slot .habit-finish-mode-title{font-size:10px}
 
     .habit-summary-card{display:grid;gap:10px}
     .habit-summary-desc{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
@@ -2864,12 +2866,12 @@
     #settingsPanelKeys .habit-flow-step-slot .habit-basic-key-display .display-value{
       font-size:14px;font-weight:800;color:var(--key-soft);letter-spacing:.02em;
     }
-    #settingsPanelKeys .habit-flow-finish-preview{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-finish-preview{
       min-height:48px;padding:8px 12px;border-radius:12px;border:1px solid var(--outline-variant);
       background:var(--surface);display:flex;align-items:center;justify-content:center;
       font-size:13px;font-weight:800;color:var(--on-surface);text-align:center;
     }
-    #settingsPanelKeys .habit-flow-finish-preview.is-set{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-finish-preview.is-set{
       color:var(--key-soft);border-color:rgba(42,156,196,.25);background:var(--surface);
     }
     .keys-finish-cancel-host{margin-top:8px}
@@ -2967,16 +2969,16 @@
     .keys-finish-delay-value{font-size:11px;font-weight:800;color:var(--primary-strong)}
     .keys-finish-delay-desc{margin:6px 0 0;font-size:10px;color:var(--on-surface-muted);line-height:1.35}
     .keys-finish-more-advanced{margin-top:4px}
-    #settingsPanelKeys .keys-finish-more-advanced{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-more-advanced{
       margin-top:2px;
       padding:0;
     }
     /* Cancel fold uses .keys-finish-adv-fold summary — do not hide it. */
-    #settingsPanelKeys .keys-finish-more-advanced:not(.keys-finish-adv-fold) > summary{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-more-advanced:not(.keys-finish-adv-fold) > summary{
       display:none;
     }
-    #settingsPanelKeys .keys-finish-more-advanced > summary::-webkit-details-marker{display:none}
-    #settingsPanelKeys .keys-finish-more-hint{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-more-advanced > summary::-webkit-details-marker{display:none}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-more-hint{
       display:none;
     }
     #settingsPanelKeys .habit-flow-cancel-block{
@@ -2984,145 +2986,145 @@
       padding:0;
       border:none;
     }
-    #settingsPanelKeys .keys-finish-cancel-card--compact .setting-row{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-cancel-card--compact .setting-row{
       margin:0;
       align-items:center;
     }
-    #settingsPanelKeys .keys-finish-cancel-card--compact .map-timing-desc{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-cancel-card--compact .map-timing-desc{
       margin:6px 0 4px;
       font-size:11px;
       line-height:1.4;
     }
-    #settingsPanelKeys .keys-cancel-strategy{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-strategy{
       display:flex;flex-direction:column;gap:8px;
       margin-top:8px;padding-top:0;
       border-top:none;
     }
-    #settingsPanelKeys .keys-cancel-head{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-head{
       display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0;
     }
-    #settingsPanelKeys .keys-cancel-head-main{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-head-main{
       display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0;
     }
-    #settingsPanelKeys .keys-cancel-title{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-title{
       margin:0;font-size:12px;font-weight:800;color:var(--on-surface);
     }
-    #settingsPanelKeys .keys-cancel-active{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-active{
       display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;
     }
-    #settingsPanelKeys .keys-cancel-dot{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-dot{
       display:inline-flex;align-items:center;gap:5px;
       font-size:11px;font-weight:700;color:var(--primary-strong);
     }
-    #settingsPanelKeys .keys-cancel-dot i{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-dot i{
       width:7px;height:7px;border-radius:50%;background:var(--primary);
       display:inline-block;flex-shrink:0;
     }
-    #settingsPanelKeys .keys-cancel-or{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-or{
       margin:0;font-size:11px;color:var(--on-surface-muted);white-space:nowrap;
     }
-    #settingsPanelKeys .keys-cancel-or--solo{display:none}
-    #settingsPanelKeys .keys-cancel-gate-note{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-or--solo{display:none}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-gate-note{
       margin:0;padding:6px 8px;border-radius:8px;background:#fff8eb;border:1px solid #f1dfb8;
       font-size:11px;color:#7a5a18;line-height:1.4;
     }
-    #settingsPanelKeys .keys-cancel-strategy.is-key-gated .keys-cancel-row[data-cancel-row="key"]{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-strategy.is-key-gated .keys-cancel-row[data-cancel-row="key"]{
       opacity:.45;pointer-events:none;
     }
-    #settingsPanelKeys .keys-cancel-list{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-list{
       display:flex;flex-direction:column;gap:0;
       border:1px solid var(--keys-line,#d5dee8);border-radius:14px;
       background:var(--keys-paper,#fff);overflow:hidden;
     }
-    #settingsPanelKeys .keys-cancel-row{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-row{
       display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:10px;align-items:center;
       padding:12px 14px;min-height:52px;border-bottom:1px solid var(--keys-line,#d5dee8);
       background:transparent;
     }
-    #settingsPanelKeys .keys-cancel-row:last-child{border-bottom:0}
-    #settingsPanelKeys .keys-cancel-row.is-on{background:transparent}
-    #settingsPanelKeys .keys-cancel-lab{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-row:last-child{border-bottom:0}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-row.is-on{background:transparent}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-lab{
       font-size:13px;font-weight:650;color:var(--on-surface);white-space:nowrap;line-height:1.2;
     }
-    #settingsPanelKeys .keys-cancel-check,
-    #settingsPanelKeys .keys-cancel-toggle,
-    #settingsPanelKeys .keys-cancel-name,
-    #settingsPanelKeys .keys-cancel-name-btn{display:none}
-    #settingsPanelKeys .keys-cancel-ctrl{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-check,
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-toggle,
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-name,
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-name-btn{display:none}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-ctrl{
       display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:flex-start;min-width:0;
     }
-    #settingsPanelKeys .keys-cancel-meta,
-    #settingsPanelKeys .keys-cancel-off{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-meta,
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-off{
       font-size:11px;color:var(--on-surface-muted);font-weight:550;
     }
-    #settingsPanelKeys .keys-cancel-switch-slot{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-switch-slot{
       width:44px;height:24px;flex-shrink:0;
     }
-    #settingsPanelKeys .keys-cancel-row > .toggle-switch{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-row > .toggle-switch{
       justify-self:end;flex-shrink:0;
     }
-    #settingsPanelKeys .keys-cancel-chip{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip{
       appearance:none;border:1px solid var(--keys-line,#d5dee8);background:var(--keys-wash,#f3f7fa);
       border-radius:999px;padding:4px 10px;min-height:0;font:inherit;font-size:11.5px;font-weight:550;
       color:var(--on-surface-muted);cursor:pointer;line-height:1.2;
     }
-    #settingsPanelKeys .keys-cancel-chip--gest{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip--gest{
       display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;border-radius:10px;
     }
-    #settingsPanelKeys .keys-cancel-chip--gest .keys-cancel-gest-ico{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip--gest .keys-cancel-gest-ico{
       flex-shrink:0;display:block;
     }
-    #settingsPanelKeys .keys-cancel-chip--gest .keys-cancel-gest-lab{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip--gest .keys-cancel-gest-lab{
       white-space:nowrap;
     }
-    #settingsPanelKeys .keys-cancel-chip--gest.is-dim{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip--gest.is-dim{
       opacity:.48;
     }
-    #settingsPanelKeys .keys-cancel-chip.is-active{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip.is-active{
       border-color:var(--keys-cyan-bd,#9bc6da);background:var(--cyan-soft,#e4f2f9);color:var(--primary-strong);font-weight:650;
     }
-    #settingsPanelKeys .keys-cancel-chip.is-tag{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip.is-tag{
       display:inline-flex;align-items:center;gap:4px;cursor:default;padding-right:6px;
       color:var(--on-surface);font-weight:600;
     }
-    #settingsPanelKeys .keys-cancel-chip-x{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip-x{
       appearance:none;border:0;background:transparent;padding:0 2px;margin:0;
       font:inherit;font-size:14px;line-height:1;color:var(--on-surface-muted);cursor:pointer;
       border-radius:4px;
     }
-    #settingsPanelKeys .keys-cancel-chip-x:hover{color:var(--on-surface)}
-    #settingsPanelKeys .keys-cancel-chip-x:focus-visible{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip-x:hover{color:var(--on-surface)}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip-x:focus-visible{
       outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);outline-offset:1px;
     }
-    #settingsPanelKeys .keys-cancel-add{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-add{
       display:inline-flex;align-items:center;gap:4px;min-width:0;
     }
-    #settingsPanelKeys .keys-cancel-add-input{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-add-input{
       width:88px;max-width:28vw;min-height:26px;padding:3px 8px;border-radius:999px;
       border:1px solid var(--keys-line,#d5dee8);background:#fff;font:inherit;font-size:11.5px;
       color:var(--on-surface);
     }
-    #settingsPanelKeys .keys-cancel-add-input:focus{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-add-input:focus{
       outline:2px solid color-mix(in srgb,var(--primary) 40%,transparent);outline-offset:1px;
     }
-    #settingsPanelKeys .keys-cancel-chip.is-readonly{cursor:default;font-weight:550}
-    #settingsPanelKeys .keys-cancel-chip.is-link{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip.is-readonly{cursor:default;font-weight:550}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-chip.is-link{
       color:var(--primary-strong);border-color:var(--keys-cyan-bd,#9bc6da);
       background:var(--cyan-soft,#e4f2f9);border-style:solid;font-weight:650;
     }
-    #settingsPanelKeys .keys-cancel-range{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-range{
       width:100%;max-width:160px;margin:0;
     }
-    #settingsPanelKeys .keys-cancel-gesture-warn{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-gesture-warn{
       width:100%;margin:2px 0 0;font-size:10px;color:#b45309;font-weight:700;text-align:right;
     }
-    #settingsPanelKeys .keys-cancel-summary{display:none!important}
-    #settingsPanelKeys #habitKeyMapStCancel{display:none!important}
-    #settingsPanelKeys .keys-finish-mode-hint{display:none!important}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-cancel-summary{display:none!important}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) #habitKeyMapStCancel{display:none!important}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-mode-hint{display:none!important}
     .keys-advanced-summary{display:flex;align-items:center;gap:8px}
     .keys-advanced-badge{margin-right:2px}
     #settingsPanelKeys .habit-flow-step-status{font-size:var(--type-status);font-weight:700;margin-top:0}
-    #settingsPanelKeys .habit-flow-ime-block{margin-top:8px;padding-top:8px}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .habit-flow-ime-block{margin-top:8px;padding-top:8px}
     #settingsPanelKeys .habit-key-mapping-foot.keys-page-tip-bar{
       margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(42,156,196,.18);
       background:linear-gradient(180deg,rgba(42,156,196,.08),rgba(42,156,196,.04));
@@ -8331,7 +8333,7 @@
     #settingsPanelKeys .keys-ime-pill-mic{color:var(--primary);flex-shrink:0}
     #settingsPanelKeys .keys-step-target-stash{display:none!important}
     #settingsPanelKeys .keys-flow-row--stash{display:none!important}
-    #settingsPanelKeys .keys-finish-segments{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segments{
       display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:3px;
       padding:3px;border-radius:12px;border:1px solid var(--keys-line,#d5dee8);
       background:var(--keys-wash,#f3f7fa);
@@ -8340,28 +8342,28 @@
     #settingsPanelKeys #voiceEndKeyModePanel.keys-finish-segments{
       display:block;padding:0;border:none;border-radius:0;background:transparent;
     }
-    #settingsPanelKeys .keys-finish-segment{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment{
       flex:unset;min-width:0;min-height:0;padding:11px 12px;border-radius:10px;
       border:0;background:transparent;
       font:inherit;font-size:13px;font-weight:650;color:var(--on-surface-muted);cursor:pointer;
       display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;
       box-shadow:none;text-align:left;
     }
-    #settingsPanelKeys .keys-finish-segment.is-active{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment.is-active{
       background:var(--keys-paper,#fff);color:var(--on-surface);font-weight:650;
       border-color:transparent;
       box-shadow:0 1px 2px rgba(19,32,44,.06),0 0 0 1px rgba(42,156,196,.18);
     }
-    #settingsPanelKeys .keys-finish-segment-label{font-size:13px;line-height:1.25;white-space:normal;text-align:left}
-    #settingsPanelKeys .keys-finish-segment.is-active .keys-finish-segment-label{color:var(--primary-strong)}
-    #settingsPanelKeys .keys-finish-segment-desc{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment-label{font-size:13px;line-height:1.25;white-space:normal;text-align:left}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment.is-active .keys-finish-segment-label{color:var(--primary-strong)}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment-desc{
       display:block;font-size:11px;font-weight:550;line-height:1.35;color:var(--on-surface-muted);opacity:.9;
     }
-    #settingsPanelKeys .keys-finish-segment.is-active .keys-finish-segment-desc{color:var(--primary-strong);opacity:.72}
-    #settingsPanelKeys .keys-finish-segment-badge{display:none}
-    #settingsPanelKeys .keys-finish-delay-card{padding:0;border:none;background:transparent}
-    #settingsPanelKeys .keys-finish-delay-head{margin-bottom:6px}
-    #settingsPanelKeys .keys-finish-delay-value{
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment.is-active .keys-finish-segment-desc{color:var(--primary-strong);opacity:.72}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-segment-badge{display:none}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-delay-card{padding:0;border:none;background:transparent}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-delay-head{margin-bottom:6px}
+    :is(#settingsPanelKeys, #settingsPanelKeysSeq) .keys-finish-delay-value{
       font-family:ui-monospace,monospace;padding:2px 8px;border-radius:6px;background:var(--surface-soft);
     }
     #settingsPanelKeys .habit-key-mapping-foot.keys-page-tip-bar{display:none}

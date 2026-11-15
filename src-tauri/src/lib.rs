@@ -31,6 +31,7 @@ mod coach_hud;
 mod codex_app_state;
 mod codex_micro_overlay;
 mod codex_micro_protocol_server;
+mod team_protocol_server;
 mod codex_micro_vendor;
 mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
@@ -1260,6 +1261,7 @@ pub fn run() {
             ipc::cmd_codex_micro_protocol_server_status,
             ipc::cmd_codex_micro_overlay_dismiss,
             ipc::cmd_codex_micro_overlay_note_drag_begin,
+            ipc::cmd_codex_micro_overlay_clear_drag,
             ipc::cmd_codex_micro_overlay_prepare_drag,
             ipc::cmd_codex_micro_overlay_start_drag,
             ipc::cmd_codex_micro_overlay_snap_position,
@@ -1419,6 +1421,26 @@ pub fn run() {
             ipc::cmd_agent_task_drive_deepseek,
             ipc::cmd_agent_task_drive,
             ipc::cmd_agent_task_ready,
+            ipc::cmd_agent_team_start,
+            ipc::cmd_agent_team_tick,
+            ipc::cmd_agent_team_reconcile,
+            ipc::cmd_agent_team_resume,
+            ipc::cmd_agent_team_cancel,
+            ipc::cmd_agent_team_recover_all,
+            ipc::cmd_agent_team_snapshot,
+            ipc::cmd_agent_team_by_parent,
+            ipc::cmd_agent_team_task_get,
+            ipc::cmd_agent_team_task_create,
+            ipc::cmd_agent_team_task_list,
+            ipc::cmd_agent_team_node_status,
+            ipc::cmd_agent_team_confirm_plan,
+            ipc::cmd_agent_team_dispatch_read_only,
+            ipc::cmd_agent_team_advance,
+            ipc::cmd_agent_team_add_artifact,
+            ipc::cmd_agent_team_events,
+            ipc::cmd_agent_team_bridge_start,
+            ipc::cmd_agent_team_bridge_stop,
+            ipc::cmd_agent_team_bridge_status,
             ipc::cmd_agent_task_ensure_verify_sandbox,
             ipc::cmd_agent_task_ensure_chat_scratch,
             ipc::cmd_agent_task_approve_deliver,

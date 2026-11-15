@@ -6750,19 +6750,24 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
         let mut watcher = notify::recommended_watcher(move |res: Result<Event, notify::Error>| {
             if let Ok(event) = res {
                 if matches!(event.kind, EventKind::Modify(_)) {
-                    tx.send(()).ok();
+                    tx.send(event).ok();
                 }
             }
         })
         .ok();
 
         if let Some(w) = &mut watcher {
+            // Watch the parent because save_config atomically replaces settings.json;
+            // filter events back to the target file so the watch survives rename.
             if let Some(parent) = path.parent() {
                 w.watch(parent, RecursiveMode::NonRecursive).ok();
             }
             let mut last_emit = std::time::Instant::now() - std::time::Duration::from_secs(10);
             loop {
-                if rx.recv_timeout(Duration::from_millis(500)).is_ok() {
+                if let Ok(event) = rx.recv_timeout(Duration::from_millis(500)) {
+                    if !event.paths.iter().any(|p| p == &path) {
+                        continue;
+                    }
                     if last_emit.elapsed() < Duration::from_millis(1500) {
                         continue;
                     }

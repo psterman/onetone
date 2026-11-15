@@ -97,12 +97,23 @@ pub fn aim_input_focus(
 
     #[cfg(windows)]
     {
-        // Phase0: all non-None strategies reuse focus_composer_for_send (relative
-        // click + UIA verify). Cursor field matrix decides Phase1 splits
-        // (true probe-without-click, safe hotkey-only, etc.).
-        let _ = strategy;
-        crate::app_chat_workflow::focus_composer_for_send(app, tid, duration_ms)
-            .map_err(|_| AimError::FocusFailed)
+        // Product mapping:
+        // - Smart / Auto / Hotkey / Click → focus_composer (UIA first, then click/key fallback)
+        // - Probe → same path for now (Phase1: true no-click check + skip write)
+        // Lab surfaces Smart as「智能填入」; Auto as recorded-aim auxiliary.
+        match strategy {
+            InputAimStrategy::Smart
+            | InputAimStrategy::Auto
+            | InputAimStrategy::Hotkey
+            | InputAimStrategy::Click
+            | InputAimStrategy::Probe => crate::app_chat_workflow::focus_composer_for_send(
+                app,
+                tid,
+                duration_ms,
+            )
+            .map_err(|_| AimError::FocusFailed),
+            InputAimStrategy::None => Ok(()),
+        }
     }
     #[cfg(not(windows))]
     {

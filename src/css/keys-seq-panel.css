@@ -5,11 +5,24 @@
 #settingsPanelKeysSeq .page-status-bar{
   flex:0 0 auto;
 }
-#settingsPanelKeysSeq .keys-seq-legacy-link{
-  display:inline-block;margin-top:6px;padding:0;border:0;background:transparent;
-  font-size:12px;font-weight:650;color:var(--accent,#1f7a8c);cursor:pointer;
+#settingsPanelKeysSeq .keys-seq-trigger-chrome{
+  display:flex;flex-direction:column;gap:8px;
+  padding:10px 14px 4px;flex:0 0 auto;min-width:0;
 }
-#settingsPanelKeysSeq .keys-seq-legacy-link:hover{text-decoration:underline}
+#settingsPanelKeysSeq .keys-seq-trigger-modes-slot:empty,
+#settingsPanelKeysSeq .keys-seq-trigger-conflict-slot:empty{display:none}
+#settingsPanelKeysSeq .keys-seq-trigger-modes-slot,
+#settingsPanelKeysSeq .keys-seq-trigger-modes-slot #keysTriggerModeHost{
+  display:block;width:100%;min-width:0;
+}
+#settingsPanelKeysSeq .keys-seq-trigger-conflict-slot #keysTriggerConflict{
+  margin:0;
+}
+#settingsPanelKeysSeq.is-ime-face .keys-seq-ime-host #keysFinishPeers,
+#settingsPanelKeysSeq.is-ime-face .keys-seq-ime-host #keysFinishBody,
+#settingsPanelKeysSeq.is-ime-face .keys-seq-ime-host #keysAimFold{
+  display:block;overflow:visible;
+}
 #settingsPanelKeysSeq .keys-page-body{
   flex:1 1 auto;min-height:0;
 }
@@ -37,6 +50,9 @@
 #settingsPanelKeysSeq .keys-seq-mid-label{
   margin:0;font-size:10px;font-weight:800;letter-spacing:.04em;
   text-transform:uppercase;color:var(--muted,#66768a);
+}
+#settingsPanelKeysSeq .keys-seq-ime-purpose{
+  margin:0 0 4px;font-size:12px;line-height:1.45;color:#3d4f61;max-width:42em;
 }
 #settingsPanelKeysSeq .keys-seq-mid-summary{
   margin:0;font:12.5px/1.4 ui-monospace,Consolas,monospace;color:#3d4f61;
@@ -153,6 +169,7 @@
   flex:1 1 auto;font-size:11px;font-weight:700;color:var(--muted,#66768a);
 }
 #settingsPanelKeysSeq .keys-seq-dictation-card{
+  appearance:none;-webkit-appearance:none;
   display:flex;flex-direction:column;align-items:flex-start;gap:2px;
   width:calc(100% - 8px);margin:2px 4px 8px;border:0;border-radius:8px;
   background:transparent;padding:8px 6px 8px 10px;text-align:left;font:inherit;cursor:pointer;

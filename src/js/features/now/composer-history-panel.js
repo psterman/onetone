@@ -75,7 +75,7 @@
       }
     } catch (_) {}
     try {
-      localStorage.setItem('onetone.homeSurface', 'agentV2');
+      localStorage.setItem('onetone.homeSurface', 'focus');
     } catch (_) {}
     var WB = global.OneToneHomeWorkbench;
     if (WB && typeof WB.syncNavActiveState === 'function') {

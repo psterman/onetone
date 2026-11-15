@@ -24,39 +24,35 @@
 
   };
 
-  /** 键盘页与软键盘共用 Soft Pad 正文；只切 surface / VK hub 样式，不搬 DOM（样式仍挂在 #settingsPanelSoftPad）。 */
-  function mountSoftPadPageBody(target){
-    target=target==='keyboard'?'keyboard':'softPad';
+  /** Soft Pad 正文只走键盘 surface（VK hub）；状态/切应用已挂在 keyboardPageToolbar。 */
+  function mountSoftPadPageBody(_target){
+    var target='keyboard';
     var body=$('softPadPageBody');
     var mount=$('softPadPageMount');
     if(body&&mount&&body.parentElement!==mount) mount.appendChild(body);
     if(body){
-      body.classList.toggle('is-vk-hub',target==='keyboard');
+      body.classList.add('is-vk-hub');
       body.setAttribute('data-soft-pad-surface',target);
     }
     var panel=$('settingsPanelSoftPad');
     if(panel) panel.setAttribute('data-soft-pad-surface',target);
     var kbBar=$('keyboardPageToolbar');
-    if(kbBar){
-      if(target==='keyboard') kbBar.removeAttribute('hidden');
-      else kbBar.setAttribute('hidden','');
-    }
+    if(kbBar) kbBar.removeAttribute('hidden');
     var slim=$('softPadStatusBar');
-    if(slim){
-      if(target==='keyboard') slim.setAttribute('hidden','');
-      else slim.removeAttribute('hidden');
-    }
+    if(slim) slim.removeAttribute('hidden');
   }
 
   function resolveSettingsPanelRequest(panel,opts){
     opts=opts||{};
-    if(panel==='voiceEnd') panel='voiceWake';
     if(panel==='actionHistory') panel='habits';
-    // 键盘 = Soft Pad 绑键面（Mac VK hub）；DOM 仍用 softPad 面板，导航高亮 keyboard。
-    if(panel==='keyboard'){
+    // 软键盘入口已并入键盘：一律 softPad 面板 + keyboard surface，导航高亮 keyboard。
+    if(panel==='keyboard'||panel==='softPad'){
       return {
         panel:'softPad',
-        opts:Object.assign({},opts,{softPadSurface:'keyboard',focus:opts.focus||'softPadLayout'})
+        opts:Object.assign({},opts,{
+          softPadSurface:'keyboard',
+          focus:opts.focus||(panel==='softPad'?'softPadDisplay':'softPadLayout')
+        })
       };
     }
     if(panel==='agentData'){
@@ -69,13 +65,29 @@
     if(panel==='general'){
       return {panel:'basic',opts:opts};
     }
-    if(panel==='models'){
+    // Product voice entry is voiceLab; classic voiceWake only when legacy/openLegacy.
+    if(panel==='voiceEnd'||panel==='voiceWake'||panel==='voice'||panel==='models'){
+      if(opts.legacy===true||opts.openLegacy===true){
+        return {
+          panel:'voiceWake',
+          opts:Object.assign({},opts,{
+            voiceSubpage:opts.voiceSubpage||(panel==='models'||panel==='voiceEnd'?'recognize':'wake'),
+            scrollTarget:opts.scrollTarget||(panel==='models'?'voiceRecognizeResourcesDetails':opts.scrollTarget)
+          })
+        };
+      }
+      var Nav=global.OneToneVoiceNav;
+      if(Nav&&typeof Nav.adaptOpenOpts==='function'){
+        var adapted=Nav.adaptOpenOpts(Object.assign({},opts,{panel:panel}));
+        return {panel:adapted.panel||'voiceLab',opts:adapted};
+      }
+      var focus=opts.focus||opts.voiceFocus||'';
+      if(!focus&&panel==='models') focus='engine';
+      if(!focus&&(panel==='voiceEnd'||opts.voiceTab==='end')) focus='finish';
+      if(!focus&&opts.voiceSubpage) focus=opts.voiceSubpage;
       return {
-        panel:'voiceWake',
-        opts:Object.assign({},opts,{
-          voiceSubpage:opts.voiceSubpage||'recognize',
-          scrollTarget:opts.scrollTarget||'voiceRecognizeResourcesDetails'
-        })
+        panel:'voiceLab',
+        opts:Object.assign({},opts,{focus:focus||opts.focus,voiceSubpage:opts.voiceSubpage})
       };
     }
     if(panel==='scenes') panel='habits';
@@ -112,7 +124,8 @@
 
   function normalizePanel(panel){
 
-    if(panel==='keyWake') return 'keys';
+    // Action-chain desk is the Keys product surface; classic panel stays as DOM host only.
+    if(panel==='keyWake'||panel==='keys') return 'keysSeq';
 
     // scenes ????????habits??????????settingsPanelScenes
     if(panel==='scenes') return 'habits';
@@ -134,7 +147,7 @@
 
     panel=normalizePanel(panel||(ui.settingsPanel||''));
 
-    return panel==='keys';
+    return panel==='keysSeq';
 
   }
 
@@ -248,9 +261,10 @@
     }
 
     if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadPurpose'){
-      // 绑键进键盘 surface；何时显示/皮肤仍在软键盘 surface。
-      if(focus==='softPadLayout') setSettingsPanel('keyboard');
-      else setSettingsPanel('softPad',{softPadSurface:'softPad'});
+      // Soft Pad 入口已并入键盘；勿回传 focus（避免 focusField ↔ setPanel 递归）。
+      if(ui.settingsPanel!=='softPad'||ui.softPadSurface!=='keyboard'){
+        setSettingsPanel('keyboard');
+      }
       setTimeout(function(){
         var flowId=(focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData')
           ?'softPadFlowNodeAgent':'softPadFlowNodePad';
@@ -465,10 +479,13 @@
       }catch(err){ console.error('keys seq live refresh',err); }
       return;
     }
-    // Leaving keysSeq: put IME pane back before classic Keys paints.
+    // Leaving keysSeq path: put IME / trigger chrome back before classic Keys paints.
     try{
-      if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.unmountImeScheme==='function'){
-        global.OneToneKeysSeqPanel.unmountImeScheme();
+      var seqUn=global.OneToneKeysSeqPanel;
+      if(seqUn&&typeof seqUn.unmountLiveKeysChrome==='function'){
+        seqUn.unmountLiveKeysChrome();
+      }else if(seqUn&&typeof seqUn.unmountImeScheme==='function'){
+        seqUn.unmountImeScheme();
       }
     }catch(_){}
 
@@ -636,8 +653,8 @@
     if(panel==='scenes') return 'habits';
     // Agent → 数据仍高亮主导航 Agent（页内标签高亮「数据」）
     if(panel==='agent'||panel==='agentData') return 'agent';
-    // softPad 面板在键盘 surface 时高亮「键盘」导航
-    if(panel==='softPad'&&ui.softPadSurface==='keyboard') return 'keyboard';
+    // Soft Pad 已并入键盘入口 — 始终高亮「键盘」
+    if(panel==='softPad'||panel==='keyboard') return 'keyboard';
     return panel;
   }
 
@@ -855,7 +872,7 @@
 
     ui.settingsPanel=panel;
     if(panel==='softPad'){
-      ui.softPadSurface=opts.softPadSurface==='keyboard'?'keyboard':'softPad';
+      ui.softPadSurface='keyboard';
     }else if(panel!=='keyboard'){
       ui.softPadSurface='softPad';
     }
@@ -898,10 +915,10 @@
       }catch(_){}
     }
 
-    if(panelChanged&&panel!=='keys'&&global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
+    if(panelChanged&&panel!=='keys'&&panel!=='keysSeq'&&global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
       global.OneToneTargetKeyPicker.close();
     }
-    if(panelChanged&&panel!=='keys'){
+    if(panelChanged&&panel!=='keys'&&panel!=='keysSeq'){
       var capPicker=global.OneToneKeysChannelCommandPicker;
       if(capPicker&&(capPicker.closeCapturePopover||capPicker.closeCaptureSheet)){
         try{
@@ -912,16 +929,20 @@
     }
 
     // Leaving keys: stop pad readiness remount/poll so open is not stacked under it.
-    if(panelChanged&&leavingPanel==='keys'&&panel!=='keys'){
+    if(panelChanged&&leavingPanel==='keys'&&panel!=='keys'&&panel!=='keysSeq'){
       stopKeysPanelBackgroundWork();
     }
-    // Leaving 动作链听写面: restore Keys IME pane to classic panel before next paint.
+    // Leaving 动作链: restore Keys IME / trigger chrome to classic panel before next paint.
     if(panelChanged&&leavingPanel==='keysSeq'&&panel!=='keysSeq'){
       try{
-        if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.unmountImeScheme==='function'){
-          global.OneToneKeysSeqPanel.unmountImeScheme();
+        var seqLeave=global.OneToneKeysSeqPanel;
+        if(seqLeave&&typeof seqLeave.unmountLiveKeysChrome==='function'){
+          seqLeave.unmountLiveKeysChrome();
+        }else if(seqLeave&&typeof seqLeave.unmountImeScheme==='function'){
+          seqLeave.unmountImeScheme();
         }
       }catch(_){}
+      stopKeysPanelBackgroundWork();
     }
     if(panelChanged&&leavingPanel==='agent'&&panel!=='agent'){
       closeAgentCapsuleDesk();
@@ -1043,15 +1064,16 @@
 
     }
 
-    if(panel==='keys'){
+    if(panel==='keys'||panel==='keysSeq'){
 
-      // Two-phase defer (edit-habit ?? fix):
-      // 1) mount islands after chrome paints
-      // 2) refresh / afterHeavy on a later tick ??never stack ~14 mounts + syncEditor/render
+      // Two-phase defer:
+      // 1) mount islands after chrome paints (hosts may live under keysSeq remount)
+      // 2) refresh / afterHeavy on a later tick — never stack ~14 mounts + syncEditor/render
       var keysDeferHeavy=!!opts.deferHeavy;
       var keysAfterHeavy=opts.afterHeavy;
+      var keysPanelWanted=panel;
       function runKeysAfterMount(){
-        if(normalizePanel(ui.settingsPanel)!=='keys') return;
+        if(normalizePanel(ui.settingsPanel)!==keysPanelWanted) return;
         if(keysDeferHeavy){
           if(typeof keysAfterHeavy==='function'){
             try{ keysAfterHeavy(); }
@@ -1064,7 +1086,7 @@
         }
       }
       function mountKeysIslands(){
-        if(normalizePanel(ui.settingsPanel)!=='keys') return;
+        if(normalizePanel(ui.settingsPanel)!==keysPanelWanted) return;
         try{
           var mountKeys=global.__otMountKeysStatusIsland;
           if(typeof mountKeys==='function') mountKeys();
@@ -1095,17 +1117,6 @@
       }
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
 
-    }else if(panel==='keysSeq'){
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='keysSeq') return;
-          if(global.OneToneKeysSeqPanel&&typeof global.OneToneKeysSeqPanel.render==='function'){
-            try{ global.OneToneKeysSeqPanel.render(); }
-            catch(err){ console.error('keys seq panel',err); }
-          }
-        },0);
-      });
-
     }else if(panel==='voiceLab'){
       requestAnimationFrame(function(){
         setTimeout(function(){
@@ -1113,6 +1124,10 @@
           if(global.OneToneVoiceLabPanel&&typeof global.OneToneVoiceLabPanel.render==='function'){
             try{ global.OneToneVoiceLabPanel.render(); }
             catch(err){ console.error('voice lab panel',err); }
+          }
+          var focus=opts.focus||opts._voiceNavFocus||'';
+          if(focus&&global.OneToneVoiceNav&&typeof global.OneToneVoiceNav.applyLabFocus==='function'){
+            try{ global.OneToneVoiceNav.applyLabFocus(focus); }catch(_){}
           }
         },0);
       });
@@ -1170,11 +1185,14 @@
         }catch(_){}
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
           try{
-            if(softSurface==='keyboard'&&typeof global.OneToneSoftPadHub.setSoftPadPadMode==='function'){
-              global.OneToneSoftPadHub.setSoftPadPadMode('keys',{fromUser:true});
-            }else if(softSurface==='softPad'&&opts.focus==='softPadDisplay'&&
-                     typeof global.OneToneSoftPadHub.setSoftPadPadMode==='function'){
-              global.OneToneSoftPadHub.setSoftPadPadMode('show',{fromUser:true});
+            if(typeof global.OneToneSoftPadHub.setSoftPadPadMode==='function'){
+              var softMode='keys';
+              var softFocus=String(opts.focus||'');
+              if(softFocus==='softPadDisplay'||softFocus==='softPadPurpose') softMode='show';
+              else if(softFocus==='softPadAgent'||softFocus==='softPadAgentData'||
+                      softFocus==='softPadStatus'||softFocus==='softPadMini'||
+                      softFocus==='softPadLook') softMode='skin';
+              global.OneToneSoftPadHub.setSoftPadPadMode(softMode,{fromUser:true});
             }
             global.OneToneSoftPadHub.render(softOpts);
           }catch(err){
@@ -1570,7 +1588,7 @@
       }
     }
 
-    if(panel==='keys'||panel==='voiceWake'||panel==='camera'||panel==='softPad'){
+    if(panel==='keys'||panel==='keysSeq'||panel==='voiceWake'||panel==='camera'||panel==='softPad'){
       if(global.OneToneHabitChannelEditBanner){
         if(global.OneToneHabitChannelEditBanner.ensureEditContextFromRuntime){
           try{ global.OneToneHabitChannelEditBanner.ensureEditContextFromRuntime(); }catch(_){}
@@ -1586,7 +1604,7 @@
     }
 
     // voiceWake strip renders in the deferred paint tick (see voiceWake branch above).
-    if(panel==='keys'||panel==='camera'||panel==='softPad'){
+    if(panel==='keys'||panel==='keysSeq'||panel==='camera'||panel==='softPad'){
       if(global.OneToneHabitChannelStatusStrip){
         if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
         if(global.OneToneHabitChannelStatusStrip.render){
@@ -1759,17 +1777,19 @@
     hooks().closeHomeSchemeMenu();
 
     if(opts.voiceTab==='end'){
-      opts.panel='voiceWake';
-      if(!opts.focus) opts.focus='endPhrases';
-      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
+      opts.panel=opts.legacy||opts.openLegacy?'voiceWake':'voiceLab';
+      if(!opts.focus) opts.focus=opts.panel==='voiceLab'?'finish':'endPhrases';
+      if(opts.panel==='voiceWake'&&!opts.voiceSubpage) opts.voiceSubpage='recognize';
     }else if(opts.voiceTab==='wake'){
-      opts.panel=opts.keyWakeFocus?'keys':'voiceWake';
+      opts.panel=opts.keyWakeFocus?'keys':(opts.legacy||opts.openLegacy?'voiceWake':'voiceLab');
+      if(opts.panel==='voiceLab'&&!opts.focus) opts.focus='wake';
       if(opts.panel==='voiceWake'&&!opts.voiceSubpage) opts.voiceSubpage='wake';
     }
 
     if(opts.panel==='voiceEnd'){
-      opts.panel='voiceWake';
-      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
+      opts.panel=opts.legacy||opts.openLegacy?'voiceWake':'voiceLab';
+      if(opts.panel==='voiceLab'&&!opts.focus) opts.focus='finish';
+      if(opts.panel==='voiceWake'&&!opts.voiceSubpage) opts.voiceSubpage='recognize';
     }
 
     ui.drawerOpen=true;
@@ -1873,7 +1893,13 @@
 
       const focus=opts.focus||(opts.keyWakeFocus?'trigger':null);
 
-      if(focus) focusSettingsField(focus);
+      if(focus){
+        if(ui.settingsPanel==='voiceLab'&&global.OneToneVoiceNav&&typeof global.OneToneVoiceNav.applyLabFocus==='function'){
+          try{ global.OneToneVoiceNav.applyLabFocus(focus); }catch(_){}
+        }else{
+          focusSettingsField(focus);
+        }
+      }
 
     });
 

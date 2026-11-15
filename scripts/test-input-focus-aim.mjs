@@ -38,16 +38,39 @@ check('shared module InputAimStrategy', /pub enum InputAimStrategy/.test(aim));
 check('aim_input_focus entry', /pub fn aim_input_focus/.test(aim));
 check('lib registers module', readFileSync(join(root, 'src-tauri/src/lib.rs'), 'utf8').includes('mod input_focus_aim'));
 check('voiceEnd.input_aim_strategy', /input_aim_strategy/.test(cfg));
-check('default auto', /default_voice_end_input_aim_strategy/.test(cfg) && cfg.includes('"auto"'));
+check(
+  'default none',
+  /fn default_voice_end_input_aim_strategy[\s\S]*?"none"/.test(cfg)
+);
 check('prompt wake calls aim', /aim_input_focus\(app,/.test(voiceRt));
 check('prompt fail-closed event', /VOICE_PROMPT_AIM_FAILED/.test(voiceRt));
 check('kind constant', /VOICE_PROMPT_AIM_FAILED/.test(logic));
 check('mapping sequence uses aim', /aim_input_focus\(/.test(voiceRt) && /run_mapping_target_sequence/.test(voiceRt));
 check('none strategy skips', /InputAimStrategy::None/.test(aim) && /if strategy == InputAimStrategy::None/.test(aim));
-check('HTML aim select', html.includes('voiceInputAimStrategy') && html.includes('先对准，再填入'));
-check('HTML aim cards', html.includes('voice-prompt-aim__card') && html.includes('直接填入') && html.includes('只在已对准时填'));
+check('Smart parses uia alias', /"smart" \| "uia"/.test(aim) || /"smart"\s*\|\s*"uia"/.test(aim));
+check(
+  'HTML aim select four schemes',
+  html.includes('voiceInputAimStrategy') &&
+    html.includes('智能填入') &&
+    html.includes('先对准，再填入') &&
+    html.includes('直接填入') &&
+    html.includes('只在已对准时填') &&
+    /option value="smart"/.test(html)
+);
+check(
+  'HTML aim cards four schemes',
+  html.includes('voice-prompt-aim__card') &&
+    html.includes('data-aim-value="smart"') &&
+    html.includes('直接填入') &&
+    html.includes('只在已对准时填')
+);
 check('no jargon labels', !html.includes('自动链式') && !html.includes('仅探测'));
-check('rail persists strategy', rail.includes('inputAimStrategy'));
+check(
+  'rail persists strategy + smart',
+  rail.includes('inputAimStrategy') &&
+    /function normalizeAimStrategy/.test(rail) &&
+    rail.includes("'smart'")
+);
 check('toast on aim failed', bind.includes('voice_prompt_aim_failed'));
 check('Soft Pad Text+Enter bind', /runTargetSequence/.test(pad) && /promptInjectActions/.test(pad));
 check('persist field', persist.includes('inputAimStrategy'));

@@ -310,17 +310,24 @@
   }
 
   function resolveVoiceScopeMapping(){
+    var Scope=global.OneToneVoiceScope;
+    if(Scope&&typeof Scope.resolveEditMapping==='function'){
+      var vmApi=global.OneToneVoiceSettingsViewModel;
+      var vm=vmApi&&vmApi.build?vmApi.build():null;
+      var scoped=Scope.resolveEditMapping({habitMapping:vm&&vm.habitMapping});
+      if(scoped) return scoped;
+    }
     var coreApi=core();
     var scenarioId=String(ui().habitScenarioReturnId||'').trim();
     if(scenarioId&&coreApi&&coreApi.byId){
       var scenarioM=coreApi.byId(scenarioId);
       if(scenarioM) return scenarioM;
     }
-    var vmApi=global.OneToneVoiceSettingsViewModel;
-    var vm=vmApi&&vmApi.build?vmApi.build():null;
+    var vmApi2=global.OneToneVoiceSettingsViewModel;
+    var vm2=vmApi2&&vmApi2.build?vmApi2.build():null;
     if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.resolveScopeMapping){
-      var scoped=global.OneToneVoicePageHeaderRender.resolveScopeMapping(vm||{});
-      if(scoped) return scoped;
+      var scoped2=global.OneToneVoicePageHeaderRender.resolveScopeMapping(vm2||{});
+      if(scoped2) return scoped2;
     }
     var m=resolveVoiceEditMapping();
     if(m) return m;

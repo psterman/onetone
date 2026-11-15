@@ -45,7 +45,7 @@ check(
   'keys2 does not call refreshKeysPanel',
   keys2Branch.includes("panel==='keys2'") && !/\brefreshKeysPanel\s*\(/.test(keys2Branch)
 );
-check('isKeysPanel stays keys-only', /function isKeysPanel[\s\S]*?return panel==='keys';/.test(drawer));
+check('isKeysPanel treats keysSeq as Keys surface', /function isKeysPanel[\s\S]*?return panel==='keysSeq';/.test(drawer));
 
 check('OneToneKeys2CommandCard exported', cardJs.includes('OneToneKeys2CommandCard'));
 check('mount + refresh API', cardJs.includes('mount:') && cardJs.includes('refresh:'));

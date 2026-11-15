@@ -87,7 +87,8 @@
   function chromeHtml(vm, opts) {
     vm = vm || {};
     opts = opts || {};
-    var intent = opts.intent === 'work' ? 'work' : 'chat';
+    var intent =
+      opts.intent === 'work' ? 'work' : opts.intent === 'team' ? 'team' : 'chat';
     var project = String(vm.projectName || '').trim();
     var app =
       String((vm.appName || (vm.dto && vm.dto.foreground && vm.dto.foreground.appName) || '').trim()) ||
@@ -121,14 +122,18 @@
       '<button type="button" class="hn-intent-btn" data-hf-act="set_intent" data-hf-intent="work" aria-pressed="' +
       (intent === 'work' ? 'true' : 'false') +
       '">投递<small>向各 Agent 转发</small></button>' +
+      '<button type="button" class="hn-intent-btn hn-intent-btn--team" data-hf-act="open_team" title="让团队协作分析并汇总" data-voice-phrases="团队|团队协作" aria-pressed="' +
+      (intent === 'team' ? 'true' : 'false') +
+      '">团队<small>多模型协作</small></button>' +
       '</div>' +
       '<div class="hn-chrome-actions">' +
-      '<button type="button" class="hn-hist-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="历史 · 查找与恢复" aria-label="历史">' +
+      '<button type="button" class="hn-hist-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史|工作区" title="工作区 · 查找与恢复" aria-label="工作区">' +
       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
       '<path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
       '<path d="M4.5 12a7.5 7.5 0 1 0 1.7-4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
       '<path d="M4 5.5V9h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '</svg></button>' +
+      '</svg>' +
+      '<span class="hn-hist-badge" data-hf-hist-badge hidden aria-hidden="true"></span></button>' +
       '</div></header>'
     );
   }
@@ -234,14 +239,22 @@
   /** Idle invite — one headline, one fact; compose owns the action surface. */
   function idleInviteHtml(opts) {
     opts = opts || {};
-    var intent = opts.intent === 'work' ? 'work' : 'chat';
+    var intent =
+      opts.intent === 'work' ? 'work' : opts.intent === 'team' ? 'team' : 'chat';
     var hasTask = !!opts.hasTask;
-    var title = intent === 'work' ? '写一句，投递给 Agent' : '写一句，向大模型提问';
+    var title =
+      intent === 'work'
+        ? '写一句，投递给 Agent'
+        : intent === 'team'
+          ? '写一句，交给团队协作'
+          : '写一句，向大模型提问';
     var fact = hasTask
       ? '先写新的，或继续下面这件事。'
       : intent === 'work'
         ? '没有正在推进的任务。写清要做什么，转发到 Cursor / Claude 等。'
-        : '没有正在推进的任务。问一句，本机大模型直接答。';
+        : intent === 'team'
+          ? '没有正在推进的任务。描述问题，Lead 会动态分工并汇总。'
+          : '没有正在推进的任务。问一句，本机大模型直接答。';
     return (
       '<section class="hn-invite" aria-labelledby="hnInviteTitle">' +
       '<p class="hn-kicker"><button type="button" data-hf-act="open_prep">帮我理一理再说</button></p>' +
@@ -802,6 +815,10 @@
       watch +
       '</div>' +
       '<div class="hn-home-notice" data-hf-home-notice role="status" aria-live="polite" aria-atomic="true"></div>' +
+      /* HA2 workRows / resume / history — same list as old 新首页 content, not a second store. */
+      '<section class="hn-ha2-workspace is-home-agent-v2" data-hf-ha2-workspace hidden aria-label="任务与会话">' +
+      '<div class="ha2-section-head"><h3>任务与会话</h3></div>' +
+      '<div class="ha2-list" data-ha2-list></div></section>' +
       '<div data-ha2-picker-host></div>' +
       restore +
       matSummary +
@@ -839,7 +856,8 @@
     var mode = vm.mode || 'quiet';
     var desk = deskZonesHtml(vm);
     var voice = opts.voiceHtml || '';
-    var intent = opts.intent === 'work' ? 'work' : 'chat';
+    var intent =
+      opts.intent === 'work' ? 'work' : opts.intent === 'team' ? 'team' : 'chat';
     // Proto step1: invite → compose → task card (card below input, not above).
     var idleQuiet = mode === 'quiet' && !vm.primary;
     var showGateKeep = mode === 'quiet' && !!vm.primary;
@@ -971,42 +989,44 @@
       .join('');
   }
 
-  /** History drawer — tabs: 最近 / 未完成 / 可恢复. */
+  /**
+   * History drawer — 工作区 (ha2 listHtml) | 会话 (session/draft rows).
+   * Workspace list host is filled by OneToneHomeAgentV2.fillFocusWorkspaceList.
+   */
   function historyDrawerBodyHtml(entries, activeTab) {
     entries = Array.isArray(entries) ? entries : [];
-    var tab = activeTab === 'open' || activeTab === 'resume' ? activeTab : 'recent';
-    var filtered =
-      tab === 'recent'
-        ? entries
-        : entries.filter(function (e) {
-            return histBucket(e) === tab;
-          });
-    var rows = histRowsHtml(filtered);
-    var empty =
-      tab === 'open'
-        ? '没有未完成的草稿或素材。'
-        : tab === 'resume'
-          ? '没有可恢复的对话。'
-          : '暂时没有近期记录。';
+    var tab =
+      activeTab === 'sessions' ||
+      activeTab === 'recent' ||
+      activeTab === 'open' ||
+      activeTab === 'resume'
+        ? 'sessions'
+        : 'workspace';
+    var tabs =
+      '<div class="hn-hist-tabs" role="tablist" aria-label="工作区分类">' +
+      '<button type="button" role="tab" class="hn-hist-tab' +
+      (tab === 'workspace' ? ' is-on' : '') +
+      '" data-hf-hist-tab="workspace" aria-selected="' +
+      (tab === 'workspace' ? 'true' : 'false') +
+      '">工作区</button>' +
+      '<button type="button" role="tab" class="hn-hist-tab' +
+      (tab === 'sessions' ? ' is-on' : '') +
+      '" data-hf-hist-tab="sessions" aria-selected="' +
+      (tab === 'sessions' ? 'true' : 'false') +
+      '">会话</button></div>';
+    if (tab === 'workspace') {
+      return (
+        tabs +
+        '<p class="hn-drawer-lead">任务与会话 · 恢复 / 放弃走同一套动作</p>' +
+        '<div class="is-home-agent-v2 hn-drawer-ha2">' +
+        '<div class="ha2-list" data-ha2-list data-hf-drawer-ha2-list></div></div>'
+      );
+    }
+    var rows = histRowsHtml(entries);
     return (
-      '<div class="hn-hist-tabs" role="tablist" aria-label="历史分类">' +
-      '<button type="button" role="tab" class="hn-hist-tab' +
-      (tab === 'recent' ? ' is-on' : '') +
-      '" data-hf-hist-tab="recent" aria-selected="' +
-      (tab === 'recent' ? 'true' : 'false') +
-      '">最近</button>' +
-      '<button type="button" role="tab" class="hn-hist-tab' +
-      (tab === 'open' ? ' is-on' : '') +
-      '" data-hf-hist-tab="open" aria-selected="' +
-      (tab === 'open' ? 'true' : 'false') +
-      '">未完成</button>' +
-      '<button type="button" role="tab" class="hn-hist-tab' +
-      (tab === 'resume' ? ' is-on' : '') +
-      '" data-hf-hist-tab="resume" aria-selected="' +
-      (tab === 'resume' ? 'true' : 'false') +
-      '">可恢复</button></div>' +
-      '<p class="hn-drawer-lead">查找与恢复 · 不是方案台「历史方案」</p>' +
-      (rows || '<p class="hn-muted">' + empty + '</p>')
+      tabs +
+      '<p class="hn-drawer-lead">近期对话与草稿</p>' +
+      (rows || '<p class="hn-muted">暂时没有近期会话。</p>')
     );
   }
 

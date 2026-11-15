@@ -13,6 +13,7 @@ const i18n = read('src/js/core/i18n.js');
 const drawer = read('src/js/features/settings/settings-drawer.js');
 const shellIa = read('src/js/shared/shell-ia-convergence.js');
 const workbench = read('src/js/features/home/home-workbench.js');
+const imeJs = read('src/js/ime-presets.js');
 
 let pass = 0;
 let fail = 0;
@@ -40,19 +41,142 @@ const labStart = html.indexOf('id="settingsPanelVoiceLab"');
 const labEnd = html.indexOf('id="settingsPanelSounds"');
 const labChunk = labStart >= 0 && labEnd > labStart ? html.slice(labStart, labEnd) : '';
 
-check('shell toolbar + habit strip', /voice-lab-tb/.test(labChunk) && /voice-lab-habit-strip/.test(labChunk));
+check(
+  'status bar hosts mode+save (no shell toolbar card)',
+  /id="voiceLabStatusBar"[\s\S]*?id="voiceLabModeSw"[\s\S]*?id="voiceLabBtnSave"/.test(labChunk) &&
+    /voice-lab-mode-cluster/.test(labChunk) &&
+    !/voice-lab-tb/.test(labChunk) &&
+    !/voice-lab-habit-strip/.test(labChunk) &&
+    !/id="voiceLabHabitCta"/.test(labChunk)
+);
 check('status bar scene chrome (app+mode+reminder)', /id="voiceLabSceneChrome"/.test(labChunk) && /id="voiceLabSceneApp"/.test(labChunk) && /id="voiceLabSceneMode"/.test(labChunk) && /id="voiceLabSceneEditing"/.test(labChunk) && /id="voiceLabSceneHint"/.test(labChunk));
-const habitStripMatch = labChunk.match(/class="voice-lab-habit-strip"[\s\S]*?<\/div>/);
-const habitStripHtml = habitStripMatch ? habitStripMatch[0] : '';
-const noHabitDots = !!habitStripHtml && !/[\u00B7\u2022]/.test(habitStripHtml);
 const noAriaDots = !/aria-hidden="true">[\u00B7\u2022]</.test(labChunk);
 const midClean = /id="voiceLabMidLabel">口令进门 常驻唤醒</.test(labChunk);
-check('no mid-dot habit strip / mid labels', noHabitDots && noAriaDots && midClean);
+check('no mid-dot mid labels', noAriaDots && midClean);
+check('CSS mode cluster kept; shell toolbar row gone', /voice-lab-mode-cluster/.test(css) && !/\.voice-lab-tb\{/.test(css) && !/\.voice-lab-habit-strip\{/.test(css));
 check('JS syncSceneChrome fills app icon + reminder', /function syncSceneChrome/.test(panelJs) && /voiceLabSceneApp/.test(panelJs) && /settingsContextEditing/.test(panelJs));
 check('JS mid labels without · separators', /dictation:\s*'听写 口令 输入法 收尾'/.test(panelJs) && !/听写 · 口令 · 输入法 · 收尾/.test(panelJs));
-check('session cards host aim blocks', /data-vl-aim-host/.test(labChunk) && /data-vl-aim-for="dictation"/.test(labChunk) && /data-vl-aim-for="oral-cont"/.test(labChunk) && /data-vl-aim-for="oral-fix"/.test(labChunk) && /data-vl-aim-for="oral-send"/.test(labChunk));
-check('JS aim strategy + demo for agent box', /function syncAimBlocks/.test(panelJs) && /function setAimStrategy/.test(panelJs) && /Composer 输入框/.test(panelJs) && /keysSeqImeAimFirst/.test(panelJs) && /voice-aim-demo/.test(panelJs));
-check('CSS voice-lab-aim segments', /voice-lab-aim-seg/.test(css) && /voice-lab-aim-demo/.test(css));
+check(
+  'session cards host aim blocks; dictation aim inside ime desk',
+  /id="voiceLabImeDesk"[\s\S]*?data-vl-aim-for="dictation"[\s\S]*?id="voiceLabFinishCard"/.test(labChunk) &&
+    /data-vl-aim-for="oral-cont"/.test(labChunk) &&
+    /data-vl-aim-for="oral-fix"/.test(labChunk) &&
+    /data-vl-aim-for="oral-send"/.test(labChunk)
+);
+check(
+  'JS aim strategy + click-to-expand demo',
+  /function syncAimBlocks/.test(panelJs) &&
+    /function setAimStrategy/.test(panelJs) &&
+    /Composer 输入框/.test(panelJs) &&
+    /keysSeqImeAimFirst/.test(panelJs) &&
+    /voice-lab-aim-stage/.test(panelJs) &&
+    /data-vl-aim-demo-toggle/.test(panelJs) &&
+    /aimDemoExpanded/.test(panelJs) &&
+    /输入框对准/.test(panelJs)
+);
+check(
+  'JS aim demo four schemes + voice capsule + 上屏',
+  /AIM_DEMO_STORY/.test(panelJs) &&
+    /AIM_HINT/.test(panelJs) &&
+    /AIM_VOICE_SAMPLE/.test(panelJs) &&
+    /function runAimDemoLoop/.test(panelJs) &&
+    /function normalizeAimDemoMode/.test(panelJs) &&
+    /data-vl-aim-box/.test(panelJs) &&
+    /data-vl-aim-beats/.test(panelJs) &&
+    /data-vl-aim-capsule/.test(panelJs) &&
+    /data-vl-aim-cap-status/.test(panelJs) &&
+    /data-vl-aim-cap-partial/.test(panelJs) &&
+    /data-vl-aim-rec-badge/.test(panelJs) &&
+    /voiceLabAimSmart/.test(panelJs) &&
+    /智能填入/.test(panelJs) &&
+    /seg\('smart'/.test(panelJs) &&
+    /seg\('auto'/.test(panelJs) &&
+    /seg\('none'/.test(panelJs) &&
+    /seg\('probe'/.test(panelJs) &&
+    /开始语音输入/.test(panelJs) &&
+    /回放动作 · 点进输入框/.test(panelJs) &&
+    /语音输入中/.test(panelJs) &&
+    /填入完成/.test(panelJs) &&
+    /自动识别输入框/.test(panelJs) &&
+    /autoFindAndActivateBox/.test(panelJs) &&
+    /正在识别输入框/.test(panelJs) &&
+    /已激活输入框/.test(panelJs) &&
+    /写到光标处/.test(panelJs) &&
+    /mode === 'smart'/.test(panelJs) &&
+    /raw === 'uia'/.test(panelJs) &&
+    /aimMouseActionRecorded/.test(panelJs) &&
+    /playAimMouseStroke/.test(panelJs) &&
+    /activateBoxByReplay/.test(panelJs) &&
+    /startVoiceCapsule/.test(panelJs) &&
+    /capsuleTranscribeAndCommit/.test(panelJs) &&
+    /setAimCapsule/.test(panelJs) &&
+    /data-vl-aim-mq/.test(panelJs) &&
+    /data-vl-aim-pin/.test(panelJs) &&
+    /aimMqAroundBox/.test(panelJs) &&
+    /aimStoryForMode/.test(panelJs) &&
+    /probeMiss/.test(panelJs) &&
+    /probeHit/.test(panelJs) &&
+    /aimProbeHitNext/.test(panelJs) &&
+    /圈住输入框/.test(panelJs) &&
+    /蓝框内点一下/.test(panelJs) &&
+    /这轮先跳过/.test(panelJs) &&
+    /检查已对准/.test(panelJs) &&
+    /检查还没对准/.test(panelJs) &&
+    /is-probe-ok/.test(panelJs) &&
+    /'skip'/.test(panelJs) &&
+    /还没对准 · 这轮先跳过/.test(panelJs) &&
+    /不激活输入框/.test(panelJs) &&
+    /不录制/.test(panelJs) &&
+    /'回放'/.test(panelJs) &&
+    /已记住位置/.test(panelJs) &&
+    !/胶囊录制转化/.test(panelJs) &&
+    !/误写入编辑器/.test(panelJs) &&
+    !/今天的笔记：/.test(panelJs) &&
+    !/别处/.test(panelJs) &&
+    !/data-vl-aim-code/.test(panelJs) &&
+    !/data-vl-aim-away/.test(panelJs) &&
+    !/激活命令模式/.test(panelJs) &&
+    !/data-vl-aim-cmd/.test(panelJs) &&
+    !/voiceWriteInto/.test(panelJs) &&
+    !/录落点/.test(panelJs) &&
+    !/style="--spot-x/.test(panelJs)
+);
+check(
+  'CSS voice-lab-aim beats + capsule + marquee/pin stroke',
+  /voice-lab-aim-seg/.test(css) &&
+    /voice-lab-aim-demo-toggle/.test(css) &&
+    /voice-lab-aim-beats/.test(css) &&
+    /voice-lab-aim-rec-badge/.test(css) &&
+    /voice-lab-aim-capsule/.test(css) &&
+    /voice-lab-aim-capsule__waves/.test(css) &&
+    /voice-lab-aim-capsule__partial/.test(css) &&
+    /is-transcribe/.test(css) &&
+    /is-commit/.test(css) &&
+    /is-skip/.test(css) &&
+    /is-probe-ok/.test(css) &&
+    /vlAimProbePulse/.test(css) &&
+    /vlAimProbeOkPulse/.test(css) &&
+    /voice-lab-aim-stage\.is-rec/.test(css) &&
+    /voice-lab-aim-stage\.is-replay/.test(css) &&
+    /voice-lab-aim-stage__mq/.test(css) &&
+    /voice-lab-aim-stage__pin/.test(css) &&
+    /voice-lab-aim-stage__box\.is-dim/.test(css) &&
+    /#5ad0f5/.test(css) &&
+    /voice-lab-aim-stage__click/.test(css) &&
+    /overflow:visible/.test(css) &&
+    /padding-top:36px/.test(css) &&
+    /vlAimClickPop/.test(css) &&
+    /vlAimWave/.test(css)
+);
+check(
+  'Lab phrase summary + sheet popup',
+  /id="voiceLabPhraseSummary"/.test(labChunk) &&
+    /id="voiceLabPhraseSheet"/.test(labChunk) &&
+    /data-vl-phrase-open="primary"/.test(labChunk) &&
+    /data-vl-phrase-open="cancel"/.test(labChunk) &&
+    /function openPhraseSheet/.test(panelJs) &&
+    /function syncPhrasePreviews/.test(panelJs)
+);
 check('JS new oral builds editor not blank pane', /function ensureCustomOralPane/.test(panelJs) && /function saveCustomOral/.test(panelJs) && /savePromptInjectMapping/.test(panelJs) && /wakePhrases/.test(panelJs) && /data-vl-oral-say/.test(panelJs) && /data-vl-oral-body/.test(panelJs));
 check('JS new oral enables prompt peer for VOSK', /function enableOralPromptPeer/.test(panelJs) && /prompt:/.test(panelJs) && /cmd_test_send|runInvoke/.test(panelJs));
 check('JS oral after uses finish segs confirm/phrase/auto', /data-vl-oral-after="confirm"/.test(panelJs) && /data-vl-oral-after="phrase"/.test(panelJs) && /data-vl-oral-after="auto"/.test(panelJs) && /function syncOralAfterChrome/.test(panelJs) && /function promptActionsForAfter/.test(panelJs) && /normalizeOralAfter/.test(panelJs));
@@ -61,6 +185,46 @@ check('JS session cards get after blocks except gate', /SESSION_AFTER_PANES/.tes
 check('rail gate + dictation + oral', /voiceLabRailGate/.test(labChunk) && /voiceLabRailDict/.test(labChunk) && /oral-cont/.test(labChunk));
 check('dictation IME face prefixed', /id="voiceLabMatchChain"/.test(labChunk) && /id="voiceLabImeDesk"/.test(labChunk) && /id="voiceLabImePresetStrip"/.test(labChunk) && /id="voiceLabFinishCard"/.test(labChunk));
 check('ime icons use icons/ime/', /src="icons\/ime\/xunfei\.png"/.test(labChunk) && !/\.\.\/src\/icons\//.test(labChunk));
+check(
+  'Lab IME strip empty host for ime-presets mount',
+  /id="voiceLabImePresetStrip"[^>]*>\s*<\/div>/.test(labChunk) && /data-ime-context="voiceLab"/.test(labChunk)
+);
+check(
+  'Lab end phrase host empty for VoiceEnd paint',
+  /id="voiceLabEndPhraseTags"[^>]*>\s*<\/div>/.test(labChunk)
+);
+check(
+  'JS dictation syncs finish+IME+phrases to classic APIs',
+  /function syncDictationChrome/.test(panelJs) &&
+    /function syncLabPhraseTags/.test(panelJs) &&
+    /setOutputMode/.test(panelJs) &&
+    /addCustomEndPhrase|addCustomSendPhrase/.test(panelJs) &&
+    /OneToneImePresets/.test(panelJs) &&
+    /refresh\('voiceLab'\)/.test(panelJs)
+);
+check(
+  'JS saveToHabit uses VoiceSchemePersist',
+  /function saveToHabit/.test(panelJs) &&
+    /saveVoiceScheme/.test(panelJs) &&
+    /mirrorGlobalToOverride/.test(panelJs) &&
+    /saveToHabit\(\)/.test(panelJs)
+);
+check(
+  'JS dictation key record + match chain sync',
+  /function rerecordDictationKey/.test(panelJs) &&
+    /setVoiceTarget/.test(panelJs) &&
+    /OneToneHomeRecordChord/.test(panelJs) &&
+    /function syncMatchChain/.test(panelJs) &&
+    /primaryWakePhraseDisplay|resolveDisplayWakePhrase/.test(panelJs) &&
+    /voiceLabSettingsTargetKey/.test(panelJs)
+);
+check(
+  'ime-presets mounts voiceLab as voice twin',
+  /voiceLab:\s*'voiceLabImePresetStrip'/.test(imeJs) &&
+    /function isVoiceCtx/.test(imeJs) &&
+    /setVoiceTarget:\s*applyVoiceTarget/.test(imeJs) &&
+    /rerecordDictationKey/.test(imeJs)
+);
 check('no classic voiceWake ids inside lab', !/id="imePresetStripVoice"/.test(labChunk) && !/id="voiceImeDesk"/.test(labChunk) && !/id="voiceFinishCard"/.test(labChunk) && !/id="voiceMatchChain"/.test(labChunk));
 check('LIVE drawer present', /id="voiceLabLiveDrawer"/.test(labChunk));
 
@@ -69,9 +233,61 @@ check('NAV_PANEL_MAP voiceLab', /voiceLab:'voiceLab'/.test(workbench));
 check('PANEL_IDS voiceLab', /voiceLab:'settingsPanelVoiceLab'/.test(drawer));
 check('drawer renders OneToneVoiceLabPanel', /panel==='voiceLab'[\s\S]*?OneToneVoiceLabPanel\.render/.test(drawer));
 check('JS exports render+bind', /OneToneVoiceLabPanel\s*=\s*\{[\s\S]*render:[\s\S]*bind:/.test(panelJs));
-check('JS opens legacy voiceWake', /openPanel\('voiceWake'\)/.test(panelJs) || /panel:\s*'voiceWake'/.test(panelJs));
-check('JS habit CTA panel', /openPanel\([^)]*habits/.test(panelJs) || /data-vl-open-panel="habits"/.test(labChunk));
+check('JS opens legacy voiceWake with legacy flag', /panel === 'voiceWake'/.test(panelJs) && /legacy:\s*true|legacy = true/.test(panelJs));
+check(
+  'product entry is voiceLab; classic voiceWake nav hidden but panel kept',
+  /id="wbNavVoice"[^>]*\bhidden\b/.test(html) &&
+    /id="settingsNavVoiceWake"[^>]*\bhidden\b/.test(html) &&
+    /id="settingsPanelVoiceWake"/.test(html) &&
+    /id="wbNavVoiceLab"/.test(html) &&
+    !/id="wbNavVoiceLab"[^>]*\bhidden\b/.test(html) &&
+    /id="settingsPanelVoiceLab"/.test(html)
+);
+check(
+  'voiceWake panel id map kept; product CTAs go voiceLab via adapter',
+  /voiceWake:'settingsPanelVoiceWake'/.test(drawer) &&
+    /voiceLab:'settingsPanelVoiceLab'/.test(drawer) &&
+    /voiceWake:'voice'/.test(workbench) &&
+    /voiceLab:'voiceLab'/.test(workbench) &&
+    (/legacy===true\|\|opts\.openLegacy===true/.test(drawer) || /OneToneVoiceNav/.test(drawer))
+);
+check(
+  'Lab advanced mic+engine hosts (no intent rail)',
+  /id="voiceLabAdvanced"/.test(labChunk) &&
+    /id="voiceLabMicBtn"/.test(labChunk) &&
+    /id="voiceLabEngineGrid"/.test(labChunk) &&
+    /data-voice-engine-tab="sapi"/.test(labChunk) &&
+    /data-voice-engine-tab="vosk"/.test(labChunk) &&
+    /data-voice-engine-tab="kws"/.test(labChunk) &&
+    !/id="voiceIntentRail"/.test(labChunk) &&
+    !/data-voice-intent=/.test(labChunk)
+);
+check(
+  'JS syncAdvancedChrome + engine/mic bridge',
+  /function syncAdvancedChrome/.test(panelJs) &&
+    /function switchLabEngine/.test(panelJs) &&
+    /function openLabMicPicker/.test(panelJs) &&
+    /switchMode/.test(panelJs)
+);
+check(
+  'Lab resource block has download+progress for first-run vosk',
+  /id="voiceLabResourceDownload"/.test(labChunk) &&
+    /id="voiceLabResourceProgress"/.test(labChunk) &&
+    /function kickLabVoskDownload/.test(panelJs) &&
+    /downloadVoskModelGuide/.test(panelJs)
+);
+check(
+  'product line host kept; gate annotation clutter gone',
+  /id="voiceLabProductLineHint"/.test(labChunk) &&
+    !/id="voiceLabGateBanner"/.test(labChunk) &&
+    !/voice-lab-cut-note/.test(labChunk) &&
+    !/不提供意图分类列表|不放意图分类列表/.test(labChunk) &&
+    !/相对 Windows 现页/.test(labChunk)
+);
+check('legacy link still opens classic voice settings', /id="voiceLabOpenLegacy"/.test(labChunk) && /openPanel\('voiceWake'\)/.test(panelJs));
+check('JS can open habits panel', /['"]habits['"]/.test(panelJs) && /function openPanel/.test(panelJs));
 check('CSS scoped under settingsPanelVoiceLab', /#settingsPanelVoiceLab\.voice-lab-page/.test(css) && /#settingsPanelVoiceLab \.voice-lab-shell/.test(css));
+check('CSS advanced fold', /voice-lab-advanced/.test(css) && /voice-lab-engine-btn/.test(css));
 check('CSS remaps ime strip for lab', /#settingsPanelVoiceLab \.voice-ime-strip-wrap \.ime-preset-strip/.test(css));
 check('CSS product ime fills mid (no 560 cap)', /voice-product-ime\{[\s\S]*?max-width:none/.test(css) && !/\.voice-product-ime\{max-width:560px\}/.test(css));
 check('CSS shell fills drawer height', /#settingsPanelVoiceLab\.voice-lab-page\{[\s\S]*?flex:1 1 auto/.test(css));

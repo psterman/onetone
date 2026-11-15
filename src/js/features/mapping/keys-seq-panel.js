@@ -11,6 +11,11 @@
   /** Home slot for #keysChannelPaneRight while hosted in keysSeq. */
   var imeHomeParent = null;
   var imeHomeNext = null;
+  /** Home slots for trigger mode / conflict hosts while hosted in keysSeq. */
+  var modeHomeParent = null;
+  var modeHomeNext = null;
+  var conflictHomeParent = null;
+  var conflictHomeNext = null;
 
   function t(key, fallback) {
     if (global.OneToneI18n && typeof global.OneToneI18n.t === 'function') {
@@ -463,12 +468,45 @@
       var m = maps[i];
       if (!m || !m.id || isPromptInject(m)) continue;
       if (appId && String(m.appTargetId || '').trim() !== appId) continue;
+      // Prefer habit-level IME / targetKey peers — skip pure custom-key sequences.
+      try {
+        var picker = global.OneToneKeysChannelCommandPicker;
+        if (
+          picker &&
+          typeof picker.isCustomKeyMatchMapping === 'function' &&
+          picker.isCustomKeyMatchMapping(m) &&
+          !String(m.imePresetId || '').trim()
+        ) {
+          continue;
+        }
+      } catch (_) {}
       if (String(m.imePresetId || '').trim() || String(m.targetKey || '').trim()) {
         if (!mappingHasChainContent(m) || String(m.imePresetId || '').trim()) return m;
         if (!fallback) fallback = m;
       }
     }
     return fallback;
+  }
+
+  /** IME face must edit the dictation peer — custom-key selection blanks the strip. */
+  function focusDictationPeerForIme() {
+    var cur = selectedHabit();
+    var peer = findDictationPeer(cur) || cur;
+    if (!peer || !peer.id) return null;
+    if (cur && String(cur.id) === String(peer.id)) return peer;
+    var core = global.OneToneMappingCore;
+    if (core && typeof core.focus === 'function') {
+      try {
+        core.focus(peer.id);
+      } catch (_) {
+        if (global.OneToneState && global.OneToneState.state) {
+          global.OneToneState.state.selectedMappingId = peer.id;
+        }
+      }
+    } else if (global.OneToneState && global.OneToneState.state) {
+      global.OneToneState.state.selectedMappingId = peer.id;
+    }
+    return mappingById(peer.id) || peer;
   }
 
   function paintDictation(anchor) {
@@ -528,19 +566,78 @@
     return true;
   }
 
+  function restoreHost(el, homeParent, homeNext) {
+    if (!el || !homeParent) return;
+    if (homeNext && homeNext.parentNode === homeParent) {
+      homeParent.insertBefore(el, homeNext);
+    } else {
+      homeParent.appendChild(el);
+    }
+  }
+
   function unmountImeScheme() {
     var pane = document.getElementById('keysChannelPaneRight');
-    if (!pane || !imeHomeParent) return;
-    if (imeHomeNext && imeHomeNext.parentNode === imeHomeParent) {
-      imeHomeParent.insertBefore(pane, imeHomeNext);
-    } else {
-      imeHomeParent.appendChild(pane);
-    }
+    restoreHost(pane, imeHomeParent, imeHomeNext);
     imeHomeParent = null;
     imeHomeNext = null;
   }
 
+  function mountTriggerChrome() {
+    var modesSlot = document.getElementById('keysSeqTriggerModesSlot');
+    var conflictSlot = document.getElementById('keysSeqTriggerConflictSlot');
+    var modeHost = document.getElementById('keysTriggerModeHost');
+    var conflict = document.getElementById('keysTriggerConflict');
+    if (modesSlot && modeHost && modeHost.parentElement !== modesSlot) {
+      if (!modeHomeParent) {
+        modeHomeParent = modeHost.parentElement;
+        modeHomeNext = modeHost.nextSibling;
+      }
+      modesSlot.appendChild(modeHost);
+    }
+    if (conflictSlot && conflict && conflict.parentElement !== conflictSlot) {
+      if (!conflictHomeParent) {
+        conflictHomeParent = conflict.parentElement;
+        conflictHomeNext = conflict.nextSibling;
+      }
+      conflictSlot.appendChild(conflict);
+    }
+    return !!(modesSlot || conflictSlot);
+  }
+
+  function unmountTriggerChrome() {
+    var modeHost = document.getElementById('keysTriggerModeHost');
+    var conflict = document.getElementById('keysTriggerConflict');
+    restoreHost(modeHost, modeHomeParent, modeHomeNext);
+    restoreHost(conflict, conflictHomeParent, conflictHomeNext);
+    modeHomeParent = null;
+    modeHomeNext = null;
+    conflictHomeParent = null;
+    conflictHomeNext = null;
+  }
+
+  function unmountLiveKeysChrome() {
+    unmountImeScheme();
+    unmountTriggerChrome();
+  }
+
+  function refreshTriggerChromePaint() {
+    try {
+      var kui = global.OneToneKeysPanelUi;
+      if (kui && typeof kui.renderGestureUiOnly === 'function') {
+        kui.renderGestureUiOnly();
+        return;
+      }
+      if (global.__otKeysTriggerModeMounted && typeof global.__otKeysTriggerModeSync === 'function') {
+        global.__otKeysTriggerModeSync();
+      }
+      if (global.__otKeysTriggerConflictMounted && typeof global.__otKeysTriggerConflictSync === 'function') {
+        global.__otKeysTriggerConflictSync();
+      }
+    } catch (_) {}
+  }
+
   function refreshImeSchemePaint() {
+    focusDictationPeerForIme();
     try {
       if (global.OneToneKeysPageState && typeof global.OneToneKeysPageState.setStep === 'function') {
         global.OneToneKeysPageState.setStep('target', { smooth: false });
@@ -565,9 +662,22 @@
         finish.renderKeyFinishFlowPanel();
       }
     } catch (_) {}
+    function paintImeStrip() {
+      try {
+        if (global.OneToneImePresets && typeof global.OneToneImePresets.refresh === 'function') {
+          global.OneToneImePresets.refresh('mapping');
+        }
+      } catch (_) {}
+    }
+    paintImeStrip();
+    // Pane just remounted — one more tick so strip paints into the live host.
     try {
-      if (global.OneToneImePresets && typeof global.OneToneImePresets.refresh === 'function') {
-        global.OneToneImePresets.refresh('mapping');
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function () {
+          paintImeStrip();
+        });
+      } else {
+        setTimeout(paintImeStrip, 0);
       }
     } catch (_) {}
     try {
@@ -644,6 +754,7 @@
         if (isIme) el.classList.remove('is-active');
       });
     }
+    mountTriggerChrome();
     if (isIme) {
       mountLivePane('keysSeqImeHost');
       refreshImeSchemePaint();
@@ -651,6 +762,7 @@
       mountLivePane('keysSeqKeyHost');
       refreshCustomKeyPaint();
     }
+    refreshTriggerChromePaint();
   }
 
   function setCatalogFace(face) {
@@ -996,15 +1108,6 @@
     var root = document.getElementById('settingsPanelKeysSeq');
     if (!root || root.dataset.keysSeqBound === '1') return;
     root.dataset.keysSeqBound = '1';
-    var legacy = document.getElementById('keysSeqOpenLegacy');
-    if (legacy) {
-      legacy.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.open) {
-          global.OneToneSettingsDrawer.open({ panel: 'keys' });
-        }
-      });
-    }
     function onTriggerClick(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1200,10 +1303,15 @@
     hostsCustomKey: hostsCustomKey,
     hostsLiveKeysChrome: hostsLiveKeysChrome,
     unmountImeScheme: unmountImeScheme,
+    unmountTriggerChrome: unmountTriggerChrome,
+    unmountLiveKeysChrome: unmountLiveKeysChrome,
+    mountTriggerChrome: mountTriggerChrome,
+    refreshTriggerChromePaint: refreshTriggerChromePaint,
     refreshImeSchemePaint: refreshImeSchemePaint,
     refreshCustomKeyPaint: refreshCustomKeyPaint,
     syncTrigger: function () {
       paintTrigger(selectedHabit());
+      refreshTriggerChromePaint();
     },
     refreshSaved: function () {
       paintSavedList(selectedHabit());

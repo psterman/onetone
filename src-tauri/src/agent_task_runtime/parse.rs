@@ -15,10 +15,19 @@ pub const TOOL_NAMES: &[&str] = &[
     "fetch_url",
     "request_user_input",
     "deliver_to_agent",
+    "create_task",
+    "claim_task",
+    "update_task",
+    "reassign_task",
+    "spawn_teammate",
+    "interrupt_teammate",
+    "send_message",
+    "wait_for_team",
+    "close_team",
     "finish",
 ];
 
-/// Chat / read_only lane — no write/check tools.
+/// Chat / read_only lane — no write/check tools. Team Lead tools allowed.
 pub const CHAT_TOOL_NAMES: &[&str] = &[
     "inspect_workspace",
     "search_code",
@@ -27,6 +36,15 @@ pub const CHAT_TOOL_NAMES: &[&str] = &[
     "fetch_url",
     "request_user_input",
     "deliver_to_agent",
+    "create_task",
+    "claim_task",
+    "update_task",
+    "reassign_task",
+    "spawn_teammate",
+    "interrupt_teammate",
+    "send_message",
+    "wait_for_team",
+    "close_team",
     "finish",
 ];
 

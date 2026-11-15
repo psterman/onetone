@@ -611,30 +611,26 @@
     return t('keysGestureSchemeOff','未绑定');
   }
 
-  function buildGestureModesHtml(m){
+  /** Which press opens dictation — single choice (replaces 按法×方案 matrix). */
+  function effectiveDictationPress(m){
     var modes=effectiveGestureModes(m);
-    var rows=[
-      {id:'tap',label:t('keysGestureTap','单击')},
-      {id:'double',label:t('keysGestureDouble','双击')},
-      {id:'long',label:t('keysGestureLong','长按')}
-    ];
-    var html='<div class="keys-gesture-modes" data-mapping-id="'+esc(m.id)+'">';
-    html+='<div class="keys-gesture-modes__head"><span>'+esc(t('keysGestureModesTitle','按法 → 方案'))+'</span>'
-      +'<em title="'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'">'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'</em></div>';
-    rows.forEach(function(row){
-      var cur=modes[row.id]||'off';
-      html+='<div class="keys-gesture-modes__row" data-gesture="'+esc(row.id)+'">';
-      html+='<span class="keys-gesture-modes__gest">'+esc(row.label)+'</span>';
-      html+='<div class="keys-gesture-modes__schemes">';
-      ['dictation','voiceCommand','off'].forEach(function(sch){
-        html+='<button type="button" class="keys-gesture-scheme'+(cur===sch?' is-on':'')+'"'
-          +' data-gesture-scheme="'+esc(sch)+'" data-gesture="'+esc(row.id)+'" data-mapping-id="'+esc(m.id)+'">'
-          +esc(schemeLabel(sch))+'</button>';
-      });
-      html+='</div></div>';
+    if(modes.long==='dictation') return 'long';
+    if(modes.double==='dictation') return 'double';
+    if(modes.tap==='dictation') return 'tap';
+    return normalizeTriggerModeUi(m&&m.triggerMode)==='hold'
+      ? 'long'
+      : (normalizeTriggerModeUi(m&&m.triggerMode)==='double' ? 'double' : 'tap');
+  }
+
+  function paintDictationPressUi(m){
+    var host=$('keysDictationPress');
+    if(!host) return;
+    var press=m?effectiveDictationPress(m):'tap';
+    host.querySelectorAll('[data-dictation-press]').forEach(function(btn){
+      var on=String(btn.getAttribute('data-dictation-press')||'')===press;
+      btn.classList.toggle('is-on',on);
+      btn.setAttribute('aria-pressed',on?'true':'false');
     });
-    html+='</div>';
-    return html;
   }
 
   function buildKeysTriggerModeModel(m){
@@ -656,9 +652,7 @@
     var hasKey=!!String(trig||'').trim();
     var modes=effectiveGestureModes(m);
     var html='';
-    if(hasKey){
-      html+=buildGestureModesHtml(m);
-    }
+    // 按法×方案矩阵已迁到听写键「激活按法」；此处只保留长按风险降级。
     if(current==='hold'&&!gate.ok){
       html+='<div class="keys-hold-risk-hint" role="status">'
         +'<p class="keys-hold-risk-text">'+esc(t('keysHoldLegacyRisk'))+'</p>'
@@ -676,6 +670,7 @@
       modes.tap,
       modes.double,
       modes.long,
+      effectiveDictationPress(m),
       html
     ].join('\0');
     return {
@@ -1440,6 +1435,7 @@
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
     renderTriggerContextBadge();
     syncKeyDisplayIcons(m);
+    paintDictationPressUi(m);
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);
@@ -1470,6 +1466,7 @@
   function renderGestureUiOnly(){
     if(!keysPanelActive()) return;
     var m=core()&&core().selected?core().selected():null;
+    paintDictationPressUi(m);
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);

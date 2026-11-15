@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>SoftPad 迷你栏静态预览</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#eef3f6;font:14px/1.4 "Segoe UI","Microsoft YaHei",sans-serif;color:#172523;padding:32px}
+  .note{max-width:720px;margin:0 auto 18px;color:#52636b}.stage{width:432px;margin:40px auto;background:#fff;border:1px solid #d4e0e5;border-radius:16px;padding:8px;box-shadow:0 16px 40px #17324d1c}
+  .overlay-mini{border:1.5px solid #5a9db8;border-radius:14px;background:#fffffff5;box-shadow:0 4px 14px #00658f1f;overflow:visible}
+  .row{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 10px}.agents{display:flex;gap:3px;flex:1}.agent{width:24px;height:24px;border:1px solid #bfd3dc;border-radius:8px;display:grid;place-items:center;font-size:12px;background:#f7fbfd}.more{font-size:11px;color:#64748b;padding:3px 7px;border:1px solid #cad6de;border-radius:999px}.usage{color:#0c6b8f;font-size:12px;white-space:nowrap}.iconbtn{width:24px;height:24px;border:1px solid #bfd3dc;background:#fff;border-radius:7px;color:#50616b}
+  .tools{border-top:1px dashed #9fc5d6;padding-top:6px;padding-bottom:8px}.tool{padding:5px 8px;border:1px solid #9ec5d6;border-radius:8px;background:#cfe6f2;color:#1e5a75;font-size:12px}
+  .listen{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border:1px solid #00a3ff73;border-radius:12px;background:#fff;color:#0c4a6e}.mic{width:20px;height:20px;border-radius:50%;background:#e8f4fa;border:1px solid #7eb4cc;display:grid;place-items:center;flex:none}.body{min-width:0;display:flex;flex-direction:column;gap:4px}.heard{font-weight:800;overflow-wrap:anywhere}.flow{font-size:11px;color:#334155;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:4px}.chip{padding:3px 8px;border:1px solid #8bd0ea;border-radius:999px;background:#e9f7fc;font-size:11px}.cancel{margin-left:auto;border:0;border-radius:999px;padding:3px 8px;background:#eef0f2;white-space:nowrap;font-size:11px}
+</style>
+<body>
+  <p class="note">这是当前迷你栏的静态结构预览。它故意保留了“状态栏 + 工具栏 + 语音内容”同时展开的状态，用来展示为什么会显得拥挤。</p>
+  <div class="stage"><div class="overlay-mini">
+    <div class="row"><div class="agents"><span class="agent">◉</span><span class="agent">C</span><span class="agent">⌁</span><span class="more">+13</span></div><span class="usage">用量 82%</span><button class="iconbtn">⛶</button><button class="iconbtn">×</button></div>
+    <div class="row tools"><button class="tool">智能截图</button><button class="tool">发送</button><button class="tool">取消</button><button class="tool">设置</button></div>
+    <div class="listen"><span class="mic">♩</span><div class="body"><div class="heard">说话的讲的是这样的古镇怎么去啊那里面我要乘坐怎么会不会唱我只是想是不一样的情况这样有不一样的一种表达方式更与这个不同见面出来是完全的</div><div class="chips"><span class="chip">发送</span><span class="chip">继续</span><span class="chip">新会话</span><span class="chip">取消</span></div><div class="flow">发送 → 右侧框 + Enter · 取消 → 退出聆听并停止生成</div></div><button class="cancel">取消</button></div>
+  </div></div>
+</body>
+</html>

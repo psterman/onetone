@@ -1,6 +1,6 @@
 /**
- * Left-nav parallel tabs under 首页: 对话 | 工作 long-term lists.
- * Does not replace 首页 or 新首页 — segmented switch with soft panel fade.
+ * Left-nav parallel tabs under「对话」: chat | work long-term lists.
+ * 「新首页」= Focus desk;「对话」= history list + exclusive chat page.
  */
 (function (global) {
   'use strict';
@@ -47,7 +47,7 @@
   }
 
   function goHome() {
-    // 首页 = Focus 桌面；关掉独占对话层，避免 stage 被藏成白屏。
+    // 「新首页」= Focus 桌；关掉独占对话层，避免 stage 被藏成白屏。
     closeExclusiveChat();
     var Drawer = global.OneToneSettingsDrawer;
     if (Drawer && Drawer.close) {
@@ -55,8 +55,13 @@
         Drawer.close();
       } catch (_) {}
     }
+    try {
+      if (global.localStorage) global.localStorage.setItem('onetone.homeSurface', 'focus');
+    } catch (_) {}
     var WB = global.OneToneHomeWorkbench;
-    if (WB && WB.syncNavActiveState) WB.syncNavActiveState('home');
+    if (WB && WB.syncNavActiveState) {
+      WB.syncNavActiveState('home', { navKey: 'homeV2' });
+    }
     var Home = global.OneToneNowHome;
     if (Home && Home.show) {
       try {
@@ -68,6 +73,22 @@
         Home.paint();
       } catch (_) {}
     }
+  }
+
+  /** Left-nav「对话」: chat lane + exclusive history page. */
+  function openChatNav() {
+    var J = global.OneToneHomeTaskJournal;
+    var active = J && J.getActiveTaskId ? String(J.getActiveTaskId() || '') : '';
+    if (active) {
+      openChatTask(active);
+      return;
+    }
+    var rows = chatRows();
+    if (rows.length && rows[0].taskId) {
+      openChatTask(rows[0].taskId);
+      return;
+    }
+    onNewChat();
   }
 
   function truncate(s, n) {
@@ -393,12 +414,31 @@
     });
   }
 
+  function ensureChatSurface() {
+    var Drawer = global.OneToneSettingsDrawer;
+    if (Drawer && Drawer.close) {
+      try {
+        Drawer.close();
+      } catch (_) {}
+    }
+    var WB = global.OneToneHomeWorkbench;
+    if (WB && WB.syncNavActiveState) {
+      WB.syncNavActiveState('home', { navKey: 'home' });
+    }
+    var Home = global.OneToneNowHome;
+    if (Home && Home.show) {
+      try {
+        Home.show();
+      } catch (_) {}
+    }
+  }
+
   function openChatTask(taskId) {
     var J = global.OneToneHomeTaskJournal;
     if (J && J.setActiveTask) J.setActiveTask(taskId);
     activeLane = 'chat';
     writeIntent('chat');
-    goHome();
+    ensureChatSurface();
     paint();
     var HA2 = global.OneToneHomeAgentV2;
     if (HA2 && typeof HA2.loadChatTaskTurns === 'function') {
@@ -427,7 +467,7 @@
         } catch (_) {}
       }
     }
-    goHome();
+    ensureChatSurface();
     paint();
     openExclusiveChat();
   }
@@ -571,6 +611,8 @@
     bindOnce: bindOnce,
     paint: paint,
     syncVisibility: paint,
+    openChatNav: openChatNav,
+    goHome: goHome,
     refresh: function () {
       bindOnce();
       paint();

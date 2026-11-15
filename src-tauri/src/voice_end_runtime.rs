@@ -43,8 +43,50 @@ fn bump_commit_token(state: &AppState) -> u64 {
     *token
 }
 
-pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
+/// Idle 「开始输入」habit: FG app pack → Soft Pad applied (OneTone self) → default baseline → active.
+/// `live_pack` may already be the last-external pack when Soft Pad holds Win32 FG.
+pub fn resolve_wake_mapping_id_from_parts(
+    cfg: &VoiceConfig,
+    live_pack: Option<&MappingEntry>,
+    applied_lane_mid: Option<&str>,
+    fg_is_self: bool,
+) -> String {
+    if let Some(m) = live_pack.filter(|m| m.enabled) {
+        return m.id.clone();
+    }
+    if fg_is_self {
+        if let Some(mid) = applied_lane_mid.map(str::trim).filter(|s| !s.is_empty()) {
+            if cfg
+                .find_mapping_by_id(mid)
+                .is_some_and(|m| m.enabled)
+            {
+                return mid.to_string();
+            }
+        }
+    }
+    if let Some(m) = crate::config::find_global_baseline_mapping(cfg) {
+        return m.id.clone();
+    }
     cfg.active_scene_id.clone()
+}
+
+pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
+    let applied = crate::soft_pad_runtime::applied_lane();
+    let fg_is_self = crate::app_identity::foreground_is_self();
+    // Soft Pad / settings FG: keep last real app habit (微信…), not Soft Pad Cursor lane.
+    let live = crate::config::live_pack_mapping(cfg).or_else(|| {
+        if !fg_is_self {
+            return None;
+        }
+        let id = crate::app_identity::capture_tray_foreground_identity();
+        crate::config::live_pack_mapping_for(cfg, id.as_ref())
+    });
+    resolve_wake_mapping_id_from_parts(
+        cfg,
+        live,
+        applied.as_ref().map(|(_, mid)| mid.as_str()),
+        fg_is_self,
+    )
 }
 
 /// Idle wake/stop target from effective scene (Rule A).
@@ -63,12 +105,78 @@ pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
     }
 }
 
+/// Chord for idle 「开始输入」: habit Lab 听写键 first, then scene/global fallback.
+pub fn resolve_wake_dictation_key(cfg: &VoiceConfig, mapping_id: &str) -> String {
+    let mapping = cfg.find_mapping_by_id(mapping_id);
+    if let Some(k) = resolve_dictation_ime_key(cfg, mapping) {
+        if !k.trim().is_empty() {
+            return k;
+        }
+    }
+    resolve_wake_target_key(cfg, "")
+}
+
+/// Catalog chords for Lab IME chips — keep in sync with `src/js/ime-presets.js`.
+/// When UI shows「微信」but `voiceVosk.targetKey` was left as stale RAlt, this wins.
+pub fn ime_preset_target_key(preset_id: &str) -> Option<&'static str> {
+    match preset_id.trim().to_ascii_lowercase().as_str() {
+        "wechat" | "weixin" => Some("Ctrl+Shift+Win"),
+        "typeless" => Some("RAlt"),
+        "xunfei" => Some("F2"),
+        "microsoft" => Some("Win+H"),
+        "zhipu" | "qianwen" | "shandianshuo" => Some("RAlt"),
+        "sogou" => Some("Ctrl+Shift+Z"),
+        "baidu" => Some("Alt+`"),
+        _ => None,
+    }
+}
+
+/// WeChat Lab chord is a process-global hotkey. Wrong FG → floating intermediate strip.
+pub fn is_wechat_dictation_chord(key: &str) -> bool {
+    let want = canonical_trigger(ime_preset_target_key("wechat").unwrap_or("Ctrl+Shift+Win"));
+    crate::key_chord::chords_equivalent(key, &want)
+}
+
+/// Put the right HWND in FG before injecting a Lab dictation chord.
+/// Soft Pad oral often focuses Cursor first — restore_external then restores Cursor,
+/// and WeChat's Ctrl+Shift+Win pops the float bar. Prefer WeChat chat UI when needed.
+pub fn prepare_foreground_for_dictation_chord(target_key: &str) -> bool {
+    if is_wechat_dictation_chord(target_key) {
+        if crate::app_chat_workflow::focus_wechat_family_for_dictation() {
+            return true;
+        }
+    }
+    let mut restored = crate::keyboard::restore_external_foreground();
+    if !restored {
+        restored = crate::keyboard::focus_any_external_top_level();
+    }
+    if restored {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    restored
+}
+
+fn resolved_ime_preset_chord(cfg: &VoiceConfig, mapping: Option<&MappingEntry>) -> Option<String> {
+    let pid = mapping
+        .map(|m| m.ime_preset_id.trim())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| cfg.ime_preset_id.trim());
+    ime_preset_target_key(pid).map(|k| canonical_trigger(k))
+}
+
 /// IME / voice-engine shortcut for activating dictation in the foreground app.
 /// Unlike `resolve_wake_target_key`, this never falls back to mapping `target_key`
 /// (which for Cursor schemes may be Ctrl+L/Ctrl+I, not the voice shortcut).
 pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
+    // Global Lab chip (微信 / Typeless…) before stale vosk RAlt seed.
+    if let Some(k) = resolved_ime_preset_chord(cfg, None) {
+        if !k.is_empty() {
+            return Some(k);
+        }
+    }
     let vosk_key = cfg.voice_vosk.target_key.trim();
     let sapi_key = cfg.voice_sapi.target_key.trim();
+    let end_key = cfg.voice_end.target_key.trim();
 
     if cfg.voice_vosk.enabled && !vosk_key.is_empty() {
         return Some(vosk_key.to_string());
@@ -82,7 +190,83 @@ pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
     if !sapi_key.is_empty() {
         return Some(sapi_key.to_string());
     }
+    if !end_key.is_empty() {
+        return Some(end_key.to_string());
+    }
     None
+}
+
+/// Soft Pad「说话」/ Cursor input.start: Lab 听写键方案 first, never seeded RAlt.
+///
+/// Cursor habits used to stamp agent pushToTalk=`RAlt`, which ignored the WeChat /
+/// Typeless chord shown in Voice Lab for that habit.
+pub fn resolve_dictation_ime_key(
+    cfg: &VoiceConfig,
+    mapping: Option<&MappingEntry>,
+) -> Option<String> {
+    if let Some(m) = mapping {
+        if let Some(ov) = m
+            .voice_override
+            .as_ref()
+            .and_then(|o| o.target_key.as_ref())
+        {
+            let t = canonical_trigger(ov.trim());
+            if !t.is_empty() {
+                return Some(t);
+            }
+        }
+        // Habit/global IME chip catalog beats stale mapping.targetKey=RAlt.
+        if let Some(k) = resolved_ime_preset_chord(cfg, Some(m)) {
+            if !k.is_empty() {
+                return Some(k);
+            }
+        }
+        let ime_bound = !m.ime_preset_id.trim().is_empty()
+            || m.capture_hero_ref
+                .as_ref()
+                .is_some_and(|r| r.kind.trim().eq_ignore_ascii_case("ime"));
+        if ime_bound {
+            let t = canonical_trigger(m.target_key.trim());
+            if !t.is_empty() {
+                return Some(t);
+            }
+        }
+    } else if let Some(k) = resolved_ime_preset_chord(cfg, None) {
+        if !k.is_empty() {
+            return Some(k);
+        }
+    }
+    if let Some(g) = resolve_voice_input_target_key(cfg) {
+        return Some(g);
+    }
+    if let Some(m) = mapping {
+        if let Some(b) = agent_key_binding_for_slot(m, "pushToTalk") {
+            let chord = canonical_trigger(b.trigger_binding.trim());
+            // Placeholder seed from old Cursor defaults — skip so Lab/global can win.
+            if !chord.is_empty() && !is_seeded_cursor_ptt_placeholder(&chord) {
+                return Some(chord);
+            }
+        }
+        let target = canonical_trigger(m.target_key.trim());
+        if !target.is_empty() && !is_composer_focus_chord(&target) {
+            return Some(target);
+        }
+    }
+    None
+}
+
+fn is_seeded_cursor_ptt_placeholder(chord: &str) -> bool {
+    matches!(
+        chord.trim().to_ascii_lowercase().as_str(),
+        "ralt" | "altright" | "rightalt"
+    )
+}
+
+fn is_composer_focus_chord(chord: &str) -> bool {
+    matches!(
+        chord.trim().to_ascii_lowercase().as_str(),
+        "ctrl+l" | "ctrl+i" | "ctrl+k" | "ctrl+shift+l"
+    )
 }
 
 /// App-scenario push-to-talk chord when present; otherwise global IME voice shortcut.
@@ -576,13 +760,17 @@ pub fn send_actions_to_target(
         }
     }
 
-    let mut restored = crate::keyboard::restore_external_foreground();
-    if !restored {
-        restored = crate::keyboard::focus_any_external_top_level();
-    }
-    if restored {
-        std::thread::sleep(Duration::from_millis(50));
-    }
+    // Prefer WeChat FG when the sequence is Lab 微信听写键 — bare restore_external
+    // often lands on Cursor after Soft Pad oral_composer_init.
+    let chord_hint = actions
+        .iter()
+        .find_map(|a| match a {
+            crate::config::Action::Key { value } => Some(value.as_str()),
+            crate::config::Action::Ime { value, .. } => Some(value.as_str()),
+            _ => None,
+        })
+        .unwrap_or("");
+    let _ = prepare_foreground_for_dictation_chord(chord_hint);
 
     if crate::app_identity::foreground_is_self() {
         if let Some(s) = state {
@@ -894,7 +1082,8 @@ pub fn handle_voice_wake_detected(
             .any(|w| crate::config::phrases_fuzzy_match(matched_phrase, w))
     };
 
-    // Generic wake (开始输入…): global IME voice shortcut — never Soft Pad pushToTalk / app PTT.
+    // Generic wake (开始输入…): skip Soft Pad / agent slot phrases; habit+Lab chord
+    // still resolved from FG app (or default baseline) below.
     if !is_generic_wake {
         if let Some(result) =
             crate::cursor_beginner::dispatch_voice_phrase(state, app, matched_phrase)
@@ -909,7 +1098,7 @@ pub fn handle_voice_wake_detected(
     let (mapping_id, target_key, mapping_snapshot) = {
         let cfg = state.cfg.lock();
         let mapping_id = resolve_wake_mapping_id(&cfg);
-        let target_key = resolve_wake_target_key(&cfg, "");
+        let target_key = resolve_wake_dictation_key(&cfg, &mapping_id);
         let mapping = cfg.find_mapping_by_id(&mapping_id).cloned();
         (mapping_id, target_key, mapping)
     };
@@ -1120,13 +1309,24 @@ pub fn handle_voice_wake_detected(
                 runtime_label: format!("voice_{engine}_wrong_fg"),
             };
         }
-        if allow_bring_up {
+        // Soft Pad Cursor lane must not steal FG before Lab 微信听写键 —
+        // that is what pops WeChat's floating intermediate strip.
+        if allow_bring_up && !is_wechat_dictation_chord(&target_key) {
             let focused = crate::app_chat_workflow::quick_focus_app_target_for_hold(&app_tid);
             if !focused {
                 crate::app_log::log_line(
                     state.as_ref(),
                     "voice",
                     &format!("wake bring_up focus miss app={app_tid}"),
+                );
+            }
+        } else if is_wechat_dictation_chord(&target_key) {
+            let focused = crate::app_chat_workflow::focus_wechat_family_for_dictation();
+            if !focused {
+                crate::app_log::log_line(
+                    state.as_ref(),
+                    "voice",
+                    "wake wechat dictation focus miss — chord may float",
                 );
             }
         }
@@ -1416,6 +1616,10 @@ pub fn enter_dictating(
     *state.voice_session_last_action.lock() = reason.to_string();
     // Classic SendKey(RAlt) must track IME ownership — Soft「说话」already notes via layer1.
     crate::voice_command_session::note_ime_voice_active();
+    // Soft Pad oral stays armed but goes silent (no ASR echo) while IME owns the mic.
+    if crate::voice_command_session::is_armed() {
+        crate::voice_command_session::clear_oral_heard_display(state.as_ref());
+    }
     if let Some(app) = app {
         crate::runtime_event::publish_runtime_event(
             Some(app),
@@ -1427,6 +1631,9 @@ pub fn enter_dictating(
         );
         crate::tray::refresh_menu(app);
         refresh_coach_hud(Some(app), state);
+        if crate::voice_command_session::is_armed() {
+            crate::codex_micro_overlay::push_state(app, state.as_ref());
+        }
     }
 }
 
@@ -1437,6 +1644,7 @@ pub fn reset_voice_session(state: &Arc<AppState>, app: Option<&AppHandle>, reaso
     *state.voice_session_mapping_id.lock() = String::new();
     *state.voice_session_snapshot.lock() = None;
     *state.voice_session_last_action.lock() = reason.to_string();
+    crate::voice_command_session::clear_ime_voice_active();
     if let Some(app) = app {
         crate::runtime_event::publish_runtime_event(
             Some(app),
@@ -1447,6 +1655,14 @@ pub fn reset_voice_session(state: &Arc<AppState>, app: Option<&AppHandle>, reaso
             None,
         );
         crate::tray::refresh_menu(app);
+        // Dictation stopped → Soft Pad silent sentinel returns to standby.
+        if crate::voice_command_session::is_armed() {
+            crate::voice_command_session::standby_oral_after_dictation_end(
+                state,
+                app,
+                &format!("dictation_ended:{reason}"),
+            );
+        }
     }
 }
 
@@ -2560,10 +2776,275 @@ mod tests {
             Some("RAlt")
         );
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "RAlt".to_string());
-        // Soft Pad / app workflow still uses native PTT; generic wake uses global key above.
+        // Soft Pad / app workflow still uses native PTT; generic wake uses global key above
+        // when the habit has no Lab IME binding.
         assert_eq!(
             resolve_voice_key_for_mapping(&cfg, cfg.mappings.first(),).as_deref(),
             Some("Ctrl+Shift+Space")
+        );
+    }
+
+    #[test]
+    fn wake_start_input_follows_fg_habit_lab_else_baseline() {
+        use crate::config::{CaptureHeroRef, MappingEntry, TriggerMode, VoiceConfig};
+
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_vosk.target_key = "RAlt".into();
+        // Fixed ids — new_mapping_id() is ms-only and collides in the same tick.
+        let baseline_id = "wake-baseline".to_string();
+        let cursor_id = "wake-cursor".to_string();
+        cfg.active_scene_id = baseline_id.clone();
+        cfg.mappings = vec![
+            MappingEntry {
+                id: baseline_id.clone(),
+                label: "默认习惯".into(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
+                group: "全局".into(),
+                trigger_key: "AutoTrigger".into(),
+                target_key: "RAlt".into(),
+                enabled: true,
+                key_mode_enabled: true,
+                voice_mode_enabled: true,
+                order: 0,
+                trigger_mode: TriggerMode::Tap,
+                trigger_source: None,
+                source_key: String::new(),
+                source_time: String::new(),
+                interval_ms: 1200,
+                enter_delay_ms: 5000,
+                cancel_enabled: true,
+                auto_enter_enabled: true,
+                switch_keys: vec![],
+                native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: 500,
+                double_click_ms: 400,
+                ime_preset_id: String::new(),
+                app_target_id: String::new(),
+                voice_allow_bring_up_target: false,
+                app_behavior_rules: vec![],
+                voice_override: None,
+                camera_override: None,
+                voice_commands: vec![],
+                acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: String::new(),
+                agent_bindings: vec![],
+                codex_micro_pad: None,
+                time_machine_workspace: String::new(),
+                capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
+                target_actions: vec![],
+                assists: vec![],
+            },
+            MappingEntry {
+                id: cursor_id.clone(),
+                label: "cursor".into(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
+                group: "场景".into(),
+                trigger_key: "F13".into(),
+                target_key: "Ctrl+Shift+Win".into(),
+                enabled: true,
+                key_mode_enabled: true,
+                voice_mode_enabled: true,
+                order: 1,
+                trigger_mode: TriggerMode::Tap,
+                trigger_source: None,
+                source_key: String::new(),
+                source_time: String::new(),
+                interval_ms: 1200,
+                enter_delay_ms: 5000,
+                cancel_enabled: true,
+                auto_enter_enabled: true,
+                switch_keys: vec![],
+                native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: 500,
+                double_click_ms: 400,
+                ime_preset_id: "wechat".into(),
+                app_target_id: "cursor-chat".into(),
+                voice_allow_bring_up_target: false,
+                app_behavior_rules: vec![],
+                voice_override: None,
+                camera_override: None,
+                voice_commands: vec![],
+                acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: String::new(),
+                agent_bindings: vec![crate::config::AgentBinding {
+                    slot_id: "pushToTalk".into(),
+                    action_id: "startDictation".into(),
+                    trigger_type: "key".into(),
+                    trigger_binding: "RAlt".into(),
+                    enabled: true,
+                    ..Default::default()
+                }],
+                codex_micro_pad: None,
+                time_machine_workspace: String::new(),
+                capture_hero_ref: Some(CaptureHeroRef {
+                    channel: "key".into(),
+                    binding_ref: "ime".into(),
+                    action_id: String::new(),
+                    action_instance_id: String::new(),
+                    kind: "ime".into(),
+                }),
+                gesture_modes: None,
+                oral_command_scheme: None,
+                target_actions: vec![],
+                assists: vec![],
+            },
+        ];
+
+        let cursor = cfg.find_mapping_by_id(&cursor_id);
+        assert_eq!(
+            resolve_wake_mapping_id_from_parts(&cfg, cursor, None, false),
+            cursor_id,
+            "FG Cursor habit wins over baseline"
+        );
+        assert_eq!(
+            resolve_wake_dictation_key(&cfg, &cursor_id),
+            "Ctrl+Shift+Win",
+            "开始输入 uses Cursor Lab 听写键"
+        );
+        assert_eq!(
+            resolve_wake_mapping_id_from_parts(&cfg, None, None, false),
+            baseline_id,
+            "no FG pack → default baseline habit"
+        );
+        assert_eq!(
+            resolve_wake_dictation_key(&cfg, &baseline_id),
+            "RAlt",
+            "global default keeps global Lab key"
+        );
+        assert_eq!(
+            resolve_wake_mapping_id_from_parts(&cfg, None, Some(&cursor_id), true),
+            cursor_id,
+            "OneTone self FG with no last-external pack → Soft Pad applied lane"
+        );
+        assert_eq!(
+            resolve_wake_mapping_id_from_parts(&cfg, cursor, Some(&baseline_id), true),
+            cursor_id,
+            "Soft Pad FG: last-external habit pack beats Soft Pad applied lane"
+        );
+    }
+
+    #[test]
+    fn wake_dictation_prefers_global_wechat_ime_preset_over_stale_ralt() {
+        use crate::config::VoiceConfig;
+
+        let mut cfg = VoiceConfig::default();
+        cfg.ime_preset_id = "wechat".into();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_vosk.target_key = "RAlt".into();
+        cfg.voice_sapi.target_key = "RAlt".into();
+        cfg.voice_end.target_key = "RAlt".into();
+        // No mapping ime — mirrors live user config: chip=微信, keys still RAlt.
+        assert_eq!(
+            resolve_voice_input_target_key(&cfg).as_deref(),
+            Some("Ctrl+Shift+Win"),
+            "global imePresetId=wechat must beat stale vosk RAlt"
+        );
+        assert_eq!(
+            resolve_dictation_ime_key(&cfg, None).as_deref(),
+            Some("Ctrl+Shift+Win")
+        );
+        assert_eq!(
+            resolve_wake_dictation_key(&cfg, ""),
+            "Ctrl+Shift+Win",
+            "开始输入 must send 微信听写键, not RAlt"
+        );
+        assert!(is_wechat_dictation_chord("Ctrl+Shift+Win"));
+        assert!(is_wechat_dictation_chord("ctrl+shift+win"));
+        assert!(!is_wechat_dictation_chord("RAlt"));
+        // Guard: wake must not Soft Pad bring_up Cursor before WeChat chord,
+        // and send path must prepare WeChat FG (else float intermediate strip).
+        let src = include_str!("voice_end_runtime.rs");
+        assert!(
+            src.contains("prepare_foreground_for_dictation_chord")
+                && src.contains("!is_wechat_dictation_chord(&target_key)")
+                && src.contains("focus_wechat_family_for_dictation"),
+            "WeChat Lab chord must focus WeChat, not Soft Pad Cursor bring_up"
+        );
+        let layer1 = include_str!("agent/layer1_native.rs");
+        assert!(
+            layer1.contains("prepare_foreground_for_dictation_chord"),
+            "input.start must prepare WeChat FG before Lab chord"
+        );
+    }
+
+    #[test]
+    fn soft_pad_dictation_uses_habit_ime_not_seeded_ralt() {
+        use crate::config::{new_mapping_id, CaptureHeroRef, MappingEntry, TriggerMode, VoiceConfig};
+
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_vosk.target_key = "RAlt".into();
+        let mid = new_mapping_id();
+        cfg.mappings = vec![MappingEntry {
+            id: mid,
+            label: "cursor".into(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
+            group: "场景".into(),
+            trigger_key: "F13".into(),
+            target_key: "Ctrl+Shift+Win".into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: "wechat".into(),
+            app_target_id: "cursor-chat".into(),
+            voice_allow_bring_up_target: false,
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![crate::config::AgentBinding {
+                slot_id: "pushToTalk".into(),
+                action_id: "startDictation".into(),
+                trigger_type: "key".into(),
+                trigger_binding: "RAlt".into(),
+                enabled: true,
+                ..Default::default()
+            }],
+            codex_micro_pad: None,
+            time_machine_workspace: String::new(),
+            capture_hero_ref: Some(CaptureHeroRef {
+                channel: "key".into(),
+                binding_ref: "ime".into(),
+                action_id: String::new(),
+                action_instance_id: String::new(),
+                kind: "ime".into(),
+            }),
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
+        }];
+        assert_eq!(
+            resolve_dictation_ime_key(&cfg, cfg.mappings.first()).as_deref(),
+            Some("Ctrl+Shift+Win"),
+            "Soft Pad speak must use Cursor habit Lab 听写键, not seeded RAlt"
         );
     }
 

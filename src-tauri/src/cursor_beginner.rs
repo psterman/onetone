@@ -37,7 +37,8 @@ pub const BEGINNER_SLOTS: &[BeginnerSlotDef] = &[
         micro_key_id: "ACT10",
         icon_id: "mic",
         label_zh: "说话",
-        voice_phrases: &["说话", "麦克风"],
+        // 开始输入 / 开始听写 = Lab 听写唤醒语；口头收听中也应开听写（等同「说话」）
+        voice_phrases: &["说话", "麦克风", "开始输入", "开始听写"],
         tap_hold_ms: 0,
     },
     BeginnerSlotDef {

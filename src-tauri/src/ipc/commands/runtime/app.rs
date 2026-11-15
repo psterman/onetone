@@ -8,7 +8,13 @@ use crate::config::{self, MappingEntry};
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_foreground_app() -> serde_json::Value {
+pub async fn cmd_foreground_app() -> serde_json::Value {
+    tauri::async_runtime::spawn_blocking(foreground_app_payload)
+        .await
+        .unwrap_or_else(|_| serde_json::json!({ "appId": serde_json::Value::Null }))
+}
+
+fn foreground_app_payload() -> serde_json::Value {
     let Some(identity) = app_identity::foreground_app_identity() else {
         return serde_json::json!({
             "appId": serde_json::Value::Null,
@@ -21,12 +27,40 @@ pub fn cmd_foreground_app() -> serde_json::Value {
 /// otherwise the last one (Chrome, Cursor, …) so opening OneTone does not
 /// drop back to the universal habit.
 #[tauri::command]
-pub fn cmd_habit_foreground_app() -> serde_json::Value {
+pub async fn cmd_habit_foreground_app() -> serde_json::Value {
+    tauri::async_runtime::spawn_blocking(habit_foreground_app_payload)
+        .await
+        .unwrap_or_else(|_| serde_json::json!({ "appId": serde_json::Value::Null }))
+}
+
+fn habit_foreground_app_payload() -> serde_json::Value {
     let live = app_identity::foreground_app_identity();
     let self_fg = live
         .as_ref()
         .is_some_and(|id| app_identity::is_self_identity(id));
-    let Some(identity) = app_identity::capture_tray_foreground_identity() else {
+    // Reuse the single live sample above. Calling capture_tray_foreground_identity()
+    // here would sample GetForegroundWindow/WM_GETTEXT a second time per poll.
+    let identity = if let Some(ref fg) = live {
+        if !app_identity::is_self_identity(fg) && !app_identity::is_tray_open_fg_noise(fg) {
+            Some(fg.clone())
+        } else {
+            #[cfg(windows)]
+            {
+                let hwnd = crate::keyboard::last_external_hwnd();
+                if hwnd != 0 {
+                    app_identity::identity_for_window(hwnd as winapi::shared::windef::HWND)
+                        .filter(|id| !app_identity::is_self_identity(id) && !app_identity::is_tray_open_fg_noise(id))
+                } else {
+                    None
+                }
+            }
+            #[cfg(not(windows))]
+            { None }
+        }
+    } else {
+        None
+    };
+    let Some(identity) = identity.or(live.filter(|fg| !app_identity::is_self_identity(fg))) else {
         return serde_json::json!({
             "appId": serde_json::Value::Null,
             "selfForeground": self_fg,

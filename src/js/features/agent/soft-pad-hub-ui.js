@@ -1665,7 +1665,7 @@
         matchCommand: opts.matchCommand || opts.commandRef || '',
         commandRef: opts.commandRef || opts.matchCommand || '',
         openMatchEditor: true,
-        returnPanel: 'softPad'
+        returnPanel: 'keyboard'
       });
       return true;
     }
@@ -1676,7 +1676,7 @@
         mappingId: mid,
         matchChannel: opts.matchChannel || 'softPad',
         openMatchEditor: true,
-        returnPanel: 'softPad'
+        returnPanel: 'keyboard'
       });
       return true;
     }
@@ -1701,10 +1701,8 @@
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
     var matchBtn = document.getElementById('btnSoftPadHabitMatch');
     if (matchBtn) {
-      // 键盘页本页配键，不露出「去习惯匹配」。
-      var matchShow = show &&
-        normalizeSoftPadPadMode(softPadPadMode) === 'keys' &&
-        !isKeyboardSurface();
+      // 默认本页绑键；习惯匹配作次要入口（合并后键盘面也保留）。
+      var matchShow = show && normalizeSoftPadPadMode(softPadPadMode) === 'keys';
       matchBtn.hidden = !matchShow;
       matchBtn.setAttribute('aria-hidden', matchShow ? 'false' : 'true');
     }
@@ -1991,11 +1989,19 @@
 
   var foregroundFollowTimer = 0;
   var foregroundFollowToken = '';
+  var foregroundFollowInFlight = false;
+  var foregroundFollowUnsubscribe = null;
 
   function ensureForegroundFollow() {
     if (foregroundFollowTimer) return;
+    var broker=global.OneToneForegroundContext;
+    if(broker&&broker.subscribe){
+      foregroundFollowUnsubscribe=broker.subscribe(applyForegroundIdentity);
+      foregroundFollowTimer=1;
+      return;
+    }
     followForegroundOnce();
-    foregroundFollowTimer = setInterval(followForegroundOnce, 700);
+    foregroundFollowTimer = setInterval(followForegroundOnce, 1200);
   }
 
   function refreshSoftPadEditChrome() {
@@ -2019,44 +2025,47 @@
   }
 
   /** Switch the visible scene to the app in front. OneTone's own window keeps the last real app. */
-  function followForegroundOnce() {
+  function applyForegroundIdentity(res) {
+    if (global.__onetoneOverlayDragging) return;
     if (!isSoftPadPageVisible()) return;
+    var preset = '';
+    if (res && !isSelfFgRes(res)) {
+      var exe = String(res.exeName || res.exe_name || '').toLowerCase();
+      if (!isTrayFgNoise(exe)) {
+        preset = String(res.matchedPresetAppId || res.matched_preset_app_id || res.appId || '').trim();
+        if (preset) noteLaneForeground(preset);
+      }
+    }
+    if (!preset) preset = getFreshForegroundAppId();
+    if (!preset) return;
+    var kind = kindForAppId(preset) || SOFT_PAD_UNIVERSAL_KIND;
+    var token = kind + '|' + preset;
+    if (token === foregroundFollowToken && String(selectedScopeId || '') === kind) return;
+    var scope = findScope(kind);
+    if (!scope || String(scope.id) !== kind) return;
+    if (scopePickedByUser && String(selectedScopeId || '') !== SOFT_PAD_UNIVERSAL_KIND
+        && String(selectedScopeId || '') !== kind) return;
+    foregroundFollowToken = token;
+    if (String(selectedScopeId || '') === kind) {
+      refreshSoftPadEditChrome();
+      return;
+    }
+    selectScope(kind, { fromForeground: true, resetView: false });
+  }
+
+  function followForegroundOnce() {
+    if (global.__onetoneOverlayDragging || foregroundFollowInFlight) return;
+    if (!isSoftPadPageVisible()) return;
+    var broker=global.OneToneForegroundContext;
+    if(broker){ applyForegroundIdentity(broker.get()); return; }
     var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
     if (!invoke) return;
-    Promise.resolve(invoke('cmd_habit_foreground_app', {})).catch(function () { return null; }).then(function (held) {
-      if (held && !isSelfFgRes(held) && !isTrayFgNoise(String(held.exeName || held.exe_name || '').toLowerCase())) {
-        return held;
-      }
-      return invoke('cmd_foreground_app', {});
-    }).then(function (res) {
-      if (!isSoftPadPageVisible()) return;
-      var preset = '';
-      if (res && !isSelfFgRes(res)) {
-        var exe = String(res.exeName || res.exe_name || '').toLowerCase();
-        if (!isTrayFgNoise(exe)) {
-          preset = String(res.matchedPresetAppId || res.matched_preset_app_id || res.appId || '').trim();
-          if (preset) noteLaneForeground(preset);
-        }
-      }
-      if (!preset) preset = getFreshForegroundAppId();
-      if (!preset) return;
-      var kind = kindForAppId(preset) || SOFT_PAD_UNIVERSAL_KIND;
-      var token = kind + '|' + preset;
-      if (token === foregroundFollowToken && String(selectedScopeId || '') === kind) return;
-      var scope = findScope(kind);
-      if (!scope || String(scope.id) !== kind) return;
-      // A manual pick of another agent stays. Universal is the stale open-page default.
-      if (scopePickedByUser && String(selectedScopeId || '') !== SOFT_PAD_UNIVERSAL_KIND
-          && String(selectedScopeId || '') !== kind) {
-        return;
-      }
-      foregroundFollowToken = token;
-      if (String(selectedScopeId || '') === kind) {
-        refreshSoftPadEditChrome();
-        return;
-      }
-      selectScope(kind, { fromForeground: true, resetView: false });
-    }).catch(function () {});
+    foregroundFollowInFlight = true;
+    Promise.resolve(invoke('cmd_habit_foreground_app', {})).catch(function () { return null; }).then(function (res) {
+      applyForegroundIdentity(res);
+    }).catch(function () {}).then(function () {
+      foregroundFollowInFlight = false;
+    });
   }
 
   function ensureOverlayUsagePolling() {
@@ -2418,7 +2427,7 @@
     var bind = buildBindAppProps();
     if (!entry) {
       return mergeUsageIntoStatusProps({
-        brandTitle: t('softPadPageBrandTitle', '虚拟键盘'),
+        brandTitle: t('settingsNavKeyboard', '键盘'),
         name: '—',
         status: '—',
         statusCls: '',
@@ -2442,7 +2451,7 @@
     }
     var hero = buildHeroMeta(entry);
     return mergeUsageIntoStatusProps({
-      brandTitle: t('softPadPageBrandTitle', '虚拟键盘'),
+      brandTitle: t('settingsNavKeyboard', '键盘'),
       name: displayTitle(entry),
       status: statusLabel(entry),
       statusCls: statusTag(entry).cls,
@@ -2474,7 +2483,7 @@
       if (global.__otSoftPadStatusSync) global.__otSoftPadStatusSync(props);
     } else {
       var brandEl = document.getElementById('softPadPageBrandTitle');
-      if (brandEl) brandEl.textContent = props.brandTitle || t('softPadPageBrandTitle', '虚拟键盘');
+      if (brandEl) brandEl.textContent = props.brandTitle || t('settingsNavKeyboard', '键盘');
       if (e.name) e.name.textContent = props.name;
       if (e.status) {
         e.status.textContent = props.status;

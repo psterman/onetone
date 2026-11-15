@@ -23,8 +23,17 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  scrollbar-width: none;
   background: transparent !important;
   user-select: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 body {
@@ -34,6 +43,7 @@ body {
 .root {
   width: 100%;
   height: 100%;
+  overflow: hidden;
   /* Extra bottom pad so caption + 灯路诊断 keep rounded corners inside the window. */
   padding: 12px 16px 20px;
 }
@@ -45,7 +55,7 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  overflow: visible;
+  overflow: hidden;
 }
 .root.is-mini-host {
   padding: 0;
@@ -290,7 +300,10 @@ button.overlay-key-caption:focus-visible {
   font-weight: 700;
   line-height: 1.3;
   max-width: 100%;
-  overflow: hidden;
+  /* The listen band and quota menu may extend below the compact row; the
+     native HWND is resized for those states, so clipping here cuts corners
+     during mini/full transitions. */
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
@@ -1944,18 +1957,22 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   min-height: 0;
   padding: 0;
   border-radius: 14px;
-  border: 1.5px solid rgba(90, 157, 184, 0.55);
+  border: 1px solid rgba(117, 135, 147, 0.38);
   box-sizing: border-box;
+  /* The listen band and quota menu may extend below the compact row; the
+     native HWND is resized for those states, so clipping here cuts corners
+     during mini/full transitions. */
   overflow: visible;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 4px 14px rgba(0, 101, 143, 0.12);
+  background: #f8fafb;
+  box-shadow: 0 4px 14px rgba(31, 52, 66, 0.10);
   cursor: grab;
   transition: box-shadow 0.18s ease;
 }
 
 .overlay-mini:hover,
 .overlay-mini.is-tools-open {
-  box-shadow: 0 8px 22px rgba(0, 101, 143, 0.18);
+  border-color: rgba(75, 112, 128, 0.52);
+  box-shadow: 0 6px 18px rgba(31, 52, 66, 0.13);
 }
 
 .overlay-mini__row {
@@ -1967,15 +1984,22 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   box-sizing: border-box;
 }
 
+.overlay-mini__row--main {
+  min-height: 40px;
+  padding: 5px 8px;
+  gap: 5px;
+  background: #fbfcfd;
+}
+
 .overlay-mini__row--tools {
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: nowrap;
   min-height: 0;
-  padding: 6px 10px 8px;
-  border-top: 1px dashed rgba(90, 157, 184, 0.45);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent);
+  padding: 5px 10px 6px;
+  border-top: 1px solid rgba(117, 135, 147, 0.18);
+  background: #f2f6f7;
   pointer-events: auto;
 }
 
@@ -1997,22 +2021,22 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 }
 
 .overlay-mini__row--tools .overlay-mini__action {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  border-radius: 8px;
-  border: 1px solid #9ec5d6;
-  background: #cfe6f2;
-  color: #1e5a75;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(117, 135, 147, 0.28);
+  background: #f8fbfc;
+  color: #3c5962;
   font-size: 12px;
   font-weight: 750;
   line-height: 1;
 }
 
 .overlay-mini__row--tools .overlay-mini__action:hover {
-  background: #b9dceb;
-  border-color: #5a9db8;
+  background: #e7f0f2;
+  border-color: rgba(75, 112, 128, 0.48);
 }
 
 .overlay-mini__action-glyph {
@@ -2026,20 +2050,21 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 
 .overlay-mini__row--tools .overlay-mini__action--settings {
   margin-left: auto;
-  color: #475569;
-  background: #fff;
-  border-color: #9ec5d6;
+  color: #52636b;
+  background: #f9fbfc;
+  border-color: rgba(117, 135, 147, 0.28);
   flex: 0 0 auto;
 }
 
 .overlay-mini__row--tools .overlay-mini__action--settings:hover {
-  background: #e8f4fa;
-  border-color: #5a9db8;
-  color: #0369a1;
+  background: #e8f1f3;
+  border-color: rgba(75, 112, 128, 0.48);
+  color: #294d59;
 }
 
 .overlay-mini:active { cursor: grabbing; }
-.overlay-mini.is-quota-open { overflow: visible; }
+.overlay-mini.is-quota-open,
+.overlay-mini:has(.overlay-mini__quota-dd:not([hidden])) { overflow: visible; }
 .wrap.is-minimized .overlay-full { display: none; }
 .wrap.is-minimized .overlay-mini { display: flex; }
 .wrap.is-minimized.is-quota-open,
@@ -2204,13 +2229,27 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   display: none !important;
 }
 
+/* Armed state must remain legible without making the mini window look busy or
+   like it is repainting continuously. The microphone/status chip carries the
+   state; the chassis and every tool button stay quiet. */
+.wrap.is-minimized.is-cursor-beginner-armed .overlay-mini {
+  animation: none;
+  box-shadow: 0 5px 16px rgba(31, 52, 66, 0.12);
+}
+.wrap.is-minimized.is-cursor-beginner-armed .overlay-mini__action {
+  box-shadow: none;
+  background: #eef4f6;
+}
+
 .overlay-mini-listen {
   display: none;
   align-items: flex-start;
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 12px;
+  min-height: 0;
+  max-height: 66px;
+  padding: 6px 10px;
   border-radius: 12px;
   white-space: normal;
   font-size: 12px;
@@ -2220,10 +2259,10 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   isolation: isolate;
   color: #0369a1 !important;
   background: #ffffff !important;
-  border: 1px solid rgba(0, 163, 255, 0.45);
-  box-shadow: 0 4px 12px rgba(0, 163, 255, 0.14);
+  border: 1px solid rgba(117, 135, 147, 0.26);
+  box-shadow: 0 2px 8px rgba(31, 52, 66, 0.08);
   pointer-events: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .overlay-mini-listen[hidden] {
@@ -2264,7 +2303,7 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   white-space: normal;
 }
 
@@ -2273,12 +2312,13 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   font-weight: 600;
   line-height: 1.35;
   color: #334155 !important;
+  display: none;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .overlay-mini-listen__cmds {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
@@ -2432,13 +2472,34 @@ button.oral-cmd-chip.is-cancel:focus-visible {
 .overlay-mini-listen__text {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: visible;
-  text-overflow: unset;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
   word-break: break-word;
   color: #0c4a6e !important;
   font-weight: 700;
+}
+
+/* Normal mini mode stays a compact summary. Details appear on intent. */
+.overlay-mini-listen:hover,
+.overlay-mini-listen:focus-within,
+.wrap.is-mini-details-open .overlay-mini-listen {
+  max-height: 112px;
+  overflow: hidden;
+}
+.overlay-mini-listen:hover .overlay-mini-listen__flow,
+.overlay-mini-listen:focus-within .overlay-mini-listen__flow,
+.wrap.is-mini-details-open .overlay-mini-listen__flow {
+  display: block;
+}
+.overlay-mini-listen:hover .overlay-mini-listen__cmds:not([hidden]),
+.overlay-mini-listen:focus-within .overlay-mini-listen__cmds:not([hidden]),
+.wrap.is-mini-details-open .overlay-mini-listen__cmds:not([hidden]) {
+  display: flex;
 }
 .overlay-mini-listen__text.is-waiting {
   color: #0369a1 !important;
@@ -2627,12 +2688,25 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 .wrap.is-oral-listen .overlay-mini-listen:not([hidden]) {
   display: inline-flex;
-  border-color: rgba(14, 165, 233, 0.65);
-  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.22);
+  border-color: rgba(14, 165, 233, 0.30);
+  box-shadow: 0 2px 8px rgba(31, 52, 66, 0.10);
 }
 .wrap.is-oral-listen .overlay-mini {
-  border-color: rgba(14, 165, 233, 0.55);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35), 0 8px 24px rgba(14, 165, 233, 0.18);
+  border-color: rgba(14, 165, 233, 0.34);
+  box-shadow: 0 5px 16px rgba(31, 52, 66, 0.12);
+}
+
+/* Mini listening is a status surface, not a pulsing window.  Scaling the
+   whole banner changes its paint bounds while native geometry is fixed and
+   produces the clipped-corner / near-stall effect during WebView repaints. */
+.wrap.is-minimized .overlay-mini-listen:not([hidden]) {
+  animation: none;
+  transform: none;
+  border-color: rgba(117, 135, 147, 0.30);
+  box-shadow: 0 2px 8px rgba(31, 52, 66, 0.10);
+}
+.wrap.is-minimized .overlay-mini {
+  box-shadow: 0 5px 16px rgba(31, 52, 66, 0.12);
 }
 
 /* Idle Soft Pad on Cursor FG: soft hint only — oral listen owns the strong glow. */
@@ -2969,11 +3043,11 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 
 .overlay-mini__agent {
   position: relative;
-  flex: 0 0 22px;
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  max-width: 22px;
+  flex: 0 0 21px;
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  max-width: 21px;
   aspect-ratio: 1 / 1;
   border: 1px solid rgba(102, 119, 141, 0.18);
   border-radius: 7px;
@@ -2981,8 +3055,8 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(229,236,245,.9));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 3px rgba(20,30,50,.12);
+  background: #f1f5f6;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(31,52,66,.08);
   outline: 2px solid transparent;
   outline-offset: -2px;
   cursor: pointer;
@@ -2990,7 +3064,8 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 
 .overlay-mini__agent:hover {
-  background: linear-gradient(180deg, #fff, rgba(229,236,245,.96));
+  background: #ffffff;
+  border-color: rgba(75, 112, 128, 0.38);
 }
 
 .overlay-mini__agent.is-usage-focus {
@@ -3063,11 +3138,11 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 
 .overlay-mini__btn {
-  width: 22px;
-  height: 22px;
-  border: 1px solid #c5d8e4;
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(117, 135, 147, 0.28);
   border-radius: 6px;
-  background: #fff;
+  background: #fbfcfd;
   color: #475569;
   font-size: 11px;
   line-height: 1;
@@ -3081,9 +3156,9 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 
 .overlay-mini__btn:hover {
-  background: #e8f4fa;
-  color: #0369a1;
-  border-color: #9ec5d6;
+  background: #eef4f6;
+  color: #365763;
+  border-color: rgba(75, 112, 128, 0.48);
 }
 
 .overlay-mini__btn--expand {

@@ -269,6 +269,27 @@ fn phrase_matches_any(phrase: &str, candidates: &[String]) -> bool {
         .any(|p| crate::config::phrases_fuzzy_match(phrase, p))
 }
 
+/// Soft slot say list: scheme custom say ∪ beginner defaults (never replace).
+fn soft_slot_match_phrases(
+    scheme: Option<&crate::config::OralCommandScheme>,
+    slot: &crate::cursor_beginner::BeginnerSlotDef,
+) -> Vec<String> {
+    let id = format!("soft:{}", slot.slot_id);
+    let mut phrases = scheme
+        .and_then(|s| s.items.get(&id))
+        .and_then(|it| it.say.as_ref())
+        .map(|s| oral_split_say(s))
+        .filter(|v| !v.is_empty())
+        .unwrap_or_default();
+    for p in slot.voice_phrases {
+        let s = (*p).to_string();
+        if !phrases.iter().any(|x| x == &s) {
+            phrases.push(s);
+        }
+    }
+    phrases
+}
+
 /// Armed Soft Pad mic / voiceCommand session: whitelist → Soft slot / prompt / voice bind / key.
 fn try_route_oral_armed(
     state: &Arc<AppState>,
@@ -322,17 +343,7 @@ fn try_route_oral_armed(
             if !oral_item_enabled(scheme_ref, &id, soft_oral_default_on(slot.slot_id)) {
                 continue;
             }
-            let phrases = scheme_ref
-                .and_then(|s| s.items.get(&id))
-                .and_then(|it| it.say.as_ref())
-                .map(|s| oral_split_say(s))
-                .filter(|v| !v.is_empty())
-                .unwrap_or_else(|| {
-                    slot.voice_phrases
-                        .iter()
-                        .map(|p| (*p).to_string())
-                        .collect()
-                });
+            let phrases = soft_slot_match_phrases(scheme_ref, slot);
             if phrase_matches_any(phrase, &phrases)
                 || (slot.slot_id == "continue"
                     && crate::config::phrases_fuzzy_match(phrase, "但是")
@@ -387,6 +398,40 @@ fn try_route_oral_armed(
         {
             crate::voice_command_session::clear_need_composer_aim();
             crate::input_aim_calibrate::abort_if_open(app);
+        }
+        // Soft oral「开始输入」= Lab wake (FG / last-external habit), not Agent composer.
+        // 「说话」「麦克风」still use Soft Pad input.start below.
+        if slot_id == "pushToTalk" {
+            let is_lab_wake = {
+                let cfg = state.cfg.lock();
+                crate::voice_end_runtime::idle_wake_phrases(&cfg)
+                    .iter()
+                    .any(|w| crate::config::phrases_fuzzy_match(phrase, w))
+            };
+            if is_lab_wake {
+                let duration_ms = state.cfg.lock().key_press_duration_ms;
+                crate::voice_command_session::allow_next_ime_start_while_oral();
+                let result = crate::voice_end_runtime::handle_voice_wake_detected(
+                    state,
+                    app,
+                    phrase,
+                    duration_ms,
+                    engine,
+                );
+                // Keep oral armed as silent sentinel — do not leave「开始输入」on the pad.
+                crate::voice_command_session::clear_oral_heard_display(state.as_ref());
+                let label = format!(
+                    "oral_soft:pushToTalk:lab_wake（{}→{}）",
+                    phrase, result.target_key
+                );
+                *state.voice_vosk_last_trigger.lock() = label.clone();
+                crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+                return Some(VoiceCommandRouterResult {
+                    handled: true,
+                    trigger_label: label,
+                    ..Default::default()
+                });
+            }
         }
         let window = crate::ipc::get_main_window(app)
             .or_else(|| app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label))?;
@@ -722,6 +767,47 @@ mod tests {
         assert_eq!(
             oral_split_say("发送、发出去, submit"),
             vec!["发送", "发出去", "submit"]
+        );
+    }
+
+    #[test]
+    fn soft_slot_custom_say_keeps_wake_aliases() {
+        let slot = crate::cursor_beginner::BEGINNER_SLOTS
+            .iter()
+            .find(|s| s.slot_id == "pushToTalk")
+            .expect("pushToTalk");
+        let mut scheme = crate::config::OralCommandScheme::default();
+        scheme.items.insert(
+            "soft:pushToTalk".into(),
+            crate::config::OralCommandItem {
+                say: Some("说话".into()),
+                enabled: Some(true),
+            },
+        );
+        let phrases = soft_slot_match_phrases(Some(&scheme), slot);
+        assert!(phrases.iter().any(|p| p == "说话"));
+        assert!(
+            phrases.iter().any(|p| p == "开始输入"),
+            "custom say must not drop Lab wake 「开始输入」: {phrases:?}"
+        );
+        assert!(phrase_matches_any("开始输入", &phrases));
+    }
+
+    #[test]
+    fn oral_push_to_talk_lab_wake_routed_before_run_slot() {
+        // Guard: Soft oral「开始输入」must call handle_voice_wake_detected (Lab chord),
+        // not Agent run_slot / composer aim — WeChat FG while Soft Pad listens.
+        let src = include_str!("voice_command_router.rs");
+        assert!(
+            src.contains("oral_soft:pushToTalk:lab_wake")
+                && src.contains("handle_voice_wake_detected"),
+            "oral 开始输入 must dispatch lab wake while Soft Pad oral is armed"
+        );
+        let layer1 = include_str!("agent/layer1_native.rs");
+        assert!(
+            layer1.contains("restore_external_foreground")
+                && layer1.contains("Lab 听写键"),
+            "input.start must restore last external FG when Soft Pad holds focus"
         );
     }
 

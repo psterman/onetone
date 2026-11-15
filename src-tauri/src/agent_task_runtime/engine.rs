@@ -11,7 +11,7 @@ use super::cancel::{self, TaskCancel};
 use super::contracts::{
     PermissionMode, TaskStatus, WaitingReason, CHAT_WEB_SEARCH_CAP, CHAT_WEB_SEARCH_FAIL_CAP,
     MAX_FORMAT_RETRIES, MAX_IDENTICAL_TOOL, MAX_NO_PROGRESS, MAX_REPAIR, MAX_TOOL_CALLS,
-    MAX_TOOL_JSON_DEPTH, MAX_TURNS, MAX_WALL_MS,
+    MAX_TOOL_JSON_DEPTH, MAX_TURNS, MAX_WALL_MS, MAX_WALL_MS_READ_ONLY,
 };
 use super::parse::{self, ParseError, ToolCall};
 use super::prompts;
@@ -323,7 +323,12 @@ pub fn prep_turn(conn: &Connection, task_id: &str, recent: &str) -> Result<Optio
         return Err("budget_tools".into());
     }
     let age = now_ms().saturating_sub(task.created_at);
-    if age >= MAX_WALL_MS {
+    let wall = if PermissionMode::parse(&task.permission_mode) == Some(PermissionMode::ReadOnly) {
+        MAX_WALL_MS_READ_ONLY
+    } else {
+        MAX_WALL_MS
+    };
+    if age >= wall {
         return Err("budget_time".into());
     }
     if task.current_turn >= MAX_TURNS {
@@ -995,6 +1000,20 @@ fn dispatch_tool(
             )?;
             cancel::finish(&task.task_id);
             return Ok(Some(updated));
+        }
+        name if super::team_tools::is_team_tool(name) => {
+            let caller = match super::team_tools::caller_for_atr_task(&task.task_id) {
+                Ok(c) => c,
+                Err(e) => {
+                    // Non-team ATR tasks cannot use team tools.
+                    return Err(e);
+                }
+            };
+            // Policy: non-lead cannot reassign/close/spawn (enforced inside tools too).
+            let result = super::team_tools::dispatch(&caller, name, args)?;
+            let payload = json!({"result": result});
+            note_tool_result(recent, name, &payload);
+            persist_tool(conn, task, &call.name, payload)?;
         }
         _ => return Err("unknown_tool".into()),
     }

@@ -172,7 +172,7 @@
 
   function normalizePanel(panel) {
     panel = String(panel || '').trim();
-    if (panel === 'voiceWake') return 'voice';
+    if (panel === 'voiceWake' || panel === 'voiceLab') return 'voice';
     return panel;
   }
 
@@ -292,8 +292,13 @@
     if (panel === 'keys' && cur === 'keys' && global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.render) {
       try { global.OneToneKeysPanelUi.render(); } catch (_) {}
     }
-    if (panel === 'voice' && cur === 'voiceWake' && global.OneToneVoiceSchemesUi && global.OneToneVoiceSchemesUi.render) {
-      try { global.OneToneVoiceSchemesUi.render(); } catch (_) {}
+    if (panel === 'voice' && (cur === 'voiceWake' || cur === 'voiceLab')) {
+      if (cur === 'voiceWake' && global.OneToneVoiceSchemesUi && global.OneToneVoiceSchemesUi.render) {
+        try { global.OneToneVoiceSchemesUi.render(); } catch (_) {}
+      }
+      if (cur === 'voiceLab' && global.OneToneVoiceLabPanel && global.OneToneVoiceLabPanel.render) {
+        try { global.OneToneVoiceLabPanel.render(); } catch (_) {}
+      }
     }
     if (panel === 'camera' && cur === 'camera') {
       if (global.OneToneCameraWorkflow && global.OneToneCameraWorkflow.onPanelVisible) {

@@ -18,11 +18,13 @@ assert.match(shell, /function sealLiveThinkingChip/);
 assert.match(shell, /function maybeSealThinkingForTurn/);
 assert.match(shell, /function isSealedThinkingTurnId/);
 assert.match(shell, /function isEmptyThinkingHusk/);
+assert.match(shell, /function isThinkingProgressOnly/);
 assert.match(shell, /think_' \+ tid \+ '_s' \+ stepN/);
 assert.match(shell, /maybeSealThinkingForTurn\(task\)/);
 assert.match(shell, /sealLiveThinkingChip\(tid, turnForSeal\)/);
 assert.match(shell, /\/\^think_\.\+_s\\d\+\$\//);
 assert.match(shell, /collapsed:\s*true/);
+assert.match(shell, /isThinkingProgressOnly\(detail\)/);
 assert.match(
   shell,
   /function wbPageTurnsForPaint[\s\S]*?isSealedThinkingTurnId/
@@ -45,12 +47,16 @@ assert.match(
   shell,
   /collapsed !== true &&\s*\n\s*!wbStreamingText/
 );
+// Status lines like「正在调用 fetch_url」must not become sealed thinking chips.
+assert.match(shell, /正在调用\\s\+\\S\+/);
 
 assert.match(
   css,
   /\.ha2-wb-page-turn--thinking\.is-live:not\(\[data-ha2-has-detail="1"\]\)/
 );
 assert.match(css, /details\.ha2-wb-page-turn--thinking\s*\{[^}]*min-height:32px/);
+assert.match(css, /details\.ha2-wb-page-turn--thinking:not\(\[open\]\)/);
+assert.match(css, /isolation:\s*isolate/);
 
 const caps = read('src/js/features/now/home-agent-capabilities.js');
 assert.match(caps, /Thematic breaks paint as empty horizontal rails/);

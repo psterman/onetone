@@ -488,32 +488,15 @@
     return 'natural';
   }
 
-  /**
-   * Soft style hint only — never canned reply templates / never post-rewrites model text.
-   * Caller supplies tone (FE reads onetone.chat.replyTone); default natural.
-   */
+  /** Reply-tone scheme removed — keep stubs so older callers stay no-ops. */
   function chatReplyToneHint(tone) {
-    tone = normalizeChatReplyTone(tone);
-    var style =
-      tone === 'concise'
-        ? '短句要点，少铺垫。'
-        : tone === 'colleague'
-          ? '同事口吻，可你/我。'
-          : '口语、先结论。';
-    return (
-      '回复语气：' +
-      style +
-      ' 结构需要时可用轻量 Markdown（标题/列表/加粗），勿堆砌框架表。'
-    );
+    void tone;
+    return '';
   }
 
-  /** Prefix materialsSummary so Rust peels it into the chat system prompt. */
   function withChatReplyToneMaterials(body, tone) {
-    var hint = chatReplyToneHint(tone);
-    var rest = String(body || '');
-    if (!hint) return rest;
-    if (/^reply_tone:/m.test(rest)) return rest;
-    return 'reply_tone:' + hint + (rest ? '\n' + rest : '');
+    void tone;
+    return String(body || '');
   }
 
   function buildLocalChatSystemPrompt(input) {
@@ -552,7 +535,7 @@
           '无文件正文勿编造路径/diff；有截图但无像素时仍按文字目标给方案，勿只回「无 OCR」。',
           '勿臆测「本机无网/离线」。时效信息（天气等）缺城市时先反向问一句。'
         ];
-    lines.push(chatReplyToneHint(input.replyTone));
+    lines.push('结构需要时可用轻量 Markdown（标题/列表/加粗），勿堆砌框架表。');
     if (path) {
       lines.push('项目：' + (name ? name + ' · ' : '') + path);
     } else {

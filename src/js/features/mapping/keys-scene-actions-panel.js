@@ -237,7 +237,7 @@
     } catch (_) {}
     try {
       var hooks = global.__vp_bootstrap_hooks__ || {};
-      if (typeof hooks.setSettingsPanel === 'function') hooks.setSettingsPanel('keys');
+      if (typeof hooks.setSettingsPanel === 'function') hooks.setSettingsPanel('keysSeq');
     } catch (_) {}
   }
 

@@ -588,10 +588,21 @@
       ['btnRecordingAudioStrengthLight',d.recordingMuteStrengthLight],['btnRecordingAudioStrengthBalanced',d.recordingMuteStrengthBalanced],
       ['btnRecordingAudioStrengthStrong',d.recordingMuteStrengthStrong],['btnRecordingAudioStrengthMute',d.recordingMuteStrengthMute],
       ['recordingAudioDiagHint',d.recordingAudioDiagHint],['recordingAudioDiagAction',d.recordingAudioDiagAction],
-      ['voiceFinishMoreDetailsSummary',d.voiceFinishMoreDetailsSummary]
+      ['voiceFinishMoreDetailsSummary',d.voiceFinishMoreDetailsSummary],
+      ['soundAcousticEggSummary',d.soundAcousticEggSummary||'实验 · 录音确认 / 取消'],
+      ['soundAcousticEggHint',d.soundAcousticEggHint||'不稳定实验能力：用录音短语代替文字结束/取消词。这不是声纹识别。'],
+      ['voiceFinishHabitAcousticKeepTitle',d.voiceEndAcousticTitle||'用录音确认'],
+      ['voiceFinishHabitAcousticDiscardTitle',d.voiceCancelAcousticTitle||'用录音取消']
     ].forEach(function(pair){
       var el=$(pair[0]); if(el) el.textContent=pair[1];
     });
+    try{
+      var Ac=global.OneToneVoiceControlAcoustic;
+      if(Ac){
+        if(Ac.bindEvents){ Ac.bindEvents('end'); Ac.bindEvents('cancel'); }
+        if(Ac.render){ Ac.render('end'); Ac.render('cancel'); }
+      }
+    }catch(_ac){}
     document.querySelectorAll('.sound-slot-preview,.sound-cat-preview').forEach(function(btn){
       btn.textContent=d.soundPreview;
     });

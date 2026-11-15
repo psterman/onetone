@@ -359,13 +359,16 @@ fn execute_start(
     if app_target == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
         let voice_key = {
             let cfg = state.cfg.lock();
+            // Soft 槽「说话」= Cursor 习惯里 Lab 已配的听写键（微信 Ctrl+Shift+Win / 自定义…），
+            // 不要落回习惯里种子写死的 RAlt pushToTalk。
             let mapping = if mid.is_empty() {
                 None
             } else {
                 cfg.find_mapping_by_id(&mid)
             };
-            crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
-                .or_else(|| crate::voice_end_runtime::resolve_voice_input_target_key(&cfg))
+            crate::voice_end_runtime::resolve_dictation_ime_key(&cfg, mapping).or_else(|| {
+                crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
+            })
         };
         let Some(voice_key) = voice_key.filter(|s| !s.trim().is_empty()) else {
             return Layer1Outcome::err(
@@ -418,13 +421,10 @@ fn execute_start(
         }
         // Mirror classic wake: chord only — no Soft Pad composer click. A click
         // (or a second toggle pulse) aborts Cursor Voice Mode right after it opens.
+        // Soft Pad oral_composer_init often leaves Cursor FG; Lab 微信键 is global and
+        // would pop WeChat's float strip — prepare_foreground prefers WeChatAppEx.
         crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
-        if !crate::app_identity::foreground_is_self() {
-            // Ensure Cursor is FG without punching the composer (click ends voice).
-            let _ = crate::app_chat_workflow::quick_focus_app_target_for_hold(
-                crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
-            );
-        }
+        let _ = crate::voice_end_runtime::prepare_foreground_for_dictation_chord(&voice_key);
         // Hold chords (Ctrl+Shift+D) must stay pressed; toggle chords get a single pulse.
         let hold_ok = if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key)
             && !crate::key_chord::is_toggle_voice_chord(&voice_key)

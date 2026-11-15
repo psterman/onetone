@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
-  <link rel="stylesheet" href="css/codex-micro-overlay.css" />
+  <!-- Cache-bust the desktop WebView after visual overlay releases. -->
+  <link rel="stylesheet" href="css/codex-micro-overlay.css?v=mini-polish-20261115" />
   <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
   <link rel="stylesheet" href="css/soft-pad-carry.css?v=20261013-mini-mats-fit3" />
@@ -23,7 +24,7 @@
     <div class="wrap" id="wrap">
       <div class="overlay-mini-stack" id="overlayMiniStack">
       <div class="overlay-mini" id="overlayMini">
-      <div class="overlay-mini__row">
+      <div class="overlay-mini__row overlay-mini__row--main">
         <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="谁在忙">
           <span class="overlay-mini__agent" role="listitem" data-agent="codex" data-status="idle" aria-label="Codex：空闲">
             <img src="icons/app-target/codex.png" alt="" aria-hidden="true">
@@ -4323,7 +4324,8 @@
       // Probe: the promise settle itself proves whether Rust executed the command
       // (resolve = command returned; reject = IPC error). Drag Lag panel rows
       // fe_invoke_ok / fe_invoke_err are the ground truth for "pad won't move".
-      invoke('cmd_codex_micro_overlay_note_drag_begin',{}).catch(function(){});
+      // cmd_codex_micro_overlay_note_drag_begin is folded into start_drag so the
+      // latch and worker handoff share one IPC turn.
       var invokeT0=Date.now();
       invoke('cmd_codex_micro_overlay_start_drag',{
         cx:e.clientX, cy:e.clientY
@@ -4335,7 +4337,10 @@
         if(window.OneToneDragLagPanel&&OneToneDragLagPanel.note){
           OneToneDragLagPanel.note('fe_invoke_err',{ms:Date.now()-invokeT0,err:String(err||'').slice(0,90)});
         }
+        // Clear FE + Rust latch — note_drag_begin alone used to leave OVERLAY_DRAGGING
+        // stuck (pass-through updates blocked → Soft Pad 偶发拖不动).
         endOverlayDragFromRust();
+        invoke('cmd_codex_micro_overlay_clear_drag',{}).catch(function(){});
       });
     }
     wrap.addEventListener('pointerdown',beginOverlayDrag,true);

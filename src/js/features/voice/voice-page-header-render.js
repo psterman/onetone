@@ -378,6 +378,10 @@
   }
 
   function resolveScopeMapping(vm){
+    var Scope=global.OneToneVoiceScope;
+    if(Scope&&typeof Scope.resolveEditMapping==='function'){
+      return Scope.resolveEditMapping({habitMapping:vm&&vm.habitMapping});
+    }
     var core=global.OneToneMappingCore;
     var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:{};
     var ui=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};

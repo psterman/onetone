@@ -1056,6 +1056,13 @@
     return 'cursor-chat';
   }
 
+  function normalizeAimStrategy(raw){
+    var aim=String(raw||'none').trim().toLowerCase()||'none';
+    if(aim==='uia') return 'smart';
+    if(aim==='smart'||aim==='auto'||aim==='none'||aim==='probe') return aim;
+    return 'none';
+  }
+
   function aimCalLog(line){
     try{
       if(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function'){
@@ -1454,8 +1461,7 @@
     }
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel){
-      var aim=String(cfg.inputAimStrategy||cfg.input_aim_strategy||'none').trim()||'none';
-      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
+      var aim=normalizeAimStrategy(cfg.inputAimStrategy||cfg.input_aim_strategy||'none');
       if(aimSel.value!==aim) aimSel.value=aim;
       var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
       for(var ri=0;ri<radios.length;ri++){
@@ -1481,8 +1487,7 @@
     st.config.voiceEnd.promptInjectText=String(ta.value||'');
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel){
-      var aim=String(aimSel.value||'none').trim()||'none';
-      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
+      var aim=normalizeAimStrategy(aimSel.value||'none');
       aimSel.value=aim;
       var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
       for(var ri=0;ri<radios.length;ri++){
@@ -1600,9 +1605,10 @@
     var aimSelOpts=$('voiceInputAimStrategy');
     if(aimSelOpts){
       var optMap=[
-        ['none','voicePromptAimNoneTitle','直接写入'],
-        ['auto','voicePromptAimAutoTitle','先对准'],
-        ['probe','voicePromptAimProbeTitle','防误写']
+        ['smart','voiceLabAimSmart','智能填入'],
+        ['auto','keysSeqImeAimFirst','先对准，再填入'],
+        ['none','voiceLabAimNone','直接填入'],
+        ['probe','voiceLabAimProbe','只在已对准时填']
       ];
       for(var oi=0;oi<optMap.length;oi++){
         var opt=aimSelOpts.querySelector('option[value="'+optMap[oi][0]+'"]');
@@ -1621,9 +1627,10 @@
       if(desc) desc.textContent=t(descKey,descFb);
       if(badge) badge.textContent=t('voicePromptAimBadgeShort','荐');
     }
-    setAimCard('none','voicePromptAimNoneTitle','直接写入','voicePromptAimNoneDesc','假定你已点好框。最快，但焦点在哪就打到哪。');
-    setAimCard('auto','voicePromptAimAutoTitle','先对准','voicePromptAimAutoDesc','说出口令后点到聊天框再填；对不上就取消。一说就要写入时用这个。');
-    setAimCard('probe','voicePromptAimProbeTitle','防误写','voicePromptAimProbeDesc','聊天框没有光标时，口令触发也不写入。适合旁边开着代码、怕误唤醒写进文件。');
+    setAimCard('smart','voiceLabAimSmart','智能填入','voicePromptAimSmartDesc','不录制；自动识别输入框并激活，再写入。找不到才用其它兜底。');
+    setAimCard('auto','keysSeqImeAimFirst','先对准，再填入','voicePromptAimAutoDesc','先圈住聊天输入框再点一下；之后说话会回放同一落点再填入。');
+    setAimCard('none','voiceLabAimNone','直接填入','voicePromptAimNoneDesc','不激活输入框；文字直接写到当前光标处。');
+    setAimCard('probe','voiceLabAimProbe','只在已对准时填','voicePromptAimProbeDesc','只有已经点进聊天输入框才写入；否则这轮先跳过。');
     var demoLbl=$('voiceAimDemoToggleLbl');
     if(demoLbl){
       var explainOpen=$('voiceAimExplain');
@@ -1683,8 +1690,7 @@
   }
 
   function syncAimStrategyChrome(aim){
-    aim=String(aim||'none');
-    if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
+    aim=normalizeAimStrategy(aim);
     var row=$('voicePromptAimRow');
     if(row) row.setAttribute('data-aim',aim);
     var explain=$('voiceAimExplain');
@@ -1703,9 +1709,11 @@
     }
     var badge=$('voiceAimDemoBadge');
     if(badge){
-      badge.className='voice-aim-demo__badge '+(aim==='auto'?'is-ok':'is-warn');
-      if(aim==='auto') badge.textContent=t('voiceAimDemoBadgeAuto','已写入聊天框');
-      else if(aim==='none') badge.textContent=t('voiceAimDemoBadgeNone','打进了代码区');
+      var ok=aim==='auto'||aim==='smart'||aim==='none';
+      badge.className='voice-aim-demo__badge '+(ok?'is-ok':'is-warn');
+      if(aim==='smart') badge.textContent=t('voiceAimDemoBadgeSmart','✅ 智能填入完成');
+      else if(aim==='auto') badge.textContent=t('voiceAimDemoBadgeAuto','已写入聊天框');
+      else if(aim==='none') badge.textContent=t('voiceAimDemoBadgeNone','✅ 写到光标处');
       else badge.textContent=t('voiceAimDemoBadgeProbe','未对准 · 已跳过');
     }
     var cal=$('voicePromptAimCalRow');
@@ -1832,8 +1840,8 @@
     if(aimSel&&!aimSel._bound){
       aimSel._bound=true;
       aimSel.addEventListener('change',function(){
-        var next=String(aimSel.value||'none');
-        if(next!=='auto'&&next!=='none'&&next!=='probe') next='none';
+        var next=normalizeAimStrategy(aimSel.value||'none');
+        aimSel.value=next;
         var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
         for(var ri=0;ri<radios.length;ri++){
           radios[ri].checked=String(radios[ri].value)===next;

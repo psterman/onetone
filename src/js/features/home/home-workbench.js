@@ -2242,7 +2242,11 @@
         afterOpenFocus();
         return;
       }
-      openSettings({panel:'voiceWake',focus:focus||'wakePhrases'});
+      if(global.OneToneVoiceNav&&typeof global.OneToneVoiceNav.openVoice==='function'){
+        global.OneToneVoiceNav.openVoice({focus:focus||'wake'});
+      }else{
+        openSettings({panel:'voiceLab',focus:focus||'wake'});
+      }
       return;
     }
     if(channel==='camera'){
@@ -2286,6 +2290,7 @@
   // ponytail: poll hysteresis ceiling; upgrade = event-driven FG IPC with same sticky rules.
   var pendingFollowSceneId='';
   var pendingFollowSceneAt=0;
+  var followFgSyncInFlight=false;
   var FOLLOW_UP_MS=1200;
   var FOLLOW_DOWN_MS=3500;
 
@@ -2449,6 +2454,10 @@
   }
 
   function syncFollowForegroundApp(){
+    // Foreground identity can involve Win32 title/path queries. Never allow a
+    // slow sample to overlap the next 800ms tick and build an IPC backlog.
+    if(global.__onetoneOverlayDragging) return;
+    if(followFgSyncInFlight) return;
     if(!isFollowFgEnabled()) return;
     try{
       if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling
@@ -2456,7 +2465,10 @@
     }catch(_){}
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
     var invoke=global.OneToneIpc.invoke;
-    invoke('cmd_habit_foreground_app',{}).catch(function(){ return null; }).then(function(held){
+    followFgSyncInFlight=true;
+    var broker=global.OneToneForegroundContext;
+    (broker ? Promise.resolve(broker.get()) : invoke('cmd_habit_foreground_app',{}).catch(function(){ return null; })).then(function(held){
+      if(broker) return held;
       if(held&&(held.exeName||held.exe_name)&&!isSelfFgIdentity(held)) return held;
       return invoke('cmd_foreground_app',{});
     }).then(function(res){
@@ -2489,11 +2501,16 @@
       var hit=hub&&hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
       var desired=hit&&hit.id?String(hit.id):baselineMappingId();
       commitFollowFgScene(desired,identity);
-    }).catch(function(){});
+    }).catch(function(){}).then(function(){
+      followFgSyncInFlight=false;
+    });
   }
 
   function startFollowFgPoll(){
     if(followFgPollTimer) return;
+    if(global.OneToneForegroundContext&&global.OneToneForegroundContext.start){
+      global.OneToneForegroundContext.start();
+    }
     followFgPollTimer=setInterval(syncFollowForegroundApp,800);
     // Boot FG is still the launcher / Cursor — immediate sync chained scheme
     // switches and kept the homepage reshuffling for seconds.
@@ -3006,7 +3023,11 @@
       }
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn,#wbHeroMicEngine');
       if(micBtn){
-        openSettings({panel:'voiceWake',focus:micBtn.id==='wbHeroMicEngine'?null:'mic'});
+        if(global.OneToneVoiceNav&&typeof global.OneToneVoiceNav.openVoice==='function'){
+          global.OneToneVoiceNav.openVoice({focus:micBtn.id==='wbHeroMicEngine'?'engine':'mic'});
+        }else{
+          openSettings({panel:'voiceLab',focus:micBtn.id==='wbHeroMicEngine'?'engine':'mic'});
+        }
         return;
       }
       var voiceSwitch=e.target.closest&&e.target.closest('#wbHeroVoiceSwitch');
@@ -3160,7 +3181,7 @@
     keys:'triggers',
     keysSeq:'keysSeq',
     keys2:'schemes',
-    softPad:'softPad',
+    softPad:'keyboard',
     keyboard:'keyboard',
     agent:'agent',
     agentData:'agent',
@@ -3179,24 +3200,22 @@
 
   function navKeyForPanel(panel){
     panel=String(panel||'');
-    if(!panel||panel==='home') return 'home';
+    // Closing settings / home panel → product Focus desk (新首页), not「对话」.
+    if(!panel||panel==='home') return 'homeV2';
     if(panel==='debug') return 'runtime';
     if(panel==='agent'||panel==='agentData') return 'agent';
-    if(panel==='softPad'){
-      var ui=global.OneToneState&&global.OneToneState.ui;
-      if(ui&&ui.softPadSurface==='keyboard') return 'keyboard';
-    }
+    if(panel==='softPad') return 'keyboard';
     return NAV_PANEL_MAP[panel]||'general';
   }
 
   function paintNavActive(activeNav){
     var nav=$('wbLeftNav');
     if(!nav) return;
-    activeNav=String(activeNav||'home');
-    if(activeNav==='home'){
-      try{
-        if(localStorage.getItem('onetone.homeSurface')==='agentV2') activeNav='homeV2';
-      }catch(_){}
+    // Product Focus desk lights「新首页」;「对话」keeps data-wb-nav=home.
+    activeNav=String(activeNav||'homeV2');
+    if(activeNav==='home'||activeNav==='focus'){
+      // Explicit chat nav stays「对话」; bare home/focus from older callers → 新首页.
+      if(activeNav==='focus') activeNav='homeV2';
     }
     nav.querySelectorAll('[data-wb-nav]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
@@ -3237,12 +3256,20 @@
   function syncNowHomeSurface(activeNav){
     var api=global.OneToneNowHome;
     if(!api) return;
-    if(activeNav==='home'){
-      // Left-nav 首页: always drop exclusive chat cover so Focus desk returns.
-      var HA2=global.OneToneHomeAgentV2;
+    var HA2=global.OneToneHomeAgentV2;
+    if(activeNav==='homeV2'){
+      // 「新首页」= Focus desk — drop exclusive chat cover.
       if(HA2&&HA2.closeWbChatPage){
         try{ HA2.closeWbChatPage(); }catch(_){}
       }
+      try{ localStorage.setItem('onetone.homeSurface','focus'); }catch(_){}
+      if(api.isEnabled&&api.isEnabled()){
+        if(api.show) api.show();
+      }else if(api.hide){
+        api.hide();
+      }
+    }else if(activeNav==='home'){
+      // 「对话」: keep Now host so exclusive chat page can cover Focus.
       if(api.isEnabled&&api.isEnabled()){
         if(api.show) api.show();
       }else if(api.hide){
@@ -3257,14 +3284,15 @@
     opts=opts||{};
     var ui=global.OneToneState&&global.OneToneState.ui;
     var open=!!(ui&&ui.drawerOpen);
-    var activeNav='home';
+    // Product Focus desk =「新首页」;「对话」only when navKey=home.
+    var activeNav='homeV2';
     if(open){
       // Drawer open: highlight from live settingsPanel so late focus/rAF callers
       // (e.g. softPad focus after keys open) cannot paint a stale nav item.
       if(ui&&ui.settingsPanel) panel=String(ui.settingsPanel);
       activeNav=navKeyForPanel(panel);
     }else if(opts.navKey){
-      // Click paint before openDrawer flips drawerOpen — otherwise 首页 stays lit
+      // Click paint before openDrawer flips drawerOpen — otherwise 新首页 stays lit
       // through the keys/voice/camera channel hop.
       activeNav=String(opts.navKey);
     }
@@ -3541,19 +3569,29 @@
       if(!btn) return;
       var action=btn.getAttribute('data-wb-nav');
       if(action==='homeV2'){
-        try{ localStorage.setItem('onetone.homeSurface','agentV2'); }catch(_){}
-        location.reload();
+        try{ localStorage.setItem('onetone.homeSurface','focus'); }catch(_){}
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close){
+          try{ global.OneToneSettingsDrawer.close(); }catch(_){}
+        }
+        syncNavActiveState('home',{navKey:'homeV2'});
         return;
       }
       if(action==='home'){
-        try{
-          var surf=localStorage.getItem('onetone.homeSurface');
-          if(surf==='agentV2'||!surf){
-            localStorage.setItem('onetone.homeSurface','focus');
-            location.reload();
-            return;
+        // 「对话」: open chat history (exclusive page + left-nav list).
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close){
+          try{ global.OneToneSettingsDrawer.close(); }catch(_){}
+        }
+        syncNavActiveState('home',{navKey:'home'});
+        var Dir=global.OneToneHomeNowDirectory;
+        if(Dir&&typeof Dir.openChatNav==='function'){
+          try{ Dir.openChatNav(); }catch(_){}
+        }else{
+          var HA2chat=global.OneToneHomeAgentV2;
+          if(HA2chat&&HA2chat.openWbChatPage){
+            try{ HA2chat.openWbChatPage({chatOnly:true}); }catch(_){}
           }
-        }catch(_){}
+        }
+        return;
       }
       // Resolve at click time — do not close over a null ShellIa from an early bindOnce.
       var ia=global.OneToneShellIaConvergence;
@@ -3562,7 +3600,7 @@
       if(!row) return;
       if(row.home){
         if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close) global.OneToneSettingsDrawer.close();
-        syncNavActiveState('home');
+        syncNavActiveState('home',{navKey:'homeV2'});
         return;
       }
       if(row.panel){
@@ -3604,7 +3642,10 @@
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
     syncNavActiveState(
-      (global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel)||'home'
+      (global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel)||'home',
+      (global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.drawerOpen)
+        ? {}
+        : {navKey:'homeV2'}
     );
     var searchInput=$('wbCommandSearchInput');
     if(searchInput){

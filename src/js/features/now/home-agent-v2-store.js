@@ -149,9 +149,9 @@
       var Caps = capsApi();
       var next =
         Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(raw) : String(raw || '');
-      // Primary UI is chat|work — migrate legacy readonly / hidden research → think.
+      // Primary UI is chat|work|team — migrate legacy readonly / hidden research → think.
       if (next === 'readonly' || next === 'research') next = 'think';
-      if (next === 'think' || next === 'edit') return next;
+      if (next === 'think' || next === 'edit' || next === 'team') return next;
     } catch (_) {}
     return 'edit';
   }
@@ -2396,27 +2396,41 @@
         .catch(function (err) {
           var raw = String((err && err.message) || err || 'drive_failed');
           var code = (err && err.code) || 'drive_failed';
-          if (/max_turns|stuck_loop|budget_exhausted/i.test(raw)) code = 'budget_exhausted';
+          var chatLane = isChatLaneTask(t);
+          var teamLead =
+            /You are the Team Lead/i.test(String((t && t.goal) || '')) ||
+            (global.OneToneAgentTeam &&
+              global.OneToneAgentTeam.isTeamLeadGoal &&
+              global.OneToneAgentTeam.isTeamLeadGoal((t && t.goal) || ''));
+          var laneLabel = teamLead ? '团队' : chatLane ? '对话' : '编辑';
+          if (/max_turns|stuck_loop|budget_exhausted|budget_time|budget_tools/i.test(raw)) {
+            code = 'budget_exhausted';
+          }
           if (
             /decoding response body|error decoding|provider_stream/i.test(raw)
           ) {
             code = 'provider_stream';
           }
           if (/controller_required/i.test(raw)) code = 'controller_required';
+          if (/budget_time/i.test(raw)) code = 'budget_time';
           var msg =
-            code === 'budget_exhausted'
-              ? /stuck_loop/i.test(raw)
-                ? '编辑任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
-                : '编辑任务步数用尽 — 请写清目标后重试，或放弃当前任务'
-              : code === 'provider_stream'
-                ? '模型响应中断（连接/解码失败）— 可点恢复继续，或放弃后重试'
-                : code === 'controller_required'
-                  ? '工作控制器未就绪 — 请点恢复继续当前任务，或放弃后重发'
-                  : '编辑任务失败：' + raw;
+            code === 'budget_time'
+              ? laneLabel + '任务超时 — 可点恢复继续，或放弃后重发'
+              : code === 'budget_exhausted'
+                ? /stuck_loop/i.test(raw)
+                  ? laneLabel + '任务空转（反复同一操作）— 请写清目标后重试，或放弃当前任务'
+                  : laneLabel + '任务步数用尽 — 请写清目标后重试，或放弃当前任务'
+                : code === 'provider_stream'
+                  ? '模型响应中断（连接/解码失败）— 可点恢复继续，或放弃后重试'
+                  : code === 'controller_required'
+                    ? '工作控制器未就绪 — 请点恢复继续当前任务，或放弃后重发'
+                    : laneLabel + '任务失败：' + raw;
           atrNotice('atr_' + code, msg, {
             code: code,
             actions:
-              code === 'provider_stream' || code === 'controller_required'
+              code === 'provider_stream' ||
+              code === 'controller_required' ||
+              code === 'budget_time'
                 ? ['resume', 'abandon']
                 : ['abandon']
           });
@@ -3590,11 +3604,26 @@
       Caps && Caps.normalizeWorkMode ? Caps.normalizeWorkMode(mode) : String(mode || 'think');
     // Research is product-hidden — collapse to chat.
     if (next === 'readonly' || next === 'research') next = 'think';
-    if (next !== 'think' && next !== 'edit') next = 'think';
+    if (next !== 'think' && next !== 'edit' && next !== 'team') next = 'think';
     // Always persist (incl. alias normalize) so localStorage mirrors effective mode.
     persistWorkMode(next);
     if (state.workMode === next && !opts.force) return;
     state.workMode = next;
+    if (next === 'team') {
+      var Team = global.OneToneAgentTeam;
+      if (Team && typeof Team.armTeamMode === 'function') {
+        try {
+          if (!Team.isActive || !Team.isActive()) Team.armTeamMode();
+        } catch (_) {}
+      }
+    } else {
+      var TeamOff = global.OneToneAgentTeam;
+      if (TeamOff && TeamOff.isActive && TeamOff.isActive() && TeamOff.exitTeamMode) {
+        try {
+          /* keep panel if open; only clear arm via exit when switching modes from chrome */
+        } catch (_) {}
+      }
+    }
     if (!opts.silent) emit();
   }
 

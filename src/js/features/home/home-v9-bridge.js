@@ -998,7 +998,9 @@
 
   function pollForegroundApp(){
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
-    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+    var broker=global.OneToneForegroundContext;
+    var req=broker?Promise.resolve(broker.get()):global.OneToneIpc.invoke('cmd_foreground_app',{});
+    req.then(function(res){
       foregroundIdentity=res||null;
       var next=res&&res.appId?String(res.appId):'';
       try{
@@ -1035,7 +1037,11 @@
           global.OneToneIpc.invoke('cmd_voice_end_test_commit',{}).catch(function(){});
           return;
         }
-        openSettings({panel:'voiceWake',focus:'endPhrases'});
+        if(global.OneToneVoiceNav&&typeof global.OneToneVoiceNav.openVoice==='function'){
+          global.OneToneVoiceNav.openVoice({focus:'finish'});
+        }else{
+          openSettings({panel:'voiceLab',focus:'finish'});
+        }
       };
     }
     var btnSwitch=$('vp9BtnSwitch');

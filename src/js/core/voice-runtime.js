@@ -72,6 +72,13 @@
           if(panel==='voiceWake'&&!settling&&global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
             global.OneToneVoiceFeedbackRail.syncLiveText();
           }
+          if(panel==='voiceLab'&&global.OneToneVoiceLabPanel){
+            if(typeof global.OneToneVoiceLabPanel.syncLiveFromSnapshot==='function'){
+              try{ global.OneToneVoiceLabPanel.syncLiveFromSnapshot(); }catch(_){}
+            }else if(typeof global.OneToneVoiceLabPanel.syncAdvancedChrome==='function'){
+              try{ global.OneToneVoiceLabPanel.syncAdvancedChrome(); }catch(_){}
+            }
+          }
           if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(panel)||global.OneToneSettingsDrawer.isHabitsPanel(panel))) hooks().renderKeyFinishFlowPanel();
           if(panel==='debug') hooks().scheduleDebugChromeRefresh();
         }else{

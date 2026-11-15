@@ -47,16 +47,28 @@
     } catch (_) {}
   }
 
-  /** Keep HA2 think/edit aligned with chrome 提问/投递. */
+  /** Keep HA2 think/edit aligned with chrome 提问/投递. Never clobber team mode. */
   function syncHomeIntentToHa2() {
     var Store = global.OneToneHomeAgentV2Store;
     if (!Store || typeof Store.setWorkMode !== 'function') return;
     var want = readHomeIntent() === 'work' ? 'edit' : 'think';
     try {
       var snap = typeof Store.getSnapshot === 'function' ? Store.getSnapshot() : null;
+      if (snap && snap.workMode === 'team') return;
       if (snap && snap.workMode === want) return;
       Store.setWorkMode(want, { silent: true });
     } catch (_) {}
+  }
+
+  function focusChromeIntent() {
+    try {
+      var Store = global.OneToneHomeAgentV2Store;
+      var snap = Store && Store.getSnapshot && Store.getSnapshot();
+      if (snap && snap.workMode === 'team') return 'team';
+      var Team = global.OneToneAgentTeam;
+      if (Team && Team.isActive && Team.isActive()) return 'team';
+    } catch (_) {}
+    return readHomeIntent();
   }
   var contextOpen = false;
   var contextRows = [];
@@ -1257,25 +1269,17 @@
     }
   }
 
+  /**
+   * Pure ha2-shell is no longer a product home. 「新首页」= Focus desk.
+   * `onetone.homeSurface` / homeSurface=agentV2 legacy keys are treated as Focus
+   * by the workbench nav; this helper stays always-false so show() never mounts
+   * a pure HA2 shell. Kept named for call sites / smokes.
+   */
   function detectHomeAgentV2() {
-    try {
-      var queryValue = new URLSearchParams(location.search).get('homeAgentV2');
-      if (queryValue === '1') return true;
-      if (queryValue === '0') return false;
-      var ls =
-        global.localStorage && global.localStorage.getItem('onetone.homeSurface');
-      // Focus is the default home (ha2 compose embeds). Opt into pure ha2 via agentV2.
-      if (ls === 'agentV2') return true;
-      if (ls === 'focus' || ls === 'classic') return false;
-      return false;
-    } catch (_) {
-      return false;
-    }
+    return false;
   }
 
-  // Default home surface is Home Focus (see detectHomeAgentV2).
-  // Pure ha2: ?homeAgentV2=1 or localStorage onetone.homeSurface=agentV2.
-  // Opt out of Now host entirely with ?now=0 / onetone.nowHome=0.
+  // Product home is Home Focus (ha2 compose embeds). Opt out of Now with ?now=0.
   function isEnabled() {
     try {
       var q = new URLSearchParams(location.search);
@@ -1587,7 +1591,7 @@
             probePending: !inventoryLoaded,
             aimMemory: homeAimMemoryOpts(),
             resumeAvailable: !!vm._returnDismissed,
-            intent: readHomeIntent(),
+            intent: focusChromeIntent(),
             deliverKind: homeDeliverKind || readHomeDeliverKind(),
             accountGated: true,
             accountReady: homeAccountReady === true,
@@ -1990,6 +1994,22 @@
       openSettings();
       return;
     }
+    if (kind === 'open_team') {
+      var Ha2Team = global.OneToneHomeAgentV2Store;
+      if (Ha2Team && typeof Ha2Team.setWorkMode === 'function') {
+        try {
+          Ha2Team.setWorkMode('team');
+        } catch (_) {}
+      }
+      if (global.OneToneAgentTeam && typeof global.OneToneAgentTeam.openDrawer === 'function') {
+        try {
+          global.OneToneAgentTeam.openDrawer();
+        } catch (_) {}
+      }
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
     if (kind === 'set_intent') {
       var nextIntent =
         (el && el.getAttribute && el.getAttribute('data-hf-intent')) || 'chat';
@@ -1998,6 +2018,12 @@
       var Ha2Intent = global.OneToneHomeAgentV2Store;
       if (Ha2Intent && typeof Ha2Intent.setWorkMode === 'function') {
         try {
+          var TeamLeave = global.OneToneAgentTeam;
+          if (TeamLeave && TeamLeave.isActive && TeamLeave.isActive() && TeamLeave.exitTeamMode) {
+            try {
+              TeamLeave.exitTeamMode();
+            } catch (_) {}
+          }
           Ha2Intent.setWorkMode(nextIntent === 'work' ? 'edit' : 'think');
         } catch (_) {}
       }
@@ -2291,15 +2317,47 @@
         if (P && P.expand) P.expand();
       },
       openProgress: function () {
+        var Ha2Store = global.OneToneHomeAgentV2Store;
+        var agentTask =
+          (Ha2Store && Ha2Store.getSnapshot && Ha2Store.getSnapshot().agentTask) || null;
+        var work = (vm.dto && vm.dto.work) || {};
+        var atrGoal = (agentTask && agentTask.goal) || '';
+        var workSid = String(work.sessionId || work.session_id || '').trim();
+        var atrId = String((agentTask && agentTask.taskId) || workSid || '').trim();
+        var workTitle =
+          String(work.title || work.goal || vm.headline || '').trim();
+        var Team = global.OneToneAgentTeam;
+        var teamRun = Team && Team.getTeam && Team.getTeam();
+        var isTeam =
+          (Team &&
+            Team.isTeamLeadGoal &&
+            (Team.isTeamLeadGoal(atrGoal) || Team.isTeamLeadGoal(workTitle))) ||
+          (teamRun &&
+            atrId &&
+            String(teamRun.parentTaskId || '') === String(atrId));
+        if (isTeam && Team && typeof Team.showPanel === 'function') {
+          Team.showPanel({
+            taskId: atrId || (teamRun && teamRun.parentTaskId) || ''
+          });
+        }
+        var HA2 = global.OneToneHomeAgentV2;
+        if (atrId && HA2 && typeof HA2.openAtrHistory === 'function') {
+          try {
+            HA2.openAtrHistory(atrId);
+          } catch (_) {}
+        } else if ((atrGoal || workTitle) && HA2 && typeof HA2.openAtrEditPage === 'function') {
+          try {
+            HA2.openAtrEditPage(atrGoal || workTitle);
+          } catch (_) {}
+        }
         var Nav = global.OneToneAgentNavTarget;
-        if (Nav && Nav.open) {
+        if (!isTeam && Nav && Nav.open) {
           Nav.open({
             view: 'overview',
             section: vm.mode === 'attention' ? 'attention' : 'working',
             provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || null,
             projectId: vm.projectName || vm.projectId || null,
-            sessionId:
-              (vm.dto && vm.dto.work && (vm.dto.work.sessionId || vm.dto.work.session_id)) || null
+            sessionId: workSid || null
           });
         }
       },
@@ -2636,7 +2694,7 @@
     var bodyEl = root && root.querySelector('#hnRecallBody');
     var entries = buildHistoryEntries();
     if (drawer && titleEl && bodyEl && V) {
-      titleEl.textContent = '历史';
+      titleEl.textContent = '工作区';
       bodyEl.innerHTML =
         V.historyDrawerBodyHtml
           ? V.historyDrawerBodyHtml(entries, tab)
@@ -2645,6 +2703,14 @@
             : '';
       drawer.hidden = false;
       drawer.classList.add('is-history');
+      // Fill ha2 work list into drawer (same listHtml / resume actions as stage).
+      var HA2 = global.OneToneHomeAgentV2;
+      var listHost = bodyEl.querySelector('[data-hf-drawer-ha2-list]');
+      if (listHost && HA2 && typeof HA2.fillFocusWorkspaceList === 'function') {
+        try {
+          HA2.fillFocusWorkspaceList(listHost);
+        } catch (_) {}
+      }
       return;
     }
     // Fallback: secondary page if drawer host missing.
@@ -2708,6 +2774,7 @@
       // Keep live ha2 compose across Focus remounts. Status/card polls used to
       // wipe [data-hf-ha2-compose-host] via innerHTML → caret/IME blur mid-type.
       var liveComposeHost = null;
+      var liveTeamPanel = null;
       var draftWasFocused = false;
       var draftCaret = { start: 0, end: 0 };
       try {
@@ -2725,6 +2792,14 @@
           }
           liveComposeHost = oldComposeHost;
           oldComposeHost.remove();
+        }
+      } catch (_) {}
+      // Same for Team drawer — SSE reconnect / ATR poll paints were wiping it.
+      try {
+        var oldTeamPanel = root.querySelector('[data-ot-team-panel]');
+        if (oldTeamPanel) {
+          liveTeamPanel = oldTeamPanel;
+          oldTeamPanel.remove();
         }
       } catch (_) {}
       // Flush live ha2 drafts before wiping the host (Shift+Enter / poll remount).
@@ -2746,6 +2821,17 @@
           }
         } catch (_) {}
       }
+      if (liveTeamPanel) {
+        try {
+          root.appendChild(liveTeamPanel);
+        } catch (_) {}
+      }
+      try {
+        var TeamPaint = global.OneToneAgentTeam;
+        if (TeamPaint && typeof TeamPaint.restoreAfterPaint === 'function') {
+          TeamPaint.restoreAfterPaint();
+        }
+      } catch (_) {}
       syncVoiceStrip(voice);
       mountHomeFocusChrome();
       bindQuietComposer();
@@ -3283,7 +3369,7 @@
     // History drawer tabs: 最近 / 未完成 / 可恢复
     var histTab = t.closest && t.closest('[data-hf-hist-tab]');
     if (histTab) {
-      openHistoryDrawer(histTab.getAttribute('data-hf-hist-tab') || 'recent');
+      openHistoryDrawer(histTab.getAttribute('data-hf-hist-tab') || 'workspace');
       return;
     }
 
@@ -3638,11 +3724,6 @@
     if (mounted) return;
     root = $(ROOT_ID);
     if (!root) return;
-    // Pure agentV2: shell scripts may still be deferred — HA2.mount happens in show().
-    if (detectHomeAgentV2()) {
-      mounted = true;
-      return;
-    }
     isDemo = detectDemo();
     agentDemo = detectAgentDemo();
     useLegacyNow = detectLegacyNow();
@@ -3727,31 +3808,14 @@
     }
   }
 
+  /** Legacy name — product home is Focus; kept for callers that still invoke it. */
   function showAgentV2Surface() {
-    if (!root) return;
-    var HA2 = global.OneToneHomeAgentV2;
-    if (!HA2 || typeof HA2.mount !== 'function') return;
-    var v2Stack = dashboardStack();
-    if (v2Stack) {
-      v2Stack.hidden = true;
-      v2Stack.setAttribute('aria-hidden', 'true');
-    }
-    setSmokeFeedbackHidden(true);
-    HA2.mount(root);
-    HA2.show();
-    visible = true;
-    scheduleFocusHomeDraft();
+    show();
   }
 
   function show() {
     mount();
     if (!root) return;
-    if (detectHomeAgentV2()) {
-      ensureHomeAgentScripts().then(function () {
-        showAgentV2Surface();
-      });
-      return;
-    }
     root.hidden = false;
     root.removeAttribute('aria-hidden');
     var stack = dashboardStack();
