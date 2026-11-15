@@ -3553,22 +3553,9 @@
                     <button type="button" class="voice-lab-btn" id="voiceLabOralTrial">试开助手窗</button>
                   </div>
                   <p class="voice-lab-trial-status" id="voiceLabOralTrialStatus" hidden aria-live="polite"></p>
-                  <div class="voice-lab-alt">
-                    <div class="t">其他通道</div>
-                    <div class="voice-lab-bridge-grid" id="voiceLabBridgeGrid">
-                      <div class="voice-lab-bridge is-empty" id="voiceLabBridgeSoftPad" data-vl-bridge="softpad">
-                        <div class="voice-lab-bridge-head"><b>Soft Pad</b><button type="button" class="voice-lab-chip-link" data-vl-open-panel="softPad">打开 →</button></div>
-                        <p data-vl-bridge-status>还没有 Soft Pad 键口令</p>
-                      </div>
-                      <div class="voice-lab-bridge is-empty" id="voiceLabBridgeKeys" data-vl-bridge="keys">
-                        <div class="voice-lab-bridge-head"><b>按键</b><button type="button" class="voice-lab-chip-link" data-vl-open-panel="keys">打开 →</button></div>
-                        <p data-vl-bridge-status>还没有按键口令</p>
-                      </div>
-                      <div class="voice-lab-bridge is-empty" id="voiceLabBridgeCamera" data-vl-bridge="camera">
-                        <div class="voice-lab-bridge-head"><b>摄像头</b><button type="button" class="voice-lab-chip-link" data-vl-open-panel="camera">打开 →</button></div>
-                        <p data-vl-bridge-status>还没有摄像头口令</p>
-                      </div>
-                    </div>
+                  <div class="voice-lab-alt voice-lab-alt--oral-chrome">
+                    <div class="t" id="voiceLabOralChromeLbl">Soft Pad 口令外观</div>
+                    <div class="voice-lab-oral-chrome" id="voiceLabOralChromeHost" data-vl-oral-chrome="1"></div>
                   </div>
                   <details class="voice-lab-adv">
                     <summary>高级 · 常驻唤醒（默认关）</summary>

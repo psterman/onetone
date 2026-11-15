@@ -751,21 +751,201 @@
     return true;
   }
 
+  function softPadUi() {
+    return global.OneToneCodexMicroPadUi || null;
+  }
+
+  function oralPadFor(m) {
+    if (!m) return null;
+    var Pad = softPadUi();
+    if (Pad && typeof Pad.ensurePad === 'function') {
+      try {
+        return Pad.ensurePad(m);
+      } catch (_) {}
+    }
+    return m.codexMicroPad || null;
+  }
+
+  function oralMiniChrome(m) {
+    var pad = oralPadFor(m);
+    var Pad = softPadUi();
+    if (pad && Pad && typeof Pad.ensureMiniChrome === 'function') {
+      try {
+        return Pad.ensureMiniChrome(pad);
+      } catch (_) {}
+    }
+    return (pad && pad.miniChrome) || {};
+  }
+
+  function persistOralMiniChrome(m) {
+    var Pad = softPadUi();
+    if (Pad && typeof Pad.persistMiniChrome === 'function') {
+      try {
+        Pad.persistMiniChrome(m);
+      } catch (_) {}
+    }
+  }
+
+  function renderOralChromeControlsHtml(m) {
+    var chrome = oralMiniChrome(m);
+    var voiceOn = chrome.voiceChipEnabled !== false;
+    var textOn = chrome.textPreviewEnabled !== false;
+    var when = chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening';
+    function tog(flag, on, label) {
+      return (
+        '<button type="button" class="keys-oral-chrome-tog' +
+        (on ? ' is-on' : '') +
+        '" data-oral-chrome="' +
+        esc(flag) +
+        '" aria-pressed="' +
+        (on ? 'true' : 'false') +
+        '"><span class="keys-oral-chrome-tog__sw" aria-hidden="true"></span>' +
+        esc(label) +
+        '</button>'
+      );
+    }
+    function seg(flag, id, on, label) {
+      return (
+        '<button type="button" class="keys-oral-chrome-seg' +
+        (on ? ' is-on' : '') +
+        '" data-oral-chrome-seg="' +
+        esc(flag) +
+        '" data-oral-chrome-val="' +
+        esc(id) +
+        '" aria-pressed="' +
+        (on ? 'true' : 'false') +
+        '">' +
+        esc(label) +
+        '</button>'
+      );
+    }
+    return (
+      '<section class="keys-oral-block keys-oral-chrome" data-oral-chrome-panel="1">' +
+      '<h3 class="keys-oral-block__title">' +
+      esc(t('voiceOralChromeTitle', '迷你栏 · Soft Pad 口令外观')) +
+      '</h3>' +
+      '<p class="keys-oral-block__line">' +
+      esc(
+        t(
+          'voiceOralChromeHint',
+          '按口头键进入 Soft Pad 语音命令时怎么显示。改完看右侧预览，不必去通道页。'
+        )
+      ) +
+      '</p>' +
+      '<div class="keys-oral-chrome__togs">' +
+      tog('voiceChipEnabled', voiceOn, t('voiceOralChromeVoiceChip', '迷你栏麦标')) +
+      tog('textPreviewEnabled', textOn, t('voiceOralChromeTextPreview', '显示你说的话')) +
+      '</div>' +
+      '<div class="keys-oral-chrome__when' +
+      (textOn ? '' : ' is-dim') +
+      '" role="group" aria-label="' +
+      esc(t('voiceOralChromeWhenLbl', '转写条何时出现')) +
+      '">' +
+      '<span class="keys-oral-chrome__when-lbl">' +
+      esc(t('voiceOralChromeWhenLbl', '转写条何时出现')) +
+      '</span>' +
+      '<div class="keys-oral-chrome__segs">' +
+      seg(
+        'textPreviewWhen',
+        'listening',
+        when === 'listening',
+        t('voiceOralChromeWhenListen', '一开口就出')
+      ) +
+      seg(
+        'textPreviewWhen',
+        'hasText',
+        when === 'hasText',
+        t('voiceOralChromeWhenText', '有字才出')
+      ) +
+      '</div></div></section>'
+    );
+  }
+
+  function renderOralPadListenPreviewHtml(m, enabledSays) {
+    var chips = (enabledSays || [])
+      .slice(0, 8)
+      .map(function (s) {
+        return '<span class="keys-oral-pad-preview__chip">' + esc(s) + '</span>';
+      })
+      .join('');
+    if (!chips) {
+      chips =
+        '<span class="keys-oral-pad-preview__chip is-empty">' +
+        esc(t('keysOralListenEmpty', '暂无启用命令')) +
+        '</span>';
+    }
+    return (
+      '<div class="keys-oral-pad-preview is-oral-listen" data-oral-pad-preview="1" aria-label="' +
+      esc(t('voiceOralPadPreviewAria', 'Soft Pad 口头收听预览')) +
+      '">' +
+      '<div class="keys-oral-pad-preview__bar">' +
+      '<span class="keys-oral-pad-preview__dot" aria-hidden="true"></span>' +
+      esc(t('voiceOralPadPreviewListening', '口头收听中')) +
+      '</div>' +
+      '<div class="keys-oral-pad-preview__cmds">' +
+      chips +
+      '</div>' +
+      '<div class="keys-oral-pad-preview__hint">' +
+      esc(t('voiceOralPadPreviewHint', '全尺寸 Soft Pad：口令亮键 + 可说列表')) +
+      '</div></div>'
+    );
+  }
+
+  function renderOralPreviewHtml(m) {
+    m = m || activeMapping();
+    var pad = oralPadFor(m);
+    var rows = oralCommandRows(m);
+    var enabledSays = enabledSayList(rows);
+    var miniHtml = '';
+    var Pad = softPadUi();
+    if (pad && Pad && typeof Pad.renderAgentMiniBarPreview === 'function') {
+      try {
+        miniHtml = Pad.renderAgentMiniBarPreview(pad, { rail: 'speech' });
+      } catch (_) {
+        miniHtml = '';
+      }
+    }
+    if (!miniHtml) {
+      miniHtml =
+        '<p class="keys-oral-preview__fallback">' +
+        esc(t('voiceOralPreviewNeedPad', '当前习惯还没有 Soft Pad，预览用默认迷你栏样式。')) +
+        '</p>';
+    }
+    return (
+      '<aside class="keys-oral-preview" data-oral-preview="1">' +
+      '<h3 class="keys-oral-preview__title">' +
+      esc(t('voiceOralPreviewTitle', '效果预览')) +
+      '</h3>' +
+      '<p class="keys-oral-preview__sub">' +
+      esc(t('voiceOralPreviewSub', '迷你栏听写条 · Soft Pad 口头收听')) +
+      '</p>' +
+      '<div class="keys-oral-preview__mini" data-oral-preview-mini="1">' +
+      miniHtml +
+      '</div>' +
+      renderOralPadListenPreviewHtml(m, enabledSays) +
+      '</aside>'
+    );
+  }
+
+  function refreshOralPreview(root, m) {
+    if (!root) return;
+    var host = root.querySelector('[data-oral-preview]');
+    if (!host) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = renderOralPreviewHtml(m || mappingById(selectedMappingId()));
+    var next = wrap.firstElementChild;
+    if (next) host.replaceWith(next);
+  }
+
   function renderOralEditorHtml(m, opts) {
     opts = opts || {};
     m = m || activeMapping();
     ensureOralScheme(m);
+    oralPadFor(m);
     var cat = String(opts.cat || oralEditorCat || 'core').trim() || 'core';
     oralEditorCat = cat;
     var rows = oralCommandRows(m);
     var conflicts = oralDupConflicts(rows);
-    var enabledSays = enabledSayList(rows);
-    var stripText = enabledSays.length
-      ? t('keysOralListenStrip', '可说：{list}').replace(
-          '{list}',
-          enabledSays.slice(0, 12).join('、') + (enabledSays.length > 12 ? '…' : '')
-        )
-      : t('keysOralListenEmpty', '暂无启用命令');
 
     var dupHtml = '';
     if (conflicts.length) {
@@ -839,7 +1019,9 @@
       esc(cat) +
       '">' +
       prerequisiteBanner(m) +
+      '<div class="keys-oral-layout">' +
       '<div class="keys-oral-main keys-oral-main--solo">' +
+      renderOralChromeControlsHtml(m) +
       '<div class="keys-oral-cats keys-oral-cats--row" role="tablist" aria-label="' +
       esc(t('keysOralCatsLbl', '分类')) +
       '">' +
@@ -872,6 +1054,8 @@
       cards +
       '</div></section>' +
       '<div class="keys-oral-add-panel" data-oral-add-panel hidden></div>' +
+      '</div>' +
+      renderOralPreviewHtml(m) +
       '</div></div>'
     );
   }
@@ -1280,6 +1464,50 @@
       if (ev.target && ev.target.classList && ev.target.classList.contains('keys-oral-say')) {
         ev.stopPropagation();
       }
+      var chromeTog = ev.target.closest && ev.target.closest('[data-oral-chrome]');
+      if (chromeTog && root.contains(chromeTog)) {
+        var flag = chromeTog.getAttribute('data-oral-chrome');
+        var mChrome = mappingById(mid);
+        var pad = oralPadFor(mChrome);
+        var chrome = oralMiniChrome(mChrome);
+        if (pad && flag) {
+          chrome[flag] = chromeTog.getAttribute('aria-pressed') !== 'true';
+          pad.miniChrome = chrome;
+          persistOralMiniChrome(mChrome);
+          // Patch chrome panel + preview without wiping phrase caret.
+          var panelHost = root.querySelector('[data-oral-chrome-panel]');
+          if (panelHost) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = renderOralChromeControlsHtml(mChrome);
+            var nextPanel = tmp.firstElementChild;
+            if (nextPanel) panelHost.replaceWith(nextPanel);
+          }
+          refreshOralPreview(root, mChrome);
+        }
+        return;
+      }
+      var chromeSeg = ev.target.closest && ev.target.closest('[data-oral-chrome-seg]');
+      if (chromeSeg && root.contains(chromeSeg)) {
+        var segFlag = chromeSeg.getAttribute('data-oral-chrome-seg');
+        var segVal = chromeSeg.getAttribute('data-oral-chrome-val');
+        var mSeg = mappingById(mid);
+        var padSeg = oralPadFor(mSeg);
+        var chromeSegState = oralMiniChrome(mSeg);
+        if (padSeg && segFlag && segVal) {
+          chromeSegState[segFlag] = segVal;
+          padSeg.miniChrome = chromeSegState;
+          persistOralMiniChrome(mSeg);
+          var panelHost2 = root.querySelector('[data-oral-chrome-panel]');
+          if (panelHost2) {
+            var tmp2 = document.createElement('div');
+            tmp2.innerHTML = renderOralChromeControlsHtml(mSeg);
+            var nextPanel2 = tmp2.firstElementChild;
+            if (nextPanel2) panelHost2.replaceWith(nextPanel2);
+          }
+          refreshOralPreview(root, mSeg);
+        }
+        return;
+      }
       var catBtn = ev.target.closest && ev.target.closest('[data-oral-cat]');
       if (catBtn && root.contains(catBtn)) {
         oralEditorCat = catBtn.getAttribute('data-oral-cat') || 'core';
@@ -1412,10 +1640,12 @@
       if (!ev.target.classList || !ev.target.classList.contains('keys-oral-say')) return;
       paintSayTag(ev.target);
       saveVisibleSays();
+      refreshOralPreview(root, mappingById(mid));
     });
     root.addEventListener('focusout', function (ev) {
       if (!ev.target.classList || !ev.target.classList.contains('keys-oral-say')) return;
       saveVisibleSays();
+      refreshOralPreview(root, mappingById(mid));
     });
   }
 
@@ -1554,6 +1784,73 @@
     return Promise.resolve(false);
   }
 
+  /** Gate / Lab host: Soft Pad oral chrome toggles + mini/pad preview (not channel jumps). */
+  function mountSoftPadOralChrome(host, opts) {
+    opts = opts || {};
+    if (!host) return null;
+    var mid = opts.mappingId || selectedMappingId();
+    var m = mappingById(mid);
+    ensureOralScheme(m);
+    oralPadFor(m);
+    host.innerHTML =
+      '<div class="keys-oral-layout keys-oral-layout--lab" data-oral-chrome-root="1" data-oral-mapping="' +
+      esc(String((m && m.id) || '')) +
+      '">' +
+      '<div class="keys-oral-main keys-oral-main--solo">' +
+      renderOralChromeControlsHtml(m) +
+      '</div>' +
+      renderOralPreviewHtml(m) +
+      '</div>';
+    var root = host.querySelector('[data-oral-chrome-root]');
+    if (!root || root.__oralChromeWired) return root;
+    root.__oralChromeWired = true;
+    root.addEventListener('click', function (ev) {
+      var chromeTog = ev.target.closest && ev.target.closest('[data-oral-chrome]');
+      if (chromeTog && root.contains(chromeTog)) {
+        var flag = chromeTog.getAttribute('data-oral-chrome');
+        var mChrome = mappingById(mid);
+        var pad = oralPadFor(mChrome);
+        var chrome = oralMiniChrome(mChrome);
+        if (pad && flag) {
+          chrome[flag] = chromeTog.getAttribute('aria-pressed') !== 'true';
+          pad.miniChrome = chrome;
+          persistOralMiniChrome(mChrome);
+          var panelHost = root.querySelector('[data-oral-chrome-panel]');
+          if (panelHost) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = renderOralChromeControlsHtml(mChrome);
+            var nextPanel = tmp.firstElementChild;
+            if (nextPanel) panelHost.replaceWith(nextPanel);
+          }
+          refreshOralPreview(root, mChrome);
+        }
+        return;
+      }
+      var chromeSeg = ev.target.closest && ev.target.closest('[data-oral-chrome-seg]');
+      if (chromeSeg && root.contains(chromeSeg)) {
+        var segFlag = chromeSeg.getAttribute('data-oral-chrome-seg');
+        var segVal = chromeSeg.getAttribute('data-oral-chrome-val');
+        var mSeg = mappingById(mid);
+        var padSeg = oralPadFor(mSeg);
+        var chromeSegState = oralMiniChrome(mSeg);
+        if (padSeg && segFlag && segVal) {
+          chromeSegState[segFlag] = segVal;
+          padSeg.miniChrome = chromeSegState;
+          persistOralMiniChrome(mSeg);
+          var panelHost2 = root.querySelector('[data-oral-chrome-panel]');
+          if (panelHost2) {
+            var tmp2 = document.createElement('div');
+            tmp2.innerHTML = renderOralChromeControlsHtml(mSeg);
+            var nextPanel2 = tmp2.firstElementChild;
+            if (nextPanel2) panelHost2.replaceWith(nextPanel2);
+          }
+          refreshOralPreview(root, mSeg);
+        }
+      }
+    });
+    return root;
+  }
+
   global.OneToneOralCommandUi = {
     ORAL_SOFT_SLOTS: ORAL_SOFT_SLOTS,
     ORAL_CATS: ORAL_CATS,
@@ -1571,6 +1868,7 @@
     wireOralLoaderEvents: wireOralLoaderEvents,
     mountEditor: mountEditor,
     mountLoader: mountLoader,
+    mountSoftPadOralChrome: mountSoftPadOralChrome,
     addOralItems: addOralItems,
     removeOralItem: removeOralItem,
     shiftOralInCat: shiftOralInCat,

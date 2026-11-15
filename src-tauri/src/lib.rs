@@ -1033,16 +1033,22 @@ pub fn run() {
                             &boot_state,
                             "voice",
                             &format!(
-                                "voice_bootstrap thread sleep begin delay=3000 {}",
+                                "voice_bootstrap thread waiting for ui_ready max_wait=15000 {}",
                                 crate::ui_heartbeat::ui_hb_diag()
                             ),
                         );
-                        std::thread::sleep(Duration::from_secs(3));
+                        let ui_ready = voice_bootstrap::wait_for_ui_ready(Duration::from_secs(15));
+                        // Let the first config/runtime paint settle before model
+                        // loading. This is intentionally outside the WebView/IPC
+                        // thread and avoids the startup heartbeat stalls seen in
+                        // runtime-live.log.
+                        std::thread::sleep(Duration::from_millis(1500));
                         crate::app_log::log_line(
                             &boot_state,
                             "voice",
                             &format!(
-                                "voice_bootstrap thread wake delay=3000 {}",
+                                "voice_bootstrap thread wake ui_ready={} {}",
+                                ui_ready,
                                 crate::ui_heartbeat::ui_hb_diag()
                             ),
                         );

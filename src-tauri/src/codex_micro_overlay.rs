@@ -4888,6 +4888,15 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
     #[cfg(windows)]
     {
         if *overlay_hwnd_cache().lock() != 0 {
+            crate::window_layout::try_emit_drag_trace(
+                "overlay_drag_worker_admit",
+                "softpad",
+                serde_json::json!({
+                    "gen": gen,
+                    "hwnd": *overlay_hwnd_cache().lock(),
+                    "mini": native_mini_drag,
+                }),
+            );
             let win_done = win.clone();
             let drag_thread = std::thread::Builder::new()
                 .name("overlay-drag".into())
@@ -5239,7 +5248,35 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                             }
                         }
                     } else {
-                        failed = failed.saturating_add(1);
+                        // A queued cross-thread SetWindowPos can fail while the
+                        // owner HWND is being recreated. Retry once synchronously
+                        // before counting the sample as lost; this is short and
+                        // prevents a transient queue failure from looking like a
+                        // completely dead drag.
+                        let sync_flags = SWP_NOSIZE
+                            | SWP_NOZORDER
+                            | SWP_NOACTIVATE
+                            | SWP_NOSENDCHANGING;
+                        let sync_rc = SetWindowPos(
+                            hwnd,
+                            std::ptr::null_mut(),
+                            x,
+                            y,
+                            0,
+                            0,
+                            sync_flags,
+                        );
+                        if sync_rc != 0 {
+                            last_x = x;
+                            last_y = y;
+                            last_post_at = Instant::now();
+                            moves = moves.saturating_add(1);
+                            if first_post_ms.is_none() {
+                                first_post_ms = Some(t_enter.elapsed().as_millis() as u64);
+                            }
+                        } else {
+                            failed = failed.saturating_add(1);
+                        }
                     }
                 }
             }
@@ -5266,6 +5303,17 @@ fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
                 "lmbDown": overlay_lmb_down(),
             }),
         );
+        if moves == 0 {
+            crate::window_layout::try_emit_drag_trace(
+                "overlay_drag_no_moves",
+                "softpad",
+                serde_json::json!({
+                    "blockedMs": t_enter.elapsed().as_millis() as u64,
+                    "failed": failed,
+                    "lmbDown": overlay_lmb_down(),
+                }),
+            );
+        }
         crate::app_log::sync_emergency_line(
             "softpad_drag",
             &format!(

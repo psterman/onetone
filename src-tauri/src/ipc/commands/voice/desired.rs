@@ -14,14 +14,31 @@ pub fn voice_set_desired_engine(
     let label = crate::config::parse_desired_engine_label(engine)
         .map(crate::config::desired_engine_label)
         .ok_or_else(|| format!("unknown desired engine: {engine}"))?;
-    let cfg_snapshot = {
+    let (cfg_snapshot, config_changed) = {
         let mut cfg = state.cfg.lock();
+        let before_desired = cfg.desired_engine.clone();
+        let before_strategy = cfg.voice_listening_strategy.clone();
+        let before_vosk = cfg.voice_vosk.enabled;
+        let before_sapi = cfg.voice_sapi.enabled;
+        let before_kws = cfg.voice_kws.enabled;
         crate::config::apply_desired_engine(&mut cfg, label);
         cfg.normalize();
-        cfg.clone()
+        let changed = before_desired != cfg.desired_engine
+            || before_strategy != cfg.voice_listening_strategy
+            || before_vosk != cfg.voice_vosk.enabled
+            || before_sapi != cfg.voice_sapi.enabled
+            || before_kws != cfg.voice_kws.enabled;
+        (cfg.clone(), changed)
     };
-    crate::config::save_config(&cfg_snapshot);
-    crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
+    if config_changed {
+        let save_snapshot = cfg_snapshot.clone();
+        let _ = std::thread::Builder::new()
+            .name("desired-engine-save".into())
+            .spawn(move || {
+                crate::config::save_config(&save_snapshot);
+            });
+        crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
+    }
     let resource_dir = app.path().resource_dir().ok();
     Ok(serde_json::json!({
         "ok": true,
@@ -30,8 +47,9 @@ pub fn voice_set_desired_engine(
         "voiceVosk": crate::voice_vosk_runtime::voice_vosk_status(state, resource_dir.clone()),
         "voiceSapi": crate::voice_sapi_runtime::voice_sapi_status(state),
         "voiceKws": crate::voice_kws_runtime::voice_kws_status(state, resource_dir),
-        "activateAsync": true,
-        "activateBusy": crate::voice_supervisor::activate_busy(),
+        "activateAsync": config_changed,
+        "activateBusy": config_changed && crate::voice_supervisor::activate_busy(),
+        "noop": !config_changed,
     }))
 }
 
@@ -49,20 +67,39 @@ pub fn voice_set_listening_strategy(
     if label != "off" {
         state.settings_asr_quiet.store(false, Ordering::SeqCst);
     }
-    let cfg_snapshot = {
+    let (cfg_snapshot, config_changed) = {
         let mut cfg = state.cfg.lock();
+        let before_strategy = cfg.voice_listening_strategy.clone();
+        let before_assist = cfg.voice_assist_enabled;
+        let before_activation = cfg.voice_activation.clone();
+        let before_desired = cfg.desired_engine.clone();
+        let before_vosk = cfg.voice_vosk.enabled;
+        let before_sapi = cfg.voice_sapi.enabled;
+        let before_kws = cfg.voice_kws.enabled;
         crate::config::apply_voice_listening_strategy(&mut cfg, label);
         cfg.normalize();
-        cfg.clone()
+        let changed = before_strategy != cfg.voice_listening_strategy
+            || before_assist != cfg.voice_assist_enabled
+            || before_activation != cfg.voice_activation
+            || before_desired != cfg.desired_engine
+            || before_vosk != cfg.voice_vosk.enabled
+            || before_sapi != cfg.voice_sapi.enabled
+            || before_kws != cfg.voice_kws.enabled;
+        (cfg.clone(), changed)
     };
     let parked = crate::voice_bootstrap::voice_settings_parked(state.as_ref());
     // Always save off-thread. Homepage「开启自动」used to sync pretty-print a bloated
     // settings.json on the blocking worker and 假死 the UI (layout_persist convoy).
-    let _ = std::thread::Builder::new()
-        .name("strategy-save".into())
-        .spawn(move || {
-            crate::config::save_config(&cfg_snapshot);
-        });
+    if config_changed {
+        let _ = std::thread::Builder::new()
+            .name("strategy-save".into())
+            .spawn({
+                let cfg_snapshot = cfg_snapshot.clone();
+                move || {
+                    crate::config::save_config(&cfg_snapshot);
+                }
+            });
+    }
     crate::app_log::log_line(
         state.as_ref(),
         "voice",
@@ -72,7 +109,13 @@ pub fn voice_set_listening_strategy(
         crate::voice_bootstrap::touch_wake_activity(state.as_ref());
     }
     // Voice-settings park: only persist strategy; unpark activates.
-    if parked {
+    if !config_changed {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "voice",
+            &format!("set_listening_strategy noop label={label} reason={reason}"),
+        );
+    } else if parked {
         crate::app_log::log_line(
             state.as_ref(),
             "voice",
@@ -88,8 +131,9 @@ pub fn voice_set_listening_strategy(
         "strategy": label,
         "engine": supervisor.get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
         "supervisor": supervisor,
-        "activateAsync": !parked,
-        "activateBusy": !parked,
+        "activateAsync": config_changed && !parked,
+        "activateBusy": config_changed && !parked,
+        "noop": !config_changed,
     }))
 }
 

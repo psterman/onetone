@@ -49,9 +49,9 @@
       finish: ['voiceLabFinishCard', 'voiceLabEndPhraseTags', 'voiceLabCancelPhraseTags'],
       mic: ['voiceLabAdvanced', 'voiceLabMicBtn', 'voiceLabMicPicker'],
       engine: ['voiceLabAdvanced', 'voiceLabEngineGrid', 'voiceLabResourceStatus'],
-      softpad: ['voiceLabBridgeSoftPad', 'voiceLabRailGate'],
-      keys: ['voiceLabBridgeKeys', 'voiceLabRailGate'],
-      camera: ['voiceLabBridgeCamera', 'voiceLabRailGate'],
+      softpad: ['voiceLabOralChromeHost', 'voiceLabRailGate'],
+      keys: ['voiceLabOralChromeHost', 'voiceLabRailGate'],
+      camera: ['voiceLabOralChromeHost', 'voiceLabRailGate'],
     };
     var ids = map[focus] || [];
     var adv = document.getElementById('voiceLabAdvanced');

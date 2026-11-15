@@ -12,6 +12,7 @@ pub fn cmd_ready(
     backdrop_mode: Option<String>,
 ) -> serde_json::Value {
     crate::app_log::log_line(&state, "ipc", "cmd_ready begin");
+    crate::voice_bootstrap::mark_ui_ready();
     let mode = backdrop_mode.unwrap_or_else(|| "unchanged".into());
     let payload = mvp_init_payload(&state, &mode);
     emit_to_js_main(&window, payload.clone());

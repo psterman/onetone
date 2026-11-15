@@ -19805,6 +19805,8 @@
     stopBackgroundWork: stopReadinessPoll,
     renderHardwarePad: renderHardwarePad,
     renderAgentMiniBarPreview: renderAgentMiniBarPreview,
+    ensureMiniChrome: ensureMiniChrome,
+    persistMiniChrome: persistMiniChrome,
     softPadLayoutKeyMeta: softPadLayoutKeyMeta,
     bindSoftPadPreviewCaption: bindSoftPadPreviewCaption,
     applyTriggerHeroPreview: applyTriggerHeroPreview,

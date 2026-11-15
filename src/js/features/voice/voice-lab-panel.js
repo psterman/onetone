@@ -1968,27 +1968,34 @@
   }
 
   function syncBridgeHosts() {
-    try {
-      if (global.OneToneVoiceBridgeSoftPad && global.OneToneVoiceBridgeSoftPad.renderLab) {
-        global.OneToneVoiceBridgeSoftPad.renderLab();
-      } else {
-        paintBridgeSummary('softpad');
+    // Gate no longer jumps Soft Pad / keys / camera as channels — Soft Pad oral
+    // chrome + preview live on this page.
+    syncOralChromeHost();
+  }
+
+  function syncOralChromeHost() {
+    var host = $('voiceLabOralChromeHost');
+    if (!host) return;
+    var Oral = global.OneToneOralCommandUi;
+    if (!Oral || typeof Oral.mountSoftPadOralChrome !== 'function') {
+      host.innerHTML =
+        '<p class="voice-lab-oral-chrome-miss">' +
+        escAttr(t('voiceLabOralChromeMiss', '口令外观组件未加载')) +
+        '</p>';
+      return;
+    }
+    var m = activeMapping();
+    var mid = m && m.id ? String(m.id) : '';
+    var live = host.querySelector('[data-oral-chrome-root]');
+    var liveMid = live ? String(live.getAttribute('data-oral-mapping') || '').trim() : '';
+    // Remount when habit changes; keep live root if same mapping (preserve toggles).
+    if (!live || liveMid !== mid) {
+      try {
+        Oral.mountSoftPadOralChrome(host, { mappingId: mid });
+      } catch (err) {
+        console.error('voiceLab oral chrome', err);
       }
-    } catch (_) {}
-    try {
-      if (global.OneToneVoiceBridgeKeys && global.OneToneVoiceBridgeKeys.renderLab) {
-        global.OneToneVoiceBridgeKeys.renderLab();
-      } else {
-        paintBridgeSummary('keys');
-      }
-    } catch (_) {}
-    try {
-      if (global.OneToneVoiceBridgeCamera && global.OneToneVoiceBridgeCamera.renderLab) {
-        global.OneToneVoiceBridgeCamera.renderLab();
-      } else {
-        paintBridgeSummary('camera');
-      }
-    } catch (_) {}
+    }
   }
 
   function paintBridgeSummary(kind) {
@@ -2046,9 +2053,9 @@
       finish: 'voiceLabFinishCard',
       mic: 'voiceLabMicBtn',
       engine: 'voiceLabEngineGrid',
-      softpad: 'voiceLabBridgeSoftPad',
-      keys: 'voiceLabBridgeKeys',
-      camera: 'voiceLabBridgeCamera',
+      softpad: 'voiceLabOralChromeHost',
+      keys: 'voiceLabOralChromeHost',
+      camera: 'voiceLabOralChromeHost',
     };
     var id = map[focus];
     var el = id ? $(id) : null;
@@ -2097,6 +2104,7 @@
     syncAimBlocks();
     syncAdvancedChrome();
     syncDictationChrome();
+    syncOralChromeHost();
 
     var assist = voiceAssistOn();
     setSw($('voiceLabModeSw'), assist);

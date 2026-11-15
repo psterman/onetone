@@ -13,7 +13,7 @@
 //! Runtime modules may only start/stop **themselves**; they must not stop peers.
 //! Runtime-only paths never mutate config enabled flags or call save_config.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -79,6 +79,21 @@ static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Count of async activate jobs spawned from strategy IPC (set before thread acquires ACTIVATE_LOCK).
 static ACTIVATE_ASYNC_PENDING: AtomicUsize = AtomicUsize::new(0);
+/// UI must finish its first `cmd_ready` handshake before model/device work is
+/// allowed to compete with the WebView2 message pump.
+static UI_READY: AtomicBool = AtomicBool::new(false);
+
+pub fn mark_ui_ready() {
+    UI_READY.store(true, Ordering::SeqCst);
+}
+
+pub fn wait_for_ui_ready(max_wait: Duration) -> bool {
+    let deadline = Instant::now() + max_wait;
+    while !UI_READY.load(Ordering::SeqCst) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    UI_READY.load(Ordering::SeqCst)
+}
 
 /// Voice-settings park (cpal idle 假死). Independent of drawer open so debug/home can listen.
 pub fn voice_settings_parked(state: &AppState) -> bool {
