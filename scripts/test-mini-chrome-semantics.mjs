@@ -141,6 +141,16 @@ assert(!/softPadMiniShowForceMini/.test(i18n), 'ForceMini i18n keys removed');
 assert(/tools_all:\s*Option<bool>/.test(configRs), 'Rust MiniChromeConfig has tools_all Option');
 assert(!/voice_chip_when/.test(configRs), 'Rust voice_chip_when removed');
 
+// --- Pass-through: FE follows snap.clickThrough (not needs_input alone) ---
+assert(/function applyPassThroughChrome/.test(overlay), 'FE has applyPassThroughChrome');
+assert(/s\.clickThrough\|\|s\.click_through/.test(overlay), 'FE reads snap clickThrough');
+assert(!/is-pass-through',\s*light==='needs_input'/.test(overlay),
+  'FE no longer derives pass-through from needs_input alone');
+assert(/if\(!next\) wrap\.classList\.remove\('is-pass-through'\)/.test(overlay),
+  'expand clears sticky pass-through before snap');
+assert(/pub click_through:\s*bool/.test(fs.readFileSync(path.join(root, 'src-tauri/src/codex_micro_overlay.rs'), 'utf8')),
+  'Rust snapshot exposes click_through');
+
 // --- Overlay stability: drag latch + minimized intent ---
 assert(/cmd_codex_micro_overlay_start_drag/.test(overlay),
   'overlay starts drag via start_drag (Win32 SetWindowPos follow)');

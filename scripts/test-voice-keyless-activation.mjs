@@ -170,10 +170,10 @@ assert.match(padUi, /toggleVoiceKeyless:\s*1/, 'Soft Pad slot allowlist includes
 assert.match(padUi, /id: 'toggleVoiceKeyless'/, 'mini chrome tool includes 免按键语音');
 
 const overlay = read('src/codex-micro-overlay.html');
-assert.match(overlay, /toggleVoiceKeyless/, 'floating Soft Pad bar can toggle keyless');
-assert.match(overlay, /toggleVoiceKeylessFromOverlay/, 'overlay FE toggles keyless');
-assert.match(overlay, /withPinnedMiniSlots/, 'keyless is pinned on mini tools row');
-assert.match(overlay, /overlay-mini__action-txt/, 'keyless shows 免按键 text on bar');
+// E · listen-first: 免按 leave the mini face (settings / Soft Pad workbench only).
+assert.match(overlay, /toggleVoiceKeylessFromOverlay/, 'overlay FE still has keyless toggle helper');
+assert.doesNotMatch(overlay, /function withPinnedMiniSlots/, 'mini face no longer pins 免按');
+assert.match(overlay, /MINI_IDLE_SLOTS/, 'E idle slots defined');
 assert.match(overlay, /voice-keyless-changed/, 'overlay listens for keyless sync');
 assert.match(overlay, /desiredEngine=next\?'vosk'/, 'overlay snap mirrors vosk when armed');
 

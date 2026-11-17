@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager, WebviewWindow};
@@ -23,6 +23,24 @@ static OVERLAY_VOICE_NUDGE: std::sync::OnceLock<parking_lot::Mutex<(Instant, Str
 /// threads that fight over composer focus — aim click lands, insert/Enter aborted.
 static ORAL_SOFT_DEDUP: std::sync::OnceLock<parking_lot::Mutex<(Instant, String)>> =
     std::sync::OnceLock::new();
+/// End-phrase edit storms used to force:vosk_grammar_reload → Model::new back-to-back.
+const VOSK_GRAMMAR_RELOAD_DEBOUNCE: Duration = Duration::from_millis(1000);
+static LAST_VOSK_GRAMMAR_RELOAD_AT: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// `true` = skip this reload (still inside debounce window).
+pub(crate) fn vosk_grammar_reload_should_debounce(
+    last: &mut Option<Instant>,
+    now: Instant,
+    window: Duration,
+) -> bool {
+    if let Some(prev) = *last {
+        if now.saturating_duration_since(prev) < window {
+            return true;
+        }
+    }
+    *last = Some(now);
+    false
+}
 
 fn oral_soft_dispatch_dup(phrase: &str) -> bool {
     const GAP: Duration = Duration::from_millis(1400);
@@ -403,6 +421,20 @@ pub fn maybe_restart_vosk_for_grammar(app: &AppHandle, state: &Arc<AppState>) {
     }
     if *state.voice_vosk_grammar_mode.lock() != Some(true) {
         return;
+    }
+    {
+        let Ok(mut last) = LAST_VOSK_GRAMMAR_RELOAD_AT.lock() else {
+            return;
+        };
+        if vosk_grammar_reload_should_debounce(&mut last, Instant::now(), VOSK_GRAMMAR_RELOAD_DEBOUNCE)
+        {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "voice",
+                "vosk_grammar_reload debounced",
+            );
+            return;
+        }
     }
     crate::voice_bootstrap::activate_desired_engine(app, state, "force:vosk_grammar_reload");
 }
@@ -1089,4 +1121,36 @@ pub fn voice_vosk_retry_start(
     // and held ACTIVATE_LOCK → voiceStatusPoll UI_HB_STALL_5S / 假死.
     crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
     voice_vosk_status(state, resource_dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{vosk_grammar_reload_should_debounce, VOSK_GRAMMAR_RELOAD_DEBOUNCE};
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn grammar_reload_debounce_skips_burst_allows_after_window() {
+        let mut last = None;
+        let t0 = Instant::now();
+        assert!(!vosk_grammar_reload_should_debounce(
+            &mut last,
+            t0,
+            VOSK_GRAMMAR_RELOAD_DEBOUNCE
+        ));
+        assert!(vosk_grammar_reload_should_debounce(
+            &mut last,
+            t0 + Duration::from_millis(200),
+            VOSK_GRAMMAR_RELOAD_DEBOUNCE
+        ));
+        assert!(vosk_grammar_reload_should_debounce(
+            &mut last,
+            t0 + Duration::from_millis(999),
+            VOSK_GRAMMAR_RELOAD_DEBOUNCE
+        ));
+        assert!(!vosk_grammar_reload_should_debounce(
+            &mut last,
+            t0 + Duration::from_millis(1000),
+            VOSK_GRAMMAR_RELOAD_DEBOUNCE
+        ));
+    }
 }

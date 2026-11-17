@@ -1291,16 +1291,48 @@ pub fn fire_codex_micro_pad_key(
                 "armed": crate::voice_command_session::is_armed(),
             });
         }
+        let was_armed = crate::voice_command_session::is_armed();
         if route.is_hold {
             crate::voice_command_session::hold_session_down(state, &app, &route.mapping_id);
+        } else if from_overlay {
+            // Mini / Soft Pad click is explicit intent — do not refuse on wrong FG
+            // (overlay never takes FG; MiniMax/Cursor FG would make「语音命令」look dead).
+            crate::voice_command_session::toggle_session_overlay(state, &app, &route.mapping_id);
         } else {
             crate::voice_command_session::toggle_session(state, &app, &route.mapping_id);
         }
+        let armed = crate::voice_command_session::is_armed();
+        // Physical-key path can refuse wrong_fg without arming — surface that to FE.
+        if !route.is_hold && !was_armed && !armed {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "voice_command",
+                &format!(
+                    "pad_fire pushToTalk blocked mapping={} from_overlay={}",
+                    route.mapping_id, from_overlay
+                ),
+            );
+            return serde_json::json!({
+                "ok": false,
+                "reason": "wrong_fg",
+                "slotId": route.slot_id,
+                "armed": false,
+                "message": "请先切到目标应用，再点语音命令",
+            });
+        }
+        crate::app_log::log_line(
+            state.as_ref(),
+            "voice_command",
+            &format!(
+                "pad_fire pushToTalk ok armed={} mapping={} from_overlay={}",
+                armed, route.mapping_id, from_overlay
+            ),
+        );
         return serde_json::json!({
             "ok": true,
             "reason": if route.is_hold { "voice_command_hold_down" } else { "voice_command_toggle" },
             "slotId": route.slot_id,
-            "armed": crate::voice_command_session::is_armed(),
+            "armed": armed,
         });
     }
 
@@ -1664,18 +1696,25 @@ fn try_dispatch_oral_trigger(
             (None, None)
         }
     };
-    let activation_mode = {
+    let (activation_mode, oral_key) = {
         let cfg = state.cfg.lock();
         let id = live_id.as_ref().or(wrong_id.as_ref());
-        id.and_then(|mapping_id| cfg.find_mapping_by_id(mapping_id))
+        let mapping = id.and_then(|mapping_id| cfg.find_mapping_by_id(mapping_id));
+        let mode = mapping
             .and_then(|m| m.oral_command_scheme.as_ref())
             .map(|scheme| scheme.normalized_activation_mode())
-            .unwrap_or("hold")
+            .unwrap_or("hold");
+        let key = mapping
+            .map(|m| m.oral_trigger_key().to_string())
+            .unwrap_or_default();
+        (mode, key)
     };
-    // Side buttons are tap-and-release. Hold mode arms on down then hold_session_up
-    // on the almost-immediate up → panel vanishes ~1s later. Treat X1/X2 as toggle
-    // so「语音命令面板」stays until cancel / timeout (keyboard hold chords unchanged).
-    let toggle = activation_mode == "toggle" || is_side;
+    // Side buttons / modifier chords are tap-and-release. Hold mode arms on down
+    // then hold_session_up on the almost-immediate up → panel vanishes ~1s later.
+    // Treat them as toggle so「语音命令模式」stays until cancel / timeout.
+    let toggle = activation_mode == "toggle"
+        || is_side
+        || crate::config::oral_trigger_is_modifier_chord(&oral_key);
     let app = window.app_handle();
 
     if is_side {
@@ -1709,11 +1748,7 @@ fn try_dispatch_oral_trigger(
             let key_matches = {
                 let cfg = state.cfg.lock();
                 cfg.find_mapping_by_id(&mid)
-                    .map(|m| {
-                        let oral = crate::config::canonical_trigger(m.oral_trigger_key());
-                        let ev = crate::config::canonical_trigger(&event.key);
-                        !oral.is_empty() && (oral == ev || m.oral_trigger_key() == event.key.as_str())
-                    })
+                    .map(|m| crate::config::oral_trigger_matches_event(m.oral_trigger_key(), event))
                     .unwrap_or(false)
             };
             if key_matches || wrong_id.as_deref() == Some(mid.as_str()) {
@@ -1944,16 +1979,16 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
     let event = parse_physical_event(raw);
-    // Oral Esc must win over send_guard (empty-key arm blocks every key).
+    // Oral Esc / oral arm must win over send_guard (inject echoes can include Ctrl
+    // and would otherwise swallow Ctrl+Insert oral chords).
     if try_dispatch_oral_esc_exit(state, window, &event) {
+        return;
+    }
+    if try_dispatch_oral_trigger(state, window, &event) {
         return;
     }
     if crate::send_guard::blocks_key(&event.key) {
         crate::send_guard::note_blocked();
-        return;
-    }
-    // Oral arm key is channel-private — check before 听写 gesture / dictation inject.
-    if try_dispatch_oral_trigger(state, window, &event) {
         return;
     }
     // Oral Soft Pad listen: swallow dictation side-key (XButton1 → SendKey RAlt) so

@@ -74,6 +74,43 @@ fn should_skip_stomp_activate(reason: &str) -> bool {
     at.elapsed() < Duration::from_millis(ACTIVATE_STOMP_DEBOUNCE_MS)
 }
 
+/// Cold `Model::new` / FST load only on real listen intent — not strategy/config alone.
+/// Home `vosk_retry_start` is NOT listen-intent: it used to fire ~10ms after Soft Pad
+/// boot_hold and still load HCLr/Gr while strategy alone was already gated.
+pub(crate) fn activate_is_listen_intent(reason: &str) -> bool {
+    matches!(
+        reason,
+        "listen resume"
+            | "vosk_set_enabled"
+            | "force:oral_arm"
+            | "force:oral_end"
+            | "force:wake_phrase_test"
+            | "force:acoustic_unsuspend"
+            // Explicit user listen-on / restore while listen was already the intent.
+            | "set_voice_activation"
+            | "set_desired_engine"
+            | "force:settings_unpark"
+            | "force:mic_default_changed"
+    ) || {
+        let r = reason.to_ascii_lowercase();
+        r.contains("dictation")
+            || r.contains("oral_arm")
+            || r.starts_with("mic_lease_release:")
+            || r == "listen resume"
+    }
+}
+
+/// Defer Vosk cold-start until listen/oral/dictation. Already-running Vosk may reload.
+pub(crate) fn should_defer_vosk_cold_load(
+    desired: EffectiveVoiceEngine,
+    from: EffectiveVoiceEngine,
+    reason: &str,
+) -> bool {
+    desired == EffectiveVoiceEngine::Vosk
+        && from != EffectiveVoiceEngine::Vosk
+        && !activate_is_listen_intent(reason)
+}
+
 /// Serialize activate across strategy IPC spawn + config watcher to avoid interleaved stop/start.
 static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 
@@ -622,6 +659,24 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     let kws_ready = crate::voice_kws_runtime::kws_readiness_cached(state, &cfg);
     let desired = resolve_supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
     let from = observe_running_engine(state);
+    // Strategy / config / deferred boot must not Model::new until listen/oral/dictation.
+    if should_defer_vosk_cold_load(desired, from, reason) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "voice_bootstrap skip activate (await listen) reason={reason} desired={} from={}",
+                engine_label(desired),
+                engine_label(from)
+            ),
+        );
+        *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
+        crate::tray::refresh_tray_tooltip(app, state.as_ref());
+        if phase_log {
+            log_bootstrap_phase(state, t0, "end", "action=await_listen");
+        }
+        return;
+    }
     let now = onetone_logic::runtime_event::now_ms();
     if desired != EffectiveVoiceEngine::None {
         let prev = state.mic_owner.force_claim(
@@ -1759,7 +1814,10 @@ pub fn maybe_idle_downgrade_wake(app: &AppHandle, state: &Arc<AppState>) {
 
 #[cfg(test)]
 mod activate_gate_tests {
-    use super::{resolve_activate_gate, resolve_strategy_engine, ActivateGate};
+    use super::{
+        activate_is_listen_intent, resolve_activate_gate, resolve_strategy_engine,
+        should_defer_vosk_cold_load, ActivateGate,
+    };
     use crate::scene_config::DesiredVoiceEngine as EffectiveVoiceEngine;
 
     #[test]
@@ -1873,6 +1931,64 @@ mod activate_gate_tests {
             ),
             ActivateGate::NoopAlreadyActive
         );
+    }
+
+    #[test]
+    fn listen_intent_allows_oral_and_resume_not_strategy() {
+        assert!(activate_is_listen_intent("listen resume"));
+        assert!(activate_is_listen_intent("force:oral_arm"));
+        assert!(activate_is_listen_intent("force:wake_phrase_test"));
+        assert!(activate_is_listen_intent("vosk_set_enabled"));
+        assert!(activate_is_listen_intent("set_voice_activation"));
+        assert!(activate_is_listen_intent("force:settings_unpark"));
+        assert!(activate_is_listen_intent("mic_lease_release:acoustic"));
+        assert!(!activate_is_listen_intent("set_listening_strategy"));
+        assert!(!activate_is_listen_intent("config change"));
+        assert!(!activate_is_listen_intent("force:vosk_retry_start"));
+        assert!(!activate_is_listen_intent("vosk_retry_start"));
+        assert!(!activate_is_listen_intent("force:vosk_grammar_reload"));
+        assert!(!activate_is_listen_intent("effective fingerprint changed"));
+    }
+
+    #[test]
+    fn vosk_cold_load_deferred_until_listen_intent() {
+        assert!(should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::None,
+            "set_listening_strategy"
+        ));
+        assert!(should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::Kws,
+            "config change"
+        ));
+        assert!(should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::None,
+            "force:vosk_retry_start"
+        ));
+        assert!(!should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::None,
+            "listen resume"
+        ));
+        assert!(!should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::None,
+            "force:oral_arm"
+        ));
+        // Already on Vosk — live reload / grammar path is not a cold load.
+        assert!(!should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::Vosk,
+            EffectiveVoiceEngine::Vosk,
+            "force:vosk_grammar_reload"
+        ));
+        // Stopping Vosk is never deferred.
+        assert!(!should_defer_vosk_cold_load(
+            EffectiveVoiceEngine::None,
+            EffectiveVoiceEngine::Vosk,
+            "config change"
+        ));
     }
 
     #[test]

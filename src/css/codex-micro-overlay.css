@@ -1994,10 +1994,10 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 .overlay-mini__row--tools {
   display: none;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   flex-wrap: nowrap;
   min-height: 0;
-  padding: 5px 10px 6px;
+  padding: 6px 8px 7px;
   border-top: 1px solid rgba(117, 135, 147, 0.18);
   background: #f2f6f7;
   pointer-events: auto;
@@ -2006,37 +2006,159 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 .overlay-mini:hover .overlay-mini__row--tools,
 .overlay-mini:focus-within .overlay-mini__row--tools,
 .overlay-mini.is-tools-open .overlay-mini__row--tools,
-.wrap.is-mini-tools-pinned .overlay-mini__row--tools {
+.wrap.is-mini-tools-pinned .overlay-mini__row--tools,
+/* E · listen-first: 口头 / 听写操作常显，不靠悬停 */
+.wrap.is-mini-scheme-e.is-mini-tools-on .overlay-mini__row--tools {
   display: flex;
 }
 
-.overlay-mini__row--tools .overlay-mini__beginner-actions {
-  margin-left: 0;
-  padding-left: 0;
-  border-left: 0;
-  width: auto;
-  flex: 1 1 auto;
+/* E · listen-first: voice | agent (sys off face) */
+.overlay-mini__cluster {
+  display: flex;
+  align-items: stretch;
   gap: 6px;
-  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.overlay-mini__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(117, 135, 147, 0.22);
+  background: #fff;
+}
+
+.overlay-mini__group[hidden] {
+  display: none !important;
+}
+
+.overlay-mini__group--voice {
+  background: #eefaf7;
+  border-color: rgba(15, 122, 108, 0.22);
+}
+
+.overlay-mini__group--sys {
+  margin-left: auto;
+  background: #f8fbfc;
+}
+
+.wrap.is-mini-scheme-e .overlay-mini__group--sys {
+  display: none !important;
+}
+
+.wrap.is-mini-scheme-e:not(.is-mini-armed) .overlay-mini__group--agent,
+.wrap.is-mini-scheme-e.is-mini-armed .overlay-mini__group--voice {
+  display: none !important;
+}
+
+.wrap.is-mini-scheme-e .overlay-mini__cluster {
+  justify-content: flex-start;
+}
+
+.wrap.is-mini-scheme-e.is-mini-armed .overlay-mini__group--agent {
+  flex: 1 1 auto;
+  justify-content: stretch;
+}
+
+.wrap.is-mini-scheme-e.is-mini-armed .overlay-mini__group--agent .overlay-mini__action {
+  flex: 1 1 0;
+}
+
+.overlay-mini__group-dyn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.overlay-mini__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 0;
+  background: rgba(117, 135, 147, 0.28);
+}
+
+.overlay-mini__sep[hidden] {
+  display: none !important;
 }
 
 .overlay-mini__row--tools .overlay-mini__action {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  border-radius: 7px;
-  border: 1px solid rgba(117, 135, 147, 0.28);
-  background: #f8fbfc;
-  color: #3c5962;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: #52636b;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1;
 }
 
 .overlay-mini__row--tools .overlay-mini__action:hover {
-  background: #e7f0f2;
-  border-color: rgba(75, 112, 128, 0.48);
+  background: rgba(28, 36, 48, 0.06);
+  color: #1c2430;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--hold {
+  width: auto;
+  min-width: 0;
+  padding: 0 9px;
+  gap: 5px;
+  background: #1c2430;
+  color: #fff;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--hold:hover {
+  background: #2a3340;
+  color: #fff;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--primary,
+.overlay-mini__row--tools .overlay-mini__action--named {
+  width: auto;
+  min-width: 0;
+  padding: 0 9px;
+  gap: 4px;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--primary {
+  background: #1c2430;
+  color: #fff;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--primary:hover {
+  background: #2a3340;
+  color: #fff;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--danger {
+  color: #b42318;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--danger:hover {
+  background: rgba(180, 35, 24, 0.08);
+  color: #912018;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--toggle,
+.overlay-mini__row--tools .overlay-mini__action--keyless {
+  width: auto;
+  min-width: 0;
+  padding: 0 8px;
+  gap: 4px;
+  color: #0f7a6c;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--quiet {
+  color: #8b95a5;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--quiet:hover {
+  color: #52636b;
 }
 
 .overlay-mini__action-glyph {
@@ -2049,17 +2171,8 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 }
 
 .overlay-mini__row--tools .overlay-mini__action--settings {
-  margin-left: auto;
-  color: #52636b;
-  background: #f9fbfc;
-  border-color: rgba(117, 135, 147, 0.28);
+  margin-left: 0;
   flex: 0 0 auto;
-}
-
-.overlay-mini__row--tools .overlay-mini__action--settings:hover {
-  background: #e8f1f3;
-  border-color: rgba(75, 112, 128, 0.48);
-  color: #294d59;
 }
 
 .overlay-mini:active { cursor: grabbing; }
@@ -2170,13 +2283,10 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 }
 
 .overlay-mini__beginner-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 2px;
-  margin-left: 2px;
-  padding-left: 4px;
-  border-left: 1px solid rgba(102, 119, 141, 0.18);
+  /* B tri cluster owns layout; keep class for hit-test / onboard selectors. */
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
 }
 
 .overlay-mini__beginner-actions[hidden] {
@@ -2836,23 +2946,23 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
   border-color: rgba(0, 163, 255, 0.45);
 }
 
-.overlay-mini__action--keyless {
-  width: auto;
-  min-width: 28px;
-  padding: 0 6px;
-  gap: 3px;
-}
-.overlay-mini__action--keyless .overlay-mini__action-txt {
-  font-size: 10px;
+.overlay-mini__action--keyless .overlay-mini__action-txt,
+.overlay-mini__action--hold .overlay-mini__action-txt {
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
   white-space: nowrap;
 }
-.overlay-mini__action.is-on.overlay-mini__action--keyless {
-  background: rgba(16, 185, 129, 0.18);
-  border-color: rgba(16, 185, 129, 0.55);
-  color: #047857;
+.overlay-mini__action.is-on.overlay-mini__action--keyless,
+.overlay-mini__action.is-on.overlay-mini__action--toggle {
+  background: rgba(15, 122, 108, 0.16);
+  color: #0f7a6c;
+}
+.wrap.is-minimized.is-cursor-beginner-armed .overlay-mini__action--hold {
+  background: #1c2430;
+  color: #fff;
+  box-shadow: none;
 }
 
 .overlay-mini__action-icon svg {

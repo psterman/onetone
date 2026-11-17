@@ -128,8 +128,10 @@ pub(crate) fn apply_oral_trigger_capture(
             .oral_command_scheme
             .get_or_insert_with(crate::config::OralCommandScheme::default);
         scheme.trigger_key = canon.clone();
-        // Recording a side button as oral arm → tap-to-toggle (hold flashes the panel).
-        if matches!(canon.as_str(), "XButton1" | "XButton2") {
+        // Side buttons / modifier chords are tap-and-release — hold flashes the panel.
+        if matches!(canon.as_str(), "XButton1" | "XButton2")
+            || crate::config::oral_trigger_is_modifier_chord(&canon)
+        {
             scheme.activation_mode = "toggle".into();
         }
     }
@@ -210,5 +212,18 @@ mod tests {
             sk.is_empty(),
             "global Soft Pad must release XButton2 to oral: got {sk:?}"
         );
+    }
+
+    #[test]
+    fn oral_ctrl_insert_record_forces_toggle() {
+        let mut cfg = VoiceConfig::default();
+        let habit_id = cfg.mappings[0].id.clone();
+        apply_oral_trigger_capture(&mut cfg, &habit_id, "Ctrl+Insert", "Ctrl+Insert");
+        let scheme = cfg
+            .find_mapping_by_id(&habit_id)
+            .and_then(|m| m.oral_command_scheme.as_ref())
+            .expect("oral scheme");
+        assert_eq!(scheme.trigger_key, "Ctrl+Insert");
+        assert_eq!(scheme.normalized_activation_mode(), "toggle");
     }
 }

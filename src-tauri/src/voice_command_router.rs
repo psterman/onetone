@@ -399,40 +399,10 @@ fn try_route_oral_armed(
             crate::voice_command_session::clear_need_composer_aim();
             crate::input_aim_calibrate::abort_if_open(app);
         }
-        // Soft oral「开始输入」= Lab wake (FG / last-external habit), not Agent composer.
-        // 「说话」「麦克风」still use Soft Pad input.start below.
-        if slot_id == "pushToTalk" {
-            let is_lab_wake = {
-                let cfg = state.cfg.lock();
-                crate::voice_end_runtime::idle_wake_phrases(&cfg)
-                    .iter()
-                    .any(|w| crate::config::phrases_fuzzy_match(phrase, w))
-            };
-            if is_lab_wake {
-                let duration_ms = state.cfg.lock().key_press_duration_ms;
-                crate::voice_command_session::allow_next_ime_start_while_oral();
-                let result = crate::voice_end_runtime::handle_voice_wake_detected(
-                    state,
-                    app,
-                    phrase,
-                    duration_ms,
-                    engine,
-                );
-                // Keep oral armed as silent sentinel — do not leave「开始输入」on the pad.
-                crate::voice_command_session::clear_oral_heard_display(state.as_ref());
-                let label = format!(
-                    "oral_soft:pushToTalk:lab_wake（{}→{}）",
-                    phrase, result.target_key
-                );
-                *state.voice_vosk_last_trigger.lock() = label.clone();
-                crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
-                return Some(VoiceCommandRouterResult {
-                    handled: true,
-                    trigger_label: label,
-                    ..Default::default()
-                });
-            }
-        }
+        // Soft oral「开始输入」= Soft「说话」→ input.start (Cursor habit Lab 听写键).
+        // Do NOT divert to Lab wake here: Soft Pad holds OneTone FG, and
+        // send_wake_to_target used to self-fg-skip so 开始输入 lit the pad but never
+        // opened dictation. Soft speak prepares WeChat/Cursor FG then SendInput.
         let window = crate::ipc::get_main_window(app)
             .or_else(|| app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label))?;
         let out = crate::cursor_beginner::run_slot(state, &window, slot_id, true, true);
@@ -624,6 +594,23 @@ fn try_route_cursor_beginner_voice(
             return None;
         }
     }
+    // Cursor FG +「开始输入」used to steal Soft「说话」/ input.start — that never
+    // focuses WeChat for Lab 微信听写键. Same rule as Soft oral lab_wake: fall
+    // through to Wake → handle_voice_wake_detected (prepare WeChat FG + chord).
+    // 「说话」「麦克风」stay Soft speak.
+    if crate::cursor_beginner::matches_beginner_phrase(phrase)
+        .is_some_and(|d| d.slot_id == "pushToTalk")
+    {
+        let is_lab_wake = {
+            let cfg = state.cfg.lock();
+            crate::voice_end_runtime::idle_wake_phrases(&cfg)
+                .iter()
+                .any(|w| crate::config::phrases_fuzzy_match(phrase, w))
+        };
+        if is_lab_wake {
+            return None;
+        }
+    }
     if *state.paused.lock() {
         return Some(skip("监听已暂停，请先在上方点「恢复」。".into()));
     }
@@ -794,20 +781,38 @@ mod tests {
     }
 
     #[test]
-    fn oral_push_to_talk_lab_wake_routed_before_run_slot() {
-        // Guard: Soft oral「开始输入」must call handle_voice_wake_detected (Lab chord),
-        // not Agent run_slot / composer aim — WeChat FG while Soft Pad listens.
+    fn oral_push_to_talk_lab_wake_uses_soft_speak_not_wake_send() {
+        // Soft Pad oral holds OneTone FG — Lab wake send used to self-fg-skip.
+        // 「开始输入」must Soft speak (run_slot → input.start), not lab_wake divert.
         let src = include_str!("voice_command_router.rs");
         assert!(
-            src.contains("oral_soft:pushToTalk:lab_wake")
-                && src.contains("handle_voice_wake_detected"),
-            "oral 开始输入 must dispatch lab wake while Soft Pad oral is armed"
+            src.contains("Soft oral")
+                && src.contains("input.start")
+                && src.contains("run_slot(state, &window, slot_id, true, true)"),
+            "oral Soft slots (incl. 开始输入→pushToTalk) must Soft speak via run_slot"
         );
         let layer1 = include_str!("agent/layer1_native.rs");
         assert!(
-            layer1.contains("restore_external_foreground")
-                && layer1.contains("Lab 听写键"),
-            "input.start must restore last external FG when Soft Pad holds focus"
+            layer1.contains("prepare_foreground_for_dictation_chord"),
+            "input.start must prepare WeChat/external FG before Lab chord"
+        );
+        let wake = include_str!("voice_end_runtime.rs");
+        assert!(
+            wake.contains("!is_wechat_dictation_chord(chord_hint)"),
+            "WeChat Lab chord must still send when Soft Pad owns FG"
+        );
+    }
+
+    #[test]
+    fn cursor_fg_lab_wake_falls_through_to_wake_not_soft_speak() {
+        // Guard: Cursor FG +「开始输入」must NOT Soft speak; fall through to Wake
+        // so handle_voice_wake_detected can focus WeChat + send Lab 听写键.
+        let src = include_str!("voice_command_router.rs");
+        assert!(
+            src.contains("fall through to Wake")
+                && src.contains("idle_wake_phrases")
+                && src.contains("pushToTalk"),
+            "Cursor FG Lab wake must skip Soft speak and fall through to Wake"
         );
     }
 

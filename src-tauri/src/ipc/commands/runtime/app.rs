@@ -88,10 +88,18 @@ pub fn cmd_foreground_context_snapshot(
     let self_fg = live
         .as_ref()
         .is_some_and(|id| app_identity::is_self_identity(id));
+    let live_noise = live
+        .as_ref()
+        .is_some_and(|id| app_identity::is_tray_open_fg_noise(id));
     let habit_identity = app_identity::capture_tray_foreground_identity();
 
-    // Display row follows the live window (including OneTone itself).
-    let display = live.as_ref();
+    // Live HWND for real apps; self / Explorer / PixPin show last habit FG so the
+    // home chip does not stick on screenshot tools or the tray shell.
+    let display = if self_fg || live_noise {
+        habit_identity.as_ref()
+    } else {
+        live.as_ref().or(habit_identity.as_ref())
+    };
     let app_id = display
         .and_then(|id| id.matched_preset_app_id.clone())
         .or_else(|| {

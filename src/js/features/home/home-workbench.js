@@ -2359,7 +2359,8 @@
       ||exe==='applicationframehost.exe'
       ||exe==='textinputhost.exe'
       ||exe==='lockapp.exe'
-      ||exe==='systemsettings.exe';
+      ||exe==='systemsettings.exe'
+      ||exe==='pixpin.exe';
   }
 
   function rememberExternalFg(identity){

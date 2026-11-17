@@ -1935,7 +1935,7 @@
       if (global.OneToneVoiceUiState && global.OneToneVoiceUiState.getVoiceStatusSnapshot) {
         snap = global.OneToneVoiceUiState.getVoiceStatusSnapshot();
       }
-    } catch (_) {}
+          } catch (_) {}
     if (!snap) return;
     var pill = $('voiceLabLivePill');
     var pillText = $('voiceLabLivePillText');
@@ -1982,14 +1982,15 @@
         '<p class="voice-lab-oral-chrome-miss">' +
         escAttr(t('voiceLabOralChromeMiss', '口令外观组件未加载')) +
         '</p>';
-      return;
-    }
+        return;
+      }
     var m = activeMapping();
     var mid = m && m.id ? String(m.id) : '';
     var live = host.querySelector('[data-oral-chrome-root]');
     var liveMid = live ? String(live.getAttribute('data-oral-mapping') || '').trim() : '';
-    // Remount when habit changes; keep live root if same mapping (preserve toggles).
-    if (!live || liveMid !== mid) {
+    var hasScheme = !!(live && live.querySelector('[data-oral-soft-scheme]'));
+    // Remount when habit changes or Soft 槽方案尚未挂上；同 mapping 有方案时保留现场。
+    if (!live || liveMid !== mid || !hasScheme) {
       try {
         Oral.mountSoftPadOralChrome(host, { mappingId: mid });
       } catch (err) {
@@ -2062,7 +2063,7 @@
     if (el && el.scrollIntoView) {
       try {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch (_) {}
+    } catch (_) {}
     }
   }
 

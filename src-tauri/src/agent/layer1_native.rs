@@ -366,9 +366,8 @@ fn execute_start(
             } else {
                 cfg.find_mapping_by_id(&mid)
             };
-            crate::voice_end_runtime::resolve_dictation_ime_key(&cfg, mapping).or_else(|| {
-                crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
-            })
+            crate::voice_end_runtime::resolve_dictation_ime_key(&cfg, mapping)
+                .or_else(|| crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping))
         };
         let Some(voice_key) = voice_key.filter(|s| !s.trim().is_empty()) else {
             return Layer1Outcome::err(
@@ -399,6 +398,20 @@ fn execute_start(
         // Physical RAlt already toggled the IME on (modifier watch never swallows).
         // Skip focus-click + re-inject — both would end dictation immediately.
         if crate::voice_end_runtime::take_voice_key_passthrough(state.as_ref(), &voice_key) {
+            // Only first-use calibrate blocks here — do not click-aim after IME is open.
+            if crate::voice_command_session::need_composer_aim() {
+                *state.voice_session_state.lock() = "error".into();
+                *state.voice_session_last_action.lock() = "need_composer_aim".into();
+                crate::app_log::log_line(
+                    state,
+                    "voice_command",
+                    "input.start passthrough blocked — need_composer_aim",
+                );
+                return Layer1Outcome::err(
+                    "aim_failed",
+                    Some("input.start blocked (need_composer_aim)".into()),
+                );
+            }
             crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
             crate::voice_command_session::note_ime_voice_active();
             // Same as wake: keep Soft 槽 capture up so 发送/取消/继续 still match.
@@ -419,8 +432,25 @@ fn execute_start(
                 "input.start cursor voice {voice_key} (passthrough)"
             ));
         }
-        // Mirror classic wake: chord only — no Soft Pad composer click. A click
-        // (or a second toggle pulse) aborts Cursor Voice Mode right after it opens.
+        // Fail-closed: calibrate pending or aim failed → never fire the IME chord.
+        // Aim runs before chord so Cursor voice is not opened into an unknown window.
+        // WeChat Lab chord skips composer click inside ensure_* (FG via prepare below).
+        if let Err(reason) = crate::voice_end_runtime::ensure_composer_ready_for_dictation_start(
+            state.as_ref(),
+            &app,
+            app_target,
+            &voice_key,
+        ) {
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                &format!("input.start blocked — {reason}"),
+            );
+            return Layer1Outcome::err(
+                "aim_failed",
+                Some(format!("input.start blocked ({reason})")),
+            );
+        }
         // Soft Pad oral_composer_init often leaves Cursor FG; Lab 微信键 is global and
         // would pop WeChat's float strip — prepare_foreground prefers WeChatAppEx.
         crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);

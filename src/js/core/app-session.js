@@ -47,11 +47,29 @@
   }
 
   function strategyActivateCommitted(bundle){
-    if(!bundle||bundle.activateAsync===false) return false;
-    var ui=hooks().ui();
-    if(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake') return false;
+    if(!bundle) return false;
+    // noop / park config-only: nothing left for deferred boot. Treating these as
+    // "not committed" used to reschedule set_listening_strategy every few seconds
+    // while voiceWake was open → UI_HB voiceBootStrategy storm + slow open.
+    if(bundle.noop===true||bundle.activateAsync===false) return true;
     // activate_desired_engine is async (supervisor queue) — IPC return only means enqueued.
     return bundle.ok!==false;
+  }
+
+  // A missing model/DLL is a terminal boot condition, not a transient state.
+  // Retrying the full strategy IPC every few seconds repeatedly tears down and
+  // rebuilds the voice supervisor, starving WebView2 and producing ui_hb gaps.
+  // Keep the engine parked until the user repairs the resource or explicitly
+  // starts it again from the voice settings.
+  function strategyBootTerminalFailure(bundle){
+    if(!bundle) return false;
+    var rows=[bundle.voiceVosk,bundle.voiceKws,bundle.voiceSapi];
+    for(var i=0;i<rows.length;i++){
+      var row=rows[i]||{};
+      var issue=String(row.resourceIssue||row.resource_issue||'').trim().toLowerCase();
+      if(issue==='model_missing'||issue==='dll_missing'||issue==='invalid_model') return true;
+    }
+    return false;
   }
 
   function rescheduleDeferredVoiceBoot(ms){
@@ -195,6 +213,17 @@
     return !Array.isArray(phrases)||!phrases.length;
   }
 
+  function voicePanelOpenBlocksDeferredBoot(){
+    try{
+      var u=hooks().ui&&hooks().ui();
+      if(!u||!u.drawerOpen) return false;
+      var p=String(u.settingsPanel||'');
+      return p==='voiceWake'||p==='voiceLab';
+    }catch(_){
+      return false;
+    }
+  }
+
   function scheduleDeferredVoiceEngineBoot(){
     if(voiceEngineBootDone||voiceEngineBootTimer) return;
     // Welcome/onboard: keep retrying — Rust no longer preloads models on cold start.
@@ -203,6 +232,11 @@
         voiceEngineBootTimer=0;
         scheduleDeferredVoiceEngineBoot();
       },2000);
+      return;
+    }
+    // Voice UI open owns the IPC/UI thread — deferring strategy activate here 假死's paint.
+    if(voicePanelOpenBlocksDeferredBoot()){
+      markVoiceEngineBootHandled();
       return;
     }
     var cfgEarly=hooks().state().config||{};
@@ -217,6 +251,10 @@
       if(voiceEngineBootDone) return;
       if(hooks().welcomeOpen()||hooks().onboardIsOpen()||!global.OneToneConfigPersist.isLoaded()){
         scheduleDeferredVoiceEngineBoot();
+        return;
+      }
+      if(voicePanelOpenBlocksDeferredBoot()){
+        markVoiceEngineBootHandled();
         return;
       }
       var cfg=hooks().state().config||{};
@@ -257,6 +295,9 @@
             hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
           }
           if(strategyActivateCommitted(bundle)){
+            markVoiceEngineBootHandled();
+          }else if(strategyBootTerminalFailure(bundle)){
+            // Do not reschedule a known-unrecoverable resource failure.
             markVoiceEngineBootHandled();
           }else{
             rescheduleDeferredVoiceBoot(hooks().ui().drawerOpen?5000:2500);

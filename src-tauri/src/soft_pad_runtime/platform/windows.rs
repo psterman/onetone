@@ -43,24 +43,31 @@ fn read_live_foreground() -> ForegroundEvidence {
 
 pub fn read_foreground_evidence() -> ForegroundEvidence {
     let live = read_live_foreground();
+    let mut slot = last_external_fg().lock().ok();
+    let prev = slot.as_mut().and_then(|g| g.as_ref()).cloned();
+    let (out, next) = resolve_foreground_evidence(live, prev);
+    if let Some(g) = slot.as_mut() {
+        **g = next;
+    }
+    out
+}
+
+/// Pure sticky: agent/foreign overwrite; self/noise/unidentified keep last real app.
+fn resolve_foreground_evidence(
+    live: ForegroundEvidence,
+    prev: Option<ForegroundEvidence>,
+) -> (ForegroundEvidence, Option<ForegroundEvidence>) {
     if live.agent_kind.is_some() || live.foreign_host {
-        if let Ok(mut slot) = last_external_fg().lock() {
-            *slot = Some(live.clone());
-        }
-        return live;
+        return (live.clone(), Some(live));
     }
-    // OneTone itself is not a scene. Keep the last real app (Chrome → 通用, Cursor → Cursor)
-    // so opening this window does not snap back to the Cursor habit.
-    if crate::app_identity::foreground_is_self() {
-        if let Ok(mut slot) = last_external_fg().lock() {
-            if let Some(prev) = slot.as_mut() {
-                prev.observed_at = Instant::now();
-                prev.sequence = live.sequence;
-                return prev.clone();
-            }
-        }
+    // OneTone / Explorer / PixPin are not scenes. Keep last real app
+    // (Chrome → 通用, Cursor → Cursor) so screenshot/tray FG does not stick.
+    if let Some(mut kept) = prev {
+        kept.observed_at = Instant::now();
+        kept.sequence = live.sequence;
+        return (kept.clone(), Some(kept));
     }
-    live
+    (live, None)
 }
 
 /// Last Soft Pad agent preset while OneTone/Soft Pad holds Win32 FG (Esc / click).
@@ -172,5 +179,60 @@ mod tests {
         let terminal = resolve_terminal_child_agent("cmd.exe", &["codex.exe"], None);
         let kind = preset.or(terminal);
         assert_eq!(kind, Some(AgentKind::Claude));
+    }
+
+    #[test]
+    fn pixpin_noise_keeps_cursor_sticky() {
+        let cursor = ForegroundEvidence {
+            agent_kind: Some(AgentKind::Cursor),
+            app_target_id: Some("cursor-chat".into()),
+            foreign_host: false,
+            observed_at: Instant::now(),
+            sequence: 1,
+        };
+        let (out, next) = resolve_foreground_evidence(cursor.clone(), None);
+        assert_eq!(out.agent_kind, Some(AgentKind::Cursor));
+        assert_eq!(
+            next.as_ref().and_then(|e| e.app_target_id.as_deref()),
+            Some("cursor-chat")
+        );
+
+        // PixPin: no agent, not foreign_host (noise) → keep Cursor.
+        let pixpin = ForegroundEvidence {
+            agent_kind: None,
+            app_target_id: None,
+            foreign_host: false,
+            observed_at: Instant::now(),
+            sequence: 2,
+        };
+        let (kept, next2) = resolve_foreground_evidence(pixpin, next);
+        assert_eq!(kept.agent_kind, Some(AgentKind::Cursor));
+        assert_eq!(kept.sequence, 2);
+        assert_eq!(
+            next2.as_ref().and_then(|e| e.app_target_id.as_deref()),
+            Some("cursor-chat")
+        );
+    }
+
+    #[test]
+    fn foreign_host_still_overwrites_sticky() {
+        let cursor = ForegroundEvidence {
+            agent_kind: Some(AgentKind::Cursor),
+            app_target_id: Some("cursor-chat".into()),
+            foreign_host: false,
+            observed_at: Instant::now(),
+            sequence: 1,
+        };
+        let (_, prev) = resolve_foreground_evidence(cursor, None);
+        let chrome = ForegroundEvidence {
+            agent_kind: None,
+            app_target_id: None,
+            foreign_host: true,
+            observed_at: Instant::now(),
+            sequence: 3,
+        };
+        let (out, next) = resolve_foreground_evidence(chrome, prev);
+        assert!(out.foreign_host);
+        assert!(next.as_ref().is_some_and(|e| e.foreign_host));
     }
 }

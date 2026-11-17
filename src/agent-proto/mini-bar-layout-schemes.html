@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>迷你栏 · HTML 布局方案 A/B/C</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --mute: #5b6675;
+    --faint: #8b95a5;
+    --line: rgba(28, 36, 48, 0.12);
+    --paper: #f3f5f7;
+    --bar: #f7f8fa;
+    --bar-edge: rgba(28, 36, 48, 0.14);
+    --accent: #0f7a6c;
+    --accent-soft: rgba(15, 122, 108, 0.12);
+    --danger: #b42318;
+    --font: "IBM Plex Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    --mono: "IBM Plex Mono", "Cascadia Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.45 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #2a3340 0%, transparent 55%),
+      #1a1f27;
+  }
+  .page { max-width: 920px; margin: 0 auto; padding: 28px 18px 64px; }
+  .eyebrow {
+    margin: 0 0 6px;
+    font: 700 10px/1 var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9aa5b4;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: #f2f4f7;
+  }
+  .lede {
+    margin: 0 0 22px;
+    max-width: 62ch;
+    color: #a7b0bd;
+    font-size: 13px;
+  }
+  .nav {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .nav a {
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    color: #d7dde6;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .nav a:hover { border-color: rgba(255,255,255,0.28); color: #fff; }
+
+  .card {
+    margin-bottom: 22px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #12161c;
+  }
+  .card__h {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: #171c24;
+  }
+  .card__h h2 { margin: 0; font-size: 14px; font-weight: 700; color: #f2f4f7; }
+  .card__h p { margin: 0; font-size: 12px; color: #8f9aab; max-width: 48ch; }
+  .card__tag {
+    flex: 0 0 auto;
+    font: 700 10px/1 var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7dd3c0;
+    border: 1px solid rgba(125, 211, 192, 0.35);
+    border-radius: 999px;
+    padding: 5px 8px;
+  }
+  .desk {
+    position: relative;
+    min-height: 168px;
+    padding: 36px 18px 28px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), transparent 40%),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 23px,
+        rgba(255,255,255,0.015) 23px 24px
+      ),
+      #0e1218;
+  }
+  .desk__label {
+    position: absolute; left: 14px; bottom: 10px;
+    font: 600 10px/1 var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4d5664;
+  }
+
+  /* —— shared mini chrome —— */
+  .mini {
+    width: min(420px, 100%);
+    margin: 0 auto;
+    border: 1px solid var(--bar-edge);
+    border-radius: 12px;
+    background: var(--bar);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.65) inset,
+      0 10px 28px rgba(0,0,0,0.28);
+    color: var(--ink);
+    user-select: none;
+  }
+  .mini button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+  .who {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .who__face {
+    position: relative;
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    border: 1px solid #2f6fed;
+    background:
+      linear-gradient(145deg, #3a4554, #1f2733);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  .who__face::after {
+    content: "";
+    position: absolute; right: -1px; bottom: -1px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 1.5px #fff;
+  }
+  .who__more {
+    font: 700 11px/1 var(--mono);
+    color: var(--mute);
+  }
+  .pill {
+    display: inline-flex; align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font: 650 11px/1 var(--mono);
+    color: var(--mute);
+    white-space: nowrap;
+  }
+  .win {
+    display: inline-flex; gap: 4px; margin-left: auto;
+  }
+  .win button {
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    border: 1px solid var(--line) !important;
+    background: #fff !important;
+    color: var(--mute);
+    display: grid; place-items: center;
+  }
+  .win button:hover { color: var(--ink); border-color: rgba(28,36,48,0.28) !important; }
+  .ico { width: 14px; height: 14px; display: block; }
+  .ico svg { width: 100%; height: 100%; display: block; }
+
+  /* ========== A: single rail ========== */
+  .a-rail {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px 8px 10px;
+  }
+  .a-cmds {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-left: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(28,36,48,0.04);
+    border: 1px solid var(--line);
+  }
+  .a-cmd {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 28px;
+    padding: 0 9px;
+    border-radius: 8px !important;
+    color: var(--mute);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .a-cmd:hover { background: #fff; color: var(--ink); }
+  .a-cmd.is-primary {
+    background: var(--ink) !important;
+    color: #fff;
+  }
+  .a-cmd.is-primary:hover { filter: brightness(1.08); }
+  .a-cmd--more { padding: 0 8px; letter-spacing: 0.12em; }
+  .a-more {
+    display: none;
+    gap: 4px;
+    padding: 0 8px 8px;
+    flex-wrap: wrap;
+  }
+  .mini.is-more-open .a-more { display: flex; }
+  .a-more button {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line) !important;
+    background: #fff !important;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--mute);
+  }
+  .a-more button.is-on {
+    border-color: rgba(15,122,108,0.4) !important;
+    background: var(--accent-soft) !important;
+    color: var(--accent);
+  }
+
+  /* ========== B: tri ========== */
+  .b-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px 6px 10px;
+  }
+  .b-cluster {
+    display: flex; align-items: stretch; gap: 6px;
+    padding: 0 8px 8px;
+  }
+  .b-group {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .b-group--voice { background: #eefaf7; border-color: rgba(15,122,108,0.22); }
+  .b-sep {
+    width: 1px; align-self: stretch;
+    background: var(--line);
+    margin: 4px 0;
+  }
+  .b-key {
+    width: 30px; height: 30px;
+    border-radius: 8px !important;
+    display: grid; place-items: center;
+    color: var(--mute);
+  }
+  .b-key:hover { background: rgba(28,36,48,0.05); color: var(--ink); }
+  .b-key.is-hold {
+    width: auto;
+    padding: 0 10px;
+    background: var(--ink) !important;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    gap: 5px;
+    display: inline-flex; align-items: center;
+  }
+  .b-key.is-toggle {
+    width: auto;
+    padding: 0 9px;
+    gap: 4px;
+    display: inline-flex; align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .b-key.is-toggle.is-on {
+    background: var(--accent-soft);
+  }
+  .b-key.is-quiet { color: var(--faint); }
+  .b-key.is-quiet:hover { color: var(--mute); }
+
+  /* ========== C: situational ========== */
+  .c-slim {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px 8px 10px;
+  }
+  .c-arm {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 9px !important;
+    background: var(--ink) !important;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .c-arm:hover { filter: brightness(1.06); }
+  .c-armed {
+    display: none;
+    padding: 8px 10px 10px;
+    gap: 8px;
+    flex-direction: column;
+  }
+  .mini[data-mode="armed"] .c-slim { display: none; }
+  .mini[data-mode="armed"] .c-armed { display: flex; }
+  .c-wave {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+    background: #11161d;
+    color: #d7dde6;
+    font-size: 12.5px;
+  }
+  .c-wave__dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0.08); }
+  }
+  .c-acts {
+    display: flex; gap: 6px;
+  }
+  .c-acts button {
+    flex: 1;
+    height: 32px;
+    border-radius: 9px;
+    border: 1px solid var(--line) !important;
+    background: #fff !important;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mute);
+  }
+  .c-acts button.is-primary {
+    background: var(--ink) !important;
+    border-color: var(--ink) !important;
+    color: #fff;
+  }
+  .c-acts button.is-danger {
+    color: var(--danger);
+  }
+
+  .notes {
+    padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: #141920;
+    color: #9aa5b4;
+    font-size: 12px;
+  }
+  .notes ul { margin: 0; padding-left: 1.1em; }
+  .notes li + li { margin-top: 4px; }
+  .notes code {
+    font: 600 11px/1 var(--mono);
+    color: #c9d2de;
+    background: rgba(255,255,255,0.04);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">Soft Pad · overlay mini</p>
+    <h1>迷你栏 HTML 布局方案</h1>
+    <p class="lede">三套可替换骨架，保留现有 <code style="color:#c9d2de">data-act</code>。点按钮可预览交互。对照当前「两行同级灰方块」问题：主次、分组、空闲密度。</p>
+    <nav class="nav">
+      <a href="#scheme-a">A · 单行命令条</a>
+      <a href="#scheme-b">B · 三段分组</a>
+      <a href="#scheme-c">C · 情境展开</a>
+    </nav>
+
+    <!-- A -->
+    <section class="card" id="scheme-a">
+      <div class="card__h">
+        <div>
+          <h2>A · 单行命令条</h2>
+          <p>常驻 3 个主操作 + 溢出。截图/设置/免按键进「···」。</p>
+        </div>
+        <span class="card__tag">推荐默认</span>
+      </div>
+      <div class="desk">
+        <div class="mini" id="miniA" data-layout="rail">
+          <div class="a-rail" role="toolbar" aria-label="迷你栏">
+            <div class="who" data-zone="agents">
+              <span class="who__face" aria-hidden="true"></span>
+              <span class="who__more">+13</span>
+            </div>
+            <span class="pill" data-zone="pill">Mn · 5h 余44%</span>
+            <div class="a-cmds" role="group" aria-label="常用">
+              <button type="button" class="a-cmd is-primary" data-act="pushToTalk">
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>
+                <span>口头</span>
+              </button>
+              <button type="button" class="a-cmd" data-act="stopOrSend">
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+                <span>发送</span>
+              </button>
+              <button type="button" class="a-cmd" data-act="newThread">
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+                <span>新建</span>
+              </button>
+              <button type="button" class="a-cmd a-cmd--more" data-act="tools-more" aria-expanded="false" aria-controls="miniAMore">···</button>
+            </div>
+            <div class="win" data-zone="win">
+              <button type="button" data-act="expand" title="展开" aria-label="展开">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4.5V2h2.5M8.5 2H11v2.5M11 8.5V11H8.5M4.5 11H2V8.5"/></svg>
+              </button>
+              <button type="button" data-act="close" title="关闭" aria-label="关闭">×</button>
+            </div>
+          </div>
+          <div class="a-more" id="miniAMore" role="menu" aria-label="更多">
+            <button type="button" data-act="toggleVoiceKeyless" aria-pressed="false">免按键</button>
+            <button type="button" data-act="continue">继续</button>
+            <button type="button" data-act="cancelListen">取消</button>
+            <button type="button" data-act="materials">材料</button>
+            <button type="button" data-act="smart-capture">截图</button>
+            <button type="button" data-act="mini-settings">设置</button>
+          </div>
+        </div>
+        <span class="desk__label">scheme A · idle</span>
+      </div>
+      <div class="notes">
+        <ul>
+          <li>骨架：<code>.a-rail</code> + 可选 <code>.a-more</code></li>
+          <li>主次：口头 <code>is-primary</code>；其余次级；系统键不进主行</li>
+          <li>映射：现有 beginner actions → more；截图/设置离开工具行同级位</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- B -->
+    <section class="card" id="scheme-b">
+      <div class="card__h">
+        <div>
+          <h2>B · 三段分组</h2>
+          <p>语音 / 对话 / 系统分区。功能全保留，但不再一排同级方块。</p>
+        </div>
+        <span class="card__tag">功能全量</span>
+      </div>
+      <div class="desk">
+        <div class="mini" data-layout="tri">
+          <header class="b-head">
+            <div class="who">
+              <span class="who__face" aria-hidden="true"></span>
+              <span class="who__more">+13</span>
+            </div>
+            <span class="pill">Mn · 5h 余44%</span>
+            <div class="win">
+              <button type="button" data-act="expand" aria-label="展开">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4.5V2h2.5M8.5 2H11v2.5M11 8.5V11H8.5M4.5 11H2V8.5"/></svg>
+              </button>
+              <button type="button" data-act="close" aria-label="关闭">×</button>
+            </div>
+          </header>
+          <div class="b-cluster" role="toolbar" aria-label="功能键">
+            <div class="b-group b-group--voice" role="group" aria-label="语音">
+              <button type="button" class="b-key is-hold" data-act="pushToTalk">
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>
+                口头
+              </button>
+              <button type="button" class="b-key is-toggle" id="bKeyless" data-act="toggleVoiceKeyless" aria-pressed="false">
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/><path d="M3 8c1-2 2.5-3 4-3M21 8c-1-2-2.5-3-4-3"/></svg></span>
+                免按
+              </button>
+            </div>
+            <i class="b-sep" aria-hidden="true"></i>
+            <div class="b-group" role="group" aria-label="对话">
+              <button type="button" class="b-key" data-act="stopOrSend" title="发送" aria-label="发送">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+              </button>
+              <button type="button" class="b-key" data-act="continue" title="继续" aria-label="继续">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>
+              </button>
+              <button type="button" class="b-key" data-act="newThread" title="新建" aria-label="新建">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+              </button>
+              <button type="button" class="b-key" data-act="cancelListen" title="取消" aria-label="取消">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7l10 10M17 7L7 17"/></svg></span>
+              </button>
+            </div>
+            <i class="b-sep" aria-hidden="true"></i>
+            <div class="b-group" role="group" aria-label="系统">
+              <button type="button" class="b-key is-quiet" data-act="materials" title="材料" aria-label="材料">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span>
+              </button>
+              <button type="button" class="b-key is-quiet" data-act="smart-capture" title="截图" aria-label="截图">
+                <span class="ico"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></span>
+              </button>
+              <button type="button" class="b-key is-quiet" data-act="mini-settings" title="设置" aria-label="设置">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <span class="desk__label">scheme B · grouped</span>
+      </div>
+      <div class="notes">
+        <ul>
+          <li>骨架：<code>.b-head</code> + <code>.b-cluster</code>（voice / agent / sys）</li>
+          <li>样式档：<code>is-hold</code> · <code>is-toggle</code> · 图标 · <code>is-quiet</code></li>
+          <li>「免按键」不再单独撑开整行字宽；进语音组为短标签</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- C -->
+    <section class="card" id="scheme-c">
+      <div class="card__h">
+        <div>
+          <h2>C · 情境展开</h2>
+          <p>空闲极瘦；点「按住说话」进入听写态，操作才出现。</p>
+        </div>
+        <span class="card__tag">状态驱动</span>
+      </div>
+      <div class="desk">
+        <div class="mini" id="miniC" data-mode="idle" data-layout="situational">
+          <div class="c-slim" role="toolbar" aria-label="空闲迷你栏">
+            <div class="who">
+              <span class="who__face" aria-hidden="true"></span>
+              <span class="who__more">+13</span>
+            </div>
+            <button type="button" class="c-arm" data-act="pushToTalk">按住说话</button>
+            <span class="pill">Mn · 5h</span>
+            <div class="win">
+              <button type="button" data-act="expand" aria-label="展开">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4.5V2h2.5M8.5 2H11v2.5M11 8.5V11H8.5M4.5 11H2V8.5"/></svg>
+              </button>
+              <button type="button" data-act="close" aria-label="关闭">×</button>
+            </div>
+          </div>
+          <div class="c-armed" aria-label="听写中">
+            <div class="c-wave">
+              <span class="c-wave__dot" aria-hidden="true"></span>
+              <span>你说的话会出现在这里…</span>
+            </div>
+            <div class="c-acts">
+              <button type="button" class="is-primary" data-act="stopOrSend">发送</button>
+              <button type="button" data-act="continue">继续</button>
+              <button type="button" class="is-danger" data-act="cancelListen">取消</button>
+            </div>
+          </div>
+        </div>
+        <span class="desk__label">scheme C · idle ↔ armed</span>
+      </div>
+      <div class="notes">
+        <ul>
+          <li>骨架：<code>data-mode="idle|armed"</code> 切换 <code>.c-slim</code> / <code>.c-armed</code></li>
+          <li>可与现有 <code>#miniBeginnerListenBanner</code> 合并，避免听写条再叠一层</li>
+          <li>空闲最不挡编辑器；代价是状态机要驱动 DOM</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var a = document.getElementById('miniA');
+      var moreBtn = a.querySelector('[data-act="tools-more"]');
+      moreBtn.addEventListener('click', function () {
+        var open = a.classList.toggle('is-more-open');
+        moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      a.querySelector('[data-act="toggleVoiceKeyless"]').addEventListener('click', function () {
+        var on = this.classList.toggle('is-on');
+        this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+
+      var keyless = document.getElementById('bKeyless');
+      keyless.addEventListener('click', function () {
+        var on = this.classList.toggle('is-on');
+        this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+
+      var c = document.getElementById('miniC');
+      c.querySelector('[data-act="pushToTalk"]').addEventListener('click', function () {
+        c.setAttribute('data-mode', 'armed');
+      });
+      c.querySelectorAll('[data-act="stopOrSend"], [data-act="cancelListen"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          c.setAttribute('data-mode', 'idle');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

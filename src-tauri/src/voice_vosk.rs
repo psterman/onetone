@@ -498,8 +498,14 @@ fn run_worker(
     set_dll_directory(&dll_dir)?;
 
     let load_start = Instant::now();
+    // Model::new walks a large FST graph (HCLr.fst / Gr.fst) and is both IO- and
+    // CPU-heavy. Keep this worker from competing with the Soft Pad/WebView and
+    // input hooks during the load window, then restore the normal priority for
+    // steady-state recognition.
+    let _load_priority = VoskLoadPriority::lower_for_model_load();
     let model = Model::new(model_path.display().to_string())
         .ok_or_else(|| format!("load model failed: {}", model_path.display()))?;
+    drop(_load_priority);
     let load_ms = load_start.elapsed().as_millis() as u64;
     let _ = crate::native_dll::log_vosk_dll_forensics(&dll_dir);
     let _ = send_event_blocking(
@@ -687,6 +693,40 @@ fn run_worker(
     drop(stream);
     let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("stopped".into()));
     Ok(())
+}
+
+#[cfg(windows)]
+struct VoskLoadPriority(Option<i32>);
+
+#[cfg(windows)]
+impl VoskLoadPriority {
+    fn lower_for_model_load() -> Self {
+        use winapi::um::processthreadsapi::{
+            GetCurrentThread, GetThreadPriority, SetThreadPriority,
+        };
+        use winapi::um::winbase::THREAD_PRIORITY_BELOW_NORMAL;
+
+        // GetThreadPriority returns THREAD_PRIORITY_ERROR_RETURN on failure.
+        let thread = unsafe { GetCurrentThread() };
+        let old = unsafe { GetThreadPriority(thread) };
+        let old = (old != winapi::um::winbase::THREAD_PRIORITY_ERROR_RETURN as i32).then_some(old);
+        unsafe {
+            let _ = SetThreadPriority(thread, THREAD_PRIORITY_BELOW_NORMAL as i32);
+        }
+        Self(old)
+    }
+}
+
+#[cfg(windows)]
+impl Drop for VoskLoadPriority {
+    fn drop(&mut self) {
+        if let Some(old) = self.0 {
+            use winapi::um::processthreadsapi::{GetCurrentThread, SetThreadPriority};
+            unsafe {
+                let _ = SetThreadPriority(GetCurrentThread(), old);
+            }
+        }
+    }
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]

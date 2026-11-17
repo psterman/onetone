@@ -622,6 +622,11 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
             if crate::key_chord::is_modifier_only_chord(name) {
                 continue;
             }
+            // Oral multi-key chords (Ctrl+Insert): LL observes down+up. RegisterHotKey
+            // has no keyup and a silent fail leaves the chord completely dead.
+            if crate::codex_numpad_layer::oral_arm_owns_multi_key_binding(name) {
+                continue;
+            }
             register(ctx, hwnd, name);
         }
     }
@@ -1780,8 +1785,45 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 }
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }
-            if let Some(dispatch) = resolve_active_binding(&name, None) {
+            // Low-level hooks commonly report a modifier chord as separate
+            // events: Ctrl-down, Insert-down/up, Ctrl-up. Oral multi-key
+            // bindings intentionally skip RegisterHotKey, so resolve the
+            // reconstructed pressed chord before giving up on the terminal
+            // Insert event. Without this, Ctrl+Insert is configured in the UI
+            // but never reaches the voice-command session.
+            let resolved_dispatch = resolve_active_binding(&name, None).or_else(|| {
+                let pressed = crate::key_chord::build_pressed_chord(&name);
+                if crate::codex_numpad_layer::oral_arm_owns_multi_key_binding(&pressed) {
+                    resolve_active_binding(&pressed, None)
+                } else {
+                    None
+                }
+            });
+            if let Some(dispatch) = resolved_dispatch {
                 if !hook_handles_binding(&dispatch) {
+                    // Oral Ctrl+Insert etc.: observe via LL (pass-through, no swallow)
+                    // so Soft Pad 语音命令模式 gets a reliable down edge.
+                    if crate::codex_numpad_layer::oral_arm_owns_multi_key_binding(&dispatch)
+                        || crate::codex_numpad_layer::oral_arm_owns_multi_key_binding(
+                            &crate::key_chord::build_pressed_chord(&name),
+                        )
+                    {
+                        if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                            let payload = if is_key_down {
+                                dispatch.clone()
+                            } else if is_key_up {
+                                format!("keyup:{dispatch}")
+                            } else {
+                                return CallNextHookEx(
+                                    std::ptr::null_mut(),
+                                    code,
+                                    wparam,
+                                    lparam,
+                                );
+                            };
+                            sender.send(payload).ok();
+                        }
+                    }
                     return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
                 }
                 note_volume_for_ghost_suppress(&name, is_key_up);
@@ -1838,6 +1880,9 @@ fn vk_to_name(vk: u32) -> Option<String> {
         0x0D => Some("Enter".into()),
         0x1B => Some("Esc".into()),
         0x20 => Some("Space".into()),
+        // VK_INSERT — oral Ctrl+Insert LL path; without this name falls to VK_2D
+        // and never matches stored Ctrl+Insert (RHK is skipped for oral chords).
+        0x2D => Some("Insert".into()),
         0x2E => Some("Delete".into()),
         0x24 => Some("Home".into()),
         0x23 => Some("End".into()),
@@ -2254,8 +2299,8 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
 mod tests {
     use super::{
         active_bindings, bridge_injected_ralt_to_volume, claim_xbutton_down, claim_xbutton_up,
-        try_xbutton_orphan_release, unix_now_ms, xbutton_name_from_empty_up, XBUTTON1_CLAIM_MS,
-        XBUTTON1_ORPHAN_STREAK, XBUTTON2_CLAIM_MS, XBUTTON2_ORPHAN_STREAK,
+        try_xbutton_orphan_release, unix_now_ms, vk_to_name, xbutton_name_from_empty_up,
+        XBUTTON1_CLAIM_MS, XBUTTON1_ORPHAN_STREAK, XBUTTON2_CLAIM_MS, XBUTTON2_ORPHAN_STREAK,
         XBUTTON_ORPHAN_RELEASE_SAMPLES, XBUTTON_ORPHAN_SKIP_AFTER_CLAIM_MS,
         drain_pending_recording_mouse, is_ghost_media_key_token, note_volume_for_ghost_suppress,
         scan_consumer_bytes, should_swallow_ghost_media_key, xbutton_from_async_bits,
@@ -2263,6 +2308,7 @@ mod tests {
         LAST_XBUTTON_WHICH, RECORDING_SESSION, XBUTTON_ACTIVE_MASK,
     };
     use crate::config::is_volume_hotkey;
+    use crate::press_gesture::resolve_binding_in_list;
     use std::sync::atomic::Ordering;
 
     #[test]
@@ -2655,5 +2701,21 @@ mod tests {
 
         GHOST_MEDIA_SUPPRESS_UNTIL_MS.store(0, Ordering::SeqCst);
         assert!(!should_swallow_ghost_media_key("LCtrl"));
+    }
+
+    #[test]
+    fn vk_insert_named_for_oral_ctrl_insert_ll() {
+        // Oral Ctrl+Insert skips RHK and needs LL to name VK_INSERT as Insert —
+        // the VK_XX fallback never chords_equivalent against stored Ctrl+Insert.
+        assert_eq!(vk_to_name(0x2D).as_deref(), Some("Insert"));
+        let bindings = vec!["Ctrl+Insert".into()];
+        assert!(
+            resolve_binding_in_list(&bindings, "Ctrl+Insert", None).is_some(),
+            "exact Ctrl+Insert must resolve"
+        );
+        assert!(
+            crate::key_chord::chords_equivalent("Ctrl+Insert", "LCtrl+Insert"),
+            "sided Ctrl wire must match stored oral chord"
+        );
     }
 }

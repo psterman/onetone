@@ -24,6 +24,56 @@ pub fn session_state(state: &AppState) -> String {
     state.voice_session_state.lock().clone()
 }
 
+/// Spec: cancel stays available through stopping/committing (short cancel window).
+pub fn session_allows_cancel(state: &AppState) -> bool {
+    matches!(
+        session_state(state).as_str(),
+        "dictating" | "stopping" | "committing"
+    )
+}
+
+/// Fail-closed before Soft speak / `input.start` chord: first-use calibrate or aim must pass.
+/// WeChat Lab chord skips composer click (FG restore is [`prepare_foreground_for_dictation_chord`]).
+pub fn ensure_composer_ready_for_dictation_start(
+    state: &AppState,
+    app: &AppHandle,
+    app_target_id: &str,
+    voice_key: &str,
+) -> Result<(), &'static str> {
+    if crate::voice_command_session::need_composer_aim() {
+        *state.voice_session_state.lock() = "error".into();
+        *state.voice_session_last_action.lock() = "need_composer_aim".into();
+        emit_session_phase_sound(state, "aim_needed");
+        return Err("need_composer_aim");
+    }
+    if is_wechat_dictation_chord(voice_key) {
+        return Ok(());
+    }
+    let (strategy, duration_ms) = {
+        let cfg = state.cfg.lock();
+        (
+            crate::input_focus_aim::InputAimStrategy::parse(&cfg.voice_end.input_aim_strategy),
+            cfg.key_press_duration_ms,
+        )
+    };
+    if strategy == crate::input_focus_aim::InputAimStrategy::None {
+        return Ok(());
+    }
+    emit_session_phase_sound(state, "aim_start");
+    match crate::input_focus_aim::aim_input_focus(app, app_target_id, strategy, duration_ms) {
+        Ok(()) => {
+            emit_session_phase_sound(state, "aim_ok");
+            Ok(())
+        }
+        Err(err) => {
+            *state.voice_session_state.lock() = "error".into();
+            *state.voice_session_last_action.lock() = format!("aim_failed:{}", err.as_str());
+            emit_session_phase_sound(state, "aim_failed");
+            Err(err.as_str())
+        }
+    }
+}
+
 pub fn wake_phrase_skip_reason(state: &AppState) -> Option<&'static str> {
     match session_state(state).as_str() {
         "stopping" => Some("\u{6b63}\u{5728}\u{7ed3}\u{675f}\u{4e0a}\u{4e00}\u{8f6e}\u{542c}\u{5199}\u{ff0c}\u{8bf7}\u{7a0d}\u{5019}\u{518d}\u{8bf4}\u{3002}"),
@@ -43,6 +93,14 @@ fn bump_commit_token(state: &AppState) -> u64 {
     *token
 }
 
+/// Once per commit-token phase — avoids detected/final or multi-engine double beeps.
+fn emit_session_phase_sound(state: &AppState, phase: &str) {
+    let token = *state.voice_session_commit_token.lock();
+    let event = format!("voice.session.{phase}");
+    let dedupe = format!("{event}.{token}");
+    crate::agent_attention::emit_sound_event(&event, &dedupe);
+}
+
 /// Idle 「开始输入」habit: FG app pack → Soft Pad applied (OneTone self) → default baseline → active.
 /// `live_pack` may already be the last-external pack when Soft Pad holds Win32 FG.
 pub fn resolve_wake_mapping_id_from_parts(
@@ -56,10 +114,7 @@ pub fn resolve_wake_mapping_id_from_parts(
     }
     if fg_is_self {
         if let Some(mid) = applied_lane_mid.map(str::trim).filter(|s| !s.is_empty()) {
-            if cfg
-                .find_mapping_by_id(mid)
-                .is_some_and(|m| m.enabled)
-            {
+            if cfg.find_mapping_by_id(mid).is_some_and(|m| m.enabled) {
                 return mid.to_string();
             }
         }
@@ -211,7 +266,8 @@ pub fn resolve_dictation_ime_key(
             .and_then(|o| o.target_key.as_ref())
         {
             let t = canonical_trigger(ov.trim());
-            if !t.is_empty() {
+            // Seeded Cursor RAlt must not beat Lab 微信 chip (same as pushToTalk placeholder).
+            if !t.is_empty() && !is_seeded_cursor_ptt_placeholder(&t) {
                 return Some(t);
             }
         }
@@ -772,7 +828,9 @@ pub fn send_actions_to_target(
         .unwrap_or("");
     let _ = prepare_foreground_for_dictation_chord(chord_hint);
 
-    if crate::app_identity::foreground_is_self() {
+    // Soft Pad / settings often still own FG after prepare. WeChat Lab chord is a
+    // process-global hotkey — still fire it. Other chords need an external FG.
+    if crate::app_identity::foreground_is_self() && !is_wechat_dictation_chord(chord_hint) {
         if let Some(s) = state {
             crate::app_log::log_line(
                 s,
@@ -883,8 +941,7 @@ pub fn run_mapping_target_sequence(
 /// True when the sequence is a single Key step (legacy IME wake → may enter dictating).
 pub fn sequence_is_single_key(actions: &[crate::config::Action]) -> Option<&str> {
     match actions {
-        [crate::config::Action::Key { value }]
-        | [crate::config::Action::Ime { value, .. }] => {
+        [crate::config::Action::Key { value }] | [crate::config::Action::Ime { value, .. }] => {
             let v = value.trim();
             if v.is_empty() {
                 None
@@ -1614,6 +1671,7 @@ pub fn enter_dictating(
     *state.voice_session_mapping_id.lock() = scene_id.clone();
     *state.voice_session_last_end_phrase.lock() = String::new();
     *state.voice_session_last_action.lock() = reason.to_string();
+    emit_session_phase_sound(state, "dictating");
     // Classic SendKey(RAlt) must track IME ownership — Soft「说话」already notes via layer1.
     crate::voice_command_session::note_ime_voice_active();
     // Soft Pad oral stays armed but goes silent (no ASR echo) while IME owns the mic.
@@ -1792,7 +1850,17 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
         }
         return;
     }
-    let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode, cancel_on) = {
+    let (
+        cancel_zh,
+        cancel_en,
+        send_zh,
+        send_en,
+        end_zh,
+        end_en,
+        wake_phrases,
+        send_mode,
+        cancel_on,
+    ) = {
         let cfg = state.cfg.lock();
         if !cfg.voice_end.enabled {
             crate::app_log::log_line(
@@ -1926,7 +1994,7 @@ pub fn handle_trigger_press_while_dictating(
 }
 
 pub fn ui_cancel_dictation(state: &Arc<AppState>, app: &AppHandle) -> bool {
-    if session_state(state) != "dictating" {
+    if !session_allows_cancel(state) {
         return false;
     }
     cancel_dictation_after_trigger_key(state, app);
@@ -1940,7 +2008,7 @@ fn refresh_coach_hud(app: Option<&AppHandle>, state: &AppState) {
 }
 
 pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
-    if session_state(state) != "dictating" {
+    if !session_allows_cancel(state) {
         crate::app_log::log_line(
             state,
             "voice",
@@ -1965,7 +2033,7 @@ pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str
 }
 
 fn cancel_dictation_session(state: &Arc<AppState>, app: Option<&AppHandle>, reason: &str) {
-    if session_state(state) != "dictating" {
+    if !session_allows_cancel(state) {
         return;
     }
     if *state.paused.lock() {
@@ -1977,14 +2045,21 @@ fn cancel_dictation_session(state: &Arc<AppState>, app: Option<&AppHandle>, reas
         return;
     }
 
+    // Invalidate any in-flight stopping→committing Enter before state flip.
     let _ = bump_commit_token(state);
+    let was = session_state(state);
     let session_mapping_id = state.voice_session_mapping_id.lock().clone();
     *state.voice_session_state.lock() = "idle".into();
     *state.voice_session_started_at.lock() = None;
     *state.voice_session_last_end_phrase.lock() = String::new();
-    *state.voice_session_last_action.lock() = format!("cancelled: {reason}");
+    *state.voice_session_last_action.lock() = format!("cancelled:{was}:{reason}");
+    crate::voice_command_session::clear_ime_voice_active();
+    emit_session_phase_sound(state, "cancelled");
 
-    crate::keyboard::send_escape();
+    // Close target IME when still likely open (dictating / early stopping).
+    if was == "dictating" || was == "stopping" {
+        crate::keyboard::send_escape();
+    }
 
     if let Some(app) = app {
         crate::ipc::push_runtime_via_app(app, state.as_ref(), "esc", &session_mapping_id, None);
@@ -1998,6 +2073,13 @@ fn cancel_dictation_session(state: &Arc<AppState>, app: Option<&AppHandle>, reas
         );
         crate::tray::refresh_menu(app);
         refresh_coach_hud(Some(app), state);
+        if crate::voice_command_session::is_armed() {
+            crate::voice_command_session::standby_oral_after_dictation_end(
+                state,
+                app,
+                &format!("dictation_cancelled:{reason}"),
+            );
+        }
     }
 }
 
@@ -2101,6 +2183,7 @@ fn finish_dictation_session(
     *state.voice_session_state.lock() = "stopping".into();
     let token = bump_commit_token(state);
     *state.voice_session_last_end_phrase.lock() = phrase.to_string();
+    emit_session_phase_sound(state, "stopping");
 
     let state2 = Arc::clone(state);
     let app2 = app.cloned();
@@ -2168,6 +2251,7 @@ fn finish_dictation_session(
             if ok {
                 *state2.voice_session_state.lock() = "sent".into();
                 *state2.voice_session_last_action.lock() = "commitKey sent".into();
+                emit_session_phase_sound(state2.as_ref(), "sent");
                 let sound_cue =
                     crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_success");
                 if let Some(ref app) = app2 {
@@ -2183,6 +2267,7 @@ fn finish_dictation_session(
                 *state2.voice_session_state.lock() = "error".into();
                 *state2.voice_session_last_action.lock() =
                     format!("commitKey send failed: {commit_key}");
+                emit_session_phase_sound(state2.as_ref(), "commit_failed");
                 let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
                 if let Some(ref app) = app2 {
                     crate::ipc::push_runtime_via_app(
@@ -2617,6 +2702,66 @@ mod tests {
     }
 
     #[test]
+    fn session_allows_cancel_through_stopping_and_committing() {
+        // Guard: cancel must stay live past dictating so commit_token can kill Enter.
+        let src = include_str!("voice_end_runtime.rs");
+        assert!(
+            src.contains("session_allows_cancel")
+                && src.contains("\"dictating\" | \"stopping\" | \"committing\""),
+            "cancel window must include stopping/committing"
+        );
+        assert!(
+            src.contains("cancelled:{was}:{reason}") || src.contains("cancelled:{was}"),
+            "cancel should record prior phase for diagnostics"
+        );
+    }
+
+    #[test]
+    fn input_start_gates_chord_on_composer_ready() {
+        let layer1 = include_str!("agent/layer1_native.rs");
+        assert!(
+            layer1.contains("ensure_composer_ready_for_dictation_start"),
+            "Cursor input.start must fail-closed before IME chord"
+        );
+        let src = include_str!("voice_end_runtime.rs");
+        assert!(
+            src.contains("need_composer_aim")
+                && src.contains("aim_input_focus")
+                && src.contains("is_wechat_dictation_chord(voice_key)"),
+            "gate: calibrate + aim; WeChat Lab chord skips composer click"
+        );
+    }
+
+    #[test]
+    fn session_phase_sounds_cover_aim_dictation_commit_cancel() {
+        let src = include_str!("voice_end_runtime.rs");
+        for phase in [
+            "aim_start",
+            "aim_ok",
+            "aim_failed",
+            "aim_needed",
+            "dictating",
+            "stopping",
+            "sent",
+            "commit_failed",
+            "cancelled",
+        ] {
+            assert!(
+                src.contains(&format!("emit_session_phase_sound(state, \"{phase}\")"))
+                    || src.contains(&format!(
+                        "emit_session_phase_sound(state2.as_ref(), \"{phase}\")"
+                    )),
+                "missing phase sound: {phase}"
+            );
+        }
+        let oral = include_str!("voice_command_session.rs");
+        assert!(
+            oral.contains("voice.session.armed"),
+            "oral arm must emit voice.session.armed"
+        );
+    }
+
+    #[test]
     fn send_mode_allows_phrase_gate() {
         assert!(!send_mode_allows_phrase("confirm"));
         assert!(send_mode_allows_phrase("phrase"));
@@ -2627,29 +2772,28 @@ mod tests {
     #[test]
     fn send_phrase_match_separate_from_end_defaults() {
         let cfg = crate::config::VoiceConfig::default();
+        // Keep escapes — avoids UTF-8 corruption in this file on some editors.
+        let send = "\u{53d1}\u{9001}"; // 发送
+        let end = "\u{7ed3}\u{675f}\u{8f93}\u{5165}"; // 结束输入
+        assert!(
+            cfg.voice_end.send_phrases_zh.iter().any(|p| p == send),
+            "VoiceConfig::default must include send phrase 发送"
+        );
         assert_eq!(
             matches_send_phrase(
-                "????????",
+                send,
                 &cfg.voice_end.send_phrases_zh,
                 &cfg.voice_end.send_phrases_en
             ),
-            Some("????????".into())
+            Some(send.into())
         );
         assert_eq!(
-            matches_end_phrase(
-                "????????",
-                &cfg.voice_end.phrases_zh,
-                &cfg.voice_end.phrases_en
-            ),
+            matches_end_phrase(send, &cfg.voice_end.phrases_zh, &cfg.voice_end.phrases_en),
             None
         );
         assert_eq!(
-            matches_end_phrase(
-                "?????????",
-                &cfg.voice_end.phrases_zh,
-                &cfg.voice_end.phrases_en
-            ),
-            Some("?????????".into())
+            matches_end_phrase(end, &cfg.voice_end.phrases_zh, &cfg.voice_end.phrases_en),
+            Some(end.into())
         );
     }
 
@@ -2978,7 +3122,9 @@ mod tests {
 
     #[test]
     fn soft_pad_dictation_uses_habit_ime_not_seeded_ralt() {
-        use crate::config::{new_mapping_id, CaptureHeroRef, MappingEntry, TriggerMode, VoiceConfig};
+        use crate::config::{
+            new_mapping_id, CaptureHeroRef, MappingEntry, TriggerMode, VoiceConfig, VoiceOverride,
+        };
 
         let mut cfg = VoiceConfig::default();
         cfg.voice_vosk.enabled = true;
@@ -3013,7 +3159,11 @@ mod tests {
             app_target_id: "cursor-chat".into(),
             voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
-            voice_override: None,
+            // Stale habit seed — must not beat Lab 微信 chip.
+            voice_override: Some(VoiceOverride {
+                target_key: Some("RAlt".into()),
+                ..Default::default()
+            }),
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],

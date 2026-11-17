@@ -170,13 +170,34 @@ fn sync_oral_arm_keys(cfg: &VoiceConfig) {
     *oral_arm_keys().lock().unwrap() = next;
 }
 
-/// True when Keys「口头命令」owns this physical key (side button / volume / …).
+/// Call before `HotkeyManager::bind_all` so register_list can skip oral multi-key RHK.
+pub fn prepare_oral_arm_bind(cfg: &VoiceConfig) {
+    sync_oral_arm_keys(cfg);
+}
+
+/// True when Keys「口头命令」owns this physical key (side button / volume / Ctrl+Insert …).
 pub fn oral_arm_owns_physical_key(name: &str) -> bool {
     let c = canonical_trigger(name);
     if c.is_empty() {
         return false;
     }
-    oral_arm_keys().lock().unwrap().contains(&c)
+    let keys = oral_arm_keys().lock().unwrap();
+    if keys.contains(&c) {
+        return true;
+    }
+    // Live LL wire may be LCtrl+Insert while the stored oral arm is Ctrl+Insert.
+    keys.iter()
+        .any(|oral| crate::key_chord::chords_equivalent(oral, &c) || crate::key_chord::chords_equivalent(oral, name))
+}
+
+/// True when `binding` is a registered oral multi-key chord (LL must observe it;
+/// RegisterHotKey alone has no keyup and may silently fail).
+pub fn oral_arm_owns_multi_key_binding(binding: &str) -> bool {
+    let b = binding.trim();
+    if b.is_empty() || !b.contains('+') {
+        return false;
+    }
+    oral_arm_owns_physical_key(b)
 }
 
 /// Map LL keyboard hook scan + extended to a numpad physical key, if any.
@@ -1840,6 +1861,21 @@ mod tests {
         sync_oral_arm_keys(&cfg);
         assert!(oral_arm_owns_physical_key("XButton1"));
         assert!(!oral_arm_owns_physical_key("XButton2"));
+    }
+
+    #[test]
+    fn oral_arm_owns_ctrl_insert_chord_aliases() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].oral_command_scheme = Some(crate::config::OralCommandScheme {
+            trigger_key: "Ctrl+Insert".into(),
+            ..Default::default()
+        });
+        sync_oral_arm_keys(&cfg);
+        assert!(oral_arm_owns_physical_key("Ctrl+Insert"));
+        assert!(oral_arm_owns_physical_key("LCtrl+Insert"));
+        assert!(oral_arm_owns_multi_key_binding("Ctrl+Insert"));
+        assert!(oral_arm_owns_multi_key_binding("LCtrl+Insert"));
+        assert!(!oral_arm_owns_multi_key_binding("Insert"));
     }
 
     #[test]

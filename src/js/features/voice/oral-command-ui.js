@@ -786,6 +786,84 @@
     }
   }
 
+  function renderOralSoftSchemeHtml(m) {
+    m = m || activeMapping();
+    ensureOralScheme(m);
+    var items = oralSchemeState(m).items;
+    var rows = ORAL_SOFT_SLOTS.map(function (d, i) {
+      var ov = items[d.id] || {};
+      var on = softRowEnabled(ov, d.id);
+      var listed = softListed(ov, d.id);
+      var say = listed
+        ? ov.say != null && String(ov.say).trim()
+          ? String(ov.say)
+          : d.auto
+        : d.auto;
+      var sid = 'vl-oral-say-' + String(d.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+      return (
+        '<div class="vl-oral-row' +
+        (on ? ' is-on' : '') +
+        (d.core ? ' is-core' : '') +
+        '" data-vl-soft-id="' +
+        esc(d.id) +
+        '">' +
+        '<button type="button" class="vl-oral-row__sw" data-vl-soft-tog="' +
+        esc(d.id) +
+        '"' +
+        (d.core ? ' disabled title="' + esc(t('voiceOralSoftCoreOn', '核心口令，始终开启')) + '"' : '') +
+        ' aria-pressed="' +
+        (on ? 'true' : 'false') +
+        '" aria-label="' +
+        esc(d.name) +
+        '"></button>' +
+        '<div class="vl-oral-row__meta">' +
+        '<strong>' +
+        esc(d.name) +
+        '</strong>' +
+        '<span>' +
+        esc(d.desc || (d.core ? t('keysOralGroupCore', '核心') : t('keysOralViaSoft', 'Soft 槽'))) +
+        '</span></div>' +
+        '<label class="sr-only" for="' +
+        esc(sid) +
+        '">' +
+        esc(t('keysOralColSay', '说法')) +
+        '</label>' +
+        '<input type="text" class="vl-oral-row__say" id="' +
+        esc(sid) +
+        '" data-vl-soft-say="' +
+        esc(d.id) +
+        '" data-oral-auto="' +
+        esc(d.auto) +
+        '" value="' +
+        esc(say) +
+        '" ' +
+        (on ? '' : 'disabled ') +
+        'placeholder="' +
+        esc(d.auto) +
+        '" autocomplete="off" spellcheck="false" />' +
+        '</div>'
+      );
+    }).join('');
+    return (
+      '<section class="vl-oral-scheme" data-oral-soft-scheme="1">' +
+      '<header class="vl-oral-scheme__head">' +
+      '<h3>' +
+      esc(t('voiceOralSoftSchemeTitle', '可喊的 Soft 槽')) +
+      '</h3>' +
+      '<p>' +
+      esc(
+        t(
+          'voiceOralSoftSchemeHint',
+          '命令键打开口头收听后，这些说法会打到对应 Soft Pad 键。'
+        )
+      ) +
+      '</p></header>' +
+      '<div class="vl-oral-scheme__list" role="list">' +
+      rows +
+      '</div></section>'
+    );
+  }
+
   function renderOralChromeControlsHtml(m) {
     var chrome = oralMiniChrome(m);
     var voiceOn = chrome.voiceChipEnabled !== false;
@@ -793,20 +871,20 @@
     var when = chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening';
     function tog(flag, on, label) {
       return (
-        '<button type="button" class="keys-oral-chrome-tog' +
+        '<button type="button" class="vl-oral-look__tog' +
         (on ? ' is-on' : '') +
         '" data-oral-chrome="' +
         esc(flag) +
         '" aria-pressed="' +
         (on ? 'true' : 'false') +
-        '"><span class="keys-oral-chrome-tog__sw" aria-hidden="true"></span>' +
+        '">' +
         esc(label) +
         '</button>'
       );
     }
     function seg(flag, id, on, label) {
       return (
-        '<button type="button" class="keys-oral-chrome-seg' +
+        '<button type="button" class="vl-oral-look__seg' +
         (on ? ' is-on' : '') +
         '" data-oral-chrome-seg="' +
         esc(flag) +
@@ -820,31 +898,19 @@
       );
     }
     return (
-      '<section class="keys-oral-block keys-oral-chrome" data-oral-chrome-panel="1">' +
-      '<h3 class="keys-oral-block__title">' +
-      esc(t('voiceOralChromeTitle', '迷你栏 · Soft Pad 口令外观')) +
-      '</h3>' +
-      '<p class="keys-oral-block__line">' +
-      esc(
-        t(
-          'voiceOralChromeHint',
-          '按口头键进入 Soft Pad 语音命令时怎么显示。改完看右侧预览，不必去通道页。'
-        )
-      ) +
-      '</p>' +
-      '<div class="keys-oral-chrome__togs">' +
+      '<section class="vl-oral-look" data-oral-chrome-panel="1">' +
+      '<div class="vl-oral-look__label">' +
+      esc(t('voiceOralChromeTitleShort', '迷你栏显示')) +
+      '</div>' +
+      '<div class="vl-oral-look__togs">' +
       tog('voiceChipEnabled', voiceOn, t('voiceOralChromeVoiceChip', '迷你栏麦标')) +
       tog('textPreviewEnabled', textOn, t('voiceOralChromeTextPreview', '显示你说的话')) +
       '</div>' +
-      '<div class="keys-oral-chrome__when' +
+      '<div class="vl-oral-look__when' +
       (textOn ? '' : ' is-dim') +
       '" role="group" aria-label="' +
       esc(t('voiceOralChromeWhenLbl', '转写条何时出现')) +
       '">' +
-      '<span class="keys-oral-chrome__when-lbl">' +
-      esc(t('voiceOralChromeWhenLbl', '转写条何时出现')) +
-      '</span>' +
-      '<div class="keys-oral-chrome__segs">' +
       seg(
         'textPreviewWhen',
         'listening',
@@ -857,7 +923,7 @@
         when === 'hasText',
         t('voiceOralChromeWhenText', '有字才出')
       ) +
-      '</div></div></section>'
+      '</div></section>'
     );
   }
 
@@ -865,28 +931,25 @@
     var chips = (enabledSays || [])
       .slice(0, 8)
       .map(function (s) {
-        return '<span class="keys-oral-pad-preview__chip">' + esc(s) + '</span>';
+        return '<span class="vl-oral-listen__chip">' + esc(s) + '</span>';
       })
       .join('');
     if (!chips) {
       chips =
-        '<span class="keys-oral-pad-preview__chip is-empty">' +
+        '<span class="vl-oral-listen__chip is-empty">' +
         esc(t('keysOralListenEmpty', '暂无启用命令')) +
         '</span>';
     }
     return (
-      '<div class="keys-oral-pad-preview is-oral-listen" data-oral-pad-preview="1" aria-label="' +
+      '<div class="vl-oral-listen" data-oral-pad-preview="1" aria-label="' +
       esc(t('voiceOralPadPreviewAria', 'Soft Pad 口头收听预览')) +
       '">' +
-      '<div class="keys-oral-pad-preview__bar">' +
-      '<span class="keys-oral-pad-preview__dot" aria-hidden="true"></span>' +
+      '<div class="vl-oral-listen__bar">' +
+      '<span class="vl-oral-listen__dot" aria-hidden="true"></span>' +
       esc(t('voiceOralPadPreviewListening', '口头收听中')) +
       '</div>' +
-      '<div class="keys-oral-pad-preview__cmds">' +
+      '<div class="vl-oral-listen__cmds">' +
       chips +
-      '</div>' +
-      '<div class="keys-oral-pad-preview__hint">' +
-      esc(t('voiceOralPadPreviewHint', '全尺寸 Soft Pad：口令亮键 + 可说列表')) +
       '</div></div>'
     );
   }
@@ -907,19 +970,16 @@
     }
     if (!miniHtml) {
       miniHtml =
-        '<p class="keys-oral-preview__fallback">' +
+        '<p class="vl-oral-preview__fallback">' +
         esc(t('voiceOralPreviewNeedPad', '当前习惯还没有 Soft Pad，预览用默认迷你栏样式。')) +
         '</p>';
     }
     return (
-      '<aside class="keys-oral-preview" data-oral-preview="1">' +
-      '<h3 class="keys-oral-preview__title">' +
+      '<aside class="vl-oral-preview" data-oral-preview="1">' +
+      '<div class="vl-oral-preview__kicker">' +
       esc(t('voiceOralPreviewTitle', '效果预览')) +
-      '</h3>' +
-      '<p class="keys-oral-preview__sub">' +
-      esc(t('voiceOralPreviewSub', '迷你栏听写条 · Soft Pad 口头收听')) +
-      '</p>' +
-      '<div class="keys-oral-preview__mini" data-oral-preview-mini="1">' +
+      '</div>' +
+      '<div class="vl-oral-preview__mini" data-oral-preview-mini="1">' +
       miniHtml +
       '</div>' +
       renderOralPadListenPreviewHtml(m, enabledSays) +
@@ -1784,7 +1844,41 @@
     return Promise.resolve(false);
   }
 
-  /** Gate / Lab host: Soft Pad oral chrome toggles + mini/pad preview (not channel jumps). */
+  function persistSoftSchemeSay(m, id, say) {
+    if (!m || !id) return;
+    var d = softSlotById(id);
+    if (!d) return;
+    ensureOralScheme(m);
+    var items = Object.assign({}, oralSchemeState(m).items);
+    var prev = items[id] || {};
+    if (!d.core && prev.enabled !== true) return;
+    items[id] = {
+      enabled: true,
+      say: String(say || '').trim() || d.auto,
+      sort: prev.sort
+    };
+    persistOralScheme(m, items);
+  }
+
+  function patchSoftScheme(root, m) {
+    var host = root && root.querySelector('[data-oral-soft-scheme]');
+    if (!host) return;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = renderOralSoftSchemeHtml(m);
+    var next = tmp.firstElementChild;
+    if (next) host.replaceWith(next);
+  }
+
+  function patchLookPanel(root, m) {
+    var host = root && root.querySelector('[data-oral-chrome-panel]');
+    if (!host) return;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = renderOralChromeControlsHtml(m);
+    var next = tmp.firstElementChild;
+    if (next) host.replaceWith(next);
+  }
+
+  /** Gate / Lab: Soft 槽口令方案 + 迷你栏显示 + 预览（不再跳通道）。 */
   function mountSoftPadOralChrome(host, opts) {
     opts = opts || {};
     if (!host) return null;
@@ -1793,10 +1887,11 @@
     ensureOralScheme(m);
     oralPadFor(m);
     host.innerHTML =
-      '<div class="keys-oral-layout keys-oral-layout--lab" data-oral-chrome-root="1" data-oral-mapping="' +
+      '<div class="vl-oral" data-oral-chrome-root="1" data-oral-mapping="' +
       esc(String((m && m.id) || '')) +
       '">' +
-      '<div class="keys-oral-main keys-oral-main--solo">' +
+      '<div class="vl-oral__main">' +
+      renderOralSoftSchemeHtml(m) +
       renderOralChromeControlsHtml(m) +
       '</div>' +
       renderOralPreviewHtml(m) +
@@ -1804,7 +1899,20 @@
     var root = host.querySelector('[data-oral-chrome-root]');
     if (!root || root.__oralChromeWired) return root;
     root.__oralChromeWired = true;
+
     root.addEventListener('click', function (ev) {
+      var softTog = ev.target.closest && ev.target.closest('[data-vl-soft-tog]');
+      if (softTog && root.contains(softTog) && !softTog.disabled) {
+        var softId = softTog.getAttribute('data-vl-soft-tog');
+        var mSoft = mappingById(mid);
+        if (!mSoft || !softId) return;
+        var on = softTog.getAttribute('aria-pressed') === 'true';
+        if (on) removeOralItem(mSoft, softId);
+        else addOralItems(mSoft, [softId]);
+        patchSoftScheme(root, mSoft);
+        refreshOralPreview(root, mSoft);
+        return;
+      }
       var chromeTog = ev.target.closest && ev.target.closest('[data-oral-chrome]');
       if (chromeTog && root.contains(chromeTog)) {
         var flag = chromeTog.getAttribute('data-oral-chrome');
@@ -1815,13 +1923,7 @@
           chrome[flag] = chromeTog.getAttribute('aria-pressed') !== 'true';
           pad.miniChrome = chrome;
           persistOralMiniChrome(mChrome);
-          var panelHost = root.querySelector('[data-oral-chrome-panel]');
-          if (panelHost) {
-            var tmp = document.createElement('div');
-            tmp.innerHTML = renderOralChromeControlsHtml(mChrome);
-            var nextPanel = tmp.firstElementChild;
-            if (nextPanel) panelHost.replaceWith(nextPanel);
-          }
+          patchLookPanel(root, mChrome);
           refreshOralPreview(root, mChrome);
         }
         return;
@@ -1837,16 +1939,27 @@
           chromeSegState[segFlag] = segVal;
           padSeg.miniChrome = chromeSegState;
           persistOralMiniChrome(mSeg);
-          var panelHost2 = root.querySelector('[data-oral-chrome-panel]');
-          if (panelHost2) {
-            var tmp2 = document.createElement('div');
-            tmp2.innerHTML = renderOralChromeControlsHtml(mSeg);
-            var nextPanel2 = tmp2.firstElementChild;
-            if (nextPanel2) panelHost2.replaceWith(nextPanel2);
-          }
+          patchLookPanel(root, mSeg);
           refreshOralPreview(root, mSeg);
         }
       }
+    });
+
+    root.addEventListener('change', function (ev) {
+      var input = ev.target;
+      if (!input || !input.getAttribute || !input.getAttribute('data-vl-soft-say')) return;
+      var sid = input.getAttribute('data-vl-soft-say');
+      var mSay = mappingById(mid);
+      persistSoftSchemeSay(mSay, sid, input.value);
+      refreshOralPreview(root, mSay);
+    });
+    root.addEventListener('focusout', function (ev) {
+      var input = ev.target;
+      if (!input || !input.getAttribute || !input.getAttribute('data-vl-soft-say')) return;
+      var sid = input.getAttribute('data-vl-soft-say');
+      var mSay = mappingById(mid);
+      persistSoftSchemeSay(mSay, sid, input.value);
+      refreshOralPreview(root, mSay);
     });
     return root;
   }

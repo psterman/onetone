@@ -262,99 +262,116 @@ html[data-theme="dark"] #settingsPanelVoiceLab.voice-lab-page{
 }
 #settingsPanelVoiceLab .voice-lab-alt .t{font-size:10px;font-weight:800;color:var(--vl-faint);letter-spacing:.04em;text-transform:uppercase}
 #settingsPanelVoiceLab .voice-lab-alt--oral-chrome{
-  border-style:solid;border-color:var(--vl-accent-bd, rgba(47,111,237,.28));
-  background:linear-gradient(180deg,var(--vl-pane2) 0%,var(--vl-pane) 100%);
+  margin-top:16px;padding:0;border:0;background:transparent;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome{margin-top:8px;min-width:0}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-layout--lab{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,.95fr);gap:10px;align-items:start;
+#settingsPanelVoiceLab .voice-lab-alt--oral-chrome > .t{
+  margin:0 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--vl-faint);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-block{
-  margin:0;padding:10px 12px;border-radius:10px;border:1px solid var(--vl-line);background:var(--vl-pane);
+#settingsPanelVoiceLab .voice-lab-oral-chrome{min-width:0}
+#settingsPanelVoiceLab .vl-oral{
+  display:grid;grid-template-columns:minmax(0,1.15fr) minmax(220px,.85fr);
+  gap:14px;align-items:start;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-block__title{
-  margin:0 0 4px;font-size:13px;font-weight:750;color:var(--vl-text);
+#settingsPanelVoiceLab .vl-oral__main{display:flex;flex-direction:column;gap:12px;min-width:0}
+#settingsPanelVoiceLab .vl-oral-scheme__head h3{
+  margin:0 0 4px;font-size:14px;font-weight:750;color:var(--vl-text);letter-spacing:-.01em;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-block__line{
-  margin:0 0 6px;font-size:12px;line-height:1.4;color:var(--vl-muted);
+#settingsPanelVoiceLab .vl-oral-scheme__head p{
+  margin:0 0 10px;font-size:12px;line-height:1.45;color:var(--vl-muted);max-width:52ch;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome__togs{
-  display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 6px;
+#settingsPanelVoiceLab .vl-oral-scheme__list{
+  display:flex;flex-direction:column;gap:0;border:1px solid var(--vl-line);
+  border-radius:12px;background:var(--vl-pane);overflow:hidden;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog{
-  display:inline-flex;align-items:center;gap:8px;margin:0;padding:7px 10px;border-radius:999px;
+#settingsPanelVoiceLab .vl-oral-row{
+  display:grid;grid-template-columns:28px minmax(0,1fr) minmax(120px,1.2fr);
+  gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--vl-line);
+}
+#settingsPanelVoiceLab .vl-oral-row:first-child{border-top:0}
+#settingsPanelVoiceLab .vl-oral-row:not(.is-on){opacity:.62}
+#settingsPanelVoiceLab .vl-oral-row__sw{
+  width:28px;height:16px;margin:0;padding:0;border:0;border-radius:999px;
+  background:#c9d3de;position:relative;cursor:pointer;flex:0 0 auto;
+}
+#settingsPanelVoiceLab .vl-oral-row__sw::after{
+  content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;
+  background:#fff;transition:transform .14s ease;
+}
+#settingsPanelVoiceLab .vl-oral-row.is-on .vl-oral-row__sw{background:var(--vl-accent,#2f6fed)}
+#settingsPanelVoiceLab .vl-oral-row.is-on .vl-oral-row__sw::after{transform:translateX(12px)}
+#settingsPanelVoiceLab .vl-oral-row__sw:disabled{opacity:.9;cursor:default}
+#settingsPanelVoiceLab .vl-oral-row__meta{min-width:0}
+#settingsPanelVoiceLab .vl-oral-row__meta strong{
+  display:block;font-size:12.5px;font-weight:700;color:var(--vl-text);
+}
+#settingsPanelVoiceLab .vl-oral-row__meta span{
+  display:block;font-size:11px;color:var(--vl-muted);line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#settingsPanelVoiceLab .vl-oral-row__say{
+  width:100%;min-width:0;margin:0;padding:7px 9px;border-radius:8px;
   border:1px solid var(--vl-line);background:var(--vl-pane2);color:var(--vl-text);
-  font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+  font:inherit;font-size:12px;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog.is-on{
-  border-color:var(--vl-accent-bd, rgba(47,111,237,.45));
-  background:color-mix(in srgb, var(--vl-accent, #2f6fed) 12%, #fff);
+#settingsPanelVoiceLab .vl-oral-row__say:focus{
+  outline:2px solid color-mix(in srgb,var(--vl-accent,#2f6fed) 35%,transparent);
+  outline-offset:1px;border-color:var(--vl-accent-bd);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog__sw{
-  width:28px;height:16px;border-radius:999px;background:#c5d0dc;position:relative;flex:0 0 auto;
+#settingsPanelVoiceLab .vl-oral-row__say:disabled{opacity:.55}
+#settingsPanelVoiceLab .vl-oral-look{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:2px 0 0;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog__sw::after{
-  content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;
+#settingsPanelVoiceLab .vl-oral-look__label{
+  font-size:11px;font-weight:750;color:var(--vl-faint);margin-right:2px;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog.is-on .keys-oral-chrome-tog__sw{
-  background:var(--vl-accent, #2f6fed);
+#settingsPanelVoiceLab .vl-oral-look__togs,
+#settingsPanelVoiceLab .vl-oral-look__when{display:inline-flex;flex-wrap:wrap;gap:6px}
+#settingsPanelVoiceLab .vl-oral-look__when.is-dim{opacity:.4;pointer-events:none}
+#settingsPanelVoiceLab .vl-oral-look__tog,
+#settingsPanelVoiceLab .vl-oral-look__seg{
+  margin:0;padding:6px 10px;border-radius:8px;border:1px solid var(--vl-line);
+  background:var(--vl-pane);color:var(--vl-muted);font:inherit;font-size:11.5px;font-weight:650;cursor:pointer;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-tog.is-on .keys-oral-chrome-tog__sw::after{
-  transform:translateX(12px);
+#settingsPanelVoiceLab .vl-oral-look__tog.is-on,
+#settingsPanelVoiceLab .vl-oral-look__seg.is-on{
+  border-color:var(--vl-accent-bd);color:var(--vl-accent);
+  background:var(--vl-accent-soft);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome__when{
-  display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px;
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome__when.is-dim{opacity:.45;pointer-events:none}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome__when-lbl{
-  font-size:11px;color:var(--vl-muted);
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome__segs{
-  display:inline-flex;gap:4px;padding:3px;border-radius:10px;background:var(--vl-pane2);
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-seg{
-  margin:0;padding:6px 10px;border:0;border-radius:8px;background:transparent;
-  color:var(--vl-muted);font:inherit;font-size:12px;font-weight:650;cursor:pointer;
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-chrome-seg.is-on{
-  background:var(--vl-pane);color:var(--vl-text);box-shadow:0 1px 2px rgba(19,32,44,.08);
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-preview{
+#settingsPanelVoiceLab .vl-oral-preview{
   position:sticky;top:8px;display:flex;flex-direction:column;gap:10px;min-width:0;
-  padding:10px 12px;border-radius:12px;border:1px solid var(--vl-line);
-  background:linear-gradient(180deg,#f7fafc 0%,#eef3f8 100%);
+  padding:12px;border-radius:12px;border:1px solid var(--vl-line);background:var(--vl-pane2);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-preview__title{
-  margin:0;font-size:13px;font-weight:750;color:var(--vl-text);
+#settingsPanelVoiceLab .vl-oral-preview__kicker{
+  font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--vl-faint);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-preview__sub{
-  margin:-4px 0 0;font-size:11px;color:var(--vl-muted);
+#settingsPanelVoiceLab .vl-oral-preview .soft-pad-agent-mini-demo-banner{display:none}
+#settingsPanelVoiceLab .vl-oral-preview__fallback{margin:0;font-size:12px;color:var(--vl-muted)}
+#settingsPanelVoiceLab .vl-oral-listen{
+  display:flex;flex-direction:column;gap:8px;padding:10px 11px;border-radius:10px;
+  background:#15202b;color:#e7eef6;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .soft-pad-agent-mini-demo-banner{display:none}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview{
-  display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:10px;
-  border:1px solid color-mix(in srgb,#2f6fed 28%,#d5dee8);background:#101820;color:#e8eef5;
+#settingsPanelVoiceLab .vl-oral-listen__bar{
+  display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview__bar{
-  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+#settingsPanelVoiceLab .vl-oral-listen__dot{
+  width:7px;height:7px;border-radius:50%;background:#3ddc97;
+  box-shadow:0 0 0 3px rgba(61,220,151,.2);
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview__dot{
-  width:8px;height:8px;border-radius:50%;background:#3ddc97;box-shadow:0 0 0 3px rgba(61,220,151,.22);
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview__cmds{display:flex;flex-wrap:wrap;gap:6px}
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview__chip{
+#settingsPanelVoiceLab .vl-oral-listen__cmds{display:flex;flex-wrap:wrap;gap:6px}
+#settingsPanelVoiceLab .vl-oral-listen__chip{
   padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.12);font-size:11px;
+  border:1px solid rgba(255,255,255,.1);font-size:11px;
 }
-#settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-pad-preview__hint{
-  font-size:11px;color:rgba(232,238,245,.62);
-}
-#settingsPanelVoiceLab .voice-lab-oral-chrome-miss{
-  margin:0;font-size:12px;color:var(--vl-muted);
-}
+#settingsPanelVoiceLab .vl-oral-listen__chip.is-empty{opacity:.5}
+#settingsPanelVoiceLab .voice-lab-oral-chrome-miss{margin:0;font-size:12px;color:var(--vl-muted)}
 @media (max-width:980px){
-  #settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-layout--lab{grid-template-columns:1fr}
-  #settingsPanelVoiceLab .voice-lab-oral-chrome .keys-oral-preview{position:static}
+  #settingsPanelVoiceLab .vl-oral{grid-template-columns:1fr}
+  #settingsPanelVoiceLab .vl-oral-preview{position:static}
+  #settingsPanelVoiceLab .vl-oral-row{
+    grid-template-columns:28px minmax(0,1fr);
+  }
+  #settingsPanelVoiceLab .vl-oral-row__say{grid-column:1 / -1}
 }
 #settingsPanelVoiceLab .voice-lab-chip-link{
   display:inline-flex;gap:4px;align-items:center;margin-top:8px;margin-right:6px;padding:6px 10px;

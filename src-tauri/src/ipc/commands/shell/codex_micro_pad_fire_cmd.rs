@@ -23,6 +23,18 @@ pub fn cmd_codex_micro_pad_fire(
     };
     // Overlay / settings UI already highlights locally; avoid double emit to main bus on tap.
     let emit_pad_event = phase == "down" || phase == "up";
+    if key_down {
+        crate::app_log::log_line(
+            state.inner().as_ref(),
+            "voice_command",
+            &format!(
+                "pad_fire_cmd key={} phase={} win={}",
+                micro_key_id.trim(),
+                phase,
+                window.label()
+            ),
+        );
+    }
     fire_codex_micro_pad_key(
         state.inner(),
         &window,

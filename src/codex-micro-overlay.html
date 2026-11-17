@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
   <!-- Cache-bust the desktop WebView after visual overlay releases. -->
-  <link rel="stylesheet" href="css/codex-micro-overlay.css?v=mini-polish-20261115" />
+  <link rel="stylesheet" href="css/codex-micro-overlay.css?v=pass-through-fix-20261116" />
   <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
   <link rel="stylesheet" href="css/soft-pad-carry.css?v=20261013-mini-mats-fit3" />
@@ -106,19 +106,27 @@
         </button>
         <button type="button" class="overlay-mini__btn" data-act="close" title="关闭" aria-label="关闭">×</button>
       </div>
-      <div class="overlay-mini__row overlay-mini__row--tools">
-        <div class="overlay-mini__beginner-actions" id="miniBeginnerActions" hidden role="toolbar" aria-label="快捷钮"></div>
-        <button type="button" class="overlay-mini__action" data-act="smart-capture" title="智能截图" aria-label="智能截图">
-          <span class="overlay-mini__action-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>
-          </span>
-        </button>
-        <button type="button" class="overlay-mini__action overlay-mini__action--settings" data-act="mini-settings"
-          title="迷你栏设置" aria-label="迷你栏设置">
-          <span class="overlay-mini__action-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
-          </span>
-        </button>
+      <div class="overlay-mini__row overlay-mini__row--tools" data-layout="listen-e">
+        <div class="overlay-mini__cluster overlay-mini__beginner-actions" id="miniBeginnerActions" role="toolbar" aria-label="功能键">
+          <div class="overlay-mini__group overlay-mini__group--voice" id="miniClusterVoice" role="group" aria-label="语音" hidden></div>
+          <i class="overlay-mini__sep" id="miniSepVoice" aria-hidden="true" hidden></i>
+          <div class="overlay-mini__group overlay-mini__group--agent" id="miniClusterAgent" role="group" aria-label="对话" hidden></div>
+          <i class="overlay-mini__sep" id="miniSepAgent" aria-hidden="true" hidden></i>
+          <div class="overlay-mini__group overlay-mini__group--sys" id="miniClusterSys" role="group" aria-label="系统">
+            <span class="overlay-mini__group-dyn" id="miniClusterSysDyn"></span>
+            <button type="button" class="overlay-mini__action overlay-mini__action--quiet" data-act="smart-capture" title="智能截图" aria-label="智能截图">
+              <span class="overlay-mini__action-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>
+              </span>
+            </button>
+            <button type="button" class="overlay-mini__action overlay-mini__action--quiet overlay-mini__action--settings" data-act="mini-settings"
+              title="迷你栏设置" aria-label="迷你栏设置">
+              <span class="overlay-mini__action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
       </div>
       <div class="overlay-mini-listen" id="miniBeginnerListenBanner" hidden aria-live="polite">
@@ -419,6 +427,7 @@
       hold_failed:'无法启动听写（请确认 Codex 已打开）',
       invalid_key:'无效按键',
       invalid_phase:'无效操作',
+      wrong_fg:'请先切到目标应用，再点语音命令',
       numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式',
       no_applied_lane:'当前 Soft Pad 未接入按键路由（请确认 Cursor Soft Pad 已启用）',
       probe_failed:'未检测到 Cursor，请先安装 / 登录',
@@ -426,7 +435,9 @@
       invalid_key:'按键无效',
       unbound:'此键未绑定，请打开设置页检查 Cursor Soft Pad',
       failed:'操作失败',
-      voice_key_unset:'请先在设置里配置语音输入快捷键（如 Right Alt）'
+      voice_key_unset:'请先在设置里配置语音输入快捷键（如 Right Alt）',
+      recording_blocks_oral:'录音中，无法开启语音命令',
+      recording_blocks_soft_pad:'录音中，Soft Pad 暂不可用'
     };
     function reasonHint(reason){
       if(reason==='not_foreground'){
@@ -465,6 +476,11 @@
     var miniUsagePill=document.getElementById('miniUsagePill');
     var miniUsageFresh=document.getElementById('miniUsageFresh');
     var miniBeginnerActions=document.getElementById('miniBeginnerActions');
+    var miniClusterVoice=document.getElementById('miniClusterVoice');
+    var miniClusterAgent=document.getElementById('miniClusterAgent');
+    var miniClusterSysDyn=document.getElementById('miniClusterSysDyn');
+    var miniSepVoice=document.getElementById('miniSepVoice');
+    var miniSepAgent=document.getElementById('miniSepAgent');
     var miniBeginnerHint=document.getElementById('miniBeginnerHint');
     var miniBeginnerListenBanner=document.getElementById('miniBeginnerListenBanner');
     var miniBeginnerListenText=document.getElementById('miniBeginnerListenText');
@@ -2017,134 +2033,189 @@
       }
     }
 
-    function defaultMiniToolSlots(chrome){
-      var all=[
-        {slotId:'pushToTalk',iconId:'mic',labelZh:'麦克风',microKeyId:'ACT10',holdMs:0},
-        {slotId:'toggleVoiceKeyless',iconId:'wake',labelZh:'免按键',microKeyId:'',holdMs:0},
-        {slotId:'stopOrSend',iconId:'send',labelZh:'发送',microKeyId:'ACT12',holdMs:0},
-        {slotId:'continue',iconId:'sparkles',labelZh:'继续',microKeyId:'AG02',holdMs:0},
-        {slotId:'newThread',iconId:'messagePlus',labelZh:'新建',microKeyId:'AG01',holdMs:0},
-        {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0},
-        {slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0}
-      ];
-      if(!chrome||chrome.toolsAll!==false) return all;
+    /** E · listen-first: idle 语音命令 (click); armed 发送/继续/取消. */
+    var MINI_IDLE_SLOTS=[
+      {slotId:'pushToTalk',iconId:'mic',labelZh:'语音命令',microKeyId:'ACT10',holdMs:0}
+    ];
+    var MINI_ARMED_SLOTS=[
+      {slotId:'stopOrSend',iconId:'send',labelZh:'发送',microKeyId:'ACT12',holdMs:0},
+      {slotId:'continue',iconId:'sparkles',labelZh:'继续',microKeyId:'AG02',holdMs:0},
+      {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0}
+    ];
+
+    function miniBarListenArmed(s){
+      // Prefer oral/beginner arm flags — localPadStatus alone would swap the
+      // idle「语音命令」button mid-gesture when chrome rebuilds.
+      if(!s) return false;
+      if(s.oralListenArmed||s.oral_listen_armed) return true;
+      if(s.cursorBeginnerArmed||s.cursor_beginner_armed) return true;
+      if(s.activationHubActive||s.activation_hub_active) return true;
+      return false;
+    }
+
+    function filterMiniSlotsByChrome(rows, chrome){
+      if(!chrome||chrome.toolsAll!==false) return rows.slice();
       var allow=Array.isArray(chrome.toolIds)?chrome.toolIds:[];
       if(!allow.length) return [];
-      return all.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
+      return rows.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
     }
 
-    /** Always pin 免按键 after mic so users can find it; materials stays optional via chrome. */
-    function withPinnedMiniSlots(rows, chrome){
-      rows=Array.isArray(rows)?rows.slice():[];
-      function hasSlot(slotId){
-        return rows.some(function(r){
-          return String((r&&(r.slotId||r.slot_id))||'')===slotId;
+    function defaultMiniToolSlots(chrome){
+      return filterMiniSlotsByChrome(MINI_IDLE_SLOTS, chrome);
+    }
+
+    function resolveMiniToolSlots(s, chrome, useBeginner, beginnerSlots){
+      var armed=miniBarListenArmed(s);
+      wrap.classList.toggle('is-mini-armed', armed);
+      if(armed){
+        // Listen acts stay available even if chrome subset hid them while idle.
+        var armedRows=MINI_ARMED_SLOTS.slice();
+        if(useBeginner&&Array.isArray(beginnerSlots)&&beginnerSlots.length){
+          armedRows=armedRows.map(function(def){
+            for(var i=0;i<beginnerSlots.length;i++){
+              var b=beginnerSlots[i];
+              if(String((b&&(b.slotId||b.slot_id))||'')===def.slotId){
+                return {
+                  slotId:def.slotId,
+                  iconId:b.iconId||b.icon_id||def.iconId,
+                  labelZh:b.labelZh||b.label_zh||def.labelZh,
+                  microKeyId:b.microKeyId||b.micro_key_id||def.microKeyId,
+                  holdMs:Number(b.holdMs!=null?b.holdMs:b.hold_ms)||0
+                };
+              }
+            }
+            return def;
+          });
+        }
+        return armedRows;
+      }
+      if(useBeginner&&Array.isArray(beginnerSlots)&&beginnerSlots.length){
+        var idle=beginnerSlots.filter(function(slot){
+          return String(slot.slotId||slot.slot_id||'')==='pushToTalk';
         });
+        if(idle.length) return filterMiniSlotsByChrome(idle, chrome);
       }
-      function insertAfterMic(row){
-        var i=0;
-        for(;i<rows.length;i++){
-          if(String((rows[i]&&(rows[i].slotId||rows[i].slot_id))||'')==='pushToTalk'){
-            rows.splice(i+1,0,row);
-            return;
-          }
-        }
-        rows.unshift(row);
-      }
-      if(!hasSlot('toggleVoiceKeyless')){
-        insertAfterMic({slotId:'toggleVoiceKeyless',iconId:'wake',labelZh:'免按键',microKeyId:'',holdMs:0});
-      }
-      if(!hasSlot('materials')){
-        var allowMats=!(chrome&&chrome.toolsAll===false);
-        if(chrome&&chrome.toolsAll===false){
-          allowMats=Array.isArray(chrome.toolIds)&&chrome.toolIds.indexOf('materials')>=0;
-        }
-        if(allowMats){
-          rows.push({slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0});
-        }
-      }
-      return rows;
+      return filterMiniSlotsByChrome(MINI_IDLE_SLOTS, chrome);
     }
 
-    function withMaterialsMiniSlot(rows, chrome){
-      return withPinnedMiniSlots(rows, chrome);
+    function miniToolGroupOf(slotId){
+      if(slotId==='pushToTalk'||slotId==='toggleVoiceKeyless') return 'voice';
+      if(slotId==='materials') return 'sys';
+      return 'agent';
+    }
+
+    function buildMiniToolButtonHtml(slot, s, useBeginner){
+      var iconId=slot.iconId||slot.icon_id||'';
+      var icon=ICON[iconId]||ICON.empty;
+      var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
+      var slotId=slot.slotId||slot.slot_id||'';
+      var microKey=slot.microKeyId||slot.micro_key_id||'';
+      var label=slot.labelZh||slot.label_zh||slotId;
+      if(slotId==='materials') label=label==='materials'?'材料':label;
+      if(slotId==='toggleVoiceKeyless') label='免按键';
+      if(slotId==='pushToTalk'&&(label==='麦克风'||label==='mic'||label==='说话'||label==='口头'||label==='pushToTalk')) label='语音命令';
+      if(slotId==='stopOrSend'&&(label==='stopOrSend'||!label)) label='发送';
+      if(slotId==='continue'&&(label==='continue'||!label)) label='继续';
+      if(slotId==='cancelListen'&&(label==='cancelListen'||!label)) label='取消';
+      if(!iconId){
+        var fallback={pushToTalk:'mic',toggleVoiceKeyless:'wake',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject',materials:'materials'};
+        icon=ICON[fallback[slotId]||'']||ICON.empty;
+      }
+      var badgeHtml=slotId==='materials'
+        ?'<span class="overlay-mini__action-badge" data-sp-mini-mats-count hidden aria-hidden="true"></span>'
+        :'';
+      var feOnly=slotId==='materials'||slotId==='toggleVoiceKeyless';
+      var padOnly=useBeginner?(feOnly?' data-pad-only="1"':''):' data-pad-only="1"';
+      var keylessOn=slotId==='toggleVoiceKeyless'&&!!(s&&(s.voiceWakeListeningOptIn||s.voice_wake_listening_opt_in||String(s.voiceActivation||s.voice_activation||'')==='wakeOrPushToTalk'));
+      var onCls=keylessOn?' is-on':'';
+      var extras='';
+      var txt='';
+      if(slotId==='pushToTalk'){
+        extras+=' overlay-mini__action--hold';
+        txt='<span class="overlay-mini__action-txt">语音命令</span>';
+      }else if(slotId==='toggleVoiceKeyless'){
+        extras+=' overlay-mini__action--keyless overlay-mini__action--toggle';
+        txt='<span class="overlay-mini__action-txt">免按</span>';
+      }else if(slotId==='stopOrSend'){
+        extras+=' overlay-mini__action--primary';
+        txt='<span class="overlay-mini__action-txt">发送</span>';
+      }else if(slotId==='continue'){
+        extras+=' overlay-mini__action--named';
+        txt='<span class="overlay-mini__action-txt">继续</span>';
+      }else if(slotId==='cancelListen'){
+        extras+=' overlay-mini__action--named overlay-mini__action--danger';
+        txt='<span class="overlay-mini__action-txt">取消</span>';
+      }else if(slotId==='materials'){
+        extras+=' overlay-mini__action--materials overlay-mini__action--quiet';
+      }
+      return '<button type="button" class="overlay-mini__action'+extras+onCls+'" data-beginner-slot="'+escHtml(slotId)+'"'
+        +padOnly
+        +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
+        +(slotId==='materials'?' aria-haspopup="dialog" aria-expanded="false"':'')
+        +(slotId==='toggleVoiceKeyless'?' role="switch" aria-checked="'+(keylessOn?'true':'false')+'"':'')
+        +' aria-label="'+escHtml(slotId==='pushToTalk'?'语音命令：点击开始收听':(label==='免按键'?'免按键语音':label))+'" title="'+escHtml(slotId==='pushToTalk'?'点击开始语音命令；再说「发送」「继续」「取消」':(label==='免按键'?'免按键语音：开关后台听唤醒词':label))+'">'
+        +'<span class="overlay-mini__action-icon">'+icon+'</span>'+txt+badgeHtml+'</button>';
+    }
+
+    function setMiniGroupHtml(el, html){
+      if(!el) return false;
+      var has=!!html;
+      el.hidden=!has;
+      el.innerHTML=html||'';
+      return has;
     }
 
     function applyMiniToolsRow(s){
       if(!miniBeginnerActions) return;
       var chromeT=miniChromeOf(s);
+      wrap.classList.add('is-mini-scheme-e');
       if(!chromeT.toolsBarEnabled){
-        miniBeginnerActions.hidden=true;
-        miniBeginnerActions.innerHTML='';
+        // Row itself hidden via .is-mini-tools-on; clear dynamic hosts only.
+        setMiniGroupHtml(miniClusterVoice, '');
+        setMiniGroupHtml(miniClusterAgent, '');
+        if(miniClusterSysDyn) miniClusterSysDyn.innerHTML='';
+        if(miniSepVoice) miniSepVoice.hidden=true;
+        if(miniSepAgent) miniSepAgent.hidden=true;
+        wrap.classList.remove('is-mini-armed');
         miniBeginnerActions.__sig='';
         return;
       }
       var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
-      var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
       var slots=Array.isArray(s&&s.cursorBeginnerSlots)?s.cursorBeginnerSlots
         :(Array.isArray(s&&s.cursor_beginner_slots)?s.cursor_beginner_slots:[]);
-      var useBeginner=mode&&probeOk&&slots.length>0;
-      var slotRows;
-      if(useBeginner){
-        slotRows=slots;
-        if(chromeT.toolsAll===false){
-          var allowIds=chromeT.toolIds||[];
-          slotRows=allowIds.length
-            ?slots.filter(function(slot){
-              var sid=String(slot.slotId||slot.slot_id||'');
-              return allowIds.indexOf(sid)>=0;
-            })
-            :[];
-        }
-        slotRows=withPinnedMiniSlots(slotRows, chromeT);
-      } else {
-        slotRows=withPinnedMiniSlots(defaultMiniToolSlots(chromeT), chromeT);
-      }
-      if(!slotRows.length){
-        miniBeginnerActions.hidden=true;
-        miniBeginnerActions.innerHTML='';
-        miniBeginnerActions.__sig='';
-        return;
-      }
-      miniBeginnerActions.hidden=false;
-      var sig=(useBeginner?'b:':'d:')+slotRows.map(function(x){
+      // WorkBuddy/MiniMax Soft Pad: always pad_fire. Beginner IPC is Cursor-only —
+      // using it while Soft Pad shows WorkBuddy made「发送/继续」hit elevated Cursor (no-op).
+      var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').trim().toLowerCase();
+      var useBeginner=mode&&probeOk&&slots.length>0&&(applied===''||applied==='cursor');
+      var listenOn=miniBarListenArmed(s);
+      var slotRows=resolveMiniToolSlots(s, chromeT, useBeginner, slots);
+      var sig='e:'+(listenOn?'a':'i')+':'+(useBeginner?'b':'d')+':'+slotRows.map(function(x){
         return String(x.slotId||x.slot_id||'')+':'+(Number(x.holdMs!=null?x.holdMs:x.hold_ms)||0)
           +':'+(x.microKeyId||x.micro_key_id||'')+':'+(x.iconId||x.icon_id||'');
-      }).join('|')+':'+(armed?1:0);
+      }).join('|');
       if(miniBeginnerActions.__sig===sig) return;
       miniBeginnerActions.__sig=sig;
-      miniBeginnerActions.innerHTML=slotRows.map(function(slot){
-        var iconId=slot.iconId||slot.icon_id||'';
-        var icon=ICON[iconId]||ICON.empty;
-        var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
-        var slotId=slot.slotId||slot.slot_id||'';
-        var microKey=slot.microKeyId||slot.micro_key_id||'';
-        var label=slot.labelZh||slot.label_zh||slotId;
-        if(slotId==='materials') label=label==='materials'?'材料':label;
-        if(slotId==='toggleVoiceKeyless') label='免按键';
-        if(!iconId){
-          var fallback={pushToTalk:'mic',toggleVoiceKeyless:'wake',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject',materials:'materials'};
-          icon=ICON[fallback[slotId]||'']||ICON.empty;
-        }
-        var badgeHtml=slotId==='materials'
-          ?'<span class="overlay-mini__action-badge" data-sp-mini-mats-count hidden aria-hidden="true"></span>'
-          :'';
-        var feOnly=slotId==='materials'||slotId==='toggleVoiceKeyless';
-        var padOnly=useBeginner?(feOnly?' data-pad-only="1"':''):' data-pad-only="1"';
-        var keylessOn=slotId==='toggleVoiceKeyless'&&!!(s&&(s.voiceWakeListeningOptIn||s.voice_wake_listening_opt_in||String(s.voiceActivation||s.voice_activation||'')==='wakeOrPushToTalk'));
-        var onCls=keylessOn?' is-on':'';
-        var keylessTxt=slotId==='toggleVoiceKeyless'
-          ?('<span class="overlay-mini__action-txt">免按键</span>')
-          :'';
-        return '<button type="button" class="overlay-mini__action'+(slotId==='materials'?' overlay-mini__action--materials':'')+(slotId==='toggleVoiceKeyless'?' overlay-mini__action--keyless':'')+onCls+'" data-beginner-slot="'+escHtml(slotId)+'"'
-          +padOnly
-          +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
-          +(slotId==='materials'?' aria-haspopup="dialog" aria-expanded="false"':'')
-          +(slotId==='toggleVoiceKeyless'?' role="switch" aria-checked="'+(keylessOn?'true':'false')+'"':'')
-          +' aria-label="'+escHtml(label==='免按键'?'免按键语音':label)+'" title="'+escHtml(label==='免按键'?'免按键语音：开关后台听唤醒词':label)+'">'
-          +'<span class="overlay-mini__action-icon">'+icon+'</span>'+keylessTxt+badgeHtml+'</button>';
-      }).join('');
+
+      var voiceHtml='';
+      var agentHtml='';
+      var sysHtml='';
+      slotRows.forEach(function(slot){
+        var slotId=String(slot.slotId||slot.slot_id||'');
+        var html=buildMiniToolButtonHtml(slot, s, useBeginner);
+        var g=miniToolGroupOf(slotId);
+        if(g==='voice') voiceHtml+=html;
+        else if(g==='sys') sysHtml+=html;
+        else agentHtml+=html;
+      });
+      var hasVoice=setMiniGroupHtml(miniClusterVoice, voiceHtml);
+      var hasAgent=setMiniGroupHtml(miniClusterAgent, agentHtml);
+      if(miniClusterSysDyn) miniClusterSysDyn.innerHTML=sysHtml;
+      // E: voice | agent only — sys (截图/设置) stays off the mini face.
+      if(miniClusterSys) miniClusterSys.hidden=true;
+      if(miniSepVoice) miniSepVoice.hidden=!(hasVoice&&hasAgent);
+      if(miniSepAgent) miniSepAgent.hidden=true;
+
       miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
         bindBeginnerMiniAction(btn);
       });
@@ -2292,10 +2363,12 @@
           holdUiReleased=false;
           if(typeof applyLocalStatusDom==='function') applyLocalStatusDom();
         }
+        try{ applyMiniToolsRow(s); }catch(_){}
         return;
       }
       // Distinct listening chrome — Soft Pad on Cursor FG alone must not look the same.
       wrap.setAttribute('data-light', 'listening');
+      try{ applyMiniToolsRow(s); }catch(_){}
       keys.forEach(function(id){
         var kid=String(id||'').trim();
         if(!kid) return;
@@ -2765,8 +2838,9 @@
         toast(String(res.message||'未能聚焦 Cursor 输入框'));
       } else if(reason==='hold_required'){
         toast(reasonHint('hold_required'));
-      } else if(res.ok&&(slotId==='pushToTalk'||reason==='hold_down')){
-        setLocalStatus('listening', microKey||'ACT10');
+      } else if(res.ok&&(slotId==='pushToTalk'||reason==='hold_down'||reason==='voice_command_toggle')){
+        if(res.armed!==false) setLocalStatus('listening', microKey||'ACT10');
+        else setLocalStatus('idle','');
         if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
       } else if(res.ok&&(slotId==='cancelListen'||reason==='disarmed')){
         clearOralListenChromeLocal();
@@ -2786,8 +2860,9 @@
         if(!res||!res.ok){
           var reason=String(res&&res.reason||'');
           toast(reasonHint(reason)||String(res&&res.message||'')||reason||'操作失败');
-        } else if(slotId==='pushToTalk'&&(phase==='down'||res.reason==='hold_down')){
-          setLocalStatus('listening', microKey);
+        } else if(slotId==='pushToTalk'&&(phase==='down'||phase==='tap'||res.reason==='hold_down'||res.reason==='voice_command_toggle')){
+          if(res.armed!==false) setLocalStatus('listening', microKey);
+          else setLocalStatus('idle','');
         }
         return res;
       }).catch(function(err){
@@ -2867,8 +2942,27 @@
         e.preventDefault(); e.stopPropagation();
         btn.classList.add('is-pressed','is-holding');
         fired=false;
+        // Fire on down — pointerup is often lost to Soft Pad drag / leave.
         if(slotId==='pushToTalk'){
-          beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'down',slotId);
+          try{ if(e.pointerId!=null) btn.setPointerCapture(e.pointerId); }catch(_){}
+          // Guard double pointerdown (touch+mouse / re-entrancy) that armed→disarmed instantly.
+          var now=Date.now();
+          if(btn.__pttTapAt && (now-btn.__pttTapAt)<450){
+            btn.classList.remove('is-pressed','is-holding');
+            return;
+          }
+          btn.__pttTapAt=now;
+          beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'tap',slotId).then(function(res){
+            btn.classList.remove('is-pressed','is-holding');
+            if(!res){ toast('语音命令调用失败'); return; }
+            // Failures already toasted inside beginnerPadFire.
+            if(res.ok && res.armed){
+              toast('语音命令已开启 · 可说发送/继续/取消');
+              if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
+            } else if(res.ok && res.reason==='voice_command_toggle' && res.armed===false){
+              toast('已关闭语音命令');
+            }
+          });
           return;
         }
         if(holdMs>0){
@@ -2883,10 +2977,6 @@
         btn.classList.remove('is-pressed');
         if(slotId==='pushToTalk'){
           clearHold();
-          beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'up',slotId).then(function(){
-            setLocalStatus('idle','');
-            if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
-          });
           return;
         }
         if(holdMs>0){
@@ -3117,6 +3207,12 @@
       return '…'+s.slice(-8);
     }
 
+    /** Mirror Rust clickThrough — never derive from needs_input alone (mini↔full假死). */
+    function applyPassThroughChrome(s){
+      var pass=!!(s&&(s.clickThrough||s.click_through));
+      wrap.classList.toggle('is-pass-through', pass && !localMinimized);
+    }
+
     function applyAppMetaChip(s){
       if(!overlayAppMeta) return;
       var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
@@ -3130,7 +3226,7 @@
         }
         overlayAppMeta.removeAttribute('title');
         overlayAppMeta.removeAttribute('data-light');
-        wrap.classList.remove('is-pass-through');
+        applyPassThroughChrome(s);
         return;
       }
       var lastSrc=String(s&&(s.appLastSource||s.app_last_source)||'').trim();
@@ -3154,7 +3250,7 @@
         }
         overlayAppMeta.removeAttribute('title');
         overlayAppMeta.removeAttribute('data-light');
-        wrap.classList.remove('is-pass-through');
+        applyPassThroughChrome(s);
         return;
       }
       if(light==='idle' && waitingHint){
@@ -3167,7 +3263,7 @@
         }
         overlayAppMeta.setAttribute('title', waitingHint);
         overlayAppMeta.removeAttribute('data-light');
-        wrap.classList.remove('is-pass-through');
+        applyPassThroughChrome(s);
         return;
       }
       var bits=[lightStatusLabel(light)];
@@ -3218,7 +3314,7 @@
       overlayAppMeta.setAttribute('data-light', light);
       overlayAppMeta.setAttribute('data-confidence', confidence||'');
       overlayAppMeta.setAttribute('data-enabled', '1');
-      wrap.classList.toggle('is-pass-through', light==='needs_input' && enabled && !localMinimized);
+      applyPassThroughChrome(s);
       if(statusChip){
         statusChip.setAttribute('data-status', light);
         statusChip.setAttribute('data-light', light);
@@ -4275,6 +4371,10 @@
       var gen=minimizedIntentGeneration;
       pendingMinimized=next;
       localMinimized=next;
+      // Expand must not keep full-pad pointer-events:none from a sticky needs_input class
+      // while the next snap (clickThrough) is still in flight.
+      if(!next) wrap.classList.remove('is-pass-through');
+      else applyPassThroughChrome(lastSnap||{});
       applyLocalStatusDom();
       return invoke('cmd_codex_micro_overlay_set_minimized',{minimized:next}).then(function(){
         if(gen!==minimizedIntentGeneration) return;
@@ -4308,9 +4408,10 @@
       if(e.pointerType==='touch') return;
       if(e.button!=null&&e.button!==0) return;
       if(isDragBlocked(e.target)) return;
-      // Stale FE latch (lost Rust end) used to `return` here → intermittent 失灵
-      // until the 8s watch. Clear and continue so this gesture still starts.
-      if(dragging) endOverlayDragFromRust();
+      // Live gesture: ignore duplicate pointerdown. Restarting used to abort
+      // Rust's LMB grace wait → follow_start_lmb_not_down (先正常、稍后失灵).
+      // Lost Rust end clears via 2.5s watch / __onetoneOverlayDragEnd.
+      if(dragging) return;
       setOverlayDragging(true);
       armDragEndWatch();
       try{

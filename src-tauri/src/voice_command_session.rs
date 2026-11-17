@@ -194,11 +194,7 @@ pub fn clear_oral_heard_display(state: &AppState) {
 }
 
 /// IME/dictation ended: Soft Pad silent watch → standby (do not leave oral chrome up).
-pub fn standby_oral_after_dictation_end(
-    state: &Arc<AppState>,
-    app: &AppHandle,
-    reason: &str,
-) {
+pub fn standby_oral_after_dictation_end(state: &Arc<AppState>, app: &AppHandle, reason: &str) {
     if !is_armed() {
         clear_ime_voice_active();
         return;
@@ -427,8 +423,11 @@ pub fn init_composer_on_oral_arm(state: &Arc<AppState>, app: &AppHandle, mapping
                     // Brief settle after Soft Pad arm chrome so click-through is ready.
                     std::thread::sleep(Duration::from_millis(80));
                     let _pad = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app_h);
-                    let _ =
-                        crate::app_chat_workflow::focus_composer_for_send(&app_h, &tid, duration_ms);
+                    let _ = crate::app_chat_workflow::focus_composer_for_send(
+                        &app_h,
+                        &tid,
+                        duration_ms,
+                    );
                 });
         }
         Err(err) => {
@@ -614,6 +613,11 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
         "voice_command",
         &format!("session_begin mapping={mapping_id} window_ms={window_ms}"),
     );
+    // Phase sound: arm success (dedupe by oral gen so re-arm refresh doesn't stack).
+    crate::agent_attention::emit_sound_event(
+        "voice.session.armed",
+        &format!("voice.session.armed.{gen}"),
+    );
 
     // Visual FIRST. reclaim_mic (SendInput+80ms) / activate_desired_engine (hundreds ms)
     // used to run before Soft Pad chrome — under load users saw nothing, released hold,
@@ -677,8 +681,8 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
     // 发送/继续 do not land in the editor or other boxes.
     // Keys drawer / OneTone FG: never open fullscreen calibrate — that left the
     // whole monitor unclickable after recording X2 as oral arm.
-    let skip_composer = *state.settings_drawer_open.lock()
-        || crate::app_identity::foreground_is_self();
+    let skip_composer =
+        *state.settings_drawer_open.lock() || crate::app_identity::foreground_is_self();
     if skip_composer {
         crate::app_log::log_line(
             state,
@@ -820,7 +824,11 @@ fn restore_oral_temp_engine(state: &Arc<AppState>, app: &AppHandle) {
         .lock()
         .map(|g| g.clone())
         .unwrap_or_default();
-    let restore = if prev.is_empty() { "off" } else { prev.as_str() };
+    let restore = if prev.is_empty() {
+        "off"
+    } else {
+        prev.as_str()
+    };
     {
         let mut cfg = state.cfg.lock();
         // Unwind oral auto/Vosk borrow (legacy advanced/SAPI borrow still recognized).
@@ -865,6 +873,15 @@ pub fn toggle_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) 
     begin_session(state, app, mapping_id, DEFAULT_WINDOW_MS);
 }
 
+/// Soft Pad / mini bar click — same toggle, but skip FG refuse (overlay never owns FG).
+pub fn toggle_session_overlay(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) {
+    if is_armed() {
+        end_session(state, app, mapping_id, "toggle");
+        return;
+    }
+    begin_session(state, app, mapping_id, DEFAULT_WINDOW_MS);
+}
+
 /// Hold-to-listen: physical oral key **down** → start oral command listen.
 /// Duplicate downs while armed cancel a pending hold_up grace (do not toggle off).
 pub fn hold_session_down(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) {
@@ -892,7 +909,9 @@ pub fn hold_session_up(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str)
     } else {
         mapping_id.to_string()
     };
-    let gen = HOLD_RELEASE_GEN.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+    let gen = HOLD_RELEASE_GEN
+        .fetch_add(1, Ordering::SeqCst)
+        .wrapping_add(1);
     let state_h = Arc::clone(state);
     let app_h = app.clone();
     std::thread::spawn(move || {
@@ -953,8 +972,7 @@ fn refuse_wrong_fg(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) -> 
         // usable while the user is on OneTone settings or the Soft Pad panel;
         // otherwise recording the side key appears to produce a dead binding.
         let oral = crate::config::canonical_trigger(m.oral_trigger_key());
-        if crate::config::is_peripheral_trigger_key(&oral)
-            || crate::config::is_volume_hotkey(&oral)
+        if crate::config::is_peripheral_trigger_key(&oral) || crate::config::is_volume_hotkey(&oral)
         {
             return false;
         }
@@ -1033,7 +1051,10 @@ mod tests {
         let hint = listen_hint(&cfg);
         let cards = listen_command_cards(&cfg);
         SESSION_ARMED.store(false, Ordering::SeqCst);
-        assert!(hint.is_empty(), "status prose belongs to wave badge, got: {hint}");
+        assert!(
+            hint.is_empty(),
+            "status prose belongs to wave badge, got: {hint}"
+        );
         assert!(!hint.contains("口头收听"), "no 口头收听中 status copy");
         assert!(cards.iter().any(|(_, say, _)| say == "发出去"));
         let keys = listen_micro_keys(&cfg);
@@ -1054,7 +1075,9 @@ mod tests {
     fn hold_release_grace_cancel_token_advances() {
         // hold_session_up schedules end after HOLD_RELEASE_GRACE_MS; re-down cancels via HOLD_RELEASE_GEN.
         assert!(HOLD_RELEASE_GRACE_MS >= 500);
-        let gen_at_schedule = HOLD_RELEASE_GEN.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let gen_at_schedule = HOLD_RELEASE_GEN
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
         HOLD_RELEASE_GEN.fetch_add(1, Ordering::SeqCst); // re-down / begin cancels
         assert_ne!(
             HOLD_RELEASE_GEN.load(Ordering::SeqCst),

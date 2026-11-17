@@ -119,3 +119,6 @@ daily-image-site/
 
 # ATR isolate e2e scratch (was accidentally tracked)
 .tmp-atr-e2e-sandbox/
+
+# open-source export of daily-image-site (separate repo, not part of onetone)
+daily-image-site-open/

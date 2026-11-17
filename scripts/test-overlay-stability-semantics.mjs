@@ -193,11 +193,20 @@ assert(
 {
   const begin = overlay.match(/function beginOverlayDrag\([\s\S]*?\n    \}/)?.[0] || '';
   assert(
-    /if\(dragging\)\s*endOverlayDragFromRust\(\)/.test(begin) &&
-      !/if\(dragging\)\s*return/.test(begin),
-    'stale FE dragging latch clears and continues (no intermittent 失灵 return)'
+    /if\(dragging\)\s*return/.test(begin) &&
+      !/if\(dragging\)\s*endOverlayDragFromRust\(\)/.test(begin),
+    'live FE dragging latch ignores duplicate pointerdown (no restart storm)'
   );
 }
+assert(
+  /duplicate_start_ignored worker_active=true/.test(rs) &&
+    !/duplicate_start_superseded/.test(rs),
+  'Rust ignores duplicate start_drag while worker active (never abort/supersede)'
+);
+assert(
+  /SM_SWAPBUTTON/.test(rs) && /VK_RBUTTON/.test(rs),
+  'Soft Pad drag button respects SM_SWAPBUTTON (logical primary)'
+);
 assert(
   /setTimeout\([\s\S]{0,80}?2500\)/.test(overlay),
   'FE drag-end safety watch is 2.5s (not 8s)'

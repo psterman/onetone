@@ -1038,17 +1038,25 @@ pub fn run() {
                             ),
                         );
                         let ui_ready = voice_bootstrap::wait_for_ui_ready(Duration::from_secs(15));
-                        // Let the first config/runtime paint settle before model
-                        // loading. This is intentionally outside the WebView/IPC
-                        // thread and avoids the startup heartbeat stalls seen in
-                        // runtime-live.log.
-                        std::thread::sleep(Duration::from_millis(1500));
+                        // Soft Pad first show (OVERLAY_BOOT_HOLD → 250ms) must finish before
+                        // Vosk Model::new walks HCLr.fst / Gr.fst — that disk storm made
+                        // cold launch feel stuck even though load is off the UI thread.
+                        let pad_deadline =
+                            std::time::Instant::now() + Duration::from_secs(5);
+                        while codex_micro_overlay::overlay_boot_hold_active()
+                            && std::time::Instant::now() < pad_deadline
+                        {
+                            std::thread::sleep(Duration::from_millis(50));
+                        }
+                        // Brief settle after Soft Pad HWND/WebView create.
+                        std::thread::sleep(Duration::from_millis(800));
                         crate::app_log::log_line(
                             &boot_state,
                             "voice",
                             &format!(
-                                "voice_bootstrap thread wake ui_ready={} {}",
+                                "voice_bootstrap thread wake ui_ready={} pad_hold={} {}",
                                 ui_ready,
+                                codex_micro_overlay::overlay_boot_hold_active(),
                                 crate::ui_heartbeat::ui_hb_diag()
                             ),
                         );

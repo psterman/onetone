@@ -67,8 +67,9 @@
     if(!mode||!probeOk) return;
     var actions=document.getElementById('miniBeginnerActions');
     var wrap=document.getElementById('wrap');
-    if(!wrap||!actions||actions.hidden) return;
+    if(!wrap||!actions) return;
     if(!wrap.classList.contains('is-minimized')) return;
+    if(!wrap.classList.contains('is-mini-tools-on')) return;
     ensureOverlay(wrap);
   }
 

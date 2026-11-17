@@ -25,6 +25,26 @@ pub const AIDER_APP_TARGET_ID: &str = "aider-chat";
 /// ponytail: Toolhelp process-tree walk is O(processes); overlay ticks every 250ms.
 /// Cache terminal-CLI resolution so we don't snapshot the whole machine multiple times per tick.
 const TERMINAL_CLI_CACHE_TTL: Duration = Duration::from_millis(750);
+/// Foreground identity is queried by the overlay/status lanes several times per
+/// tick. Reading the title with WM_GETTEXT and opening the process image can
+/// block when the target app is busy, so reuse the same HWND/PID briefly. A
+/// different foreground HWND or PID bypasses this cache immediately.
+const FOREGROUND_IDENTITY_CACHE_TTL: Duration = Duration::from_millis(120);
+
+#[cfg(windows)]
+#[derive(Clone)]
+struct ForegroundIdentityCache {
+    hwnd: usize,
+    pid: u32,
+    at: Instant,
+    identity: Option<AppIdentity>,
+}
+
+#[cfg(windows)]
+fn foreground_identity_cache() -> &'static Mutex<Option<ForegroundIdentityCache>> {
+    static CACHE: OnceLock<Mutex<Option<ForegroundIdentityCache>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -669,7 +689,27 @@ pub fn foreground_app_identity() -> Option<AppIdentity> {
             if pid == 0 {
                 return None;
             }
-            identity_for_pid_hwnd(pid, hwnd)
+            let hwnd_key = hwnd as usize;
+            if let Ok(cache) = foreground_identity_cache().lock() {
+                if let Some(cached) = cache.as_ref() {
+                    if cached.hwnd == hwnd_key
+                        && cached.pid == pid
+                        && cached.at.elapsed() < FOREGROUND_IDENTITY_CACHE_TTL
+                    {
+                        return cached.identity.clone();
+                    }
+                }
+            }
+            let identity = identity_for_pid_hwnd(pid, hwnd);
+            if let Ok(mut cache) = foreground_identity_cache().lock() {
+                *cache = Some(ForegroundIdentityCache {
+                    hwnd: hwnd_key,
+                    pid,
+                    at: Instant::now(),
+                    identity: identity.clone(),
+                });
+            }
+            identity
         }
     }
     #[cfg(not(windows))]
@@ -954,9 +994,14 @@ pub fn is_self_identity(identity: &AppIdentity) -> bool {
     is_self_process(&identity.exe_name, identity.full_path.as_deref())
 }
 
-/// Shell / tray-click noise — not the app the user was actually using.
+/// Shell / tray-click / screenshot-tool noise — not the app the user was actually using.
 pub fn is_tray_open_fg_noise(identity: &AppIdentity) -> bool {
-    let exe = identity.exe_name.to_ascii_lowercase();
+    is_tray_open_fg_noise_exe(&identity.exe_name)
+}
+
+/// Same gate as [`is_tray_open_fg_noise`] for raw exe names (FE mirror / Soft Pad).
+pub fn is_tray_open_fg_noise_exe(exe_name: &str) -> bool {
+    let exe = exe_name.to_ascii_lowercase();
     matches!(
         exe.as_str(),
         "explorer.exe"
@@ -967,6 +1012,8 @@ pub fn is_tray_open_fg_noise(identity: &AppIdentity) -> bool {
             | "textinputhost.exe"
             | "lockapp.exe"
             | "systemsettings.exe"
+            // Screenshot overlays steal FG briefly and must not sticky Soft Pad / home chip.
+            | "pixpin.exe"
     )
 }
 
@@ -1292,6 +1339,16 @@ mod tests {
                 .as_deref(),
             Some(CURSOR_APP_TARGET_ID)
         );
+    }
+
+    #[test]
+    fn tray_fg_noise_includes_explorer_and_pixpin() {
+        assert!(is_tray_open_fg_noise_exe("explorer.exe"));
+        assert!(is_tray_open_fg_noise_exe("Explorer.EXE"));
+        assert!(is_tray_open_fg_noise_exe("PixPin.exe"));
+        assert!(is_tray_open_fg_noise_exe("pixpin.exe"));
+        assert!(!is_tray_open_fg_noise_exe("Cursor.exe"));
+        assert!(!is_tray_open_fg_noise_exe("chrome.exe"));
     }
 
     #[test]

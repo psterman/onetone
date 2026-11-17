@@ -4981,6 +4981,47 @@ pub fn oral_trigger_is_live(
     identity.is_some_and(|id| mapping_matches_foreground_identity(m, id))
 }
 
+/// Match stored oral arm (`Ctrl+Insert`) against live wire (`Ctrl+Insert`,
+/// `LCtrl+Insert`, or terminal `Insert` while modifiers are still held).
+pub fn oral_trigger_matches_event(
+    oral: &str,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    let oral = oral.trim();
+    if oral.is_empty() {
+        return false;
+    }
+    let key = event.key.trim();
+    if key.is_empty() {
+        return false;
+    }
+    let oral_c = canonical_trigger(oral);
+    let key_c = canonical_trigger(key);
+    if oral_c == key_c || oral == key {
+        return true;
+    }
+    if crate::key_chord::chords_equivalent(&oral_c, &key_c)
+        || crate::key_chord::chords_equivalent(oral, key)
+    {
+        return true;
+    }
+    // LL hook often delivers only the terminal key; rebuild the live chord.
+    let pressed = crate::key_chord::build_pressed_chord(key);
+    if !pressed.is_empty()
+        && (crate::key_chord::chords_equivalent(&oral_c, &pressed)
+            || crate::key_chord::chords_equivalent(oral, &pressed))
+    {
+        return true;
+    }
+    false
+}
+
+/// Modifier+key oral arms (e.g. Ctrl+Insert) are tap-to-toggle — hold flashes then dies.
+pub fn oral_trigger_is_modifier_chord(oral: &str) -> bool {
+    let oral = oral.trim();
+    !oral.is_empty() && oral.contains('+') && !crate::key_chord::is_modifier_only_chord(oral)
+}
+
 fn live_dispatch_mappings<'a>(cfg: &'a VoiceConfig) -> Vec<&'a MappingEntry> {
     let pack_id = live_pack_mapping(cfg).map(|m| m.id.clone());
     cfg.active_mappings()
@@ -5763,7 +5804,7 @@ impl VoiceConfig {
             if !oral_trigger_is_live(m, foreground.as_ref()) {
                 continue;
             }
-            if canonical_trigger(oral) != canonical && oral != event.key.as_str() {
+            if !oral_trigger_matches_event(oral, event) {
                 continue;
             }
             candidates.push(m);
@@ -5799,7 +5840,7 @@ impl VoiceConfig {
             if oral.is_empty() {
                 return false;
             }
-            if canonical_trigger(oral) != canonical && oral != event.key.as_str() {
+            if !oral_trigger_matches_event(oral, event) {
                 return false;
             }
             !oral_trigger_is_live(m, foreground.as_ref())
@@ -5876,6 +5917,8 @@ impl VoiceConfig {
     }
 
     pub fn bindings(&self) -> Vec<String> {
+        // BindAll register_list skips oral multi-key RHK; keep ORAL_ARM_KEYS fresh first.
+        crate::codex_numpad_layer::prepare_oral_arm_bind(self);
         let mut out = Vec::new();
         for m in live_dispatch_mappings(self) {
             let keys = if is_app_scenario_mapping(m) && m.trigger_key.trim().is_empty() {
@@ -8036,6 +8079,34 @@ mod tests {
                 "wrong_fg should surface oral XButton2 when FG ≠ Cursor: {wrong:?}"
             );
         }
+    }
+
+    #[test]
+    fn oral_ctrl_insert_matches_side_aware_wire_names() {
+        let oral = "Ctrl+Insert";
+        assert!(oral_trigger_is_modifier_chord(oral));
+        assert!(!oral_trigger_is_modifier_chord("Insert"));
+        assert!(!oral_trigger_is_modifier_chord("Ctrl"));
+        let exact = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "Ctrl+Insert".into(),
+        };
+        let sided = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "LCtrl+Insert".into(),
+        };
+        assert!(oral_trigger_matches_event(oral, &exact));
+        assert!(oral_trigger_matches_event(oral, &sided));
+        assert!(!oral_trigger_matches_event(
+            oral,
+            &crate::press_gesture::PhysicalKeyEvent {
+                is_keyup: false,
+                device: None,
+                key: "F13".into(),
+            }
+        ));
     }
 
     #[test]

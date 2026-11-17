@@ -1118,6 +1118,13 @@
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
 
     }else if(panel==='voiceLab'){
+      // Same as voiceWake: cancel deferred set_listening_strategy retries before Lab paint.
+      // Product entry is voiceLab — leaving cancel only on classic voiceWake left the noop storm on open.
+      try{
+        if(global.OneToneAppSession&&typeof global.OneToneAppSession.markVoiceEngineBootHandled==='function'){
+          global.OneToneAppSession.markVoiceEngineBootHandled();
+        }
+      }catch(_){}
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(normalizePanel(ui.settingsPanel)!=='voiceLab') return;
@@ -1315,10 +1322,16 @@
         try{ voiceOpenGen=global.OneToneVoiceWake.bumpOpenGen(); }catch(_){ voiceOpenGen=0; }
       }
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.armOpenClickGuard==='function'){
-        // Ghost strategy-tab / presence clicks after open were flipping enhanced?auto?resourceSaver
-        // and each flip re-activated the engine (??). Cover the deferred heavy RAF window.
+        // Ghost strategy-tab / presence clicks after open were flipping enhanced→auto→resourceSaver
+        // and each flip re-activated the engine. Cover the deferred heavy RAF window.
         try{ global.OneToneVoiceWake.armOpenClickGuard(2500); }catch(_){}
       }
+      // Cancel deferred boot retries — they share IPC/UI with open paint and feel like 假死.
+      try{
+        if(global.OneToneAppSession&&typeof global.OneToneAppSession.markVoiceEngineBootHandled==='function'){
+          global.OneToneAppSession.markVoiceEngineBootHandled();
+        }
+      }catch(_){}
       function voiceHbSet(tag){
         if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
           try{ global.OneToneUiHeartbeat.setTag(tag); }catch(_){}
@@ -1882,8 +1895,11 @@
 
       if(hooks().loadCoachHudState) hooks().loadCoachHudState();
 
-      // voiceWake: skip ??parks engines; status IPC raced stop and UI_HB_STALL.
-      if(hooks().settingsPanelNeedsVoicePoll()&&ui.settingsPanel!=='voiceWake') hooks().voiceStatusPollTick();
+      // voiceWake parks engines; voiceLab paint must win over stacked status IPC on open.
+      // Normal poll cadence still covers Lab after first paint (settingsPanelNeedsVoicePoll).
+      if(hooks().settingsPanelNeedsVoicePoll()&&ui.settingsPanel!=='voiceWake'&&ui.settingsPanel!=='voiceLab'){
+        hooks().voiceStatusPollTick();
+      }
 
     },200);
 
